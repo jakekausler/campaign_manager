@@ -1,13 +1,16 @@
 # TICKET-018: State Management & GraphQL Client
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Set up global state management with Zustand and GraphQL client (Apollo Client or urql) with code generation from schema.
 
 ## Scope of Work
+
 1. Install and configure Zustand for state management
 2. Set up Apollo Client / urql with GraphQL endpoint
 3. Configure GraphQL Code Generator
@@ -19,6 +22,7 @@ Set up global state management with Zustand and GraphQL client (Apollo Client or
 9. Set up cache policies
 
 ## Acceptance Criteria
+
 - [ ] GraphQL client connects to API
 - [ ] Generated types match schema
 - [ ] Auth token persists and auto-attaches
@@ -32,10 +36,13 @@ Set up global state management with Zustand and GraphQL client (Apollo Client or
 - [ ] Can query Structures by Settlement via hooks
 
 ## Dependencies
+
 - Requires: TICKET-005, TICKET-017
 
 ## Technical Notes
+
 **Cache Policies for Settlement/Structure Relationships:**
+
 - Settlement queries should be cached by Kingdom ID and settlement ID
 - Structure queries should be cached by Settlement ID and structure ID
 - Implement proper cache normalization for nested relationships
@@ -43,4 +50,5 @@ Set up global state management with Zustand and GraphQL client (Apollo Client or
 - Configure cache eviction policies for paginated Settlement/Structure results
 
 ## Estimated Effort
+
 2-3 days

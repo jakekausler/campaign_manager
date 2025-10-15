@@ -1,13 +1,16 @@
 # TICKET-022: Timeline View Implementation
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement timeline view showing events and encounters over world-time with availability overlays and drag-to-reschedule functionality.
 
 ## Scope of Work
+
 1. Install vis-timeline or react-calendar-timeline
 2. Create Timeline component
 3. Implement event/encounter visualization
@@ -18,6 +21,7 @@ Implement timeline view showing events and encounters over world-time with avail
 8. Add time marker for "current" world time
 
 ## Acceptance Criteria
+
 - [ ] Timeline shows events/encounters
 - [ ] Time range is adjustable
 - [ ] Dragging updates valid_from/valid_to
@@ -26,7 +30,9 @@ Implement timeline view showing events and encounters over world-time with avail
 - [ ] Lanes group related items
 
 ## Dependencies
+
 - Requires: TICKET-007, TICKET-018
 
 ## Estimated Effort
+
 4-5 days

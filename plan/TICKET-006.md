@@ -1,13 +1,16 @@
 # TICKET-006: Entity CRUD Operations
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement complete CRUD (Create, Read, Update, Delete) operations for all core domain entities through GraphQL API, with proper validation, error handling, and relationship management.
 
 ## Scope of Work
+
 1. Create services for each entity type:
    - WorldService
    - CampaignService
@@ -59,6 +62,7 @@ Implement complete CRUD (Create, Read, Update, Delete) operations for all core d
     - No duplicate name prevention (allow duplicates)
 
 ## Acceptance Criteria
+
 - [ ] Can create all entity types via GraphQL mutations
 - [ ] Can query single entities by ID
 - [ ] Can query lists of entities with filters
@@ -81,6 +85,7 @@ Implement complete CRUD (Create, Read, Update, Delete) operations for all core d
 ## Technical Notes
 
 ### Pagination Pattern
+
 ```typescript
 interface PaginatedResponse<T> {
   edges: Array<{
@@ -107,6 +112,7 @@ async campaigns(
 ```
 
 ### Input Validation Example
+
 ```typescript
 @InputType()
 class CreateCampaignInput {
@@ -127,13 +133,14 @@ class CreateCampaignInput {
 ```
 
 ### Service Layer Pattern
+
 ```typescript
 @Injectable()
 export class CampaignService {
   constructor(
     private prisma: PrismaService,
     private authz: AuthorizationService,
-    private audit: AuditService,
+    private audit: AuditService
   ) {}
 
   async create(input: CreateCampaignInput, user: User): Promise<Campaign> {
@@ -231,6 +238,7 @@ export class CampaignService {
 ```
 
 ### Link Management
+
 ```typescript
 @Mutation(() => Link)
 async createLink(
@@ -245,6 +253,7 @@ async createLink(
 ```
 
 ## Architectural Decisions
+
 - **Soft delete only**: ALL deletes are soft (set `deletedAt`), no hard deletes ever
 - **Cascade delete**: Deleting parent soft deletes orphaned children
 - **Archive separate from delete**: `archivedAt` field for hiding without deleting
@@ -256,17 +265,19 @@ async createLink(
 - **Eager vs lazy loading**: Use DataLoader for relationships to avoid N+1
 
 ### Cascade Rules
-| Parent Entity | Cascade Behavior |
-|--------------|------------------|
-| World | Cascade to Campaigns, Locations |
-| Campaign | Cascade to Events, Encounters, Characters, Parties, Kingdoms, Branches |
-| Kingdom | Cascade to Settlements |
-| Settlement | Cascade to Structures |
-| Location | Cascade to child Locations (hierarchy) |
-| Event | Do not cascade (keep audit trail) |
-| Encounter | Do not cascade (keep audit trail) |
+
+| Parent Entity | Cascade Behavior                                                       |
+| ------------- | ---------------------------------------------------------------------- |
+| World         | Cascade to Campaigns, Locations                                        |
+| Campaign      | Cascade to Events, Encounters, Characters, Parties, Kingdoms, Branches |
+| Kingdom       | Cascade to Settlements                                                 |
+| Settlement    | Cascade to Structures                                                  |
+| Location      | Cascade to child Locations (hierarchy)                                 |
+| Event         | Do not cascade (keep audit trail)                                      |
+| Encounter     | Do not cascade (keep audit trail)                                      |
 
 ### Archive vs Delete
+
 - **Archive**: Temporary hiding, can be restored easily, used for "inactive" content
 - **Delete**: Permanent removal (soft), used for actual deletion, creates audit trail
 - Archived entities: `archivedAt IS NOT NULL AND deletedAt IS NULL`
@@ -274,10 +285,12 @@ async createLink(
 - Active entities: `archivedAt IS NULL AND deletedAt IS NULL`
 
 ## Dependencies
+
 - Requires: TICKET-005 (GraphQL API foundation)
 - Requires: TICKET-003 (Database schema with deletedAt/archivedAt fields)
 
 ## Testing Requirements
+
 - [ ] Create entity with valid data succeeds
 - [ ] Create entity with invalid data fails with validation error
 - [ ] Update entity modifies fields correctly
@@ -297,8 +310,10 @@ async createLink(
 - [ ] Querying nested relationships doesn't cause N+1 queries
 
 ## Related Tickets
+
 - Requires: TICKET-003, TICKET-005
 - Blocks: TICKET-007, TICKET-009, TICKET-010, TICKET-013, TICKET-023
 
 ## Estimated Effort
+
 4-5 days

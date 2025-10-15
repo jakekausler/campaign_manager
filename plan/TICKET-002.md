@@ -1,13 +1,16 @@
 # TICKET-002: Docker Compose Infrastructure
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Set up complete Docker Compose configuration for all services including databases, caching, storage, and application services with proper networking, volumes, and environment configuration.
 
 ## Scope of Work
+
 1. Create `docker-compose.yml` with services:
    - `postgres` (with PostGIS extension - latest version)
    - `redis` (for caching and pub/sub)
@@ -41,6 +44,7 @@ Set up complete Docker Compose configuration for all services including database
    - `docker-compose.prod.yml` (production overrides with Docker secrets)
 
 ## Acceptance Criteria
+
 - [ ] `docker-compose up` starts all services successfully
 - [ ] All services pass health checks
 - [ ] PostgreSQL has PostGIS extension enabled and accessible
@@ -56,13 +60,16 @@ Set up complete Docker Compose configuration for all services including database
 - [ ] `.env.local` file is loaded correctly for local development
 
 ## Technical Notes
+
 - Use multi-stage Docker builds to minimize image sizes
 - Set up proper user permissions (don't run as root)
 - Configure restart policies (restart: unless-stopped)
 - Set resource limits (memory, CPU) for production
 
 ### Secrets Management Strategy
+
 **Local Development (`.env.local`):**
+
 ```env
 # Database
 DATABASE_URL=postgres://campaign_user:campaign_pass@postgres:5432/campaign_db
@@ -92,17 +99,21 @@ VITE_API_URL=http://localhost:3000
 ```
 
 **Docker Secrets (Production):**
+
 - Create Docker secrets for sensitive values (JWT_SECRET, database credentials, etc.)
 - Reference secrets in docker-compose.prod.yml
 - Example: `JWT_SECRET` comes from `/run/secrets/jwt_secret`
 
 **AWS Secrets Manager (Production Deployment):**
+
 - Document integration pattern in deployment guide
 - Services fetch secrets at startup from AWS Secrets Manager
 - Use AWS SDK with IAM roles for authentication
 
 ### Development Hot Reload Configuration
+
 In `docker-compose.dev.yml`, mount source code as volumes:
+
 ```yaml
 services:
   api:
@@ -115,6 +126,7 @@ services:
 ```
 
 ## Architectural Decisions
+
 - **PostGIS version**: Use latest `postgres:16-postgis` or `postgis/postgis:latest`
 - **Redis version**: Use redis:7-alpine for smaller image size
 - **MinIO**: Use official minio/minio image
@@ -124,9 +136,11 @@ services:
 - **Monitoring**: Not included in compose file (keeps it simple, add separately if needed)
 
 ## Dependencies
+
 - Requires: TICKET-001 (project structure must exist)
 
 ## Testing Requirements
+
 - [ ] All services start without errors
 - [ ] Can create a test database connection from API
 - [ ] Can store and retrieve a file from MinIO
@@ -136,8 +150,10 @@ services:
 - [ ] Data persists after `docker-compose down && docker-compose up`
 
 ## Related Tickets
+
 - Requires: TICKET-001
 - Blocks: TICKET-003, TICKET-004, TICKET-005, TICKET-029, TICKET-033
 
 ## Estimated Effort
+
 2-3 days

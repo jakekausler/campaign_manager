@@ -1,13 +1,16 @@
 # TICKET-023: Entity Inspector Component
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Create a comprehensive entity inspector drawer/panel with tabs for overview, links, conditions, effects, and version history.
 
 ## Scope of Work
+
 1. Create EntityInspector component with tabs
 2. Implement Overview tab (description, computed fields)
 3. Implement Links tab (related entities)
@@ -20,6 +23,7 @@ Create a comprehensive entity inspector drawer/panel with tabs for overview, lin
 10. Structure-specific inspector tab showing type, settlement, level, typed variables
 
 ## Acceptance Criteria
+
 - [ ] Inspector opens on entity selection
 - [ ] All tabs display correct information
 - [ ] Can edit entity fields inline
@@ -32,7 +36,9 @@ Create a comprehensive entity inspector drawer/panel with tabs for overview, lin
 - [ ] Structure inspector shows type and typed variables correctly
 
 ## Dependencies
+
 - Requires: TICKET-006, TICKET-018
 
 ## Estimated Effort
+
 4-5 days

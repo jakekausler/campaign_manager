@@ -1,12 +1,11 @@
 # Dependencies
 node_modules/
+.pnpm-store/
 
 # Build output
 dist/
 build/
-*.js
-*.js.map
-*.d.ts
+*.tsbuildinfo
 
 # Environment variables
 .env
@@ -28,6 +27,9 @@ Thumbs.db
 logs/
 *.log
 npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Testing
 coverage/

@@ -1,13 +1,16 @@
 # TICKET-004: Authentication & Authorization System
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement a complete authentication and role-based access control (RBAC) system using JWT tokens, with support for multiple user roles (Owner, GM, Player, Viewer) and fine-grained permissions.
 
 ## Scope of Work
+
 1. Implement JWT authentication strategy in NestJS:
    - Login/register endpoints
    - JWT token generation and validation
@@ -44,6 +47,7 @@ Implement a complete authentication and role-based access control (RBAC) system 
    - Rate limiting per API key
 
 ## Acceptance Criteria
+
 - [ ] Users can register with email/password
 - [ ] Password validation enforces requirements (8+ chars, 1 symbol, 1 number)
 - [ ] Weak/common passwords are rejected
@@ -66,6 +70,7 @@ Implement a complete authentication and role-based access control (RBAC) system 
 ## Technical Notes
 
 ### Role Hierarchy
+
 ```
 Owner (campaign creator)
   - Full control over campaign
@@ -88,9 +93,10 @@ Viewer
 ```
 
 ### JWT Payload Structure
+
 ```typescript
 interface JwtPayload {
-  sub: string;        // user ID
+  sub: string; // user ID
   email: string;
   iat: number;
   exp: number;
@@ -114,6 +120,7 @@ interface UserCampaigns {
 ```
 
 ### NestJS Guard Example
+
 ```typescript
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -132,6 +139,7 @@ async updateCampaign() { ... }
 ```
 
 ### Security Considerations
+
 - Hash passwords with bcrypt (10-12 rounds)
 - Use secure JWT secrets (256-bit minimum)
 - Implement rate limiting on auth endpoints
@@ -145,14 +153,15 @@ async updateCampaign() { ... }
   - Check against list of common passwords (e.g., using `common-password-checker` library)
 
 ### API Key Authentication
+
 ```typescript
 interface ApiKey {
   id: string;
   userId: string;
-  key: string;          // hashed
-  name: string;         // user-defined name
-  scopes: string[];     // e.g., ['read:campaigns', 'write:events']
-  campaignId?: string;  // optional: limit to specific campaign
+  key: string; // hashed
+  name: string; // user-defined name
+  scopes: string[]; // e.g., ['read:campaigns', 'write:events']
+  campaignId?: string; // optional: limit to specific campaign
   expiresAt?: DateTime;
   lastUsedAt?: DateTime;
   createdAt: DateTime;
@@ -164,12 +173,14 @@ interface ApiKey {
 ```
 
 ### Multi-Campaign Support
+
 - `CampaignMembership` table links users to campaigns with roles
 - Users query their accessible campaigns: `GET /api/users/me/campaigns`
 - Campaign context required for most operations
 - Guards check: `user.hasRole(campaignId, ['owner', 'gm'])`
 
 ## Architectural Decisions
+
 - **JWT vs Sessions**: JWT for stateless auth, suitable for API-first design
 - **Token storage**: Access token in memory, refresh token in HttpOnly cookie
 - **Token expiration**: 15m access token, 7d refresh token
@@ -180,10 +191,12 @@ interface ApiKey {
 - **API keys**: Supported for external integrations with scope limitations
 
 ## Dependencies
+
 - Requires: TICKET-002 (Docker with Redis for token blacklist)
 - Requires: TICKET-003 (User, Role, Permission, CampaignMembership models)
 
 ## Testing Requirements
+
 - [ ] Register new user successfully
 - [ ] Weak passwords are rejected (too short, no symbol, no number, common password)
 - [ ] Login with valid credentials returns JWT
@@ -204,8 +217,10 @@ interface ApiKey {
 - [ ] Expired API keys are rejected
 
 ## Related Tickets
+
 - Requires: TICKET-002, TICKET-003
 - Blocks: TICKET-005
 
 ## Estimated Effort
+
 3-4 days

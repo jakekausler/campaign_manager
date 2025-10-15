@@ -1,13 +1,16 @@
 # TICKET-033: Caching Layer with Redis
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement Redis-based caching for computed availability, rule evaluations, and expensive queries with proper invalidation.
 
 ## Scope of Work
+
 1. Create caching service abstraction
 2. Implement cache key generation strategy
 3. Cache keys for Settlement state (level, variables, structures)
@@ -22,6 +25,7 @@ Implement Redis-based caching for computed availability, rule evaluations, and e
 12. Configure TTL policies
 
 ## Acceptance Criteria
+
 - [ ] Rule evaluations are cached
 - [ ] Settlement state is cached correctly
 - [ ] Structure state is cached correctly
@@ -34,7 +38,9 @@ Implement Redis-based caching for computed availability, rule evaluations, and e
 - [ ] Cache statistics available
 
 ## Dependencies
+
 - Requires: TICKET-002, TICKET-015
 
 ## Estimated Effort
+
 2-3 days

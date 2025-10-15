@@ -1,13 +1,16 @@
 # TICKET-019: Map View with MapLibre
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement interactive map view using MapLibre GL JS with GeoJSON layers, viewport management, and entity visualization.
 
 ## Scope of Work
+
 1. Install and configure MapLibre GL JS
 2. Create Map component with viewport state
 3. Implement GeoJSON layer rendering
@@ -24,6 +27,7 @@ Implement interactive map view using MapLibre GL JS with GeoJSON layers, viewpor
 14. Create loading states and error handling
 
 ## Acceptance Criteria
+
 - [ ] Map renders with base layer
 - [ ] Locations display as markers
 - [ ] Regions display as polygons
@@ -39,7 +43,9 @@ Implement interactive map view using MapLibre GL JS with GeoJSON layers, viewpor
 - [ ] Performance good with 1000+ entities
 
 ## Dependencies
+
 - Requires: TICKET-008, TICKET-018
 
 ## Estimated Effort
+
 4-5 days

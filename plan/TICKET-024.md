@@ -1,13 +1,16 @@
 # TICKET-024: Cross-View Synchronization
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement synchronized selection and highlighting across Map, Flow, and Timeline views so selecting an entity in one view highlights it in all views.
 
 ## Scope of Work
+
 1. Create shared selection state
 2. Implement cross-view event bus
 3. Add highlighting in Map view
@@ -20,6 +23,7 @@ Implement synchronized selection and highlighting across Map, Flow, and Timeline
 10. Highlight Structures (show parent Settlement location on map)
 
 ## Acceptance Criteria
+
 - [ ] Selecting in Map highlights in Flow and Timeline
 - [ ] Selecting in Flow highlights in Map and Timeline
 - [ ] Selecting in Timeline highlights in Map and Flow
@@ -30,7 +34,9 @@ Implement synchronized selection and highlighting across Map, Flow, and Timeline
 - [ ] Structure highlighting shows parent Settlement location on map
 
 ## Dependencies
+
 - Requires: TICKET-019, TICKET-021, TICKET-022
 
 ## Estimated Effort
+
 2-3 days

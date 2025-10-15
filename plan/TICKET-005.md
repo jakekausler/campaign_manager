@@ -1,13 +1,16 @@
 # TICKET-005: Basic GraphQL API with NestJS
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Set up the foundational GraphQL API using NestJS with Apollo Server, including schema-first or code-first approach, query/mutation structure, error handling, validation, and integration with Prisma database layer.
 
 ## Scope of Work
+
 1. Install and configure GraphQL in NestJS:
    - Apollo Server integration
    - GraphQL module setup
@@ -49,6 +52,7 @@ Set up the foundational GraphQL API using NestJS with Apollo Server, including s
     - File upload mutation
 
 ## Acceptance Criteria
+
 - [ ] GraphQL endpoint is accessible at `/graphql`
 - [ ] GraphQL Playground is available in development mode
 - [ ] Authentication context is properly set from JWT
@@ -78,19 +82,23 @@ Set up the foundational GraphQL API using NestJS with Apollo Server, including s
 ## Technical Notes
 
 **Settlement and Structure Considerations:**
+
 - Settlements have typed variables (validated via JSON schema)
 - Structures have typed variables and type field (temple, barracks, market, etc.)
 - DataLoader pattern prevents N+1 queries when loading Structures for Settlements
 - GraphQL JSON scalar handles variableSchemas and variables fields
 
 ### Code-First vs Schema-First
+
 **Recommendation: Code-First**
+
 - Better TypeScript integration
 - Type safety between code and schema
 - Easier refactoring
 - Auto-generated SDL
 
 ### Base Schema Structure
+
 ```typescript
 // Example code-first resolver
 @Resolver(() => World)
@@ -100,7 +108,7 @@ export class WorldResolver {
   @Query(() => World, { nullable: true })
   async world(
     @Args('id', { type: () => ID }) id: string,
-    @CurrentUser() user: User,
+    @CurrentUser() user: User
   ): Promise<World | null> {
     return this.worldService.findById(id, user);
   }
@@ -110,7 +118,7 @@ export class WorldResolver {
   @Roles('owner', 'gm')
   async createWorld(
     @Args('input') input: CreateWorldInput,
-    @CurrentUser() user: User,
+    @CurrentUser() user: User
   ): Promise<World> {
     return this.worldService.create(input, user);
   }
@@ -118,19 +126,20 @@ export class WorldResolver {
 ```
 
 ### Settlement and Structure Resolvers
+
 ```typescript
 // Settlement resolver example
 @Resolver(() => Settlement)
 export class SettlementResolver {
   constructor(
     private settlementService: SettlementService,
-    private structureLoader: StructureDataLoader,
+    private structureLoader: StructureDataLoader
   ) {}
 
   @Query(() => Settlement, { nullable: true })
   async settlement(
     @Args('id', { type: () => ID }) id: string,
-    @CurrentUser() user: User,
+    @CurrentUser() user: User
   ): Promise<Settlement | null> {
     return this.settlementService.findById(id, user);
   }
@@ -138,7 +147,7 @@ export class SettlementResolver {
   @Query(() => [Settlement])
   async settlementsByKingdom(
     @Args('kingdomId', { type: () => ID }) kingdomId: string,
-    @CurrentUser() user: User,
+    @CurrentUser() user: User
   ): Promise<Settlement[]> {
     return this.settlementService.findByKingdom(kingdomId, user);
   }
@@ -148,7 +157,7 @@ export class SettlementResolver {
   @Roles('owner', 'gm')
   async createSettlement(
     @Args('input') input: CreateSettlementInput,
-    @CurrentUser() user: User,
+    @CurrentUser() user: User
   ): Promise<Settlement> {
     return this.settlementService.create(input, user);
   }
@@ -168,7 +177,7 @@ export class StructureResolver {
   @Query(() => [Structure])
   async structuresBySettlement(
     @Args('settlementId', { type: () => ID }) settlementId: string,
-    @CurrentUser() user: User,
+    @CurrentUser() user: User
   ): Promise<Structure[]> {
     return this.structureService.findBySettlement(settlementId, user);
   }
@@ -178,7 +187,7 @@ export class StructureResolver {
   @Roles('owner', 'gm')
   async createStructure(
     @Args('input') input: CreateStructureInput,
-    @CurrentUser() user: User,
+    @CurrentUser() user: User
   ): Promise<Structure> {
     // Validates typed variables against schema
     return this.structureService.create(input, user);
@@ -188,7 +197,7 @@ export class StructureResolver {
   async updateStructureVariables(
     @Args('id', { type: () => ID }) id: string,
     @Args('variables', { type: () => GraphQLJSON }) variables: Record<string, unknown>,
-    @CurrentUser() user: User,
+    @CurrentUser() user: User
   ): Promise<Structure> {
     // Type validation happens in service layer
     return this.structureService.updateVariables(id, variables, user);
@@ -197,6 +206,7 @@ export class StructureResolver {
 ```
 
 ### GraphQL Scalars
+
 ```typescript
 // Custom scalar for GeoJSON
 @Scalar('GeoJSON')
@@ -221,6 +231,7 @@ export class GeoJSONScalar {
 ```
 
 ### DataLoader Pattern
+
 ```typescript
 @Injectable()
 export class CampaignDataLoader {
@@ -229,8 +240,8 @@ export class CampaignDataLoader {
       const campaigns = await this.prisma.campaign.findMany({
         where: { id: { in: [...ids] } },
       });
-      return ids.map(id => campaigns.find(c => c.id === id));
-    },
+      return ids.map((id) => campaigns.find((c) => c.id === id));
+    }
   );
 
   load(id: string): Promise<Campaign> {
@@ -240,6 +251,7 @@ export class CampaignDataLoader {
 ```
 
 ### Error Handling
+
 ```typescript
 export class CampaignNotFoundException extends NotFoundException {
   constructor(id: string) {
@@ -253,12 +265,14 @@ export class CampaignNotFoundException extends NotFoundException {
 ```
 
 ### Performance Configuration
+
 - Query depth limiting (max 10)
 - Query complexity limiting (max 1000)
 - Field rate limiting on mutations
 - Response caching headers
 
 ### File Upload Implementation
+
 ```typescript
 // Install graphql-upload
 // npm install graphql-upload
@@ -316,6 +330,7 @@ private validateFile(file: FileUpload): void {
 ```
 
 ## Architectural Decisions
+
 - **Code-first approach**: Better TypeScript integration and type safety
 - **Apollo Server**: Industry standard, good ecosystem
 - **DataLoader**: Prevent N+1 queries for nested resolvers
@@ -329,6 +344,7 @@ private validateFile(file: FileUpload): void {
 - **Batch mutations**: Not needed for MVP (can add later if performance issues arise)
 
 ### GraphQL Subscriptions Setup
+
 ```typescript
 // Use Redis pub/sub for GraphQL subscriptions
 @Subscription(() => EntityUpdated)
@@ -347,6 +363,7 @@ async updateEntity(id: string, input: UpdateInput) {
 ```
 
 ### Redis Caching Strategy
+
 ```typescript
 // Cache configuration
 @CacheKey('campaign')
@@ -364,6 +381,7 @@ async updateCampaign(id: string, input: UpdateInput) {
 ```
 
 ### Persisted Queries
+
 - Use Apollo's automatic persisted queries (APQ)
 - Client sends query hash instead of full query string
 - Server caches query by hash
@@ -371,11 +389,13 @@ async updateCampaign(id: string, input: UpdateInput) {
 - Configure in production only
 
 ## Dependencies
+
 - Requires: TICKET-003 (Database schema)
 - Requires: TICKET-004 (Auth system for guards)
 - Requires: TICKET-002 (Redis for pub/sub and caching)
 
 ## Testing Requirements
+
 - [ ] Can query health check endpoint
 - [ ] Authentication guard blocks unauthenticated requests
 - [ ] Authorization guard enforces role-based access
@@ -395,8 +415,10 @@ async updateCampaign(id: string, input: UpdateInput) {
 - [ ] Secure URLs are generated and accessible
 
 ## Related Tickets
+
 - Requires: TICKET-003, TICKET-004
 - Blocks: TICKET-006, TICKET-018
 
 ## Estimated Effort
+
 2-3 days

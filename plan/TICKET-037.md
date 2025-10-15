@@ -1,13 +1,16 @@
 # TICKET-037: Settlement & Structure Rules Integration
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Integrate Settlement and Structure entities into the rules engine and JSONLogic expression system, enabling conditions and effects to reference Settlement/Structure properties, levels, and typed variables in rule evaluations.
 
 ## Scope of Work
+
 1. Extend JSONLogic context with Settlement data:
    - Add `settlement` object to evaluation context
    - Include Settlement properties: id, name, level, kingdomId, locationId
@@ -62,6 +65,7 @@ Integrate Settlement and Structure entities into the rules engine and JSONLogic 
     - Prevent circular dependencies
 
 ## Acceptance Criteria
+
 - [ ] Can reference settlement.level in conditions
 - [ ] Can reference settlement.var('variableName') in conditions
 - [ ] settlement.hasStructureType('temple') works correctly
@@ -86,6 +90,7 @@ Integrate Settlement and Structure entities into the rules engine and JSONLogic 
 ## Technical Notes
 
 ### Settlement Context in Rules Engine
+
 ```typescript
 interface SettlementContext {
   id: string;
@@ -134,56 +139,52 @@ const context = {
 ```
 
 ### JSONLogic Custom Operators for Settlements
+
 ```typescript
 // Register custom operators
 jsonLogic.add_operation('settlement.level', (settlementId?: string) => {
-  const settlement = settlementId
-    ? getSettlementById(settlementId)
-    : context.settlement;
+  const settlement = settlementId ? getSettlementById(settlementId) : context.settlement;
   return settlement?.level ?? 0;
 });
 
 jsonLogic.add_operation('settlement.var', (varName: string, settlementId?: string) => {
-  const settlement = settlementId
-    ? getSettlementById(settlementId)
-    : context.settlement;
+  const settlement = settlementId ? getSettlementById(settlementId) : context.settlement;
   return settlement?.variables[varName];
 });
 
-jsonLogic.add_operation('settlement.hasStructureType', (structureType: string, settlementId?: string) => {
-  const settlement = settlementId
-    ? getSettlementById(settlementId)
-    : context.settlement;
-  return (settlement?.structures.byType[structureType] ?? 0) > 0;
-});
-
-jsonLogic.add_operation('settlement.structureCount', (structureType?: string, settlementId?: string) => {
-  const settlement = settlementId
-    ? getSettlementById(settlementId)
-    : context.settlement;
-
-  if (structureType) {
-    return settlement?.structures.byType[structureType] ?? 0;
+jsonLogic.add_operation(
+  'settlement.hasStructureType',
+  (structureType: string, settlementId?: string) => {
+    const settlement = settlementId ? getSettlementById(settlementId) : context.settlement;
+    return (settlement?.structures.byType[structureType] ?? 0) > 0;
   }
-  return settlement?.structures.count ?? 0;
-});
+);
+
+jsonLogic.add_operation(
+  'settlement.structureCount',
+  (structureType?: string, settlementId?: string) => {
+    const settlement = settlementId ? getSettlementById(settlementId) : context.settlement;
+
+    if (structureType) {
+      return settlement?.structures.byType[structureType] ?? 0;
+    }
+    return settlement?.structures.count ?? 0;
+  }
+);
 
 jsonLogic.add_operation('settlement.inKingdom', (kingdomId: string, settlementId?: string) => {
-  const settlement = settlementId
-    ? getSettlementById(settlementId)
-    : context.settlement;
+  const settlement = settlementId ? getSettlementById(settlementId) : context.settlement;
   return settlement?.kingdomId === kingdomId;
 });
 
 jsonLogic.add_operation('settlement.atLocation', (locationId: string, settlementId?: string) => {
-  const settlement = settlementId
-    ? getSettlementById(settlementId)
-    : context.settlement;
+  const settlement = settlementId ? getSettlementById(settlementId) : context.settlement;
   return settlement?.locationId === locationId;
 });
 ```
 
 ### Structure Context and Operators
+
 ```typescript
 interface StructureContext {
   id: string;
@@ -197,135 +198,110 @@ interface StructureContext {
 
 // Structure operators
 jsonLogic.add_operation('structure.level', (structureId?: string) => {
-  const structure = structureId
-    ? getStructureById(structureId)
-    : context.structure;
+  const structure = structureId ? getStructureById(structureId) : context.structure;
   return structure?.level ?? 0;
 });
 
 jsonLogic.add_operation('structure.type', (structureId?: string) => {
-  const structure = structureId
-    ? getStructureById(structureId)
-    : context.structure;
+  const structure = structureId ? getStructureById(structureId) : context.structure;
   return structure?.type;
 });
 
 jsonLogic.add_operation('structure.var', (varName: string, structureId?: string) => {
-  const structure = structureId
-    ? getStructureById(structureId)
-    : context.structure;
+  const structure = structureId ? getStructureById(structureId) : context.structure;
   return structure?.variables[varName];
 });
 
 jsonLogic.add_operation('structure.isOperational', (structureId?: string) => {
-  const structure = structureId
-    ? getStructureById(structureId)
-    : context.structure;
+  const structure = structureId ? getStructureById(structureId) : context.structure;
   return structure?.operational ?? false;
 });
 
 jsonLogic.add_operation('structure.inSettlement', (settlementId: string, structureId?: string) => {
-  const structure = structureId
-    ? getStructureById(structureId)
-    : context.structure;
+  const structure = structureId ? getStructureById(structureId) : context.structure;
   return structure?.settlementId === settlementId;
 });
 ```
 
 ### Example Settlement Conditions
+
 ```typescript
 // Settlement level requirement
 const settlementLevelCondition = {
-  ">=": [
-    { "settlement.level": [] },
-    5
-  ]
+  '>=': [{ 'settlement.level': [] }, 5],
 };
 
 // Settlement must have temple and market
 const settlementStructureComposition = {
-  "and": [
-    { "settlement.hasStructureType": ["temple"] },
-    { "settlement.hasStructureType": ["market"] }
-  ]
+  and: [
+    { 'settlement.hasStructureType': ['temple'] },
+    { 'settlement.hasStructureType': ['market'] },
+  ],
 };
 
 // Settlement population threshold
 const settlementPopulationCheck = {
-  ">": [
-    { "settlement.var": ["population"] },
-    10000
-  ]
+  '>': [{ 'settlement.var': ['population'] }, 10000],
 };
 
 // Settlement has at least 2 barracks
 const settlementBarracksCount = {
-  ">=": [
-    { "settlement.structureCount": ["barracks"] },
-    2
-  ]
+  '>=': [{ 'settlement.structureCount': ['barracks'] }, 2],
 };
 
 // Combined condition: thriving settlement with defenses
 const thrivingDefendedSettlement = {
-  "and": [
-    { ">=": [{ "settlement.level": [] }, 5] },
-    { "==": [{ "settlement.var": ["prosperity"] }, "thriving"] },
-    { ">=": [{ "settlement.var": ["defenseRating"] }, 7] },
-    { "settlement.hasStructureType": ["barracks"] }
-  ]
+  and: [
+    { '>=': [{ 'settlement.level': [] }, 5] },
+    { '==': [{ 'settlement.var': ['prosperity'] }, 'thriving'] },
+    { '>=': [{ 'settlement.var': ['defenseRating'] }, 7] },
+    { 'settlement.hasStructureType': ['barracks'] },
+  ],
 };
 ```
 
 ### Example Structure Conditions
+
 ```typescript
 // Structure level requirement
 const structureLevelCondition = {
-  ">=": [
-    { "structure.level": [] },
-    3
-  ]
+  '>=': [{ 'structure.level': [] }, 3],
 };
 
 // Structure type check
 const isTemple = {
-  "==": [
-    { "structure.type": [] },
-    "temple"
-  ]
+  '==': [{ 'structure.type': [] }, 'temple'],
 };
 
 // Structure integrity threshold
 const structureIntegrityCheck = {
-  ">": [
-    { "structure.var": ["integrity"] },
-    80
-  ]
+  '>': [{ 'structure.var': ['integrity'] }, 80],
 };
 
 // Structure is operational
 const structureOperational = {
-  "structure.isOperational": []
+  'structure.isOperational': [],
 };
 
 // Combined: operational high-level temple
 const operationalHighLevelTemple = {
-  "and": [
-    { "==": [{ "structure.type": [] }, "temple"] },
-    { ">=": [{ "structure.level": [] }, 5] },
-    { "structure.isOperational": [] },
-    { ">": [{ "structure.var": ["integrity"] }, 90] }
-  ]
+  and: [
+    { '==': [{ 'structure.type': [] }, 'temple'] },
+    { '>=': [{ 'structure.level': [] }, 5] },
+    { 'structure.isOperational': [] },
+    { '>': [{ 'structure.var': ['integrity'] }, 90] },
+  ],
 };
 ```
 
 ### Settlement Effects
+
 ```typescript
 // Effect to increase settlement level
 const increaseSettlementLevel = {
   type: 'settlement.setLevel',
   settlementId: 'settlement-123',
-  level: { "+": [{ "settlement.level": [] }, 1] }
+  level: { '+': [{ 'settlement.level': [] }, 1] },
 };
 
 // Effect to update settlement variable
@@ -333,7 +309,7 @@ const updateSettlementPopulation = {
   type: 'settlement.setVariable',
   settlementId: 'settlement-123',
   variable: 'population',
-  value: { "+": [{ "settlement.var": ["population"] }, 500] }
+  value: { '+': [{ 'settlement.var': ['population'] }, 500] },
 };
 
 // Effect to add structure
@@ -343,12 +319,13 @@ const addStructure = {
   structure: {
     type: 'temple',
     name: 'Temple of Light',
-    level: 1
-  }
+    level: 1,
+  },
 };
 ```
 
 ### Dependency Graph Integration
+
 ```typescript
 // Track Settlement variable dependencies
 class DependencyGraphBuilder {
@@ -393,6 +370,7 @@ class DependencyGraphBuilder {
 ```
 
 ## Architectural Decisions
+
 - **Context scoping**: Settlement and Structure contexts separate from other entity contexts
 - **Operator naming**: Consistent `entity.property` pattern for all operators
 - **Default behavior**: Operators work on current context entity if no ID provided
@@ -403,12 +381,14 @@ class DependencyGraphBuilder {
 - **Invalidation**: Fine-grained invalidation based on specific variable changes
 
 ## Dependencies
+
 - Requires: TICKET-011 (JSONLogic Expression Parser)
 - Requires: TICKET-013 (State Variable System)
 - Requires: TICKET-014 (Dependency Graph Builder)
 - Requires: TICKET-009 (Party & Kingdom Management with Settlement/Structure)
 
 ## Testing Requirements
+
 - [ ] settlement.level operator returns correct value
 - [ ] settlement.var operator retrieves typed variables
 - [ ] settlement.hasStructureType detects structure presence
@@ -432,8 +412,10 @@ class DependencyGraphBuilder {
 - [ ] Invalid Structure references are rejected
 
 ## Related Tickets
+
 - Requires: TICKET-009, TICKET-011, TICKET-013, TICKET-014
 - Related: TICKET-015 (Rules Engine Worker), TICKET-030 (Visual Rule Builder)
 
 ## Estimated Effort
+
 4-5 days

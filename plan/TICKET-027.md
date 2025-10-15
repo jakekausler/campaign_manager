@@ -1,13 +1,16 @@
 # TICKET-027: Branching System (Fork & View)
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement branching system that allows creating alternate timeline branches and viewing campaign state in different branches.
 
 ## Scope of Work
+
 1. Create Branch CRUD operations
 2. Implement fork operation (create child branch)
 3. Add branch switching in UI
@@ -20,6 +23,7 @@ Implement branching system that allows creating alternate timeline branches and 
 10. Fork operation copies Settlement hierarchy and Structure relationships
 
 ## Acceptance Criteria
+
 - [ ] Can create branch from current state
 - [ ] Branch inherits parent versions
 - [ ] Can switch between branches in UI
@@ -31,7 +35,9 @@ Implement branching system that allows creating alternate timeline branches and 
 - [ ] Forking preserves Settlement-Structure hierarchy
 
 ## Dependencies
+
 - Requires: TICKET-007
 
 ## Estimated Effort
+
 4-5 days

@@ -1,13 +1,16 @@
 # TICKET-030: Visual Rule Builder UI
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Create visual rule builder interface for constructing conditional expressions without writing JSON, with drag-and-drop blocks and live preview.
 
 ## Scope of Work
+
 1. Create rule builder component
 2. Implement if/and/or block components
 3. Add variable picker with autocomplete
@@ -22,6 +25,7 @@ Create visual rule builder interface for constructing conditional expressions wi
 12. Live preview evaluates Settlement and Structure variable rules
 
 ## Acceptance Criteria
+
 - [ ] Can build rules visually
 - [ ] Generated JSON is valid
 - [ ] Can switch between visual and JSON modes
@@ -33,7 +37,9 @@ Create visual rule builder interface for constructing conditional expressions wi
 - [ ] Invalid rules show clear errors
 
 ## Dependencies
+
 - Requires: TICKET-012, TICKET-023
 
 ## Estimated Effort
+
 5-6 days

@@ -1,13 +1,16 @@
 # TICKET-028: Branch Merge & Conflict Resolution
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement branch merging with 3-way merge, conflict detection, and conflict resolution UI.
 
 ## Scope of Work
+
 1. Create merge algorithm (3-way merge)
 2. Implement conflict detection
 3. Create conflict resolution UI
@@ -20,6 +23,7 @@ Implement branch merging with 3-way merge, conflict detection, and conflict reso
 10. Detect conflicts in Structure properties and associations
 
 ## Acceptance Criteria
+
 - [ ] Can merge branch into parent
 - [ ] Conflicts are detected correctly
 - [ ] UI shows conflicts clearly
@@ -31,7 +35,9 @@ Implement branch merging with 3-way merge, conflict detection, and conflict reso
 - [ ] Merge preview shows Settlement/Structure changes
 
 ## Dependencies
+
 - Requires: TICKET-027
 
 ## Estimated Effort
+
 4-5 days

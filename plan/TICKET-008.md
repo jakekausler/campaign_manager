@@ -1,13 +1,16 @@
 # TICKET-008: PostGIS Spatial Data Integration
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Integrate PostGIS spatial capabilities for map-based features, including geometry storage, spatial queries, GeoJSON conversion, and map layer generation for points and regions.
 
 ## Scope of Work
+
 1. Create spatial utility service:
    - GeoJSON ↔ PostGIS WKB conversion
    - Geometry validation (valid polygons, no self-intersections)
@@ -46,6 +49,7 @@ Integrate PostGIS spatial capabilities for map-based features, including geometr
    - Query: `settlementsNear(point, radius)` - Find settlements near coordinates
 
 ## Acceptance Criteria
+
 - [ ] Can store Point geometry for locations
 - [ ] Can store Polygon/MultiPolygon for regions with unlimited vertices
 - [ ] GeoJSON input converts to PostGIS geometry
@@ -70,6 +74,7 @@ Integrate PostGIS spatial capabilities for map-based features, including geometr
 ## Technical Notes
 
 ### GeoJSON Types
+
 ```typescript
 interface GeoJSONPoint {
   type: 'Point';
@@ -89,13 +94,11 @@ interface GeoJSONFeature {
 ```
 
 ### Spatial Service
+
 ```typescript
 @Injectable()
 export class SpatialService {
-  async pointWithinRegion(
-    pointId: string,
-    regionId: string,
-  ): Promise<boolean> {
+  async pointWithinRegion(pointId: string, regionId: string): Promise<boolean> {
     const result = await this.prisma.$queryRaw<[{ within: boolean }]>`
       SELECT ST_Within(
         (SELECT geom FROM "Location" WHERE id = ${pointId}),
@@ -132,6 +135,7 @@ export class SpatialService {
 ```
 
 ### Map Layer Generation
+
 ```typescript
 @Query(() => GraphQLJSON)
 async mapLayer(
@@ -167,6 +171,7 @@ async mapLayer(
 ```
 
 ### Settlement Spatial Queries
+
 ```typescript
 // Query settlements within a region
 @Query(() => [Settlement])
@@ -225,6 +230,7 @@ async settlementsNear(
 ```
 
 ## Architectural Decisions
+
 - **CRS**: Support Web Mercator (SRID 3857) as default, plus custom SRIDs for fantasy maps configured per campaign
 - **Geometry type**: Use PostGIS `geometry` not `geography` (simpler for game maps)
 - **Complexity**: No limits on polygon complexity - support unlimited vertices
@@ -237,9 +243,11 @@ async settlementsNear(
 - **Settlement location binding**: Settlements inherit geometry from their associated Location (no duplicate geometry storage)
 
 ## Dependencies
+
 - Requires: TICKET-003 (Database with PostGIS)
 
 ## Testing Requirements
+
 - [ ] Store and retrieve Point geometry
 - [ ] Store and retrieve Polygon geometry with thousands of vertices
 - [ ] Store and retrieve custom SRID geometries
@@ -259,8 +267,10 @@ async settlementsNear(
 - [ ] settlementsNear() returns settlements ordered by distance
 
 ## Related Tickets
+
 - Requires: TICKET-003
 - Blocks: TICKET-019, TICKET-020
 
 ## Estimated Effort
+
 3-4 days

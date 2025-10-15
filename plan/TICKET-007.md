@@ -1,13 +1,16 @@
 # TICKET-007: Versioning System Implementation
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement bitemporal versioning system that tracks all changes to entities over world-time, enabling time-travel queries, audit trails, and support for branching timelines.
 
 ## Scope of Work
+
 1. Create VersionService for managing entity versions:
    - Create new version on entity update (all fields versioned)
    - Query versions by entity + branch + time range
@@ -44,6 +47,7 @@ Implement bitemporal versioning system that tracks all changes to entities over 
    - Temporal range queries
 
 ## Acceptance Criteria
+
 - [ ] Updating any entity creates a Version record (all fields versioned)
 - [ ] Version payloads are compressed with gzip
 - [ ] Versions are kept forever (no pruning)
@@ -62,6 +66,7 @@ Implement bitemporal versioning system that tracks all changes to entities over 
 ## Technical Notes
 
 ### Version Resolution Algorithm
+
 ```typescript
 async resolveVersion(
   entityType: string,
@@ -116,6 +121,7 @@ private async findVersionInBranch(
 ```
 
 ### Versioned Update Pattern
+
 ```typescript
 async updateCampaign(
   id: string,
@@ -155,6 +161,7 @@ async updateCampaign(
 ```
 
 ### Diff Calculation
+
 ```typescript
 interface VersionDiff {
   added: Record<string, unknown>;
@@ -176,6 +183,7 @@ calculateDiff(oldVersion: Version, newVersion: Version): VersionDiff {
 ```
 
 ### Compression Implementation
+
 ```typescript
 import * as zlib from 'zlib';
 import { promisify } from 'util';
@@ -213,6 +221,7 @@ model Version {
 ```
 
 ### Concurrent Edit Detection
+
 ```typescript
 // Add version field to entity
 interface Entity {
@@ -255,6 +264,7 @@ entityModified(@Args('entityId') entityId: string) {
 ```
 
 ## Architectural Decisions
+
 - **Immutable versions**: Never modify existing versions, always create new
 - **Null validTo**: Indicates current/open version
 - **Branch resolution**: Walk ancestry chain if version not in current branch
@@ -267,10 +277,12 @@ entityModified(@Args('entityId') entityId: string) {
 - **Performance**: Index on (entityType, entityId, branchId, validFrom, validTo, version)
 
 ## Dependencies
+
 - Requires: TICKET-006 (Entity CRUD operations)
 - Requires: TICKET-005 (GraphQL subscriptions)
 
 ## Testing Requirements
+
 - [ ] Creating version stores complete compressed payload
 - [ ] Compression/decompression round-trip preserves data
 - [ ] Updating entity creates new version and closes previous
@@ -287,8 +299,10 @@ entityModified(@Args('entityId') entityId: string) {
 - [ ] Versions kept forever (no pruning)
 
 ## Related Tickets
+
 - Requires: TICKET-006
 - Blocks: TICKET-011, TICKET-022, TICKET-027, TICKET-031
 
 ## Estimated Effort
+
 4-5 days

@@ -1,0 +1,21 @@
+{
+  "name": "@campaign/shared",
+  "version": "0.1.0",
+  "description": "Campaign Management Tool - Shared Types and Utilities",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.11"
+  }
+}

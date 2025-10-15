@@ -1,13 +1,16 @@
 # TICKET-035: Demo Seed Data & Documentation
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Create comprehensive demo seed data showcasing all features and write user/developer documentation.
 
 ## Scope of Work
+
 1. Create demo world with:
    - Multiple regions with evolving borders
    - 20+ locations (cities, dungeons, landmarks)
@@ -38,6 +41,7 @@ Create comprehensive demo seed data showcasing all features and write user/devel
 5. Add inline code documentation (JSDoc/TSDoc)
 
 ## Acceptance Criteria
+
 - [ ] Seed script populates demo data
 - [ ] Demo showcases all major features
 - [ ] Demo includes 5-10 Settlements with realistic distribution
@@ -52,7 +56,9 @@ Create comprehensive demo seed data showcasing all features and write user/devel
 - [ ] All packages have READMEs
 
 ## Dependencies
+
 - Requires: TICKET-034 (should be last ticket)
 
 ## Estimated Effort
+
 3-4 days

@@ -1,13 +1,16 @@
 # TICKET-011: JSONLogic Expression Parser
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement a safe JSONLogic-based expression parser with custom domain operators for evaluating conditional rules.
 
 ## Scope of Work
+
 1. Integrate JSONLogic library
 2. Extend with custom operators (spatial, temporal, domain-specific)
 3. Create expression validator
@@ -15,6 +18,7 @@ Implement a safe JSONLogic-based expression parser with custom domain operators 
 5. Add expression caching
 
 ## Acceptance Criteria
+
 - [ ] Can parse and evaluate JSONLogic expressions
 - [ ] Custom operators work (inside, distanceFrom, daysSince, etc.)
 - [ ] Validation catches malformed expressions
@@ -22,6 +26,7 @@ Implement a safe JSONLogic-based expression parser with custom domain operators 
 - [ ] Expression AST is cached for performance
 
 ## Technical Notes
+
 ```typescript
 const customOperators = {
   inside: (locationId, regionId) => this.spatial.pointInRegion(locationId, regionId),
@@ -31,7 +36,9 @@ const customOperators = {
 ```
 
 ## Dependencies
+
 - Requires: TICKET-007
 
 ## Estimated Effort
+
 3-4 days

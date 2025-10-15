@@ -1,13 +1,16 @@
 # TICKET-029: Real-time Updates via WebSocket/Redis
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement real-time updates using WebSocket (Socket.IO) and Redis pub/sub to push state changes and invalidations to connected clients.
 
 ## Scope of Work
+
 1. Add Socket.IO to API service
 2. Configure Redis pub/sub adapter
 3. Implement room-based subscriptions (per campaign)
@@ -19,6 +22,7 @@ Implement real-time updates using WebSocket (Socket.IO) and Redis pub/sub to pus
 9. Structure-scoped room subscriptions (structure:id)
 
 ## Acceptance Criteria
+
 - [ ] Clients connect via WebSocket
 - [ ] Clients subscribe to campaign updates
 - [ ] Updates broadcast to all subscribers
@@ -31,7 +35,9 @@ Implement real-time updates using WebSocket (Socket.IO) and Redis pub/sub to pus
 - [ ] Can subscribe to structure-scoped rooms
 
 ## Dependencies
+
 - Requires: TICKET-002, TICKET-015, TICKET-026
 
 ## Estimated Effort
+
 3-4 days

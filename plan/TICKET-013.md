@@ -1,13 +1,16 @@
 # TICKET-013: State Variable System
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement StateVariable system for storing and querying dynamic campaign state (flags, counters, computed values) with different scopes (world, campaign, party, character, location, etc.).
 
 ## Scope of Work
+
 1. Create StateVariable CRUD
 2. Implement variable scoping (world/campaign/party/kingdom/settlement/structure/character/location/event/encounter)
 3. Add derived variable support
@@ -15,6 +18,7 @@ Implement StateVariable system for storing and querying dynamic campaign state (
 5. Track variable dependencies
 
 ## Acceptance Criteria
+
 - [ ] Can create variables at different scopes
 - [ ] Variables are queryable by scope and key
 - [ ] Variables can be scoped to specific Settlements
@@ -24,14 +28,17 @@ Implement StateVariable system for storing and querying dynamic campaign state (
 - [ ] Conditions can reference variables
 
 ## Dependencies
+
 - Requires: TICKET-006
 
 ## Estimated Effort
+
 2-3 days
 
 ## Technical Notes
 
 ### Example Settlement Variable - Population Tracking
+
 ```json
 {
   "scope": "settlement",
@@ -44,6 +51,7 @@ Implement StateVariable system for storing and querying dynamic campaign state (
 ```
 
 ### Example Settlement Variable - Prosperity Level
+
 ```json
 {
   "scope": "settlement",
@@ -52,9 +60,12 @@ Implement StateVariable system for storing and querying dynamic campaign state (
   "type": "derived",
   "formula": {
     "if": [
-      {">": [{"var": "settlement.population"}, 10000]}, "thriving",
-      {">": [{"var": "settlement.population"}, 5000]}, "prosperous",
-      {">": [{"var": "settlement.population"}, 1000]}, "stable",
+      { ">": [{ "var": "settlement.population" }, 10000] },
+      "thriving",
+      { ">": [{ "var": "settlement.population" }, 5000] },
+      "prosperous",
+      { ">": [{ "var": "settlement.population" }, 1000] },
+      "stable",
       "struggling"
     ]
   }
@@ -62,6 +73,7 @@ Implement StateVariable system for storing and querying dynamic campaign state (
 ```
 
 ### Example Structure Variable - Upgrade Progress
+
 ```json
 {
   "scope": "structure",
@@ -74,6 +86,7 @@ Implement StateVariable system for storing and querying dynamic campaign state (
 ```
 
 ### Example Structure Variable - Maintenance Status
+
 ```json
 {
   "scope": "structure",
@@ -82,10 +95,14 @@ Implement StateVariable system for storing and querying dynamic campaign state (
   "type": "derived",
   "formula": {
     "if": [
-      {">": [{"var": "structure.integrity"}, 80]}, "excellent",
-      {">": [{"var": "structure.integrity"}, 60]}, "good",
-      {">": [{"var": "structure.integrity"}, 40]}, "fair",
-      {">": [{"var": "structure.integrity"}, 20]}, "poor",
+      { ">": [{ "var": "structure.integrity" }, 80] },
+      "excellent",
+      { ">": [{ "var": "structure.integrity" }, 60] },
+      "good",
+      { ">": [{ "var": "structure.integrity" }, 40] },
+      "fair",
+      { ">": [{ "var": "structure.integrity" }, 20] },
+      "poor",
       "critical"
     ]
   }

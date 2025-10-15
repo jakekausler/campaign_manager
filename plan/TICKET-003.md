@@ -1,13 +1,16 @@
 # TICKET-003: Database Schema Design & Prisma Setup
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Design and implement the complete database schema using Prisma ORM with PostGIS support, including all core entities, versioning tables, and spatial types. Set up migrations and seed data framework.
 
 ## Scope of Work
+
 1. Initialize Prisma in the API package
 2. Configure Prisma for PostgreSQL with PostGIS extension
 3. Design and implement schema for core entities:
@@ -34,6 +37,7 @@ Design and implement the complete database schema using Prisma ORM with PostGIS 
 8. Create database utility functions (connection pooling, transaction helpers, soft delete helpers)
 
 ## Acceptance Criteria
+
 - [ ] Prisma schema compiles without errors
 - [ ] Prisma Client generates successfully
 - [ ] Initial migration runs successfully against Postgres
@@ -49,6 +53,7 @@ Design and implement the complete database schema using Prisma ORM with PostGIS 
 ## Technical Notes
 
 ### Prisma Schema Highlights
+
 ```prisma
 generator client {
   provider = "prisma-client-js"
@@ -220,6 +225,7 @@ model Audit {
 ```
 
 ### PostGIS Setup
+
 - Enable extension in migration: `CREATE EXTENSION IF NOT EXISTS postgis;`
 - Use `Unsupported("geometry")` for spatial types in Prisma
 - Use SRID 3857 (Web Mercator) for flexibility with different map types
@@ -234,18 +240,21 @@ model Audit {
 - Create GeoJSON utility to convert to/from PostGIS formats
 
 ### Versioning Pattern
+
 - Every mutable entity has corresponding Version records
 - `validFrom`/`validTo` define temporal validity (world time)
 - `branchId` supports alternate histories
 - Query pattern: find version where branch matches (or ancestor) and world time is within valid range
 
 ### Soft Delete Pattern
+
 - All mutable entities have `deletedAt` DateTime? field
 - Never hard delete records (preserves audit trail and versioning)
 - Filter queries: `WHERE deletedAt IS NULL` for active records
 - Utility functions: `softDelete(id)`, `restore(id)`, `findActive()`
 
 ### Audit Pattern
+
 - Every mutation (CREATE, UPDATE, DELETE) creates an Audit record
 - Audit records store:
   - Entity type and ID
@@ -256,7 +265,9 @@ model Audit {
 - Implemented via Prisma middleware or service layer decorators
 
 ### Calendar System JSON Schema
+
 Custom JSON schema stored in `World.calendars` field:
+
 ```json
 {
   "calendars": [
@@ -274,6 +285,7 @@ Custom JSON schema stored in `World.calendars` field:
 ```
 
 ## Architectural Decisions
+
 - **ORM choice**: Prisma for type safety and migrations
 - **Spatial support**: PostGIS via Unsupported() type + raw queries
 - **SRID choice**: 3857 (Web Mercator) for flexibility with various map types and scales
@@ -285,9 +297,11 @@ Custom JSON schema stored in `World.calendars` field:
 - **Calendar**: Custom JSON schema stored in World entity
 
 ## Dependencies
+
 - Requires: TICKET-002 (Docker infrastructure with Postgres)
 
 ## Testing Requirements
+
 - [ ] Can create and query each entity type
 - [ ] Foreign key constraints work correctly
 - [ ] Version queries return correct records for given branch + time
@@ -297,8 +311,10 @@ Custom JSON schema stored in `World.calendars` field:
 - [ ] Indexes improve query performance (check EXPLAIN ANALYZE)
 
 ## Related Tickets
+
 - Requires: TICKET-002
 - Blocks: TICKET-005, TICKET-006, TICKET-008
 
 ## Estimated Effort
+
 3-4 days

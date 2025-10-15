@@ -1,13 +1,16 @@
 # TICKET-036: Settlement & Structure Hierarchical UI
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Create dedicated UI panels and components for managing Settlement-Structure hierarchies within the Entity Inspector, including visual hierarchy trees, add/remove operations, level management, and typed variable editing.
 
 ## Scope of Work
+
 1. Create Settlement hierarchy panel in Entity Inspector:
    - Visual tree view showing Settlement → Structures hierarchy
    - Expandable/collapsible structure nodes
@@ -59,6 +62,7 @@ Create dedicated UI panels and components for managing Settlement-Structure hier
     - Debounced search/filter
 
 ## Acceptance Criteria
+
 - [ ] Settlement hierarchy panel displays structure tree correctly
 - [ ] Can add new structures to settlements via modal
 - [ ] Structure type selector shows all available types
@@ -80,6 +84,7 @@ Create dedicated UI panels and components for managing Settlement-Structure hier
 ## Technical Notes
 
 ### Settlement Hierarchy Component
+
 ```typescript
 interface SettlementHierarchyProps {
   settlementId: string;
@@ -123,6 +128,7 @@ const SettlementHierarchy: React.FC<SettlementHierarchyProps> = ({
 ```
 
 ### Add Structure Modal
+
 ```typescript
 interface AddStructureModalProps {
   settlementId: string;
@@ -195,6 +201,7 @@ const AddStructureModal: React.FC<AddStructureModalProps> = ({
 ```
 
 ### Level Management Component
+
 ```typescript
 interface LevelControlProps {
   entityId: string;
@@ -262,6 +269,7 @@ const LevelControl: React.FC<LevelControlProps> = ({
 ```
 
 ### Typed Variable Editor
+
 ```typescript
 interface TypedVariableEditorProps {
   entityId: string;
@@ -340,6 +348,7 @@ const TypedVariableEditor: React.FC<TypedVariableEditorProps> = ({
 ```
 
 ## Architectural Decisions
+
 - **Tree component**: Use shadcn/ui Tree or react-arborist for hierarchy visualization
 - **Virtual scrolling**: Use react-virtual or react-window for large structure lists
 - **Form generation**: Dynamic form generation from variable schemas
@@ -350,11 +359,13 @@ const TypedVariableEditor: React.FC<TypedVariableEditorProps> = ({
 - **Icons**: Use lucide-react or react-icons for structure type icons
 
 ## Dependencies
+
 - Requires: TICKET-023 (Entity Inspector Component)
 - Requires: TICKET-009 (Settlement/Structure CRUD operations)
 - Requires: TICKET-018 (State Management & GraphQL Client)
 
 ## Testing Requirements
+
 - [ ] Hierarchy tree renders correctly with nested structures
 - [ ] Add structure modal creates structures successfully
 - [ ] Structure type selector shows all types
@@ -369,8 +380,10 @@ const TypedVariableEditor: React.FC<TypedVariableEditorProps> = ({
 - [ ] Search/filter operations are fast
 
 ## Related Tickets
+
 - Requires: TICKET-009, TICKET-018, TICKET-023
 - Related: TICKET-019 (Map View), TICKET-021 (Flow View)
 
 ## Estimated Effort
+
 5-6 days

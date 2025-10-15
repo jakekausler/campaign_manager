@@ -1,13 +1,16 @@
 # TICKET-001: Project Scaffolding & Repository Setup
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Initialize the monorepo structure with all necessary services, establish coding standards, configure linting/formatting, and set up basic CI/CD pipeline configuration.
 
 ## Scope of Work
+
 1. Create monorepo structure using pnpm workspaces
 2. Initialize service directories:
    - `packages/api` - NestJS backend
@@ -37,6 +40,7 @@ Initialize the monorepo structure with all necessary services, establish coding 
 8. Initialize git repository with .gitignore (include .pnpm-store)
 
 ## Acceptance Criteria
+
 - [ ] All service directories exist with package.json files
 - [ ] TypeScript compiles successfully across all packages
 - [ ] ESLint and Prettier run without errors
@@ -45,6 +49,7 @@ Initialize the monorepo structure with all necessary services, establish coding 
 - [ ] README contains clear setup instructions
 
 ## Technical Notes
+
 - Use pnpm workspaces for dependency management (pnpm-workspace.yaml)
 - Unified versioning strategy - all packages share the same version number
 - Shared types should be in `packages/shared/src/types`
@@ -52,12 +57,14 @@ Initialize the monorepo structure with all necessary services, establish coding 
 - pnpm advantages: faster installs, disk space efficiency, strict dependency resolution
 
 ### pnpm-workspace.yaml example:
+
 ```yaml
 packages:
   - 'packages/*'
 ```
 
 ### Root package.json scripts example:
+
 ```json
 {
   "scripts": {
@@ -71,6 +78,7 @@ packages:
 ```
 
 ## Architectural Decisions
+
 - **Monorepo vs Multi-repo**: Monorepo chosen for easier code sharing and coordinated changes
 - **Workspace Manager**: Native pnpm workspaces (simpler, no extra tooling needed)
 - **Package Manager**: pnpm for speed and efficiency
@@ -78,9 +86,11 @@ packages:
 - **Versioning**: Unified versioning across all packages
 
 ## Dependencies
+
 - None (this is the first ticket)
 
 ## Testing Requirements
+
 - Verify that `pnpm install` works from root
 - Verify that `pnpm run build` builds all packages
 - Verify that `pnpm run lint` catches intentional errors
@@ -88,7 +98,9 @@ packages:
 - Verify that GitHub Actions workflow runs successfully
 
 ## Related Tickets
+
 - Blocks: TICKET-002, TICKET-017
 
 ## Estimated Effort
+
 1-2 days

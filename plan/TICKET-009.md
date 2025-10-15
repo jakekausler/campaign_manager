@@ -1,13 +1,16 @@
 # TICKET-009: Party & Kingdom Management
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Implement Party and Kingdom management systems with level tracking, typed custom variables, and integration with the conditional availability system. Kingdoms contain Settlements which contain Structures, each with their own levels and state.
 
 ## Scope of Work
+
 1. Create Party management:
    - Party CRUD operations (support multiple parties per campaign)
    - Average level calculation (mean) and manual override
@@ -51,6 +54,7 @@ Implement Party and Kingdom management systems with level tracking, typed custom
    - Support multiple parties per campaign
 
 ## Acceptance Criteria
+
 - [ ] Can create and manage multiple parties per campaign
 - [ ] Can set party average level (computed via mean or manual override)
 - [ ] Can create and manage kingdoms
@@ -143,9 +147,11 @@ async setPartyLevel(
 ```
 
 ## Dependencies
+
 - Requires: TICKET-006 (Entity CRUD)
 
 ## Testing Requirements
+
 - [ ] Can create multiple parties in a campaign
 - [ ] Set party level updates successfully (manual override and mean calculation)
 - [ ] Set kingdom/settlement/structure levels successfully
@@ -161,8 +167,10 @@ async setPartyLevel(
 - [ ] Can query all structures in a settlement
 
 ## Related Tickets
+
 - Requires: TICKET-006
 - Blocks: TICKET-013, TICKET-015
 
 ## Estimated Effort
+
 4-5 days (expanded scope with Settlements, Structures, and typed variable schemas)

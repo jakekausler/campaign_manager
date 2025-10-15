@@ -10,6 +10,7 @@ Read @plan/EPIC.md to understand the overall plan and find the next incomplete t
 ## Implementation
 
 Ensure that you follow best practices for coding, including
+
 - Writing clean, maintainable code
 - Adding comments where necessary
 - Writing tests to cover new functionality

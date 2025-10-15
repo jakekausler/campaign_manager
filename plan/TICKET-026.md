@@ -1,13 +1,16 @@
 # TICKET-026: Scheduler Service Worker
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Create scheduler service that manages world-time progression, runs deferred effects, and triggers scheduled events.
 
 ## Scope of Work
+
 1. Create scheduler service package
 2. Implement job queue system
 3. Add cron-like scheduling
@@ -20,6 +23,7 @@ Create scheduler service that manages world-time progression, runs deferred effe
 10. Support typed variables in Settlement/Structure scheduling logic
 
 ## Acceptance Criteria
+
 - [ ] Scheduler runs as separate service
 - [ ] Scheduled jobs execute on time
 - [ ] Deferred effects run correctly
@@ -29,7 +33,9 @@ Create scheduler service that manages world-time progression, runs deferred effe
 - [ ] Structure construction/maintenance events schedule correctly
 
 ## Dependencies
+
 - Requires: TICKET-010, TICKET-025
 
 ## Estimated Effort
+
 3-4 days

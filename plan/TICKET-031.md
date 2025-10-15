@@ -1,13 +1,16 @@
 # TICKET-031: Version History & Diff Viewer
 
 ## Status
+
 - [ ] Completed
 - **Commits**:
 
 ## Description
+
 Create UI components for viewing version history with visual diffs and ability to restore previous versions.
 
 ## Scope of Work
+
 1. Create version history list component
 2. Display Settlement entity version history
 3. Display Structure entity version history
@@ -20,6 +23,7 @@ Create UI components for viewing version history with visual diffs and ability t
 10. Implement version filtering and search
 
 ## Acceptance Criteria
+
 - [ ] Version history shows all changes
 - [ ] Settlement version history displays correctly
 - [ ] Structure version history displays correctly
@@ -31,7 +35,9 @@ Create UI components for viewing version history with visual diffs and ability t
 - [ ] User and timestamp displayed
 
 ## Dependencies
+
 - Requires: TICKET-007, TICKET-023
 
 ## Estimated Effort
+
 3-4 days
