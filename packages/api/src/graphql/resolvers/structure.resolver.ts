@@ -4,7 +4,7 @@
  */
 
 import { UseGuards } from '@nestjs/common';
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -12,12 +12,18 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type { CreateStructureInput, UpdateStructureInput } from '../inputs/structure.input';
+import { DefineVariableSchemaInput, SetVariableInput } from '../inputs/variable.input';
 import { StructureService } from '../services/structure.service';
+import { VariableSchemaService } from '../services/variable-schema.service';
 import { Structure } from '../types/structure.type';
+import { Variable, VariableSchemaType, VariableTypeEnum } from '../types/variable-schema.types';
 
 @Resolver(() => Structure)
 export class StructureResolver {
-  constructor(private readonly structureService: StructureService) {}
+  constructor(
+    private readonly structureService: StructureService,
+    private readonly variableSchemaService: VariableSchemaService
+  ) {}
 
   @Query(() => Structure, { nullable: true, description: 'Get structure by ID' })
   @UseGuards(JwtAuthGuard)
@@ -25,7 +31,7 @@ export class StructureResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Structure | null> {
-    return this.structureService.findById(id, user) as Promise<Structure | null>;
+    return this.structureService.findById(id, user) as unknown as Structure | null;
   }
 
   @Query(() => [Structure], { description: 'Get all structures for a settlement' })
@@ -34,7 +40,7 @@ export class StructureResolver {
     @Args('settlementId', { type: () => ID }) settlementId: string,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Structure[]> {
-    return this.structureService.findBySettlement(settlementId, user) as Promise<Structure[]>;
+    return this.structureService.findBySettlement(settlementId, user) as unknown as Structure[];
   }
 
   @Mutation(() => Structure, { description: 'Create a new structure' })
@@ -44,7 +50,7 @@ export class StructureResolver {
     @Args('input') input: CreateStructureInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Structure> {
-    return this.structureService.create(input, user) as Promise<Structure>;
+    return this.structureService.create(input, user) as unknown as Structure;
   }
 
   @Mutation(() => Structure, { description: 'Update a structure' })
@@ -63,7 +69,7 @@ export class StructureResolver {
       expectedVersion,
       branchId,
       worldTime
-    ) as Promise<Structure>;
+    ) as unknown as Structure;
   }
 
   @Mutation(() => Structure, { description: 'Delete a structure (soft delete)' })
@@ -73,7 +79,7 @@ export class StructureResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Structure> {
-    return this.structureService.delete(id, user) as Promise<Structure>;
+    return this.structureService.delete(id, user) as unknown as Structure;
   }
 
   @Mutation(() => Structure, { description: 'Archive a structure' })
@@ -83,7 +89,7 @@ export class StructureResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Structure> {
-    return this.structureService.archive(id, user) as Promise<Structure>;
+    return this.structureService.archive(id, user) as unknown as Structure;
   }
 
   @Mutation(() => Structure, { description: 'Restore an archived structure' })
@@ -93,6 +99,134 @@ export class StructureResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Structure> {
-    return this.structureService.restore(id, user) as Promise<Structure>;
+    return this.structureService.restore(id, user) as unknown as Structure;
+  }
+
+  @Mutation(() => Structure, { description: 'Set structure level' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async setStructureLevel(
+    @Args('id', { type: () => ID }) id: string,
+    @Args('level', { type: () => Int }) level: number,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Structure> {
+    return this.structureService.setLevel(id, level, user) as unknown as Structure;
+  }
+
+  @Mutation(() => VariableSchemaType, { description: 'Define a variable schema for a structure' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async defineStructureVariableSchema(
+    @Args('structureId', { type: () => ID }) structureId: string,
+    @Args('input') input: DefineVariableSchemaInput,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<VariableSchemaType> {
+    const schema = {
+      name: input.name,
+      type: input.type as 'string' | 'number' | 'boolean' | 'enum',
+      enumValues: input.enumValues,
+      defaultValue: input.defaultValue,
+      description: input.description,
+    };
+    const result = await this.variableSchemaService.defineSchema(
+      'structure',
+      structureId,
+      schema,
+      user
+    );
+    return {
+      name: result.name,
+      type: input.type,
+      enumValues: result.enumValues,
+      defaultValue: result.defaultValue,
+      description: result.description,
+    };
+  }
+
+  @Mutation(() => Variable, { description: 'Set a variable value for a structure' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async setStructureVariable(
+    @Args('structureId', { type: () => ID }) structureId: string,
+    @Args('input') input: SetVariableInput,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Variable> {
+    const value = await this.variableSchemaService.setVariable(
+      'structure',
+      structureId,
+      input.name,
+      input.value,
+      user
+    );
+    return { name: input.name, value };
+  }
+
+  @Mutation(() => Boolean, { description: 'Delete a variable schema for a structure' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async deleteStructureVariableSchema(
+    @Args('structureId', { type: () => ID }) structureId: string,
+    @Args('name') name: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<boolean> {
+    await this.variableSchemaService.deleteSchema('structure', structureId, name, user);
+    return true;
+  }
+
+  @Query(() => Variable, { nullable: true, description: 'Get a variable value for a structure' })
+  @UseGuards(JwtAuthGuard)
+  async structureVariable(
+    @Args('structureId', { type: () => ID }) structureId: string,
+    @Args('name') name: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Variable | null> {
+    try {
+      const value = await this.variableSchemaService.getVariable(
+        'structure',
+        structureId,
+        name,
+        user
+      );
+      if (value === undefined) {
+        return null;
+      }
+      return { name, value };
+    } catch (error) {
+      // If variable schema doesn't exist, return null instead of throwing
+      if (error instanceof Error && error.message.includes('not defined')) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  @Query(() => [Variable], { description: 'Get all variable values for a structure' })
+  @UseGuards(JwtAuthGuard)
+  async structureVariables(
+    @Args('structureId', { type: () => ID }) structureId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Variable[]> {
+    const variables = await this.variableSchemaService.listVariables(
+      'structure',
+      structureId,
+      user
+    );
+    return Object.entries(variables).map(([name, value]) => ({ name, value }));
+  }
+
+  @Query(() => [VariableSchemaType], { description: 'Get all variable schemas for a structure' })
+  @UseGuards(JwtAuthGuard)
+  async structureVariableSchemas(
+    @Args('structureId', { type: () => ID }) structureId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<VariableSchemaType[]> {
+    const schemas = await this.variableSchemaService.listSchemas('structure', structureId, user);
+    return schemas.map((schema) => ({
+      name: schema.name,
+      type: VariableTypeEnum[schema.type.toUpperCase() as keyof typeof VariableTypeEnum],
+      enumValues: schema.enumValues,
+      defaultValue: schema.defaultValue,
+      description: schema.description,
+    }));
   }
 }

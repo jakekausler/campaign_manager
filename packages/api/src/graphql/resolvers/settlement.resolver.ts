@@ -8,6 +8,7 @@ import {
   Args,
   Context,
   ID,
+  Int,
   Mutation,
   Parent,
   Query,
@@ -25,13 +26,19 @@ import type {
   UpdateSettlementInput,
   UpdateSettlementData,
 } from '../inputs/settlement.input';
+import { DefineVariableSchemaInput, SetVariableInput } from '../inputs/variable.input';
 import { SettlementService } from '../services/settlement.service';
+import { VariableSchemaService } from '../services/variable-schema.service';
 import { Settlement } from '../types/settlement.type';
 import { Structure } from '../types/structure.type';
+import { Variable, VariableSchemaType, VariableTypeEnum } from '../types/variable-schema.types';
 
 @Resolver(() => Settlement)
 export class SettlementResolver {
-  constructor(private readonly settlementService: SettlementService) {}
+  constructor(
+    private readonly settlementService: SettlementService,
+    private readonly variableSchemaService: VariableSchemaService
+  ) {}
 
   @Query(() => Settlement, { nullable: true, description: 'Get settlement by ID' })
   @UseGuards(JwtAuthGuard)
@@ -39,7 +46,7 @@ export class SettlementResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Settlement | null> {
-    return this.settlementService.findById(id, user) as Promise<Settlement | null>;
+    return this.settlementService.findById(id, user) as unknown as Settlement | null;
   }
 
   @Query(() => [Settlement], { description: 'Get all settlements for a kingdom' })
@@ -48,7 +55,7 @@ export class SettlementResolver {
     @Args('kingdomId', { type: () => ID }) kingdomId: string,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Settlement[]> {
-    return this.settlementService.findByKingdom(kingdomId, user) as Promise<Settlement[]>;
+    return this.settlementService.findByKingdom(kingdomId, user) as unknown as Settlement[];
   }
 
   @Mutation(() => Settlement, { description: 'Create a new settlement' })
@@ -58,7 +65,7 @@ export class SettlementResolver {
     @Args('input') input: CreateSettlementInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Settlement> {
-    return this.settlementService.create(input, user) as Promise<Settlement>;
+    return this.settlementService.create(input, user) as unknown as Settlement;
   }
 
   @Mutation(() => Settlement, { description: 'Update a settlement' })
@@ -78,7 +85,7 @@ export class SettlementResolver {
       expectedVersion,
       branchId,
       worldTime
-    ) as Promise<Settlement>;
+    ) as unknown as Settlement;
   }
 
   @Mutation(() => Settlement, { description: 'Delete a settlement (soft delete)' })
@@ -88,7 +95,7 @@ export class SettlementResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Settlement> {
-    return this.settlementService.delete(id, user) as Promise<Settlement>;
+    return this.settlementService.delete(id, user) as unknown as Settlement;
   }
 
   @Mutation(() => Settlement, { description: 'Archive a settlement' })
@@ -98,7 +105,7 @@ export class SettlementResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Settlement> {
-    return this.settlementService.archive(id, user) as Promise<Settlement>;
+    return this.settlementService.archive(id, user) as unknown as Settlement;
   }
 
   @Mutation(() => Settlement, { description: 'Restore an archived settlement' })
@@ -108,7 +115,135 @@ export class SettlementResolver {
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Settlement> {
-    return this.settlementService.restore(id, user) as Promise<Settlement>;
+    return this.settlementService.restore(id, user) as unknown as Settlement;
+  }
+
+  @Mutation(() => Settlement, { description: 'Set settlement level' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async setSettlementLevel(
+    @Args('id', { type: () => ID }) id: string,
+    @Args('level', { type: () => Int }) level: number,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Settlement> {
+    return this.settlementService.setLevel(id, level, user) as unknown as Settlement;
+  }
+
+  @Mutation(() => VariableSchemaType, { description: 'Define a variable schema for a settlement' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async defineSettlementVariableSchema(
+    @Args('settlementId', { type: () => ID }) settlementId: string,
+    @Args('input') input: DefineVariableSchemaInput,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<VariableSchemaType> {
+    const schema = {
+      name: input.name,
+      type: input.type as 'string' | 'number' | 'boolean' | 'enum',
+      enumValues: input.enumValues,
+      defaultValue: input.defaultValue,
+      description: input.description,
+    };
+    const result = await this.variableSchemaService.defineSchema(
+      'settlement',
+      settlementId,
+      schema,
+      user
+    );
+    return {
+      name: result.name,
+      type: input.type,
+      enumValues: result.enumValues,
+      defaultValue: result.defaultValue,
+      description: result.description,
+    };
+  }
+
+  @Mutation(() => Variable, { description: 'Set a variable value for a settlement' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async setSettlementVariable(
+    @Args('settlementId', { type: () => ID }) settlementId: string,
+    @Args('input') input: SetVariableInput,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Variable> {
+    const value = await this.variableSchemaService.setVariable(
+      'settlement',
+      settlementId,
+      input.name,
+      input.value,
+      user
+    );
+    return { name: input.name, value };
+  }
+
+  @Mutation(() => Boolean, { description: 'Delete a variable schema for a settlement' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async deleteSettlementVariableSchema(
+    @Args('settlementId', { type: () => ID }) settlementId: string,
+    @Args('name') name: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<boolean> {
+    await this.variableSchemaService.deleteSchema('settlement', settlementId, name, user);
+    return true;
+  }
+
+  @Query(() => Variable, { nullable: true, description: 'Get a variable value for a settlement' })
+  @UseGuards(JwtAuthGuard)
+  async settlementVariable(
+    @Args('settlementId', { type: () => ID }) settlementId: string,
+    @Args('name') name: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Variable | null> {
+    try {
+      const value = await this.variableSchemaService.getVariable(
+        'settlement',
+        settlementId,
+        name,
+        user
+      );
+      if (value === undefined) {
+        return null;
+      }
+      return { name, value };
+    } catch (error) {
+      // If variable schema doesn't exist, return null instead of throwing
+      if (error instanceof Error && error.message.includes('not defined')) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  @Query(() => [Variable], { description: 'Get all variable values for a settlement' })
+  @UseGuards(JwtAuthGuard)
+  async settlementVariables(
+    @Args('settlementId', { type: () => ID }) settlementId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Variable[]> {
+    const variables = await this.variableSchemaService.listVariables(
+      'settlement',
+      settlementId,
+      user
+    );
+    return Object.entries(variables).map(([name, value]) => ({ name, value }));
+  }
+
+  @Query(() => [VariableSchemaType], { description: 'Get all variable schemas for a settlement' })
+  @UseGuards(JwtAuthGuard)
+  async settlementVariableSchemas(
+    @Args('settlementId', { type: () => ID }) settlementId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<VariableSchemaType[]> {
+    const schemas = await this.variableSchemaService.listSchemas('settlement', settlementId, user);
+    return schemas.map((schema) => ({
+      name: schema.name,
+      type: VariableTypeEnum[schema.type.toUpperCase() as keyof typeof VariableTypeEnum],
+      enumValues: schema.enumValues,
+      defaultValue: schema.defaultValue,
+      description: schema.description,
+    }));
   }
 
   @ResolveField(() => [Structure], { description: 'Structures in this settlement' })
@@ -117,6 +252,6 @@ export class SettlementResolver {
     @Context() context: GraphQLContext
   ): Promise<Structure[]> {
     // Use DataLoader to batch and cache structure queries
-    return context.dataloaders.structureLoader.load(settlement.id) as Promise<Structure[]>;
+    return context.dataloaders.structureLoader.load(settlement.id) as unknown as Structure[];
   }
 }

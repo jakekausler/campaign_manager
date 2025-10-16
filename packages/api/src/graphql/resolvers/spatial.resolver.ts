@@ -181,7 +181,7 @@ export class SpatialResolver {
       input.branchId,
       input.srid,
       input.worldTime
-    ) as Promise<Location>;
+    ) as unknown as Location;
   }
 
   /**
@@ -316,13 +316,7 @@ export class SpatialResolver {
         if (!settlement) {
           throw new Error(`Settlement ${result.id} not found`);
         }
-        return {
-          ...settlement,
-          variables: (settlement.variables as Record<string, unknown>) || {},
-          variableSchemas: (settlement.variableSchemas as unknown[]) || [],
-          deletedAt: settlement.deletedAt ?? undefined,
-          archivedAt: settlement.archivedAt ?? undefined,
-        };
+        return settlement as unknown as Settlement;
       })
     );
 
@@ -354,13 +348,7 @@ export class SpatialResolver {
       throw new Error(`Settlement ${result.id} not found`);
     }
 
-    return {
-      ...settlement,
-      variables: (settlement.variables as Record<string, unknown>) || {},
-      variableSchemas: (settlement.variableSchemas as unknown[]) || [],
-      deletedAt: settlement.deletedAt ?? undefined,
-      archivedAt: settlement.archivedAt ?? undefined,
-    };
+    return settlement as unknown as Settlement;
   }
 
   /**

@@ -6,6 +6,8 @@
 import { ObjectType, Field, ID, Int } from '@nestjs/graphql';
 import { GraphQLJSON } from 'graphql-type-json';
 
+import { VariableSchemaType } from './variable-schema.types';
+
 @ObjectType()
 export class Kingdom {
   @Field(() => ID)
@@ -17,14 +19,17 @@ export class Kingdom {
   @Field()
   name!: string;
 
-  @Field(() => Int)
+  @Field(() => Int, { description: 'Kingdom level' })
   level!: number;
 
   @Field(() => GraphQLJSON, { description: 'Kingdom-level typed variables' })
   variables!: Record<string, unknown>;
 
-  @Field(() => GraphQLJSON, { description: 'Variable schema definitions for validation' })
-  variableSchemas!: unknown[];
+  @Field(() => [VariableSchemaType], { description: 'Variable schema definitions for validation' })
+  variableSchemas!: VariableSchemaType[];
+
+  @Field(() => Int, { description: 'Version for optimistic locking' })
+  version!: number;
 
   @Field()
   createdAt!: Date;
@@ -33,8 +38,8 @@ export class Kingdom {
   updatedAt!: Date;
 
   @Field({ nullable: true })
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 
   @Field({ nullable: true })
-  archivedAt?: Date;
+  archivedAt?: Date | null;
 }

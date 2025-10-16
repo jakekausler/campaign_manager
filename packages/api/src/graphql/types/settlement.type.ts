@@ -6,6 +6,8 @@
 import { ObjectType, Field, ID, Int } from '@nestjs/graphql';
 import { GraphQLJSON } from 'graphql-type-json';
 
+import { VariableSchemaType } from './variable-schema.types';
+
 @ObjectType()
 export class Settlement {
   @Field(() => ID)
@@ -20,16 +22,17 @@ export class Settlement {
   @Field()
   name!: string;
 
-  @Field(() => Int)
+  @Field(() => Int, { description: 'Settlement level' })
   level!: number;
 
-  @Field(() => GraphQLJSON, { description: 'Typed variables for this settlement' })
+  @Field(() => GraphQLJSON, { description: 'Settlement-level typed variables' })
   variables!: Record<string, unknown>;
 
-  @Field(() => GraphQLJSON, {
-    description: 'Variable schema definitions for validation',
-  })
-  variableSchemas!: unknown[];
+  @Field(() => [VariableSchemaType], { description: 'Variable schema definitions for validation' })
+  variableSchemas!: VariableSchemaType[];
+
+  @Field(() => Int, { description: 'Version for optimistic locking' })
+  version!: number;
 
   @Field()
   createdAt!: Date;
@@ -38,8 +41,8 @@ export class Settlement {
   updatedAt!: Date;
 
   @Field({ nullable: true })
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 
   @Field({ nullable: true })
-  archivedAt?: Date;
+  archivedAt?: Date | null;
 }
