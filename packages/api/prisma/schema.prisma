@@ -152,34 +152,36 @@ model ApiKey {
 // =================================================================
 
 model World {
-  id        String    @id @default(cuid())
-  name      String
-  calendars Json // Custom JSON schema for calendar systems
-  settings  Json      @default("{}")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id         String    @id @default(cuid())
+  name       String
+  calendars  Json // Custom JSON schema for calendar systems
+  settings   Json      @default("{}")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  archivedAt DateTime?
 
   // Relations
   campaigns Campaign[]
   locations Location[]
 
   @@index([deletedAt])
+  @@index([archivedAt])
 }
 
 model Campaign {
-  id       String  @id @default(cuid())
-  name     String
-  worldId  String
-  world    World   @relation(fields: [worldId], references: [id])
-  ownerId  String
-  owner    User    @relation(fields: [ownerId], references: [id])
-  settings Json    @default("{}")
-  isActive Boolean @default(true)
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id         String  @id @default(cuid())
+  name       String
+  worldId    String
+  world      World   @relation(fields: [worldId], references: [id])
+  ownerId    String
+  owner      User    @relation(fields: [ownerId], references: [id])
+  settings   Json    @default("{}")
+  isActive   Boolean @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  archivedAt DateTime?
 
   // Relations
   branches    Branch[]
@@ -194,6 +196,7 @@ model Campaign {
   @@index([worldId])
   @@index([ownerId])
   @@index([deletedAt])
+  @@index([archivedAt])
   @@index([isActive])
 }
 
@@ -235,6 +238,7 @@ model Party {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   deletedAt           DateTime?
+  archivedAt          DateTime?
 
   // Relations
   members   Character[]
@@ -242,6 +246,7 @@ model Party {
 
   @@index([campaignId])
   @@index([deletedAt])
+  @@index([archivedAt])
 }
 
 model Kingdom {
@@ -255,6 +260,7 @@ model Kingdom {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
+  archivedAt      DateTime?
 
   // Relations
   settlements Settlement[]
@@ -262,6 +268,7 @@ model Kingdom {
 
   @@index([campaignId])
   @@index([deletedAt])
+  @@index([archivedAt])
 }
 
 model Settlement {
@@ -277,6 +284,7 @@ model Settlement {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
+  archivedAt      DateTime?
 
   // Relations
   structures Structure[]
@@ -285,6 +293,7 @@ model Settlement {
   @@index([kingdomId])
   @@index([locationId])
   @@index([deletedAt])
+  @@index([archivedAt])
 }
 
 model Structure {
@@ -299,6 +308,7 @@ model Structure {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   deletedAt       DateTime?
+  archivedAt      DateTime?
 
   // Relations
   stateVars StateVariable[]
@@ -306,6 +316,7 @@ model Structure {
   @@index([settlementId])
   @@index([type])
   @@index([deletedAt])
+  @@index([archivedAt])
 }
 
 model Character {
@@ -323,6 +334,7 @@ model Character {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
+  archivedAt DateTime?
 
   // Relations
   stateVars StateVariable[]
@@ -330,6 +342,7 @@ model Character {
   @@index([campaignId])
   @@index([partyId])
   @@index([deletedAt])
+  @@index([archivedAt])
   @@index([isNPC])
 }
 
@@ -351,6 +364,7 @@ model Location {
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
   deletedAt        DateTime?
+  archivedAt       DateTime?
 
   // Relations
   settlement Settlement?
@@ -360,6 +374,7 @@ model Location {
   @@index([worldId])
   @@index([parentLocationId])
   @@index([deletedAt])
+  @@index([archivedAt])
   @@index([type])
 }
 
@@ -382,6 +397,7 @@ model Encounter {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
+  archivedAt  DateTime?
 
   // Relations
   conditions Condition[]
@@ -391,6 +407,7 @@ model Encounter {
   @@index([campaignId])
   @@index([locationId])
   @@index([deletedAt])
+  @@index([archivedAt])
   @@index([isResolved])
 }
 
@@ -410,6 +427,7 @@ model Event {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
+  archivedAt  DateTime?
 
   // Relations
   conditions Condition[]
@@ -419,6 +437,7 @@ model Event {
   @@index([campaignId])
   @@index([locationId])
   @@index([deletedAt])
+  @@index([archivedAt])
   @@index([scheduledAt])
   @@index([isCompleted])
   @@index([eventType])
