@@ -36,7 +36,7 @@ This is a full-stack campaign management tool for tabletop RPGs built as a pnpm 
 campaign_manager/
 ├── .claude/
 │   ├── commands/          # Slash commands
-│   └── subagents/         # Specialized subagent definitions
+│   └── agents/         # Specialized subagent definitions
 ├── packages/
 │   ├── api/               # NestJS GraphQL API
 │   ├── rules-engine/      # Rules evaluation worker
@@ -375,7 +375,7 @@ The `pnpm run build` command handles this automatically.
 
 ### Available Subagents
 
-#### TypeScript Tester (`/.claude/subagents/typescript-tester.md`)
+#### TypeScript Tester (`/.claude/agents/typescript-tester.md`)
 
 **Purpose**: Run, debug, and fix TypeScript tests; ensure code is fixed to match tests, not vice versa
 
@@ -426,7 +426,7 @@ Use the Task tool with the typescript-tester subagent:
 - subagent_type: "typescript-tester"
 ```
 
-#### TypeScript Fixer (`/.claude/subagents/typescript-fixer.md`)
+#### TypeScript Fixer (`/.claude/agents/typescript-fixer.md`)
 
 **Purpose**: Fix TypeScript compilation and ESLint errors
 
@@ -466,7 +466,7 @@ Immediately delegate to the TypeScript Fixer subagent instead of trying to fix i
 
 If you need a specialized subagent for a recurring task:
 
-1. Create a markdown file in `.claude/subagents/`
+1. Create a markdown file in `.claude/agents/`
 2. Define the purpose, capabilities, and usage
 3. Update this CLAUDE.md file to document it
 
