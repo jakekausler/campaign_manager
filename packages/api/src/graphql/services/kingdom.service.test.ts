@@ -7,9 +7,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
+import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
 import { KingdomService } from './kingdom.service';
+import { VersionService } from './version.service';
 
 describe('KingdomService', () => {
   let service: KingdomService;
@@ -42,10 +44,20 @@ describe('KingdomService', () => {
     level: 5,
     variables: { treasury: 10000 },
     variableSchemas: [],
+    version: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
     archivedAt: null,
+  };
+
+  const mockBranch = {
+    id: 'branch-1',
+    campaignId: 'campaign-1',
+    name: 'main',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
   };
 
   beforeEach(async () => {
@@ -72,12 +84,30 @@ describe('KingdomService', () => {
             structure: {
               updateMany: jest.fn(),
             },
+            branch: {
+              findFirst: jest.fn(),
+            },
+            $transaction: jest.fn(),
           },
         },
         {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: VersionService,
+          useValue: {
+            createVersion: jest.fn(),
+            resolveVersion: jest.fn(),
+            decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: REDIS_PUBSUB,
+          useValue: {
+            publish: jest.fn(),
           },
         },
       ],
@@ -179,28 +209,56 @@ describe('KingdomService', () => {
         level: 10,
       };
 
-      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValueOnce(mockKingdom);
-      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
-      (prisma.kingdom.update as jest.Mock).mockResolvedValue({
+      const updatedKingdom = {
         ...mockKingdom,
         ...input,
+        version: 2,
+      };
+
+      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValueOnce(mockKingdom); // findById
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign); // hasEditPermission
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+        return callback({
+          kingdom: {
+            update: jest.fn().mockResolvedValue(updatedKingdom),
+          },
+        });
       });
 
-      const result = await service.update('kingdom-1', input, mockUser);
+      const result = await service.update('kingdom-1', input, mockUser, 1, 'branch-1');
 
       expect(result.name).toBe(input.name);
-      expect(audit.log).toHaveBeenCalledWith('kingdom', 'kingdom-1', 'UPDATE', mockUser.id, {
-        name: input.name,
-        level: input.level,
-      });
+      expect(result.version).toBe(2);
+      expect(audit.log).toHaveBeenCalledWith(
+        'kingdom',
+        'kingdom-1',
+        'UPDATE',
+        mockUser.id,
+        expect.objectContaining({
+          name: input.name,
+          level: input.level,
+          version: 2,
+        })
+      );
     });
 
     it('should throw NotFoundException if kingdom not found', async () => {
       (prisma.kingdom.findFirst as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('nonexistent', { name: 'Test' }, mockUser)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        service.update('nonexistent', { name: 'Test' }, mockUser, 1, 'branch-1')
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if user lacks permission', async () => {
+      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValueOnce(mockKingdom);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.update('kingdom-1', { name: 'Test' }, mockUser, 1, 'branch-1')
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -302,6 +360,105 @@ describe('KingdomService', () => {
       expect(audit.log).toHaveBeenCalledWith('kingdom', 'kingdom-1', 'RESTORE', mockUser.id, {
         archivedAt: null,
       });
+    });
+
+    it('should throw NotFoundException if kingdom not found', async () => {
+      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.restore('nonexistent', mockUser)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('setLevel', () => {
+    it('should set kingdom level', async () => {
+      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValue(mockKingdom);
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.kingdom.update as jest.Mock).mockResolvedValue({
+        ...mockKingdom,
+        level: 10,
+      });
+
+      const result = await service.setLevel('kingdom-1', 10, mockUser);
+
+      expect(result.level).toBe(10);
+      expect(prisma.kingdom.update).toHaveBeenCalledWith({
+        where: { id: 'kingdom-1' },
+        data: { level: 10 },
+      });
+      expect(audit.log).toHaveBeenCalledWith('kingdom', 'kingdom-1', 'UPDATE', mockUser.id, {
+        level: 10,
+      });
+    });
+
+    it('should throw NotFoundException if kingdom not found', async () => {
+      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.setLevel('nonexistent', 10, mockUser)).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('should throw ForbiddenException if user lacks permission', async () => {
+      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValue(mockKingdom);
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.setLevel('kingdom-1', 10, mockUser)).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('getKingdomAsOf', () => {
+    it('should return kingdom state at specified world time', async () => {
+      const worldTime = new Date('2024-01-01');
+      const historicalPayload = {
+        ...mockKingdom,
+        name: 'Old Gondor',
+      };
+
+      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValue(mockKingdom);
+
+      const mockVersion = {
+        id: 'version-1',
+        entityType: 'kingdom',
+        entityId: 'kingdom-1',
+        branchId: 'branch-1',
+        validFrom: new Date('2023-12-01'),
+        validTo: null,
+        payload: {},
+        createdAt: new Date(),
+      };
+
+      const versionService = service['versionService'];
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue(mockVersion);
+      (versionService.decompressVersion as jest.Mock).mockResolvedValue(historicalPayload);
+
+      const result = await service.getKingdomAsOf('kingdom-1', 'branch-1', worldTime, mockUser);
+
+      expect(result).toEqual(historicalPayload);
+      expect(versionService.resolveVersion).toHaveBeenCalledWith(
+        'kingdom',
+        'kingdom-1',
+        'branch-1',
+        worldTime
+      );
+    });
+
+    it('should return null if kingdom not found', async () => {
+      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValue(null);
+
+      const result = await service.getKingdomAsOf('nonexistent', 'branch-1', new Date(), mockUser);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null if version not found', async () => {
+      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValue(mockKingdom);
+
+      const versionService = service['versionService'];
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue(null);
+
+      const result = await service.getKingdomAsOf('kingdom-1', 'branch-1', new Date(), mockUser);
+
+      expect(result).toBeNull();
     });
   });
 });

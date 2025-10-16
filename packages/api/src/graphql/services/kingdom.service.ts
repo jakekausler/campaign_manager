@@ -400,6 +400,43 @@ export class KingdomService {
   }
 
   /**
+   * Set kingdom level
+   * Only owner or GM can set level
+   */
+  async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaKingdom> {
+    const kingdom = await this.findById(id, user);
+    if (!kingdom) {
+      throw new NotFoundException(`Kingdom with ID ${id} not found`);
+    }
+
+    const hasPermission = await this.hasEditPermission(kingdom.campaignId, user);
+    if (!hasPermission) {
+      throw new ForbiddenException('You do not have permission to set level for this kingdom');
+    }
+
+    const updated = await this.prisma.kingdom.update({
+      where: { id },
+      data: { level },
+    });
+
+    // Create audit entry
+    await this.audit.log('kingdom', id, 'UPDATE', user.id, { level });
+
+    // Publish entityModified event for level change
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'kingdom',
+        version: updated.version,
+        modifiedBy: user.id,
+        modifiedAt: updated.updatedAt,
+      },
+    });
+
+    return updated;
+  }
+
+  /**
    * Get kingdom state as it existed at a specific point in world-time
    * Supports time-travel queries for version history
    */
