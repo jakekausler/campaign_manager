@@ -315,7 +315,7 @@ export class UserService {
 
 ### Running Tests During TDD
 
-**IMPORTANT**: The base agent should NEVER run tests directly. Use the TypeScript Tester subagent to run tests in watch mode and implement the TDD cycle.
+**IMPORTANT**: The base agent should write tests and implementation code. Use the TypeScript Tester subagent ONLY to run and debug tests after you've written them.
 
 ```bash
 # Commands below are for reference only - use TypeScript Tester subagent
@@ -377,23 +377,27 @@ The `pnpm run build` command handles this automatically.
 
 #### TypeScript Tester (`/.claude/agents/typescript-tester.md`)
 
-**Purpose**: Run, debug, and fix TypeScript tests; ensure code is fixed to match tests, not vice versa
+**Purpose**: Run and debug existing TypeScript tests; ensure code is fixed to match tests, not vice versa
 
-**When to use**: ALWAYS use this subagent for:
+**When to use**: Use this subagent ONLY for:
 
-- Running any tests (unit, integration, e2e)
+- Running existing tests (unit, integration, e2e)
 - Debugging test failures
 - Understanding why tests are failing
-- Fixing code to make tests pass
-- Writing new tests (TDD)
-- Verifying test coverage
-- Any test-related activity
+- Fixing implementation code to make existing tests pass
+
+**DO NOT use this subagent for:**
+
+- Writing new tests (base agent should write tests)
+- Writing new implementation code (base agent should implement)
+- Refactoring existing code (base agent should refactor)
+- TDD development (base agent should write tests and code, this agent only runs them)
 
 **CRITICAL RULES**:
 
 1. The base agent should NEVER run or debug tests directly
-2. The base agent should NEVER attempt to fix failing tests
-3. Always delegate all test-related work to this subagent
+2. The base agent SHOULD write new tests and implementation code directly
+3. Only delegate to TypeScript Tester for RUNNING and DEBUGGING existing tests
 4. The subagent fixes CODE to match tests, not tests to match broken code
 
 **How to invoke**:
@@ -401,13 +405,13 @@ The `pnpm run build` command handles this automatically.
 ```
 Use the Task tool with the typescript-tester subagent:
 - description: "Run and debug tests for [package/feature]"
-- prompt: "Please run tests for [package]. If any tests fail, analyze the failures
-  and fix the implementation code (not the tests) to make them pass while preserving
-  the intended functionality."
+- prompt: "I've written tests for [feature] in [file path]. Please run the tests
+  and if any fail, analyze the failures and fix the implementation code (not the
+  tests) to make them pass while preserving the intended functionality."
 - subagent_type: "typescript-tester"
 ```
 
-**Example for test failures**:
+**Example for test failures** (after base agent has written tests):
 
 ```
 Use the Task tool with the typescript-tester subagent:
@@ -540,6 +544,45 @@ Use the Task tool with the project-manager subagent:
 - Documentation is updated as required
 - No missing functionality
 
+#### Prisma Database Debugger (`/.claude/agents/prisma-debugger.md`)
+
+**Purpose**: Debug and fix Prisma ORM and database-related issues
+
+**When to use**: Use this subagent for:
+
+- Prisma Client errors and query issues
+- Prisma schema validation errors
+- Database migration errors (`prisma migrate` failures)
+- Database connection issues
+- Schema model relationship problems
+- Database constraint violations
+- Type generation issues (`prisma generate` failures)
+- Prisma introspection errors
+- Database sync issues between schema and actual database
+
+**How to invoke**:
+
+```
+Use the Task tool with the prisma-debugger subagent:
+- description: "Fix Prisma/database error in [package]"
+- prompt: "I'm encountering the following Prisma/database error:
+  [paste error output]
+
+  Please analyze the issue, fix the schema/migrations/client usage as needed,
+  and verify the fix."
+- subagent_type: "prisma-debugger"
+```
+
+**What it handles**:
+
+- Prisma Schema Language (PSL) issues
+- Migration workflow problems
+- Database connection and pooling issues
+- Relation field configuration
+- PostGIS and spatial data with Prisma
+- Seeding and introspection issues
+- Docker database environment issues
+
 ### Creating New Subagents
 
 If you need a specialized subagent for a recurring task:
@@ -567,14 +610,14 @@ If you need a specialized subagent for a recurring task:
 
 1. Read the ticket from `plan/TICKET-XXX.md`
 2. Create an implementation plan using TodoWrite
-3. If TDD is appropriate, delegate test writing to TypeScript Tester subagent
+3. If TDD is appropriate, write tests directly
 4. Implement the feature incrementally
 5. Delegate quality checks to subagents:
    - Use TypeScript Fixer for type-check and lint
-   - Use TypeScript Tester for running tests
+   - Use TypeScript Tester for running existing tests and debugging failures
 6. If errors occur:
    - TypeScript/ESLint errors → TypeScript Fixer subagent
-   - Test failures → TypeScript Tester subagent
+   - Test failures → TypeScript Tester subagent (to run and debug only)
 7. **Stage changes** with `git add`
 8. **MANDATORY: Use Code Reviewer subagent** to review staged changes before commit
 9. Address any critical issues flagged by Code Reviewer
@@ -586,16 +629,15 @@ If you need a specialized subagent for a recurring task:
 
 ### Adding a New Feature (TDD Approach)
 
-1. **Write the test first** (Red) - Delegate to TypeScript Tester subagent
+1. **Write the test first** (Red) - Base agent writes test
    ```
-   Use TypeScript Tester subagent to:
-   - Start test watch mode for the package
    - Write a failing test that describes expected behavior
+   - Use TypeScript Tester to run the test and verify it fails
    ```
 2. **Implement minimal code** (Green) - Base agent implements
    ```
    - Write minimal implementation code to make test pass
-   - Delegate test running to TypeScript Tester subagent
+   - Use TypeScript Tester to run tests and verify they pass
    ```
 3. **Refactor** - Base agent refactors, TypeScript Tester verifies
    ```
@@ -615,16 +657,15 @@ If you need a specialized subagent for a recurring task:
 
 ### Fixing a Bug
 
-1. **Write a failing test that reproduces the bug** - Delegate to TypeScript Tester
+1. **Write a failing test that reproduces the bug** - Base agent writes test
    ```
-   Use TypeScript Tester subagent to:
-   - Start test watch mode
    - Write a test that reproduces the bug (should fail)
+   - Use TypeScript Tester to run test and verify it fails
    ```
 2. **Fix the bug** - Base agent fixes, TypeScript Tester verifies
    ```
    - Implement bug fix
-   - Use TypeScript Tester to verify test now passes
+   - Use TypeScript Tester to run tests and verify test now passes
    ```
 3. **Verify no regressions** - Delegate to subagents
    ```
@@ -710,22 +751,50 @@ pnpm --filter @campaign/shared build
 
 ## Database Migrations
 
-**Note**: Database setup will be implemented in TICKET-003. This section will be updated then.
+The project uses Prisma for database schema management and migrations.
 
-### Running Migrations (Future)
+**IMPORTANT**: For all Prisma/database errors, use the Prisma Database Debugger subagent.
 
-```bash
-# Will use Prisma for migrations
-pnpm --filter @campaign/api migrate:dev
-pnpm --filter @campaign/api migrate:deploy
-```
-
-### Creating Migrations (Future)
+### Running Migrations
 
 ```bash
-# Generate migration from schema changes
-pnpm --filter @campaign/api migrate:dev --name description
+# Development: Create and apply migration
+pnpm --filter @campaign/api exec prisma migrate dev --name description
+
+# Production: Apply pending migrations
+pnpm --filter @campaign/api exec prisma migrate deploy
+
+# Check migration status
+pnpm --filter @campaign/api exec prisma migrate status
+
+# Reset database (dev only - destructive!)
+pnpm --filter @campaign/api exec prisma migrate reset
 ```
+
+### Creating Migrations
+
+```bash
+# 1. Update schema.prisma file
+# 2. Generate migration
+pnpm --filter @campaign/api exec prisma migrate dev --name descriptive_name
+
+# Create migration without applying (for review)
+pnpm --filter @campaign/api exec prisma migrate dev --create-only
+
+# Always commit both schema.prisma and migration files
+```
+
+### Common Migration Issues
+
+**If you encounter any migration errors, delegate to the Prisma Database Debugger subagent immediately.**
+
+Common scenarios:
+
+- Migration conflicts
+- Schema validation errors
+- Database connection issues
+- Failed migrations that need resolution
+- Type generation issues after migration
 
 ---
 
@@ -756,11 +825,13 @@ pnpm run build                        # Build all packages
 
 - **TypeScript errors** → Use TypeScript Fixer subagent
 - **ESLint errors** → Use TypeScript Fixer subagent
-- **Test failures** → Use TypeScript Tester subagent (NEVER debug directly)
+- **Test failures** → Use TypeScript Tester subagent to run and debug (NEVER run directly)
 - **Need to run tests** → Use TypeScript Tester subagent (NEVER run directly)
+- **Need to write tests** → Write directly
+- **Prisma/database errors** → Use Prisma Database Debugger subagent
 - **Before committing code** → **MANDATORY:** Use Code Reviewer subagent
 - **Before closing ticket** → **MANDATORY:** Use Project Manager subagent
-- **Runtime errors** → Debug directly
+- **Runtime errors** → Debug directly (unless Prisma/database related)
 - **Build failures** → Check dependencies, use TypeScript Fixer if type-related
 
 ---
@@ -770,10 +841,10 @@ pnpm run build                        # Build all packages
 1. **ALWAYS use TDD when implementing new features**
 2. **NEVER fix TypeScript/ESLint errors directly - use the TypeScript Fixer subagent**
 3. **NEVER run or debug tests directly - use the TypeScript Tester subagent**
-4. **NEVER attempt to fix test failures yourself - use the TypeScript Tester subagent**
+4. **Write new tests directly - TypeScript Tester only runs/debugs**
 5. **MANDATORY: ALWAYS use Code Reviewer subagent before committing code**
 6. **MANDATORY: ALWAYS use Project Manager subagent before closing tickets**
-7. **Delegate to specialized subagents**: TypeScript Tester for tests, TypeScript Fixer for types/linting, Code Reviewer before commits, Project Manager before ticket closure
+7. **Delegate to specialized subagents**: TypeScript Tester for running/debugging tests, TypeScript Fixer for types/linting, Code Reviewer before commits, Project Manager before ticket closure
 8. **Keep commits atomic and use conventional commit format**
 9. **Update ticket files and EPIC.md when completing work (only after Project Manager approval)**
 10. **Use TodoWrite to track complex tasks**
@@ -804,7 +875,10 @@ Are you about to mark a ticket as complete?
 │        Only close ticket after approval
 │
 Is it a test failure or need to run tests?
-├─ YES → Use TypeScript Tester subagent
+├─ YES → Use TypeScript Tester subagent to RUN and DEBUG
+│
+Do you need to write new tests?
+├─ YES → Write tests directly
 │
 Is it a TypeScript compilation error?
 ├─ YES → Use TypeScript Fixer subagent
@@ -815,11 +889,15 @@ Is it an ESLint error?
 Is it a module resolution or import error?
 ├─ YES → Use TypeScript Fixer subagent
 │
+Is it a Prisma/database error?
+├─ YES → Use Prisma Database Debugger subagent
+│
 Is it a runtime logic error or bug?
-├─ YES → Debug directly, then use TypeScript Tester to write test
+├─ YES → Debug directly, write test to prevent regression
 │
 Is it a feature implementation task?
-├─ YES → Implement directly, use TypeScript Tester for tests,
+├─ YES → Write tests and implementation directly,
+│        use TypeScript Tester to run tests,
 │        use TypeScript Fixer for type/lint verification,
 │        use Code Reviewer before commit,
 │        use Project Manager before closing ticket
