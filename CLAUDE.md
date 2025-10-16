@@ -462,13 +462,104 @@ packages/api/src/users/users.service.ts:15:5 - error TS2322: Type 'string' is no
 
 Immediately delegate to the TypeScript Fixer subagent instead of trying to fix it yourself.
 
+#### Code Reviewer (`/.claude/agents/code-reviewer.md`)
+
+**Purpose**: Review code changes for best practices, security vulnerabilities, performance issues, and complexity overhead
+
+**When to use**: **MANDATORY** before every commit with code changes
+
+- Before committing any code changes
+- After implementing features or bug fixes
+- When refactoring code
+- Before any git commit
+
+**CRITICAL RULE**: The base agent must **ALWAYS** use this subagent before committing code changes.
+
+**How to invoke**:
+
+```
+Use the Task tool with the code-reviewer subagent:
+- description: "Review code changes before commit"
+- prompt: "Please review the code changes that are staged for commit. Analyze for:
+  1. Best practices and code quality
+  2. Security vulnerabilities
+  3. Performance issues
+  4. Unnecessary complexity
+  5. Type safety and error handling
+  6. Project convention adherence
+
+  Provide specific feedback with file paths and line numbers. Flag any critical
+  issues that must be addressed before commit."
+- subagent_type: "code-reviewer"
+```
+
+**What it checks**:
+
+- Security (hardcoded secrets, SQL injection, XSS, etc.)
+- Performance (N+1 queries, inefficient algorithms, memory leaks)
+- Code quality (SRP, DRY, naming, complexity)
+- Best practices (project conventions, error handling, tests)
+- Maintainability (readability, coupling, testability)
+
+#### Project Manager (`/.claude/agents/project-manager.md`)
+
+**Purpose**: Verify implemented code matches ticket requirements and acceptance criteria
+
+**When to use**: **MANDATORY** before marking a ticket as complete
+
+- Before marking a ticket as completed
+- Before updating ticket status to "done"
+- After all implementation work is finished
+- Before updating EPIC.md
+
+**CRITICAL RULE**: The base agent must **ALWAYS** use this subagent before closing a ticket.
+
+**How to invoke**:
+
+```
+Use the Task tool with the project-manager subagent:
+- description: "Verify TICKET-XXX completion"
+- prompt: "I've completed work on TICKET-XXX. Please review the ticket requirements
+  in plan/TICKET-XXX.md and verify that the implemented code meets all:
+  1. Scope of work items
+  2. Acceptance criteria
+  3. Technical requirements
+  4. Testing requirements
+
+  Confirm whether the ticket is ready to be marked as complete or if there
+  are missing items."
+- subagent_type: "project-manager"
+```
+
+**What it verifies**:
+
+- All scope of work items are addressed
+- All acceptance criteria are met
+- Technical requirements are implemented
+- Required tests are written and passing
+- Documentation is updated as required
+- No missing functionality
+
 ### Creating New Subagents
 
 If you need a specialized subagent for a recurring task:
 
 1. Create a markdown file in `.claude/agents/`
-2. Define the purpose, capabilities, and usage
-3. Update this CLAUDE.md file to document it
+2. **REQUIRED**: Add YAML frontmatter header at the top:
+   ```yaml
+   ---
+   name: subagent-name
+   description: Brief description of what the subagent does.
+   ---
+   ```
+3. Define the purpose, capabilities, and usage
+4. Update this CLAUDE.md file to document it
+
+**Frontmatter Header Format**:
+
+- `name`: kebab-case name matching the filename (without .md)
+- `description`: One sentence describing the subagent's purpose
+- Must be enclosed in `---` delimiters
 
 ## Common Workflows
 
@@ -484,9 +575,14 @@ If you need a specialized subagent for a recurring task:
 6. If errors occur:
    - TypeScript/ESLint errors → TypeScript Fixer subagent
    - Test failures → TypeScript Tester subagent
-7. Commit changes with conventional commit format
-8. Update the ticket file with implementation notes and commit hash
-9. Update `plan/EPIC.md` to mark ticket as complete
+7. **Stage changes** with `git add`
+8. **MANDATORY: Use Code Reviewer subagent** to review staged changes before commit
+9. Address any critical issues flagged by Code Reviewer
+10. Commit changes with conventional commit format (only after Code Reviewer approval)
+11. **MANDATORY: Use Project Manager subagent** to verify ticket completion
+12. Address any missing items flagged by Project Manager
+13. Update the ticket file with implementation notes and commit hash (only after Project Manager approval)
+14. Update `plan/EPIC.md` to mark ticket as complete
 
 ### Adding a New Feature (TDD Approach)
 
@@ -662,6 +758,8 @@ pnpm run build                        # Build all packages
 - **ESLint errors** → Use TypeScript Fixer subagent
 - **Test failures** → Use TypeScript Tester subagent (NEVER debug directly)
 - **Need to run tests** → Use TypeScript Tester subagent (NEVER run directly)
+- **Before committing code** → **MANDATORY:** Use Code Reviewer subagent
+- **Before closing ticket** → **MANDATORY:** Use Project Manager subagent
 - **Runtime errors** → Debug directly
 - **Build failures** → Check dependencies, use TypeScript Fixer if type-related
 
@@ -673,11 +771,13 @@ pnpm run build                        # Build all packages
 2. **NEVER fix TypeScript/ESLint errors directly - use the TypeScript Fixer subagent**
 3. **NEVER run or debug tests directly - use the TypeScript Tester subagent**
 4. **NEVER attempt to fix test failures yourself - use the TypeScript Tester subagent**
-5. **Delegate to specialized subagents**: TypeScript Tester for tests, TypeScript Fixer for types/linting
-6. **Keep commits atomic and use conventional commit format**
-7. **Update ticket files and EPIC.md when completing work**
-8. **Use TodoWrite to track complex tasks**
-9. **Read existing code patterns before implementing new features**
+5. **MANDATORY: ALWAYS use Code Reviewer subagent before committing code**
+6. **MANDATORY: ALWAYS use Project Manager subagent before closing tickets**
+7. **Delegate to specialized subagents**: TypeScript Tester for tests, TypeScript Fixer for types/linting, Code Reviewer before commits, Project Manager before ticket closure
+8. **Keep commits atomic and use conventional commit format**
+9. **Update ticket files and EPIC.md when completing work (only after Project Manager approval)**
+10. **Use TodoWrite to track complex tasks**
+11. **Read existing code patterns before implementing new features**
 
 ---
 
@@ -695,6 +795,14 @@ pnpm run build                        # Build all packages
 When you encounter an issue, use this decision tree:
 
 ```
+Are you about to commit code?
+├─ YES → **MANDATORY:** Use Code Reviewer subagent FIRST
+│        Only commit after approval
+│
+Are you about to mark a ticket as complete?
+├─ YES → **MANDATORY:** Use Project Manager subagent FIRST
+│        Only close ticket after approval
+│
 Is it a test failure or need to run tests?
 ├─ YES → Use TypeScript Tester subagent
 │
@@ -712,7 +820,9 @@ Is it a runtime logic error or bug?
 │
 Is it a feature implementation task?
 ├─ YES → Implement directly, use TypeScript Tester for tests,
-│        use TypeScript Fixer for type/lint verification
+│        use TypeScript Fixer for type/lint verification,
+│        use Code Reviewer before commit,
+│        use Project Manager before closing ticket
 │
 Otherwise → Handle directly or create new specialized subagent
 ```
