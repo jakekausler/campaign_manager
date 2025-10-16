@@ -1,0 +1,270 @@
+/**
+ * Encounter Service
+ * Handles CRUD operations for Encounters (no cascade delete per requirements)
+ */
+
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import type { Encounter as PrismaEncounter, Prisma } from '@prisma/client';
+
+import { PrismaService } from '../../database/prisma.service';
+import type { AuthenticatedUser } from '../context/graphql-context';
+import type { CreateEncounterInput, UpdateEncounterInput } from '../inputs/encounter.input';
+
+import { AuditService } from './audit.service';
+
+@Injectable()
+export class EncounterService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
+
+  /**
+   * Find encounter by ID
+   * Requires campaign access
+   */
+  async findById(id: string, user: AuthenticatedUser): Promise<PrismaEncounter | null> {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      },
+    });
+
+    if (encounter) {
+      await this.checkCampaignAccess(encounter.campaignId, user);
+    }
+
+    return encounter;
+  }
+
+  /**
+   * Find all encounters in a campaign (non-deleted, non-archived)
+   */
+  async findByCampaignId(campaignId: string, user: AuthenticatedUser): Promise<PrismaEncounter[]> {
+    await this.checkCampaignAccess(campaignId, user);
+
+    return this.prisma.encounter.findMany({
+      where: {
+        campaignId,
+        deletedAt: null,
+        archivedAt: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  /**
+   * Create a new encounter
+   */
+  async create(input: CreateEncounterInput, user: AuthenticatedUser): Promise<PrismaEncounter> {
+    // Verify campaign exists and user has access
+    await this.checkCampaignAccess(input.campaignId, user);
+
+    // Verify location exists and belongs to same world as campaign (if provided)
+    if (input.locationId) {
+      await this.validateLocation(input.campaignId, input.locationId);
+    }
+
+    const encounter = await this.prisma.encounter.create({
+      data: {
+        campaignId: input.campaignId,
+        locationId: input.locationId ?? null,
+        name: input.name,
+        description: input.description ?? null,
+        difficulty: input.difficulty ?? null,
+        variables: (input.variables ?? {}) as Prisma.InputJsonValue,
+      },
+    });
+
+    // Create audit entry
+    await this.audit.log('encounter', encounter.id, 'CREATE', user.id, {
+      campaignId: encounter.campaignId,
+      locationId: encounter.locationId,
+      name: encounter.name,
+      description: encounter.description,
+      difficulty: encounter.difficulty,
+      variables: encounter.variables,
+    });
+
+    return encounter;
+  }
+
+  /**
+   * Update an encounter
+   */
+  async update(
+    id: string,
+    input: UpdateEncounterInput,
+    user: AuthenticatedUser
+  ): Promise<PrismaEncounter> {
+    // Verify encounter exists and user has access
+    const encounter = await this.findById(id, user);
+    if (!encounter) {
+      throw new NotFoundException(`Encounter with ID ${id} not found`);
+    }
+
+    // Verify location exists and belongs to same world as campaign (if changing location)
+    if (input.locationId !== undefined && input.locationId !== null) {
+      await this.validateLocation(encounter.campaignId, input.locationId);
+    }
+
+    // Build update data
+    const updateData: Prisma.EncounterUpdateInput = {};
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.description !== undefined) updateData.description = input.description;
+    if (input.difficulty !== undefined) updateData.difficulty = input.difficulty;
+    if (input.isResolved !== undefined) {
+      updateData.isResolved = input.isResolved;
+      if (input.isResolved) {
+        updateData.resolvedAt = new Date();
+      } else {
+        updateData.resolvedAt = null;
+      }
+    }
+    if (input.variables !== undefined) {
+      updateData.variables = input.variables as Prisma.InputJsonValue;
+    }
+    if (input.locationId !== undefined) {
+      if (input.locationId === null) {
+        updateData.location = { disconnect: true };
+      } else {
+        updateData.location = { connect: { id: input.locationId } };
+      }
+    }
+
+    // Update encounter
+    const updated = await this.prisma.encounter.update({
+      where: { id },
+      data: updateData,
+    });
+
+    // Create audit entry
+    await this.audit.log('encounter', id, 'UPDATE', user.id, updateData);
+
+    return updated;
+  }
+
+  /**
+   * Soft delete an encounter
+   * Does NOT cascade (per requirements - keep audit trail)
+   */
+  async delete(id: string, user: AuthenticatedUser): Promise<PrismaEncounter> {
+    // Verify encounter exists and user has access
+    const encounter = await this.findById(id, user);
+    if (!encounter) {
+      throw new NotFoundException(`Encounter with ID ${id} not found`);
+    }
+
+    const deletedAt = new Date();
+
+    // Soft delete encounter
+    const deleted = await this.prisma.encounter.update({
+      where: { id },
+      data: { deletedAt },
+    });
+
+    // Create audit entry
+    await this.audit.log('encounter', id, 'DELETE', user.id, { deletedAt });
+
+    return deleted;
+  }
+
+  /**
+   * Archive an encounter
+   */
+  async archive(id: string, user: AuthenticatedUser): Promise<PrismaEncounter> {
+    // Verify encounter exists and user has access
+    const encounter = await this.findById(id, user);
+    if (!encounter) {
+      throw new NotFoundException(`Encounter with ID ${id} not found`);
+    }
+
+    const archivedAt = new Date();
+
+    const archived = await this.prisma.encounter.update({
+      where: { id },
+      data: { archivedAt },
+    });
+
+    // Create audit entry
+    await this.audit.log('encounter', id, 'ARCHIVE', user.id, { archivedAt });
+
+    return archived;
+  }
+
+  /**
+   * Restore an archived encounter
+   */
+  async restore(id: string, user: AuthenticatedUser): Promise<PrismaEncounter> {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id },
+    });
+
+    if (!encounter) {
+      throw new NotFoundException(`Encounter with ID ${id} not found`);
+    }
+
+    await this.checkCampaignAccess(encounter.campaignId, user);
+
+    const restored = await this.prisma.encounter.update({
+      where: { id },
+      data: { archivedAt: null },
+    });
+
+    // Create audit entry
+    await this.audit.log('encounter', id, 'RESTORE', user.id, { archivedAt: null });
+
+    return restored;
+  }
+
+  /**
+   * Check if user has access to campaign
+   * Private helper method
+   */
+  private async checkCampaignAccess(campaignId: string, user: AuthenticatedUser): Promise<void> {
+    const campaign = await this.prisma.campaign.findFirst({
+      where: { id: campaignId, deletedAt: null },
+      include: {
+        memberships: {
+          where: { userId: user.id },
+        },
+      },
+    });
+
+    if (!campaign) {
+      throw new NotFoundException(`Campaign with ID ${campaignId} not found`);
+    }
+
+    // Check if user is owner or has membership
+    if (campaign.ownerId !== user.id && campaign.memberships.length === 0) {
+      throw new ForbiddenException('You do not have access to this campaign');
+    }
+  }
+
+  /**
+   * Validate that location exists and belongs to same world as campaign
+   * Private helper method
+   */
+  private async validateLocation(campaignId: string, locationId: string): Promise<void> {
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { worldId: true },
+    });
+
+    const location = await this.prisma.location.findFirst({
+      where: { id: locationId, deletedAt: null },
+      select: { worldId: true },
+    });
+
+    if (!location) {
+      throw new NotFoundException(`Location with ID ${locationId} not found`);
+    }
+
+    if (location.worldId !== campaign?.worldId) {
+      throw new Error('Location must belong to the same world as the campaign');
+    }
+  }
+}

@@ -4,6 +4,95 @@
 
 - [ ] Completed
 - **Commits**:
+  - 8e00f79: feat(api): add entity CRUD infrastructure foundation (Stage 1)
+  - 69c4b04: feat(api): implement core entity CRUD services (Stage 2)
+  - 430db93: feat(api): implement kingdom management services (Stage 3)
+
+## Implementation Notes
+
+### Stage 1: Foundation (Completed - 8e00f79)
+
+**What was implemented:**
+
+- Added `archivedAt` field to all core entities (World, Campaign, Party, Kingdom, Settlement, Structure, Character, Location, Encounter, Event)
+- Created database migration: 20251016035531_add_archived_at_field
+- Implemented centralized AuditService for logging all mutations (CREATE, UPDATE, DELETE, ARCHIVE, RESTORE)
+- Created cursor-based pagination infrastructure following Relay specification
+- Implemented base filter inputs with EntityStatus enum (ACTIVE, ARCHIVED, DELETED, ALL)
+- Added pagination utilities for encoding/decoding cursors
+- Created IMPLEMENTATION_PLAN.md documenting 6-stage approach
+
+**Code review feedback addressed:**
+
+- Added error handling to audit service to prevent audit failures from breaking main operations
+- Fixed cursor pagination utility (replaced getSkipFromCursor with getCursorPaginationParams)
+- Updated cursor security documentation to clarify base64 is for serialization, not security
+
+**Tests:**
+
+- AuditService: 6 tests passing
+- All type-check passing
+
+**Next steps:** Stage 2 - Implement core services (WorldService, CampaignService, CharacterService)
+
+### Stage 2: Core Services (Completed - 69c4b04)
+
+**What was implemented:**
+
+- WorldService: Full CRUD + archive + cascade delete to Campaigns and Locations
+- CampaignService: Full CRUD + archive + complex cascade delete through hierarchy (Events, Encounters, Characters, Parties, Kingdoms→Settlements→Structures, Branches)
+- CharacterService: Full CRUD + archive (no cascade per requirements)
+- Input types: CreateWorldInput, UpdateWorldInput, CreateCampaignInput, UpdateCampaignInput, CreateCharacterInput, UpdateCharacterInput
+- Authorization: Owner/GM permissions for all mutations, proper campaign access checks
+- Party relationship handling in CharacterService with disconnect/connect logic
+
+**Tests:**
+
+- WorldService: 11 tests passing (CRUD, cascade delete, archive/restore)
+- CampaignService: 20 tests passing (CRUD, complex cascade, authorization, branch creation)
+- CharacterService: 22 tests passing (CRUD, party validation, authorization, no cascade)
+- Total: 53 tests, all passing ✅
+
+**Code review highlights:**
+
+- Excellent security: proper authorization, input validation, audit logging
+- Good performance: efficient queries, proper use of Prisma patterns
+- High code quality: clean, maintainable, well-documented, follows NestJS best practices
+- Comprehensive test coverage with edge cases
+- Added validation decorator to World calendars field for consistency
+
+**Next steps:** Stage 3 - Implement kingdom management services (PartyService, KingdomService, SettlementService, StructureService)
+
+### Stage 3: Kingdom Management Services (Completed - 430db93)
+
+**What was implemented:**
+
+- PartyService: Full CRUD + archive/restore (no cascade per requirements)
+- KingdomService: Full CRUD + archive + cascade delete to Settlements→Structures
+- SettlementService: Full CRUD + archive + cascade delete to Structures (updated with audit/archive/restore)
+- StructureService: Full CRUD + archive (updated with audit/archive/restore)
+- Input types: CreatePartyInput, UpdatePartyInput, CreateKingdomInput, UpdateKingdomInput (Settlement/Structure inputs already existed)
+- Authorization: Owner/GM permissions for all mutations
+- Location validation: Settlements verify location exists in same world and location not already occupied
+- DataLoader support in StructureService with proper authorization checks
+
+**Tests:**
+
+- PartyService: 9 tests passing (CRUD, archive/restore, authorization)
+- KingdomService: 8 tests passing (CRUD, cascade delete, archive/restore without cascade)
+- SettlementService: 8 tests passing (CRUD, location validation, cascade delete)
+- StructureService: 10 tests passing (CRUD, DataLoader batch function, authorization)
+- Total: 150 tests across 13 suites, all passing ✅
+
+**Code review highlights:**
+
+- Excellent security: proper authorization, input validation, audit logging
+- Good performance: efficient cascade operations, proper use of Prisma patterns
+- High code quality: clean, maintainable, well-documented
+- Comprehensive test coverage including edge cases
+- Location validation prevents data integrity issues
+
+**Next steps:** Stage 4 - Implement Location, Encounter, Event, and Link services
 
 ## Description
 

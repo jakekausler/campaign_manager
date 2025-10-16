@@ -4,44 +4,44 @@
 
 Implementing complete CRUD operations for all core domain entities with soft delete, archive functionality, cascade delete logic, and comprehensive audit logging.
 
-## Stage 1: Foundation (In Progress)
+## Stage 1: Foundation (Completed)
 
 **Goal**: Set up shared infrastructure and patterns
 **Success Criteria**:
 
 - [x] archivedAt field added to database schema
-- [ ] Audit service created for mutation logging
-- [ ] Shared pagination types and utilities
-- [ ] Shared filter input types
-- [ ] Base patterns documented
+- [x] Audit service created for mutation logging
+- [x] Shared pagination types and utilities
+- [x] Shared filter input types
+- [x] Base patterns documented
 
-**Status**: In Progress
+**Status**: Completed (Commit: 8e00f79)
 
-## Stage 2: Core Services (First Batch)
+## Stage 2: Core Services (First Batch) (Completed)
 
 **Goal**: Implement World, Campaign, and Character services with full CRUD
 **Success Criteria**:
 
-- [ ] WorldService: CRUD + archive + cascade delete (to Campaigns and Locations)
-- [ ] CampaignService: CRUD + archive + cascade delete (to Events, Encounters, etc.)
-- [ ] CharacterService: CRUD + archive (no cascade)
-- [ ] All have audit logging
-- [ ] Tests written and passing for each service
+- [x] WorldService: CRUD + archive + cascade delete (to Campaigns and Locations)
+- [x] CampaignService: CRUD + archive + cascade delete (to Events, Encounters, etc.)
+- [x] CharacterService: CRUD + archive (no cascade)
+- [x] All have audit logging
+- [x] Tests written and passing for each service
 
-**Status**: Not Started
+**Status**: Completed (Commit: 69c4b04)
 
-## Stage 3: Kingdom Management Services
+## Stage 3: Kingdom Management Services (Completed)
 
 **Goal**: Implement Party, Kingdom, Settlement, and Structure services
 **Success Criteria**:
 
-- [ ] PartyService: CRUD + archive
-- [ ] KingdomService: CRUD + archive + cascade delete (to Settlements)
-- [ ] SettlementService: CRUD + archive + cascade delete (to Structures)
-- [ ] StructureService: CRUD + archive
-- [ ] Tests written and passing for each service
+- [x] PartyService: CRUD + archive
+- [x] KingdomService: CRUD + archive + cascade delete (to Settlements)
+- [x] SettlementService: CRUD + archive + cascade delete (to Structures)
+- [x] StructureService: CRUD + archive
+- [x] Tests written and passing for each service
 
-**Status**: Not Started
+**Status**: Completed (Commit: 430db93)
 
 ## Stage 4: Location and Event Services
 
@@ -130,5 +130,35 @@ Implementing complete CRUD operations for all core domain entities with soft del
 
 ## Current Progress
 
-- Stage 1: ~20% complete (schema updated, migration applied)
-- Estimated remaining time: 3-4 days
+- Stage 1: ✅ Complete (Commit: 8e00f79)
+- Stage 2: ✅ Complete (Commit: 69c4b04)
+- Stage 3: ✅ Complete (Commit: 430db93)
+- Stage 4: Ready to begin
+- Estimated remaining time: 2-3 days
+
+## Commit Log
+
+- **8e00f79**: feat(api): add entity CRUD infrastructure foundation (TICKET-006)
+  - Database schema with archivedAt fields
+  - Audit service with test coverage
+  - Pagination infrastructure
+  - Filter infrastructure
+
+- **69c4b04**: feat(api): implement core entity CRUD services (TICKET-006 Stage 2)
+  - WorldService: Full CRUD with cascade delete to Campaigns and Locations
+  - CampaignService: Full CRUD with complex cascade delete through hierarchy
+  - CharacterService: Full CRUD without cascade
+  - 53 tests passing (11 World, 20 Campaign, 22 Character)
+  - Input validation with class-validator decorators
+  - Audit logging for all mutations
+  - Authorization checks (owner/GM permissions)
+
+- **430db93**: feat(api): implement kingdom management services (TICKET-006 Stage 3)
+  - PartyService: Full CRUD + archive/restore (no cascade)
+  - KingdomService: Full CRUD + archive/restore + cascade delete to Settlements→Structures
+  - SettlementService: Full CRUD + archive/restore + cascade delete to Structures
+  - StructureService: Full CRUD + archive/restore (no cascade)
+  - 150 tests passing (13 test suites, all tests green)
+  - Location validation for settlements (world-scoping, uniqueness)
+  - Comprehensive authorization checks (owner/GM permissions)
+  - Audit logging for all mutations
