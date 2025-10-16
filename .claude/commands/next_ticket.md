@@ -45,7 +45,7 @@ While working on the task, update the notes in the ticket file in plan/ as with 
 
 ### Code Review
 
-If the code review agent returns anything critical, fix it. If it returns any non-critical suggesttions, determine whether to implement them now or if it should be done in a future commit. If it should be done later (due to scope of work or complexity), create a new task in the implementation plan with detailed notes after the final item in the plan and continue.
+If the code review agent returns anything critical, fix it. If it returns any non-critical suggesttions, determine whether to implement them now, if it should be done in a future commit, or if they are not valid suggestions and should be ignored. If it should be done later (due to scope of work or complexity), create a new task in the implementation plan with detailed notes after the final item in the plan and continue.
 
 ### Finishing an Implementation Task
 
