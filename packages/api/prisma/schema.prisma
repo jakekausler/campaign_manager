@@ -1,0 +1,522 @@
+// =================================================================
+// Campaign Management Tool - Prisma Schema
+// =================================================================
+// Database: PostgreSQL with PostGIS extension
+// Features:
+// - Spatial data with PostGIS geometry types (SRID 3857)
+// - Bitemporal versioning for all mutable entities
+// - Soft delete pattern (deletedAt field)
+// - Comprehensive audit trail
+// - CUID primary keys
+// =================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+// =================================================================
+// User Management & Authentication
+// =================================================================
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  name      String
+  password  String // Hashed
+  roles     UserRole[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  versions       Version[]
+  audits         Audit[]
+  ownedCampaigns Campaign[]
+
+  @@index([email])
+  @@index([deletedAt])
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  permissions Permission[]
+  users       UserRole[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  @@index([name])
+  @@index([deletedAt])
+}
+
+model Permission {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  resource    String // e.g., "campaign", "world", "location"
+  action      String // e.g., "create", "read", "update", "delete"
+  roles       Role[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@unique([resource, action])
+  @@index([resource, action])
+  @@index([deletedAt])
+}
+
+model UserRole {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+// =================================================================
+// Core Campaign Structure
+// =================================================================
+
+model World {
+  id        String    @id @default(cuid())
+  name      String
+  calendars Json // Custom JSON schema for calendar systems
+  settings  Json      @default("{}")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  campaigns Campaign[]
+  locations Location[]
+
+  @@index([deletedAt])
+}
+
+model Campaign {
+  id       String  @id @default(cuid())
+  name     String
+  worldId  String
+  world    World   @relation(fields: [worldId], references: [id])
+  ownerId  String
+  owner    User    @relation(fields: [ownerId], references: [id])
+  settings Json    @default("{}")
+  isActive Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  branches   Branch[]
+  parties    Party[]
+  kingdoms   Kingdom[]
+  characters Character[]
+  encounters Encounter[]
+  events     Event[]
+
+  @@index([worldId])
+  @@index([ownerId])
+  @@index([deletedAt])
+  @@index([isActive])
+}
+
+model Branch {
+  id          String    @id @default(cuid())
+  campaignId  String
+  campaign    Campaign  @relation(fields: [campaignId], references: [id])
+  parentId    String? // For branch forks
+  parent      Branch?   @relation("BranchForks", fields: [parentId], references: [id])
+  children    Branch[]  @relation("BranchForks")
+  name        String
+  description String?
+  divergedAt  DateTime? // World time when branch diverged from parent
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  versions Version[]
+
+  @@index([campaignId])
+  @@index([parentId])
+  @@index([deletedAt])
+}
+
+// =================================================================
+// Game Entities - Parties, Kingdoms, Settlements
+// =================================================================
+
+model Party {
+  id                  String    @id @default(cuid())
+  campaignId          String
+  campaign            Campaign  @relation(fields: [campaignId], references: [id])
+  name                String
+  averageLevel        Int?      @default(1)
+  manualLevelOverride Int? // Override computed level
+  variables           Json      @default("{}") // Typed variables validated against schemas
+  variableSchemas     Json      @default("[]") // Array of VariableSchema definitions
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  // Relations
+  members   Character[]
+  stateVars StateVariable[]
+
+  @@index([campaignId])
+  @@index([deletedAt])
+}
+
+model Kingdom {
+  id              String    @id @default(cuid())
+  campaignId      String
+  campaign        Campaign  @relation(fields: [campaignId], references: [id])
+  name            String
+  level           Int       @default(1)
+  variables       Json      @default("{}") // Typed variables
+  variableSchemas Json      @default("[]") // Array of VariableSchema definitions
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  settlements Settlement[]
+  stateVars   StateVariable[]
+
+  @@index([campaignId])
+  @@index([deletedAt])
+}
+
+model Settlement {
+  id              String    @id @default(cuid())
+  kingdomId       String
+  kingdom         Kingdom   @relation(fields: [kingdomId], references: [id])
+  locationId      String    @unique
+  location        Location  @relation(fields: [locationId], references: [id])
+  name            String
+  level           Int       @default(1)
+  variables       Json      @default("{}") // Typed variables
+  variableSchemas Json      @default("[]") // Array of VariableSchema definitions
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  structures Structure[]
+  stateVars  StateVariable[]
+
+  @@index([kingdomId])
+  @@index([locationId])
+  @@index([deletedAt])
+}
+
+model Structure {
+  id              String     @id @default(cuid())
+  settlementId    String
+  settlement      Settlement @relation(fields: [settlementId], references: [id])
+  type            String // e.g., 'temple', 'barracks', 'market', 'library'
+  name            String
+  level           Int        @default(1)
+  variables       Json       @default("{}") // Typed variables
+  variableSchemas Json       @default("[]") // Array of VariableSchema definitions
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  stateVars StateVariable[]
+
+  @@index([settlementId])
+  @@index([type])
+  @@index([deletedAt])
+}
+
+model Character {
+  id         String    @id @default(cuid())
+  campaignId String
+  campaign   Campaign  @relation(fields: [campaignId], references: [id])
+  partyId    String?
+  party      Party?    @relation(fields: [partyId], references: [id])
+  name       String
+  level      Int       @default(1)
+  race       String?
+  class      String?
+  isNPC      Boolean   @default(false)
+  variables  Json      @default("{}") // Typed variables (stats, inventory, etc.)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  // Relations
+  stateVars StateVariable[]
+
+  @@index([campaignId])
+  @@index([partyId])
+  @@index([deletedAt])
+  @@index([isNPC])
+}
+
+// =================================================================
+// Spatial Entities - Locations with PostGIS
+// =================================================================
+
+model Location {
+  id               String                   @id @default(cuid())
+  worldId          String
+  world            World                    @relation(fields: [worldId], references: [id])
+  type             String // "point" | "region"
+  geom             Unsupported("geometry")? // PostGIS geometry (SRID 3857)
+  name             String?
+  description      String?
+  parentLocationId String?
+  parent           Location?                @relation("LocationHierarchy", fields: [parentLocationId], references: [id])
+  children         Location[]               @relation("LocationHierarchy")
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  deletedAt        DateTime?
+
+  // Relations
+  settlement Settlement?
+  encounters Encounter[]
+  events     Event[]
+
+  @@index([worldId])
+  @@index([parentLocationId])
+  @@index([deletedAt])
+  @@index([type])
+}
+
+// =================================================================
+// Events & Encounters
+// =================================================================
+
+model Encounter {
+  id          String    @id @default(cuid())
+  campaignId  String
+  campaign    Campaign  @relation(fields: [campaignId], references: [id])
+  locationId  String?
+  location    Location? @relation(fields: [locationId], references: [id])
+  name        String
+  description String?
+  difficulty  Int? // Challenge Rating or similar
+  isResolved  Boolean   @default(false)
+  resolvedAt  DateTime?
+  variables   Json      @default("{}") // Custom data
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  conditions Condition[]
+  effects    Effect[]
+  links      Link[]      @relation("EncounterLinks")
+
+  @@index([campaignId])
+  @@index([locationId])
+  @@index([deletedAt])
+  @@index([isResolved])
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  campaignId  String
+  campaign    Campaign  @relation(fields: [campaignId], references: [id])
+  locationId  String?
+  location    Location? @relation(fields: [locationId], references: [id])
+  name        String
+  description String?
+  eventType   String // "story", "kingdom", "party", "world"
+  scheduledAt DateTime? // World time when event is scheduled
+  occurredAt  DateTime? // World time when event occurred
+  isCompleted Boolean   @default(false)
+  variables   Json      @default("{}") // Custom event data
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  conditions Condition[]
+  effects    Effect[]
+  links      Link[]      @relation("EventLinks")
+
+  @@index([campaignId])
+  @@index([locationId])
+  @@index([deletedAt])
+  @@index([scheduledAt])
+  @@index([isCompleted])
+  @@index([eventType])
+}
+
+// =================================================================
+// Rules Engine - Conditions, Effects, State Variables
+// =================================================================
+
+model StateVariable {
+  id         String    @id @default(cuid())
+  name       String
+  type       String // "number", "string", "boolean", "json"
+  value      Json
+  entityType String // "party", "kingdom", "settlement", "structure", "character", "global"
+  entityId   String? // Nullable for global variables
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  // Polymorphic relations (entityType determines which is used)
+  // Note: These are defined but ignored field feature - app code must respect entityType
+  party      Party?      @relation(fields: [entityId], references: [id], map: "StateVariable_party_fkey")
+  kingdom    Kingdom?    @relation(fields: [entityId], references: [id], map: "StateVariable_kingdom_fkey")
+  settlement Settlement? @relation(fields: [entityId], references: [id], map: "StateVariable_settlement_fkey")
+  structure  Structure?  @relation(fields: [entityId], references: [id], map: "StateVariable_structure_fkey")
+  character  Character?  @relation(fields: [entityId], references: [id], map: "StateVariable_character_fkey")
+
+  // Relations
+  dependencies Dependency[]
+
+  @@unique([name, entityType, entityId])
+  @@index([entityType, entityId])
+  @@index([deletedAt])
+  @@index([name])
+}
+
+model Condition {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  expression  Json // JSONLogic expression
+  entityType  String // "encounter", "event"
+  entityId    String
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Polymorphic relations (entityType determines which is used)
+  encounter Encounter? @relation(fields: [entityId], references: [id], map: "Condition_encounter_fkey")
+  event     Event?     @relation(fields: [entityId], references: [id], map: "Condition_event_fkey")
+
+  @@index([entityType, entityId])
+  @@index([deletedAt])
+  @@index([isActive])
+}
+
+model Effect {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  effectType  String // "modify_variable", "trigger_event", "create_entity", etc.
+  payload     Json // Effect-specific data
+  entityType  String // "encounter", "event"
+  entityId    String
+  priority    Int       @default(0) // Execution order
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Polymorphic relations (entityType determines which is used)
+  encounter Encounter? @relation(fields: [entityId], references: [id], map: "Effect_encounter_fkey")
+  event     Event?     @relation(fields: [entityId], references: [id], map: "Effect_event_fkey")
+
+  @@index([entityType, entityId])
+  @@index([deletedAt])
+  @@index([isActive])
+  @@index([priority])
+}
+
+model Dependency {
+  id          String        @id @default(cuid())
+  sourceId    String
+  source      StateVariable @relation(fields: [sourceId], references: [id])
+  targetType  String // "encounter", "event", "condition", "effect"
+  targetId    String
+  description String?
+  createdAt   DateTime      @default(now())
+
+  @@unique([sourceId, targetType, targetId])
+  @@index([sourceId])
+  @@index([targetType, targetId])
+}
+
+model Link {
+  id          String    @id @default(cuid())
+  sourceType  String // "encounter", "event"
+  sourceId    String
+  targetType  String // "encounter", "event"
+  targetId    String
+  linkType    String // "prerequisite", "blocks", "triggers", "related"
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Polymorphic relations for source (sourceType determines which is used)
+  sourceEncounter Encounter? @relation("EncounterLinks", fields: [sourceId], references: [id], map: "Link_sourceEncounter_fkey")
+  sourceEvent     Event?     @relation("EventLinks", fields: [sourceId], references: [id], map: "Link_sourceEvent_fkey")
+
+  @@unique([sourceType, sourceId, targetType, targetId, linkType])
+  @@index([sourceType, sourceId])
+  @@index([targetType, targetId])
+  @@index([linkType])
+  @@index([deletedAt])
+}
+
+// =================================================================
+// Versioning System - Bitemporal History
+// =================================================================
+
+model Version {
+  id          String    @id @default(cuid())
+  entityType  String // "world", "campaign", "location", "encounter", etc.
+  entityId    String
+  branchId    String
+  branch      Branch    @relation(fields: [branchId], references: [id])
+  validFrom   DateTime // World time - when this version becomes valid
+  validTo     DateTime? // World time - when this version stops being valid (null = current)
+  payloadJson Json // Snapshot of entity state at this version
+  createdAt   DateTime  @default(now()) // System time
+  createdBy   String
+  user        User      @relation(fields: [createdBy], references: [id])
+
+  @@index([entityType, entityId, branchId])
+  @@index([validFrom, validTo])
+  @@index([branchId])
+  @@index([createdBy])
+}
+
+// =================================================================
+// Audit Trail
+// =================================================================
+
+model Audit {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  operation  String // "CREATE", "UPDATE", "DELETE"
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  changes    Json // JSON diff of changes (before/after)
+  metadata   Json     @default("{}") // Additional context (IP, user agent, etc.)
+  timestamp  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([timestamp])
+  @@index([operation])
+}
