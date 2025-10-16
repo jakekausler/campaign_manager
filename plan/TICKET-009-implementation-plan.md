@@ -113,26 +113,30 @@ This ticket implements Party, Kingdom, Settlement, and Structure management with
 
 **Tasks**:
 
-- [ ] Create SettlementService class in packages/api/src/graphql/services/
-- [ ] Implement createSettlement(kingdomId, locationId, data)
-- [ ] Implement getSettlement(id) with structures loaded
-- [ ] Implement updateSettlement(id, data)
-- [ ] Implement deleteSettlement(id)
-- [ ] Implement setSettlementLevel(settlementId, level)
-- [ ] Implement settlement variable operations (define schema, set/get variables)
-- [ ] Add level change event emission for settlements
-- [ ] Write unit tests for SettlementService
-- [ ] Create StructureService class in packages/api/src/graphql/services/
-- [ ] Implement createStructure(settlementId, data)
-- [ ] Implement getStructure(id)
-- [ ] Implement updateStructure(id, data)
-- [ ] Implement deleteStructure(id)
-- [ ] Implement setStructureLevel(structureId, level)
-- [ ] Implement structure variable operations (define schema, set/get variables)
-- [ ] Add level change event emission for structures
-- [ ] Write unit tests for StructureService
+- [x] Create SettlementService class in packages/api/src/graphql/services/
+- [x] Implement createSettlement(kingdomId, locationId, data)
+- [x] Implement getSettlement(id) with structures loaded
+- [x] Implement updateSettlement(id, data)
+- [x] Implement deleteSettlement(id)
+- [x] Implement setSettlementLevel(settlementId, level) as setLevel()
+- [ ] Implement settlement variable operations (define schema, set/get variables) (deferred to Stage 5)
+- [x] Add level change event emission for settlements
+- [x] Write unit tests for SettlementService (18 tests, all passing)
+- [x] Create StructureService class in packages/api/src/graphql/services/
+- [x] Implement createStructure(settlementId, data)
+- [x] Implement getStructure(id)
+- [x] Implement updateStructure(id, data)
+- [x] Implement deleteStructure(id)
+- [x] Implement setStructureLevel(structureId, level) as setLevel()
+- [ ] Implement structure variable operations (define schema, set/get variables) (deferred to Stage 5)
+- [x] Add level change event emission for structures
+- [x] Write unit tests for StructureService (19 tests, all passing)
+- [x] Add archive/restore operations for both services
+- [x] Add cascade delete from Settlement to Structure
+- [x] Add optimistic locking and versioning support for update operations
+- [x] Add getSettlementAsOf and getStructureAsOf for time-travel queries
 
-**Status**: Not Started
+**Status**: ✅ Complete (variable operations deferred to Stage 5 VariableSchemaService)
 
 ---
 

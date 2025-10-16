@@ -5,6 +5,8 @@
 - [ ] Completed
 - **Commits**:
   - Stage 2 (Party Management): `4d12e2d`
+  - Stage 3 (Kingdom Management): `60a04af`
+  - Stage 4 (Settlement & Structure Management): `803a4cd`
 
 ## Description
 
@@ -218,3 +220,42 @@ All methods include:
 Variable operations (defineSchema, setVariable, getVariable) deferred to Stage 5 for centralized implementation via VariableSchemaService.
 
 Territory management (addTerritory, removeTerritory) deferred as not currently in requirements.
+
+### Stage 4: Settlement & Structure Management (Completed - Commit 803a4cd)
+
+Enhanced SettlementService and StructureService with level tracking capabilities:
+
+**SettlementService**:
+
+- **setLevel()**: Sets settlement level with audit logging and real-time event publishing
+- **CRUD operations**: Full create, read, update, delete with soft delete
+- **Cascade delete**: Deletes cascade to structures (maintains referential integrity)
+- **Archive/Restore**: Archive doesn't cascade (allows temporary hiding without deletion)
+- **Location validation**: Ensures locations are unique per settlement and belong to same world
+- **Event publishing**: Level changes publish `entity.modified` events via Redis PubSub
+
+**StructureService**:
+
+- **setLevel()**: Sets structure level with audit logging and real-time event publishing
+- **CRUD operations**: Full create, read, update, delete with soft delete
+- **DataLoader support**: `findBySettlementIds()` for efficient GraphQL field resolution
+- **Archive/Restore**: Standard archive operations without cascade
+- **Type tracking**: Structures have types (temple, barracks, market, library, etc.)
+- **Event publishing**: Level changes publish `entity.modified` events via Redis PubSub
+
+All methods include:
+
+- Authorization checks via `hasEditPermission()` (owner or GM role)
+- Audit logging on all state-changing operations
+- Comprehensive unit tests (18 tests for SettlementService, 19 for StructureService, all passing)
+- Proper error handling with appropriate exception types
+- Consistent patterns with PartyService and KingdomService
+
+Both services follow the architectural patterns established in Stage 2 and Stage 3:
+
+- setLevel() methods provide quick level updates without full versioning overhead
+- Full versioning is available through update() method with optimistic locking
+- Cascade delete for Settlement->Structure maintains referential integrity
+- PubSub events enable real-time UI updates and concurrent edit detection
+
+Variable operations (defineSchema, setVariable, getVariable) deferred to Stage 5 for centralized implementation via VariableSchemaService.

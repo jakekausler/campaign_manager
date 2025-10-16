@@ -45,7 +45,7 @@ While working on the task, update the notes in the ticket file in plan/ as with 
 
 ### Finishing an Implementation Task
 
-When you finish a task in the ticket's implementation plan, mark it as complete in the TICKET-###-implementation-plan.md file and ensure your notes have been updated in the ticket file in plan/.
+When you finish a stage in the ticket's implementation plan, mark it as complete in the TICKET-###-implementation-plan.md file and ensure your notes have been updated in the ticket file in plan/. Then STOP and wait for further instructions. DO NOT proceed to the next stage until instructed to do so.
 
 ### Finishing a Ticket
 
