@@ -2,7 +2,7 @@
 
 ## Status
 
-- [x] Completed
+- [ ] In Progress
 - **Commits**:
   - Stage 2 (Party Management): `4d12e2d`
   - Stage 3 (Kingdom Management): `60a04af`
@@ -14,6 +14,7 @@
   - Stage 9 (Level History & Campaign Context Invalidation): `5db374b`
   - Stage 10 (Validation & Error Handling): `159ef74`
   - Stage 11 (Documentation): `a09421d`
+  - Stage 12 (Performance & Quality Improvements): **NOT STARTED** (Future work/technical debt)
 
 ## Description
 
