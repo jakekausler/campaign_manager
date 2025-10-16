@@ -36,9 +36,12 @@ model User {
   deletedAt DateTime?
 
   // Relations
-  versions       Version[]
-  audits         Audit[]
-  ownedCampaigns Campaign[]
+  versions            Version[]
+  audits              Audit[]
+  ownedCampaigns      Campaign[]
+  campaignMemberships CampaignMembership[]
+  refreshTokens       RefreshToken[]
+  apiKeys             ApiKey[]
 
   @@index([email])
   @@index([deletedAt])
@@ -88,6 +91,62 @@ model UserRole {
   @@index([roleId])
 }
 
+enum CampaignRole {
+  OWNER
+  GM
+  PLAYER
+  VIEWER
+}
+
+model CampaignMembership {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignId  String
+  campaign    Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  role        CampaignRole
+  permissions Json         @default("[]") // Array of permission strings
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([userId, campaignId])
+  @@index([userId])
+  @@index([campaignId])
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique // Hashed token
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key        String    @unique // Hashed API key
+  name       String // User-defined name for the key
+  scopes     Json      @default("[]") // Array of scope strings
+  campaignId String? // Optional: limit to specific campaign
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  Campaign   Campaign? @relation(fields: [campaignId], references: [id])
+
+  @@index([userId])
+  @@index([campaignId])
+  @@index([expiresAt])
+}
+
 // =================================================================
 // Core Campaign Structure
 // =================================================================
@@ -123,12 +182,14 @@ model Campaign {
   deletedAt DateTime?
 
   // Relations
-  branches   Branch[]
-  parties    Party[]
-  kingdoms   Kingdom[]
-  characters Character[]
-  encounters Encounter[]
-  events     Event[]
+  branches    Branch[]
+  parties     Party[]
+  kingdoms    Kingdom[]
+  characters  Character[]
+  encounters  Encounter[]
+  events      Event[]
+  memberships CampaignMembership[]
+  apiKeys     ApiKey[]
 
   @@index([worldId])
   @@index([ownerId])
