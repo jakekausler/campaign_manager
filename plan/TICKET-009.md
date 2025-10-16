@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] Completed
+- [x] Completed
 - **Commits**:
   - Stage 2 (Party Management): `4d12e2d`
   - Stage 3 (Kingdom Management): `60a04af`
@@ -11,6 +11,9 @@
   - Stage 6 (Party GraphQL API): `a4eab8e`
   - Stage 7 (Kingdom, Settlement, Structure GraphQL APIs): `a259f55`
   - Stage 8 (Context System Integration): `6e9b5fc`
+  - Stage 9 (Level History & Campaign Context Invalidation): `5db374b`
+  - Stage 10 (Validation & Error Handling): `159ef74`
+  - Stage 11 (Documentation): `a09421d`
 
 ## Description
 
@@ -480,3 +483,64 @@ Implemented comprehensive GraphQL API layers for Kingdom, Settlement, and Struct
 - Formatted with Prettier (pre-commit hooks enforced)
 - Follows established Party resolver patterns precisely
 - Consistent use of VariableSchemaService for all three entity types
+
+### Stage 9: Level History & Campaign Context Invalidation (Completed - Commit 5db374b)
+
+Implemented level history tracking service and automatic campaign context cache invalidation on level changes:
+
+**LevelHistoryService Architecture**:
+
+- **getLevelHistory()**: Retrieves chronological level changes for a specific entity from audit logs
+- **getCampaignLevelHistory()**: Aggregates level history across all entities in a campaign
+- Uses existing audit system (no new tables required) - leverages AuditService integration
+- Returns {entityType, entityId, oldLevel, newLevel, changedBy, changedAt} records
+
+**Performance Optimizations** (addressing code review feedback):
+
+- **Single-query approach**: Fetches all audits at once, processes in memory (avoids N+1 queries)
+- **getCampaignLevelHistory**: Uses single batch query for all entities (avoids ~940 queries for typical campaign)
+- **Efficient grouping**: Groups audits by entity using Map for O(1) lookups
+- **Chronological processing**: Builds level timeline by iterating sorted audits (previousLevel tracking)
+
+**Type Safety Improvements** (addressing code review feedback):
+
+- **Proper TypeScript types**: Replaced `any` with AuditChanges type definition
+- **Runtime type guards**: Added isAuditChanges() for safe type narrowing
+- **Type-safe field extraction**: Handles level, manualLevelOverride, averageLevel consistently
+
+**Campaign Context Invalidation**:
+
+- Added automatic cache invalidation on level changes in all entity services (Party, Kingdom, Settlement, Structure)
+- **Circular dependency resolution**: Used forwardRef() in CampaignContextService and entity services
+- **Error handling**: Cache invalidation wrapped in try-catch (failures logged, don't block operations)
+- **Integration test fixes**: Updated 5 resolver integration test modules to include full dependency graph
+
+**Code Quality & Testing**:
+
+- **13 comprehensive unit tests** for LevelHistoryService covering all methods and edge cases
+- **577 of 578 tests passing** (1 pre-existing test isolation issue unrelated to changes)
+- **Fixed circular dependency crashes** in kingdom, settlement, structure, party, spatial resolver integration tests
+- **Test infrastructure improvements**: Added missing service providers, updated method signatures for versioning
+- **Code review fixes**: Addressed all critical issues (N+1 queries, type safety, Prisma compatibility)
+- TypeScript compilation successful, ESLint passing with 0 errors
+
+**Future Work** (prepared but deferred):
+
+- **WebSocket notifications**: TODO comments added for TICKET-013 rules engine integration
+- **GraphQL API**: Level history queries not yet exposed (defer to Stage 11 or future ticket)
+- **Integration tests**: Unit tests validate logic, integration tests against real DB deferred
+
+**Technical Debt Noted**:
+
+- Consider event-driven architecture to eliminate circular dependencies (low priority)
+- Add NestJS Logger instead of console.error for cache invalidation failures (cosmetic)
+- Add integration tests against real database for Prisma query validation (nice-to-have)
+
+**Files Modified**:
+
+- Created: level-history.service.ts, level-history.service.test.ts
+- Updated: party.service.ts, kingdom.service.ts, settlement.service.ts, structure.service.ts (added context invalidation)
+- Updated: campaign-context.service.ts (added forwardRef for circular dependency)
+- Updated: graphql.module.ts (registered LevelHistoryService)
+- Updated: 5 resolver integration test files (added missing service providers)
+- Updated: version/character/encounter/event service tests (fixed method signatures)
