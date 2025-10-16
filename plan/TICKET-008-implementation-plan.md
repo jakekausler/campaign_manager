@@ -115,6 +115,8 @@ This ticket integrates PostGIS spatial capabilities into the Campaign Manager, e
 
 **Status**: ✅ Complete
 
+**Commit**: 00947a331e89e0d6ce17af3d3f886b111032ffd8
+
 ---
 
 ### Stage 4: Location Geometry Operations
