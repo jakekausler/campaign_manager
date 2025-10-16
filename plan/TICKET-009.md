@@ -7,6 +7,7 @@
   - Stage 2 (Party Management): `4d12e2d`
   - Stage 3 (Kingdom Management): `60a04af`
   - Stage 4 (Settlement & Structure Management): `803a4cd`
+  - Stage 5 (Variable Schema Service): `8b03cbb`
 
 ## Description
 
@@ -259,3 +260,49 @@ Both services follow the architectural patterns established in Stage 2 and Stage
 - PubSub events enable real-time UI updates and concurrent edit detection
 
 Variable operations (defineSchema, setVariable, getVariable) deferred to Stage 5 for centralized implementation via VariableSchemaService.
+
+### Stage 5: Variable Schema Service (Completed - Commit 8b03cbb)
+
+Implemented VariableSchemaService, a centralized service for managing typed variable schemas across all entity types (Party, Kingdom, Settlement, Structure):
+
+**Schema Management**:
+
+- **defineSchema()**: Create or update variable schemas with type definitions
+- **getSchema()**: Retrieve specific schema by name
+- **listSchemas()**: List all schemas for an entity
+- **deleteSchema()**: Remove schema and associated variable value
+
+**Variable Management**:
+
+- **setVariable()**: Set variable with automatic type validation
+- **getVariable()**: Retrieve variable value with default value support
+- **listVariables()**: List all variables for an entity
+
+**Type Validation**:
+
+- **string**: Validates typeof value === 'string'
+- **number**: Validates typeof value === 'number' and !isNaN
+- **boolean**: Validates typeof value === 'boolean'
+- **enum**: Validates value is in enumValues array
+
+**Multi-Entity Support**:
+
+- Generic EntityType parameter ('party' | 'kingdom' | 'settlement' | 'structure')
+- Permission checks traverse entity hierarchy (structure→settlement→kingdom→campaign)
+- Read access: Any campaign member
+- Write access: Campaign owner or GM role only
+
+**Data Storage**:
+
+- Schemas stored in entity.variableSchemas JSON field
+- Values stored in entity.variables JSON field
+- Proper Prisma JSON type casting with InputJsonValue
+
+**Security & Quality**:
+
+- Authorization checks on all write operations (defineSchema, setVariable, deleteSchema)
+- Audit logging for all mutations with operation details
+- Comprehensive error handling with descriptive BadRequestException, NotFoundException, ForbiddenException
+- 28 unit tests covering validation, CRUD operations, permissions, edge cases, and multi-entity support
+
+All tests passing. Service is production-ready and provides the foundation for typed variable management in future stages.
