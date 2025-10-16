@@ -365,6 +365,67 @@ This ticket implements Party, Kingdom, Settlement, and Structure management with
 
 ---
 
+## Stage 12: Performance & Quality Improvements (Future Work)
+
+**Goal**: Address technical debt and optimization opportunities identified in code review
+
+**Success Criteria**:
+
+- N+1 query problem resolved with batch methods
+- Redis caching implemented for production
+- Context size monitoring in place
+- Type safety improved in mapper functions
+
+**Tasks**:
+
+- [ ] **Fix N+1 Query Problem** (HIGH Priority)
+  - Add `SettlementService.findByKingdoms(kingdomIds[], user)` batch method
+  - Add `StructureService.findBySettlements(settlementIds[], user)` batch method
+  - Update `CampaignContextService.getCampaignContext()` to use batch methods
+  - Performance test with 50+ kingdoms and 500+ settlements
+  - Document performance improvement (expected: 100+ queries → 3 queries)
+
+- [ ] **Migrate to Redis Cache** (MEDIUM Priority)
+  - Replace in-memory Map with Redis client
+  - Implement Redis connection pooling
+  - Add cache key namespacing: `campaign:context:{campaignId}`
+  - Add cache metrics (hit rate, miss rate, eviction count)
+  - Test cache coherency across multiple API instances
+  - Add TTL configuration via environment variable
+  - Document Redis setup in README.md
+
+- [ ] **Add Context Size Monitoring** (MEDIUM Priority)
+  - Add warning logs when context exceeds 1000 entities
+  - Add metrics for context size (parties, kingdoms, settlements, structures count)
+  - Consider pagination or chunking for very large campaigns
+  - Add documentation about context size limits
+
+- [ ] **Improve Type Safety** (LOW Priority)
+  - Replace `any` in `mapPartyToContext(party: any)` with proper Prisma types
+  - Replace `any` in `mapKingdomToContext(kingdom: any)` with proper Prisma types
+  - Replace `any` in `mapSettlementToContext(settlement: any)` with proper Prisma types
+  - Replace `any` in `mapStructureToContext(structure: any)` with proper Prisma types
+  - Import types: `import type { Party, Kingdom, Settlement, Structure } from '@prisma/client'`
+  - Update test mocks to use proper types instead of `any`
+
+- [ ] **Add Cache Behavior Tests** (LOW Priority)
+  - Test that cached context is returned on second call (verify DB called once)
+  - Test cache expiration after TTL (use jest.useFakeTimers)
+  - Test concurrent requests with cache
+  - Test cache invalidation on entity updates
+
+- [ ] **Additional Improvements**
+  - Add authorization check documentation/comments
+  - Add TODO comment about granular invalidation in `invalidateContextForEntity()`
+  - Add TODO comment about Redis migration in cache property declaration
+  - Consider rate limiting for `getCampaignContext()` to prevent abuse
+
+**Status**: Not Started (Technical Debt from Stage 8)
+
+**Context**: These suggestions came from code-reviewer subagent during Stage 8. None are blockers for current functionality, but should be addressed before production deployment (especially Redis caching and N+1 query fix).
+
+---
+
 ## Notes
 
 - This is a large ticket with 11 stages
