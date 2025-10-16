@@ -29,9 +29,15 @@
   },
   "settings": {
     "import/resolver": {
-      "typescript": true,
-      "node": true
-    }
+      "typescript": {
+        "alwaysTryTypes": true,
+        "project": ["./tsconfig.base.json", "./packages/*/tsconfig.json"]
+      },
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    },
+    "import/internal-regex": "^@campaign/"
   },
   "ignorePatterns": ["dist", "node_modules", "*.js", "*.config.ts", "vite.config.ts"]
 }
