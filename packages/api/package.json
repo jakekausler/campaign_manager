@@ -32,6 +32,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.3.0",
     "@nestjs/throttler": "^6.4.0",
+    "@paralleldrive/cuid2": "^2.2.2",
     "@prisma/client": "^6.17.1",
     "bcrypt": "^6.0.0",
     "cache-manager": "^7.2.4",

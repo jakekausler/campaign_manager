@@ -600,4 +600,152 @@ export class SpatialService {
     `;
     return result[0]?.overlaps ?? false;
   }
+
+  // =================================================================
+  // Settlement Spatial Query Operations
+  // =================================================================
+
+  /**
+   * Find all settlements within a region location
+   * @param regionId ID of the region location
+   * @param worldId Optional world ID to filter settlements
+   * @returns Array of settlements within the region
+   */
+  async settlementsInRegion(
+    regionId: string,
+    worldId?: string
+  ): Promise<
+    {
+      id: string;
+      name: string;
+      locationId: string;
+      kingdomId: string;
+      level: number;
+    }[]
+  > {
+    if (worldId) {
+      return this.prisma.$queryRaw`
+        SELECT s.id, s.name, s."locationId", s."kingdomId", s.level
+        FROM "Settlement" s
+        JOIN "Location" l ON s."locationId" = l.id
+        WHERE l."worldId" = ${worldId}
+          AND s."deletedAt" IS NULL
+          AND l."deletedAt" IS NULL
+          AND ST_Within(
+            l.geom,
+            (SELECT geom FROM "Location" WHERE id = ${regionId})
+          )
+      `;
+    }
+
+    return this.prisma.$queryRaw`
+      SELECT s.id, s.name, s."locationId", s."kingdomId", s.level
+      FROM "Settlement" s
+      JOIN "Location" l ON s."locationId" = l.id
+      WHERE s."deletedAt" IS NULL
+        AND l."deletedAt" IS NULL
+        AND ST_Within(
+          l.geom,
+          (SELECT geom FROM "Location" WHERE id = ${regionId})
+        )
+    `;
+  }
+
+  /**
+   * Find settlement at a specific location
+   * @param locationId ID of the location
+   * @returns Settlement at the location, or null if none exists
+   */
+  async settlementAtLocation(locationId: string): Promise<{
+    id: string;
+    name: string;
+    locationId: string;
+    kingdomId: string;
+    level: number;
+  } | null> {
+    const result = await this.prisma.$queryRaw<
+      {
+        id: string;
+        name: string;
+        locationId: string;
+        kingdomId: string;
+        level: number;
+      }[]
+    >`
+      SELECT id, name, "locationId", "kingdomId", level
+      FROM "Settlement"
+      WHERE "locationId" = ${locationId}
+        AND "deletedAt" IS NULL
+    `;
+    return result[0] ?? null;
+  }
+
+  /**
+   * Find all settlements near a point within a given radius
+   * @param point GeoJSON point coordinates
+   * @param radius Radius in meters
+   * @param srid Spatial reference system ID (default: Web Mercator 3857)
+   * @param worldId Optional world ID to filter settlements
+   * @returns Array of settlements within radius, ordered by distance
+   */
+  async settlementsNear(
+    point: GeoJSONPoint,
+    radius: number,
+    srid: number = SRID.WEB_MERCATOR,
+    worldId?: string
+  ): Promise<
+    {
+      id: string;
+      name: string;
+      locationId: string;
+      kingdomId: string;
+      level: number;
+      distance: number;
+    }[]
+  > {
+    const wkb = this.geoJsonToEWKB(point, srid);
+
+    if (worldId) {
+      return this.prisma.$queryRaw`
+        SELECT
+          s.id,
+          s.name,
+          s."locationId",
+          s."kingdomId",
+          s.level,
+          ST_Distance(l.geom, ST_GeomFromEWKB(${wkb})) as distance
+        FROM "Settlement" s
+        JOIN "Location" l ON s."locationId" = l.id
+        WHERE l."worldId" = ${worldId}
+          AND s."deletedAt" IS NULL
+          AND l."deletedAt" IS NULL
+          AND ST_DWithin(
+            l.geom,
+            ST_GeomFromEWKB(${wkb}),
+            ${radius}
+          )
+        ORDER BY ST_Distance(l.geom, ST_GeomFromEWKB(${wkb}))
+      `;
+    }
+
+    return this.prisma.$queryRaw`
+      SELECT
+        s.id,
+        s.name,
+        s."locationId",
+        s."kingdomId",
+        s.level,
+        ST_Distance(l.geom, ST_GeomFromEWKB(${wkb})) as distance
+      FROM "Settlement" s
+      JOIN "Location" l ON s."locationId" = l.id
+      WHERE s."deletedAt" IS NULL
+        AND l."deletedAt" IS NULL
+        AND ST_DWithin(
+          l.geom,
+          ST_GeomFromEWKB(${wkb}),
+          ${radius}
+        )
+      ORDER BY ST_Distance(l.geom, ST_GeomFromEWKB(${wkb}))
+    `;
+  }
 }
