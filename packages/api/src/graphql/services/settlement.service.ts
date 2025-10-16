@@ -103,6 +103,19 @@ export class SettlementService {
   }
 
   /**
+   * Find settlement by location ID
+   * Returns the settlement at a specific location (if any)
+   */
+  async findByLocationId(locationId: string): Promise<PrismaSettlement | null> {
+    return this.prisma.settlement.findFirst({
+      where: {
+        locationId,
+        deletedAt: null,
+      },
+    });
+  }
+
+  /**
    * Create a new settlement
    * Only owner or GM can create settlements
    */

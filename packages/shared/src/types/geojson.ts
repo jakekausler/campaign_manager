@@ -114,6 +114,8 @@ export interface BoundingBox {
   south: number;
   east: number;
   north: number;
+  /** Optional SRID for the bounding box coordinates (defaults to Web Mercator 3857) */
+  srid?: number;
 }
 
 /**

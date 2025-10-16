@@ -13,6 +13,7 @@ import type { Response } from 'express';
 import type { DocumentNode, GraphQLSchema } from 'graphql';
 import { fieldExtensionsEstimator, getComplexity, simpleEstimator } from 'graphql-query-complexity';
 
+import { SpatialService } from '../common/services/spatial.service';
 import { DatabaseModule } from '../database/database.module';
 
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
@@ -28,6 +29,7 @@ import { LinkResolver } from './resolvers/link.resolver';
 import { LocationResolver } from './resolvers/location.resolver';
 import { PartyResolver } from './resolvers/party.resolver';
 import { SettlementResolver } from './resolvers/settlement.resolver';
+import { SpatialResolver } from './resolvers/spatial.resolver';
 import { StructureResolver } from './resolvers/structure.resolver';
 import { VersionResolver } from './resolvers/version.resolver';
 import { WorldResolver } from './resolvers/world.resolver';
@@ -150,6 +152,7 @@ import { WorldService } from './services/world.service';
     EncounterService,
     EventService,
     LinkService,
+    SpatialService,
     // DataLoaders
     StructureDataLoader,
     // Resolvers
@@ -166,6 +169,7 @@ import { WorldService } from './services/world.service';
     EncounterResolver,
     EventResolver,
     LinkResolver,
+    SpatialResolver,
     // Register custom scalars
     DateTimeScalar,
     JSONScalar,

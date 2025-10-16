@@ -86,7 +86,9 @@ export class SpatialService {
    */
   wkbToGeoJSON(wkb: Buffer): GeoJSONGeometry {
     try {
-      const geometry = wkx.Geometry.parse(wkb);
+      // Ensure wkb is a Buffer (Prisma might return it as Uint8Array or similar)
+      const buffer = Buffer.isBuffer(wkb) ? wkb : Buffer.from(wkb);
+      const geometry = wkx.Geometry.parse(buffer);
       return geometry.toGeoJSON() as GeoJSONGeometry;
     } catch (error) {
       throw new BadRequestException(
