@@ -12,6 +12,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { SpatialService } from '../../common/services/spatial.service';
+import { TileCacheService } from '../../common/services/tile-cache.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import {
@@ -37,12 +38,14 @@ export class SpatialResolver {
   constructor(
     private readonly spatialService: SpatialService,
     private readonly locationService: LocationService,
-    private readonly settlementService: SettlementService
+    private readonly settlementService: SettlementService,
+    private readonly tileCacheService: TileCacheService
   ) {}
 
   /**
    * Query: mapLayer
    * Returns GeoJSON FeatureCollection for a map viewport
+   * Uses in-memory caching to improve performance for repeated requests
    */
   @Query(() => GeoJSONFeatureCollection, {
     description: 'Get map layer as GeoJSON FeatureCollection for viewport',
@@ -54,6 +57,29 @@ export class SpatialResolver {
     @Args('filters', { nullable: true }) filters: MapFilterInput | null,
     @CurrentUser() _user: AuthenticatedUser
   ): Promise<GeoJSONFeatureCollection> {
+    // Generate cache key
+    const cacheFilters = filters
+      ? { locationTypes: filters.locationTypes || undefined }
+      : undefined;
+    const cacheKey = this.tileCacheService.generateTileKey(
+      worldId,
+      {
+        west: bbox.west,
+        south: bbox.south,
+        east: bbox.east,
+        north: bbox.north,
+      },
+      cacheFilters
+    );
+
+    // Check cache first
+    const cached = this.tileCacheService.get(cacheKey);
+    if (cached) {
+      // Type assertion: we know cached features always have string ids
+      return cached as GeoJSONFeatureCollection;
+    }
+
+    // Cache miss - generate FeatureCollection
     // Query locations within bounding box
     const locations = await this.spatialService.locationsInBounds(
       {
@@ -117,10 +143,18 @@ export class SpatialResolver {
     // Filter out null features (locations with null geometry)
     const validFeatures = features.filter((f): f is NonNullable<typeof f> => f !== null);
 
-    return {
+    const featureCollection: GeoJSONFeatureCollection = {
       type: 'FeatureCollection',
       features: validFeatures,
     };
+
+    // Store in cache - type assertion safe since geometry comes from wkbToGeoJSON
+    this.tileCacheService.set(
+      cacheKey,
+      featureCollection as import('@campaign/shared').GeoJSONFeatureCollection
+    );
+
+    return featureCollection;
   }
 
   /**

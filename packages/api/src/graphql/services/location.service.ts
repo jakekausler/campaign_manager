@@ -10,6 +10,7 @@ import type { RedisPubSub } from 'graphql-redis-subscriptions';
 import type { GeoJSONGeometry } from '@campaign/shared';
 
 import { SpatialService } from '../../common/services/spatial.service';
+import { TileCacheService } from '../../common/services/tile-cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
@@ -34,6 +35,7 @@ export class LocationService {
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
     private readonly spatialService: SpatialService,
+    private readonly tileCacheService: TileCacheService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
@@ -164,6 +166,9 @@ export class LocationService {
       description: location.description,
       parentLocationId: location.parentLocationId,
     });
+
+    // Invalidate tile cache for this world (new location should appear on map)
+    this.tileCacheService.invalidateWorld(location.worldId);
 
     return location;
   }
@@ -299,6 +304,9 @@ export class LocationService {
       },
     });
 
+    // Invalidate tile cache for this world (location metadata changed)
+    this.tileCacheService.invalidateWorld(location.worldId);
+
     return updated;
   }
 
@@ -326,6 +334,9 @@ export class LocationService {
 
     // Create audit entry
     await this.audit.log('location', id, 'DELETE', user.id, { deletedAt });
+
+    // Invalidate tile cache for this world (location should disappear from map)
+    this.tileCacheService.invalidateWorld(location.worldId);
 
     return deleted;
   }
@@ -618,6 +629,10 @@ export class LocationService {
         modifiedAt: updated.updatedAt,
       },
     });
+
+    // Invalidate tile cache for this location's world
+    // All map tiles for this world need to be regenerated since geometry changed
+    this.tileCacheService.invalidateWorld(location.worldId);
 
     return updated;
   }

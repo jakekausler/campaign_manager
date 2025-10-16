@@ -14,6 +14,7 @@ import type { DocumentNode, GraphQLSchema } from 'graphql';
 import { fieldExtensionsEstimator, getComplexity, simpleEstimator } from 'graphql-query-complexity';
 
 import { SpatialService } from '../common/services/spatial.service';
+import { TileCacheService } from '../common/services/tile-cache.service';
 import { DatabaseModule } from '../database/database.module';
 
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
@@ -153,6 +154,7 @@ import { WorldService } from './services/world.service';
     EventService,
     LinkService,
     SpatialService,
+    TileCacheService,
     // DataLoaders
     StructureDataLoader,
     // Resolvers

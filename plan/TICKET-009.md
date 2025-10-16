@@ -47,7 +47,7 @@ Implement Party and Kingdom management systems with level tracking, typed custom
    - Mutations: `setPartyVariable`, `setKingdomVariable`, `setSettlementVariable`, `setStructureVariable`
    - Queries: `parties(campaignId)`, `kingdoms(campaignId)`, `settlements(kingdomId)`, `structures(settlementId)`
 8. Add validation:
-   - Level ranges (1-20 for parties, custom for kingdoms/settlements/structures)
+   - Level ranges (custom for characters/parties/kingdoms/settlements/structures)
    - Variable type validation against schemas
 9. Integrate with context system:
    - Include party/kingdom/settlement/structure state in compute context

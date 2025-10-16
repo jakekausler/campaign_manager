@@ -14,7 +14,7 @@ import { JSONScalar } from '../scalars/json.scalar';
 @ObjectType()
 export class GeoJSONFeature {
   @Field(() => String)
-  type!: string; // Always "Feature"
+  type!: 'Feature'; // GeoJSON spec literal type
 
   @Field(() => ID)
   id!: string;
@@ -32,7 +32,7 @@ export class GeoJSONFeature {
 @ObjectType()
 export class GeoJSONFeatureCollection {
   @Field(() => String)
-  type!: string; // Always "FeatureCollection"
+  type!: 'FeatureCollection'; // GeoJSON spec literal type
 
   @Field(() => [GeoJSONFeature])
   features!: GeoJSONFeature[];
