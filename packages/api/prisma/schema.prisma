@@ -177,6 +177,7 @@ model Campaign {
   world      World     @relation(fields: [worldId], references: [id])
   ownerId    String
   owner      User      @relation(fields: [ownerId], references: [id])
+  srid       Int       @default(3857) // Spatial Reference System ID (Web Mercator default)
   settings   Json      @default("{}")
   isActive   Boolean   @default(true)
   version    Int       @default(1) // For optimistic locking
@@ -572,19 +573,19 @@ model Link {
 // =================================================================
 
 model Version {
-  id          String    @id @default(cuid())
-  entityType  String // "world", "campaign", "location", "encounter", etc.
-  entityId    String
-  branchId    String
-  branch      Branch    @relation(fields: [branchId], references: [id])
-  validFrom   DateTime // World time - when this version becomes valid
-  validTo     DateTime? // World time - when this version stops being valid (null = current)
-  payloadGz   Bytes // Compressed snapshot of entity state (gzip)
-  comment     String? // Optional change comment
-  version     Int // For optimistic locking / concurrent edit detection
-  createdAt   DateTime  @default(now()) // System time
-  createdBy   String
-  user        User      @relation(fields: [createdBy], references: [id])
+  id         String    @id @default(cuid())
+  entityType String // "world", "campaign", "location", "encounter", etc.
+  entityId   String
+  branchId   String
+  branch     Branch    @relation(fields: [branchId], references: [id])
+  validFrom  DateTime // World time - when this version becomes valid
+  validTo    DateTime? // World time - when this version stops being valid (null = current)
+  payloadGz  Bytes // Compressed snapshot of entity state (gzip)
+  comment    String? // Optional change comment
+  version    Int // For optimistic locking / concurrent edit detection
+  createdAt  DateTime  @default(now()) // System time
+  createdBy  String
+  user       User      @relation(fields: [createdBy], references: [id])
 
   @@index([entityType, entityId, branchId, validFrom, validTo])
   @@index([entityType, entityId, version])
