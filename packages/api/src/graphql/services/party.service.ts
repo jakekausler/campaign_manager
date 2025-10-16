@@ -10,6 +10,7 @@ import {
   ForbiddenException,
   BadRequestException,
   Inject,
+  forwardRef,
 } from '@nestjs/common';
 import type { Party as PrismaParty, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
@@ -21,6 +22,7 @@ import type { CreatePartyInput, UpdatePartyData } from '../inputs/party.input';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
+import { CampaignContextService } from './campaign-context.service';
 import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
@@ -29,6 +31,8 @@ export class PartyService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
+    @Inject(forwardRef(() => CampaignContextService))
+    private readonly campaignContext: CampaignContextService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
@@ -479,6 +483,22 @@ export class PartyService {
         modifiedAt: updated.updatedAt,
       },
     });
+
+    // Invalidate campaign context cache to reflect level change
+    // Cache invalidation failures should not block the operation - cache will expire via TTL
+    try {
+      await this.campaignContext.invalidateContextForEntity('party', id, party.campaignId);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      console.error(`Failed to invalidate campaign context for party ${id}:`, error);
+    }
+
+    // TODO (TICKET-013): Trigger rules engine recalculation when rules engine is implemented
+    // await this.rulesEngine.invalidate({
+    //   campaignId: party.campaignId,
+    //   changeType: 'party_level',
+    //   affectedVariables: ['party.level'],
+    // });
 
     return updated;
   }

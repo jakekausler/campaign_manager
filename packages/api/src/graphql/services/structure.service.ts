@@ -10,6 +10,7 @@ import {
   ForbiddenException,
   BadRequestException,
   Inject,
+  forwardRef,
 } from '@nestjs/common';
 import type { Structure as PrismaStructure, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
@@ -21,6 +22,7 @@ import type { CreateStructureInput, UpdateStructureData } from '../inputs/struct
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
+import { CampaignContextService } from './campaign-context.service';
 import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
@@ -29,6 +31,8 @@ export class StructureService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
+    @Inject(forwardRef(() => CampaignContextService))
+    private readonly campaignContext: CampaignContextService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
@@ -617,6 +621,32 @@ export class StructureService {
         modifiedAt: updated.updatedAt,
       },
     });
+
+    // Get campaign ID for context invalidation
+    const structureWithRelations = await this.prisma.structure.findUnique({
+      where: { id },
+      include: { settlement: { include: { kingdom: true } } },
+    });
+
+    // Invalidate campaign context cache to reflect level change
+    // Cache invalidation failures should not block the operation - cache will expire via TTL
+    try {
+      await this.campaignContext.invalidateContextForEntity(
+        'structure',
+        id,
+        structureWithRelations!.settlement.kingdom.campaignId
+      );
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      console.error(`Failed to invalidate campaign context for structure ${id}:`, error);
+    }
+
+    // TODO (TICKET-013): Trigger rules engine recalculation when rules engine is implemented
+    // await this.rulesEngine.invalidate({
+    //   campaignId: structureWithRelations!.settlement.kingdom.campaignId,
+    //   changeType: 'structure_level',
+    //   affectedVariables: ['structure.level'],
+    // });
 
     return updated;
   }

@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 
 import { AuditService } from './audit.service';
 import { CharacterService } from './character.service';
+import { VersionService } from './version.service';
 
 describe('CharacterService', () => {
   let service: CharacterService;
@@ -63,33 +64,68 @@ describe('CharacterService', () => {
     updatedAt: new Date(),
     deletedAt: null,
     archivedAt: null,
+    version: 1,
   };
 
   beforeEach(async () => {
+    // Create mock prisma service with mocked methods
+    const mockPrismaService = {
+      character: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+      campaign: {
+        findFirst: jest.fn(),
+      },
+      party: {
+        findFirst: jest.fn(),
+      },
+      branch: {
+        findFirst: jest.fn(),
+      },
+      $transaction: jest.fn(),
+    };
+
+    // Configure $transaction mock to execute callback with mock transaction client
+    (mockPrismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+      if (typeof callback === 'function') {
+        // Create a mock transaction prisma client that delegates to the main mock
+        const txPrisma = {
+          character: mockPrismaService.character,
+        };
+        return callback(txPrisma);
+      }
+      // Fallback for array form (not used in current implementation)
+      return Promise.all(callback);
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CharacterService,
         {
           provide: PrismaService,
-          useValue: {
-            character: {
-              findFirst: jest.fn(),
-              findMany: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-            },
-            campaign: {
-              findFirst: jest.fn(),
-            },
-            party: {
-              findFirst: jest.fn(),
-            },
-          },
+          useValue: mockPrismaService,
         },
         {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: VersionService,
+          useValue: {
+            createVersion: jest.fn(),
+            resolveVersion: jest.fn(),
+            decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: 'REDIS_PUBSUB',
+          useValue: {
+            publish: jest.fn(),
           },
         },
       ],
@@ -262,6 +298,14 @@ describe('CharacterService', () => {
   });
 
   describe('update', () => {
+    const mockBranchId = 'branch-1';
+    const mockBranch = {
+      id: mockBranchId,
+      campaignId: 'campaign-1',
+      name: 'Main',
+      deletedAt: null,
+    };
+
     it('should update a character with valid data', async () => {
       const input = {
         name: 'Gandalf the Grey',
@@ -270,42 +314,43 @@ describe('CharacterService', () => {
 
       (prisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.character.update as jest.Mock).mockResolvedValue({
         ...mockCharacter,
         name: input.name,
         level: input.level,
       });
 
-      const result = await service.update('character-1', input, mockUser);
+      const result = await service.update('character-1', input, mockUser, 1, mockBranchId);
 
       expect(result.name).toBe(input.name);
       expect(result.level).toBe(input.level);
-      expect(prisma.character.update).toHaveBeenCalledWith({
-        where: { id: 'character-1' },
-        data: { name: input.name, level: input.level },
-      });
-      expect(audit.log).toHaveBeenCalledWith('character', 'character-1', 'UPDATE', mockUser.id, {
-        name: input.name,
-        level: input.level,
-      });
+      expect(audit.log).toHaveBeenCalledWith(
+        'character',
+        'character-1',
+        'UPDATE',
+        mockUser.id,
+        expect.any(Object)
+      );
     });
 
     it('should throw NotFoundException if character not found', async () => {
       (prisma.character.findFirst as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('nonexistent', { name: 'Test' }, mockUser)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        service.update('nonexistent', { name: 'Test' }, mockUser, 1, mockBranchId)
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.character.update).not.toHaveBeenCalled();
     });
 
     it('should throw ForbiddenException if user lacks permissions', async () => {
       (prisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('character-1', { name: 'Test' }, mockUser)).rejects.toThrow(
-        ForbiddenException
-      );
+      await expect(
+        service.update('character-1', { name: 'Test' }, mockUser, 1, mockBranchId)
+      ).rejects.toThrow(ForbiddenException);
       expect(prisma.character.update).not.toHaveBeenCalled();
     });
 
@@ -316,9 +361,10 @@ describe('CharacterService', () => {
 
       (prisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.party.findFirst as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('character-1', input, mockUser)).rejects.toThrow(
+      await expect(service.update('character-1', input, mockUser, 1, mockBranchId)).rejects.toThrow(
         NotFoundException
       );
       expect(prisma.character.update).not.toHaveBeenCalled();

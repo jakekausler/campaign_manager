@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
+import { CampaignContextService } from './campaign-context.service';
 import { KingdomService } from './kingdom.service';
 import { VersionService } from './version.service';
 
@@ -102,6 +103,12 @@ describe('KingdomService', () => {
             createVersion: jest.fn(),
             resolveVersion: jest.fn(),
             decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: CampaignContextService,
+          useValue: {
+            invalidateContextForEntity: jest.fn(),
           },
         },
         {

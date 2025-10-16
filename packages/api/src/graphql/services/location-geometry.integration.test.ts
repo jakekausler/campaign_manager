@@ -8,6 +8,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { GeoJSONPoint, GeoJSONPolygon, GeoJSONMultiPolygon } from '@campaign/shared';
 
 import { SpatialService } from '../../common/services/spatial.service';
+import { TileCacheService } from '../../common/services/tile-cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
@@ -30,6 +31,7 @@ describe('LocationService - Geometry Operations (Integration)', () => {
       providers: [
         LocationService,
         SpatialService,
+        TileCacheService,
         PrismaService,
         AuditService,
         VersionService,

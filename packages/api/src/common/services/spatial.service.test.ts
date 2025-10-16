@@ -3,6 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { GeoJSONPoint, GeoJSONPolygon, GeoJSONMultiPolygon, SRID } from '@campaign/shared';
 
+import { PrismaService } from '../../database/prisma.service';
+
 import { SpatialService } from './spatial.service';
 
 describe('SpatialService', () => {
@@ -10,7 +12,15 @@ describe('SpatialService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SpatialService],
+      providers: [
+        SpatialService,
+        {
+          provide: PrismaService,
+          useValue: {
+            $queryRaw: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<SpatialService>(SpatialService);

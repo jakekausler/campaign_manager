@@ -18,6 +18,10 @@ import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 import { AuditService } from '../services/audit.service';
+import { CampaignContextService } from '../services/campaign-context.service';
+import { KingdomService } from '../services/kingdom.service';
+import { PartyService } from '../services/party.service';
+import { SettlementService } from '../services/settlement.service';
 import { StructureService } from '../services/structure.service';
 import { VariableSchemaService } from '../services/variable-schema.service';
 import { VersionService } from '../services/version.service';
@@ -48,6 +52,11 @@ describe('StructureResolver Integration Tests', () => {
         VariableSchemaService,
         VersionService,
         AuditService,
+        CampaignContextService,
+        // Add all services that CampaignContextService depends on to resolve circular dependencies
+        PartyService,
+        KingdomService,
+        SettlementService,
         PrismaService,
         {
           provide: REDIS_PUBSUB,

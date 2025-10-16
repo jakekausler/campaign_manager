@@ -277,7 +277,10 @@ describe('VersionService', () => {
 
       (mockPrisma.version.findMany as jest.Mock).mockResolvedValue(versions);
 
-      const result = await service.findVersionHistory(entityType, entityId, branchId);
+      // Mock branch lookup for authorization
+      (mockPrisma.branch.findUnique as jest.Mock).mockResolvedValue(mockBranch);
+
+      const result = await service.findVersionHistory(entityType, entityId, branchId, mockUser);
 
       expect(mockPrisma.version.findMany).toHaveBeenCalledWith({
         where: {
@@ -297,7 +300,15 @@ describe('VersionService', () => {
     it('should return empty array when no versions exist', async () => {
       (mockPrisma.version.findMany as jest.Mock).mockResolvedValue([]);
 
-      const result = await service.findVersionHistory('campaign', 'campaign-1', 'branch-1');
+      // Mock branch lookup for authorization
+      (mockPrisma.branch.findUnique as jest.Mock).mockResolvedValue(mockBranch);
+
+      const result = await service.findVersionHistory(
+        'campaign',
+        'campaign-1',
+        'branch-1',
+        mockUser
+      );
 
       expect(result).toEqual([]);
     });
@@ -582,7 +593,10 @@ describe('VersionService', () => {
       };
       (calculateDiff as jest.Mock).mockReturnValue(mockDiff);
 
-      const result = await service.getVersionDiff('version-1', 'version-2');
+      // Mock branch lookup for authorization
+      (mockPrisma.branch.findUnique as jest.Mock).mockResolvedValue(mockBranch);
+
+      const result = await service.getVersionDiff('version-1', 'version-2', mockUser);
 
       expect(mockPrisma.version.findFirst).toHaveBeenCalledTimes(2);
       expect(decompressPayload).toHaveBeenCalledTimes(2);
@@ -598,7 +612,7 @@ describe('VersionService', () => {
     it('should throw error when first version not found', async () => {
       (mockPrisma.version.findFirst as jest.Mock).mockResolvedValueOnce(null);
 
-      await expect(service.getVersionDiff('invalid-1', 'version-2')).rejects.toThrow(
+      await expect(service.getVersionDiff('invalid-1', 'version-2', mockUser)).rejects.toThrow(
         NotFoundException
       );
     });
@@ -622,7 +636,7 @@ describe('VersionService', () => {
         .mockResolvedValueOnce(version1)
         .mockResolvedValueOnce(null);
 
-      await expect(service.getVersionDiff('version-1', 'invalid-2')).rejects.toThrow(
+      await expect(service.getVersionDiff('version-1', 'invalid-2', mockUser)).rejects.toThrow(
         NotFoundException
       );
     });
@@ -670,7 +684,12 @@ describe('VersionService', () => {
       // Mock version creation
       (mockPrisma.version.create as jest.Mock).mockResolvedValue(restoredVersion);
 
-      const result = await service.restoreVersion('version-old', mockUser, new Date('2025-03-01'));
+      const result = await service.restoreVersion(
+        'version-old',
+        'branch-1',
+        mockUser,
+        new Date('2025-03-01')
+      );
 
       expect(mockPrisma.version.findFirst).toHaveBeenNthCalledWith(1, {
         where: { id: 'version-old' },
@@ -727,7 +746,7 @@ describe('VersionService', () => {
       (mockPrisma.version.findFirst as jest.Mock).mockResolvedValue(null);
 
       await expect(
-        service.restoreVersion('invalid-version', mockUser, new Date('2025-03-01'))
+        service.restoreVersion('invalid-version', 'branch-1', mockUser, new Date('2025-03-01'))
       ).rejects.toThrow(NotFoundException);
     });
   });

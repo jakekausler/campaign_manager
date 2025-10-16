@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
+import { CampaignContextService } from './campaign-context.service';
 import { StructureService } from './structure.service';
 import { VersionService } from './version.service';
 
@@ -76,6 +77,12 @@ describe('StructureService', () => {
             createVersion: jest.fn(),
             resolveVersion: jest.fn(),
             decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: CampaignContextService,
+          useValue: {
+            invalidateContextForEntity: jest.fn(),
           },
         },
         {
@@ -374,11 +381,40 @@ describe('StructureService', () => {
   });
 
   describe('setLevel', () => {
+    const mockCampaign = {
+      id: 'campaign-1',
+      worldId: 'world-1',
+      ownerId: 'user-1',
+    };
+
+    const mockKingdom = {
+      id: 'kingdom-1',
+      campaignId: 'campaign-1',
+      name: 'Gondor',
+      campaign: mockCampaign,
+    };
+
+    const mockSettlementWithKingdom = {
+      ...mockSettlement,
+      kingdom: mockKingdom,
+    };
+
+    const mockStructureWithRelations = {
+      ...mockStructure,
+      settlement: mockSettlementWithKingdom,
+    };
+
+    beforeEach(() => {
+      // Add findUnique mock needed by setLevel for context invalidation
+      (prisma as any).structure.findUnique = jest.fn();
+    });
+
     it('should set structure level', async () => {
       const newLevel = 4;
       (prisma.structure.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockStructure) // findById
         .mockResolvedValueOnce(mockStructure); // hasPermission check
+      (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithRelations);
       (prisma.structure.update as jest.Mock).mockResolvedValue({
         ...mockStructure,
         level: newLevel,

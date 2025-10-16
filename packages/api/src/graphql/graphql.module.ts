@@ -45,11 +45,13 @@ import { CharacterService } from './services/character.service';
 import { EncounterService } from './services/encounter.service';
 import { EventService } from './services/event.service';
 import { KingdomService } from './services/kingdom.service';
+import { LevelHistoryService } from './services/level-history.service';
 import { LinkService } from './services/link.service';
 import { LocationService } from './services/location.service';
 import { PartyService } from './services/party.service';
 import { SettlementService } from './services/settlement.service';
 import { StructureService } from './services/structure.service';
+import { VariableSchemaService } from './services/variable-schema.service';
 import { VersionService } from './services/version.service';
 import { WorldService } from './services/world.service';
 
@@ -157,6 +159,8 @@ import { WorldService } from './services/world.service';
     LinkService,
     SpatialService,
     TileCacheService,
+    LevelHistoryService,
+    VariableSchemaService,
     // DataLoaders
     StructureDataLoader,
     // Resolvers

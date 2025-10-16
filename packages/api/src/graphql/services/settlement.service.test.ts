@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
+import { CampaignContextService } from './campaign-context.service';
 import { SettlementService } from './settlement.service';
 import { VersionService } from './version.service';
 
@@ -68,6 +69,7 @@ describe('SettlementService', () => {
           useValue: {
             settlement: {
               findFirst: jest.fn(),
+              findUnique: jest.fn(),
               findMany: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
@@ -95,6 +97,12 @@ describe('SettlementService', () => {
             createVersion: jest.fn(),
             resolveVersion: jest.fn(),
             decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: CampaignContextService,
+          useValue: {
+            invalidateContextForEntity: jest.fn(),
           },
         },
         {
@@ -387,11 +395,22 @@ describe('SettlementService', () => {
   });
 
   describe('setLevel', () => {
+    const mockSettlementWithKingdom = {
+      ...mockSettlement,
+      kingdom: mockKingdom,
+    };
+
+    beforeEach(() => {
+      // Add findUnique mock needed by setLevel for context invalidation
+      (prisma as any).settlement.findUnique = jest.fn();
+    });
+
     it('should set settlement level', async () => {
       const newLevel = 5;
       (prisma.settlement.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockSettlement) // findById
         .mockResolvedValueOnce(mockSettlement); // hasPermission check
+      (prisma.settlement.findUnique as jest.Mock).mockResolvedValue(mockSettlementWithKingdom);
       (prisma.settlement.update as jest.Mock).mockResolvedValue({
         ...mockSettlement,
         level: newLevel,

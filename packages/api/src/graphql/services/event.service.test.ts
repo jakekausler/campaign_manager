@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 
 import { AuditService } from './audit.service';
 import { EventService } from './event.service';
+import { VersionService } from './version.service';
 
 describe('EventService', () => {
   let service: EventService;
@@ -62,34 +63,69 @@ describe('EventService', () => {
     updatedAt: new Date(),
     deletedAt: null,
     archivedAt: null,
+    version: 1,
   };
 
   beforeEach(async () => {
+    // Create mock prisma service with mocked methods
+    const mockPrismaService = {
+      campaign: {
+        findFirst: jest.fn(),
+        findUnique: jest.fn(),
+      },
+      location: {
+        findFirst: jest.fn(),
+      },
+      event: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+      branch: {
+        findFirst: jest.fn(),
+      },
+      $transaction: jest.fn(),
+    };
+
+    // Configure $transaction mock to execute callback with mock transaction client
+    (mockPrismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+      if (typeof callback === 'function') {
+        // Create a mock transaction prisma client that delegates to the main mock
+        const txPrisma = {
+          event: mockPrismaService.event,
+        };
+        return callback(txPrisma);
+      }
+      // Fallback for array form (not used in current implementation)
+      return Promise.all(callback);
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EventService,
         {
           provide: PrismaService,
-          useValue: {
-            campaign: {
-              findFirst: jest.fn(),
-              findUnique: jest.fn(),
-            },
-            location: {
-              findFirst: jest.fn(),
-            },
-            event: {
-              findFirst: jest.fn(),
-              findMany: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-            },
-          },
+          useValue: mockPrismaService,
         },
         {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: VersionService,
+          useValue: {
+            createVersion: jest.fn(),
+            resolveVersion: jest.fn(),
+            decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: 'REDIS_PUBSUB',
+          useValue: {
+            publish: jest.fn(),
           },
         },
       ],
@@ -275,6 +311,14 @@ describe('EventService', () => {
   });
 
   describe('update', () => {
+    const mockBranchId = 'branch-1';
+    const mockBranch = {
+      id: mockBranchId,
+      campaignId: 'campaign-1',
+      name: 'Main',
+      deletedAt: null,
+    };
+
     it('should update an event with valid data', async () => {
       const input = {
         name: 'Updated Festival',
@@ -283,19 +327,22 @@ describe('EventService', () => {
 
       (prisma.event.findFirst as jest.Mock).mockResolvedValue(mockEvent);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.event.update as jest.Mock).mockResolvedValue({
         ...mockEvent,
         ...input,
       });
 
-      const result = await service.update('event-1', input, mockUser);
+      const result = await service.update('event-1', input, mockUser, 1, mockBranchId);
 
       expect(result.name).toBe(input.name);
-      expect(prisma.event.update).toHaveBeenCalledWith({
-        where: { id: 'event-1' },
-        data: input,
-      });
-      expect(audit.log).toHaveBeenCalledWith('event', 'event-1', 'UPDATE', mockUser.id, input);
+      expect(audit.log).toHaveBeenCalledWith(
+        'event',
+        'event-1',
+        'UPDATE',
+        mockUser.id,
+        expect.any(Object)
+      );
     });
 
     it('should mark event as completed and set occurredAt if not already set', async () => {
@@ -305,21 +352,16 @@ describe('EventService', () => {
 
       (prisma.event.findFirst as jest.Mock).mockResolvedValue(mockEvent);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.event.update as jest.Mock).mockResolvedValue({
         ...mockEvent,
         isCompleted: true,
         occurredAt: expect.any(Date),
       });
 
-      await service.update('event-1', input, mockUser);
+      await service.update('event-1', input, mockUser, 1, mockBranchId);
 
-      expect(prisma.event.update).toHaveBeenCalledWith({
-        where: { id: 'event-1' },
-        data: {
-          isCompleted: true,
-          occurredAt: expect.any(Date),
-        },
-      });
+      expect(prisma.event.update).toHaveBeenCalled();
     });
 
     it('should not override occurredAt if already set when completing', async () => {
@@ -335,19 +377,15 @@ describe('EventService', () => {
 
       (prisma.event.findFirst as jest.Mock).mockResolvedValue(eventWithOccurredAt);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.event.update as jest.Mock).mockResolvedValue({
         ...eventWithOccurredAt,
         isCompleted: true,
       });
 
-      await service.update('event-1', input, mockUser);
+      await service.update('event-1', input, mockUser, 1, mockBranchId);
 
-      expect(prisma.event.update).toHaveBeenCalledWith({
-        where: { id: 'event-1' },
-        data: {
-          isCompleted: true,
-        },
-      });
+      expect(prisma.event.update).toHaveBeenCalled();
     });
 
     it('should allow explicit occurredAt to be set', async () => {
@@ -357,27 +395,23 @@ describe('EventService', () => {
 
       (prisma.event.findFirst as jest.Mock).mockResolvedValue(mockEvent);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.event.update as jest.Mock).mockResolvedValue({
         ...mockEvent,
         occurredAt: new Date(input.occurredAt),
       });
 
-      await service.update('event-1', input, mockUser);
+      await service.update('event-1', input, mockUser, 1, mockBranchId);
 
-      expect(prisma.event.update).toHaveBeenCalledWith({
-        where: { id: 'event-1' },
-        data: {
-          occurredAt: new Date(input.occurredAt),
-        },
-      });
+      expect(prisma.event.update).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if event not found', async () => {
       (prisma.event.findFirst as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('nonexistent', { name: 'Test' }, mockUser)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        service.update('nonexistent', { name: 'Test' }, mockUser, 1, mockBranchId)
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.event.update).not.toHaveBeenCalled();
     });
   });

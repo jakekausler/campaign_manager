@@ -66,6 +66,7 @@ describe('CampaignService', () => {
       },
       branch: {
         create: jest.fn(),
+        findFirst: jest.fn(),
         updateMany: jest.fn(),
       },
       event: {
@@ -128,6 +129,12 @@ describe('CampaignService', () => {
             createVersion: jest.fn(),
             resolveVersion: jest.fn(),
             decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: 'REDIS_PUBSUB',
+          useValue: {
+            publish: jest.fn(),
           },
         },
       ],
@@ -269,6 +276,12 @@ describe('CampaignService', () => {
 
   describe('update', () => {
     const mockBranchId = 'branch-1';
+    const mockBranch = {
+      id: mockBranchId,
+      campaignId: 'campaign-1',
+      name: 'Main',
+      deletedAt: null,
+    };
     const mockWorldTime = new Date('2024-01-01T00:00:00Z');
     const mockVersion = {
       id: 'version-1',
@@ -292,6 +305,7 @@ describe('CampaignService', () => {
       (prisma.campaign.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockCampaign) // findById
         .mockResolvedValueOnce(mockCampaign); // hasEditPermission
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
 
       const updatedCampaign = {
         ...mockCampaign,
@@ -337,6 +351,7 @@ describe('CampaignService', () => {
       (prisma.campaign.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockCampaign) // findById
         .mockResolvedValueOnce(mockCampaign); // hasEditPermission
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
 
       await expect(
         service.update(
@@ -364,6 +379,7 @@ describe('CampaignService', () => {
       (prisma.campaign.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockCampaign) // findById
         .mockResolvedValueOnce(null); // hasEditPermission
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
 
       await expect(
         service.update('campaign-1', { name: 'Test' }, mockUser, 1, mockBranchId)
@@ -381,6 +397,7 @@ describe('CampaignService', () => {
       (prisma.campaign.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockCampaign)
         .mockResolvedValueOnce(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
 
       const updatedCampaign = {
         ...mockCampaign,
@@ -412,6 +429,7 @@ describe('CampaignService', () => {
       (prisma.campaign.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockCampaign)
         .mockResolvedValueOnce(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
 
       (prisma.campaign.update as jest.Mock).mockResolvedValue({
         ...mockCampaign,

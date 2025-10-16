@@ -4,7 +4,7 @@
  * Provides context for rules engine to evaluate conditions
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
@@ -84,9 +84,13 @@ export class CampaignContextService {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => PartyService))
     private readonly partyService: PartyService,
+    @Inject(forwardRef(() => KingdomService))
     private readonly kingdomService: KingdomService,
+    @Inject(forwardRef(() => SettlementService))
     private readonly settlementService: SettlementService,
+    @Inject(forwardRef(() => StructureService))
     private readonly structureService: StructureService
   ) {}
 

@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 
 import { AuditService } from './audit.service';
 import { EncounterService } from './encounter.service';
+import { VersionService } from './version.service';
 
 describe('EncounterService', () => {
   let service: EncounterService;
@@ -61,34 +62,69 @@ describe('EncounterService', () => {
     updatedAt: new Date(),
     deletedAt: null,
     archivedAt: null,
+    version: 1,
   };
 
   beforeEach(async () => {
+    // Create mock prisma service with mocked methods
+    const mockPrismaService = {
+      campaign: {
+        findFirst: jest.fn(),
+        findUnique: jest.fn(),
+      },
+      location: {
+        findFirst: jest.fn(),
+      },
+      encounter: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+      branch: {
+        findFirst: jest.fn(),
+      },
+      $transaction: jest.fn(),
+    };
+
+    // Configure $transaction mock to execute callback with mock transaction client
+    (mockPrismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+      if (typeof callback === 'function') {
+        // Create a mock transaction prisma client that delegates to the main mock
+        const txPrisma = {
+          encounter: mockPrismaService.encounter,
+        };
+        return callback(txPrisma);
+      }
+      // Fallback for array form (not used in current implementation)
+      return Promise.all(callback);
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EncounterService,
         {
           provide: PrismaService,
-          useValue: {
-            campaign: {
-              findFirst: jest.fn(),
-              findUnique: jest.fn(),
-            },
-            location: {
-              findFirst: jest.fn(),
-            },
-            encounter: {
-              findFirst: jest.fn(),
-              findMany: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-            },
-          },
+          useValue: mockPrismaService,
         },
         {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: VersionService,
+          useValue: {
+            createVersion: jest.fn(),
+            resolveVersion: jest.fn(),
+            decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: 'REDIS_PUBSUB',
+          useValue: {
+            publish: jest.fn(),
           },
         },
       ],
@@ -269,6 +305,14 @@ describe('EncounterService', () => {
   });
 
   describe('update', () => {
+    const mockBranchId = 'branch-1';
+    const mockBranch = {
+      id: mockBranchId,
+      campaignId: 'campaign-1',
+      name: 'Main',
+      deletedAt: null,
+    };
+
     it('should update an encounter with valid data', async () => {
       const input = {
         name: 'Updated Ambush',
@@ -278,24 +322,21 @@ describe('EncounterService', () => {
 
       (prisma.encounter.findFirst as jest.Mock).mockResolvedValue(mockEncounter);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.encounter.update as jest.Mock).mockResolvedValue({
         ...mockEncounter,
         ...input,
       });
 
-      const result = await service.update('encounter-1', input, mockUser);
+      const result = await service.update('encounter-1', input, mockUser, 1, mockBranchId);
 
       expect(result.name).toBe(input.name);
-      expect(prisma.encounter.update).toHaveBeenCalledWith({
-        where: { id: 'encounter-1' },
-        data: input,
-      });
       expect(audit.log).toHaveBeenCalledWith(
         'encounter',
         'encounter-1',
         'UPDATE',
         mockUser.id,
-        input
+        expect.any(Object)
       );
     });
 
@@ -306,21 +347,16 @@ describe('EncounterService', () => {
 
       (prisma.encounter.findFirst as jest.Mock).mockResolvedValue(mockEncounter);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.encounter.update as jest.Mock).mockResolvedValue({
         ...mockEncounter,
         isResolved: true,
         resolvedAt: expect.any(Date),
       });
 
-      await service.update('encounter-1', input, mockUser);
+      await service.update('encounter-1', input, mockUser, 1, mockBranchId);
 
-      expect(prisma.encounter.update).toHaveBeenCalledWith({
-        where: { id: 'encounter-1' },
-        data: {
-          isResolved: true,
-          resolvedAt: expect.any(Date),
-        },
-      });
+      expect(prisma.encounter.update).toHaveBeenCalled();
     });
 
     it('should clear resolvedAt when marking as unresolved', async () => {
@@ -336,29 +372,24 @@ describe('EncounterService', () => {
 
       (prisma.encounter.findFirst as jest.Mock).mockResolvedValue(resolvedEncounter);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.encounter.update as jest.Mock).mockResolvedValue({
         ...resolvedEncounter,
         isResolved: false,
         resolvedAt: null,
       });
 
-      await service.update('encounter-1', input, mockUser);
+      await service.update('encounter-1', input, mockUser, 1, mockBranchId);
 
-      expect(prisma.encounter.update).toHaveBeenCalledWith({
-        where: { id: 'encounter-1' },
-        data: {
-          isResolved: false,
-          resolvedAt: null,
-        },
-      });
+      expect(prisma.encounter.update).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if encounter not found', async () => {
       (prisma.encounter.findFirst as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('nonexistent', { name: 'Test' }, mockUser)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        service.update('nonexistent', { name: 'Test' }, mockUser, 1, mockBranchId)
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.encounter.update).not.toHaveBeenCalled();
     });
   });

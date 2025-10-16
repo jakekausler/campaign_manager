@@ -10,6 +10,7 @@ import {
   ForbiddenException,
   BadRequestException,
   Inject,
+  forwardRef,
 } from '@nestjs/common';
 import type { Settlement as PrismaSettlement, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
@@ -21,6 +22,7 @@ import type { CreateSettlementInput, UpdateSettlementData } from '../inputs/sett
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
+import { CampaignContextService } from './campaign-context.service';
 import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
@@ -29,6 +31,8 @@ export class SettlementService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
+    @Inject(forwardRef(() => CampaignContextService))
+    private readonly campaignContext: CampaignContextService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
@@ -573,6 +577,32 @@ export class SettlementService {
         modifiedAt: updated.updatedAt,
       },
     });
+
+    // Get campaign ID for context invalidation
+    const settlementWithKingdom = await this.prisma.settlement.findUnique({
+      where: { id },
+      include: { kingdom: true },
+    });
+
+    // Invalidate campaign context cache to reflect level change
+    // Cache invalidation failures should not block the operation - cache will expire via TTL
+    try {
+      await this.campaignContext.invalidateContextForEntity(
+        'settlement',
+        id,
+        settlementWithKingdom!.kingdom.campaignId
+      );
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      console.error(`Failed to invalidate campaign context for settlement ${id}:`, error);
+    }
+
+    // TODO (TICKET-013): Trigger rules engine recalculation when rules engine is implemented
+    // await this.rulesEngine.invalidate({
+    //   campaignId: settlementWithKingdom!.kingdom.campaignId,
+    //   changeType: 'settlement_level',
+    //   affectedVariables: ['settlement.level'],
+    // });
 
     return updated;
   }

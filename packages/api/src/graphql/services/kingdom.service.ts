@@ -10,6 +10,7 @@ import {
   ForbiddenException,
   BadRequestException,
   Inject,
+  forwardRef,
 } from '@nestjs/common';
 import type { Kingdom as PrismaKingdom, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
@@ -21,6 +22,7 @@ import type { CreateKingdomInput, UpdateKingdomData } from '../inputs/kingdom.in
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
+import { CampaignContextService } from './campaign-context.service';
 import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
@@ -29,6 +31,8 @@ export class KingdomService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
+    @Inject(forwardRef(() => CampaignContextService))
+    private readonly campaignContext: CampaignContextService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
@@ -432,6 +436,22 @@ export class KingdomService {
         modifiedAt: updated.updatedAt,
       },
     });
+
+    // Invalidate campaign context cache to reflect level change
+    // Cache invalidation failures should not block the operation - cache will expire via TTL
+    try {
+      await this.campaignContext.invalidateContextForEntity('kingdom', id, kingdom.campaignId);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      console.error(`Failed to invalidate campaign context for kingdom ${id}:`, error);
+    }
+
+    // TODO (TICKET-013): Trigger rules engine recalculation when rules engine is implemented
+    // await this.rulesEngine.invalidate({
+    //   campaignId: kingdom.campaignId,
+    //   changeType: 'kingdom_level',
+    //   affectedVariables: ['kingdom.level'],
+    // });
 
     return updated;
   }
