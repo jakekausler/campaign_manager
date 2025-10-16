@@ -6,6 +6,10 @@ A full-stack campaign management tool for tabletop RPGs that unifies map, flowch
 
 - **Multi-View System**: Integrated map, flowchart, and timeline views
 - **Spatial Data**: PostGIS-powered location and geography management
+- **Party & Kingdom Management**: Support for multiple parties, kingdoms, settlements, and structures with level tracking
+- **Typed Variables**: Define custom typed variables (string, number, boolean, enum) for all entity types
+- **Level History**: Track level changes across all entities with comprehensive audit trail
+- **Campaign Context**: Aggregate party, kingdom, settlement, and structure state for rules engine
 - **Rules Engine**: JSONLogic-based conditional system for dynamic content
 - **Versioning**: Full history tracking and branching support
 - **Real-time Updates**: WebSocket-based synchronization
@@ -335,14 +339,27 @@ MIT
 
 This project is currently in active development. See the `plan/` directory for detailed tickets and roadmap.
 
-### Current Milestone
+### Completed Features
 
-**Milestone 1: Infrastructure & Setup (Weeks 1-2)**
+**Core Entity Management**
 
 - [x] TICKET-001: Project Scaffolding & Repository Setup
 - [x] TICKET-002: Docker Compose Infrastructure
-- [ ] TICKET-003: Database Schema Design & Prisma Setup
-- [ ] TICKET-004: Authentication & Authorization System
-- [ ] TICKET-005: Basic GraphQL API with NestJS
+- [x] TICKET-003: Database Schema Design & Prisma Setup
+- [x] TICKET-004: Authentication & Authorization System
+- [x] TICKET-005: Basic GraphQL API with NestJS
+- [x] TICKET-006: Entity CRUD Operations (Campaigns, Locations, Characters, Encounters, Events)
+- [x] TICKET-007: Audit System & Event Publishing
+- [x] TICKET-008: Versioning System
+- [x] TICKET-009: Party & Kingdom Management
 
-See `plan/EPIC.md` for the complete project roadmap.
+**Party & Kingdom Management (TICKET-009)**
+
+- Support for multiple parties per campaign
+- Kingdom, Settlement, and Structure hierarchies
+- Level tracking with validation and history
+- Typed custom variables (string, number, boolean, enum)
+- Campaign context aggregation for rules engine
+- Comprehensive GraphQL API for all operations
+
+See `plan/EPIC.md` for the complete project roadmap and upcoming features.
