@@ -1,0 +1,207 @@
+# =================================================================
+# Campaign Manager - Production Docker Compose Overrides
+# =================================================================
+# This file extends docker-compose.yml for production environment
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# =================================================================
+
+version: '3.8'
+
+services:
+  # =================================================================
+  # API Service - Production Mode
+  # =================================================================
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+      target: production
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+      GRAPHQL_PLAYGROUND: 'false'
+      GRAPHQL_INTROSPECTION: 'false'
+    secrets:
+      - jwt_secret
+      - db_password
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  # =================================================================
+  # Rules Engine Worker - Production Mode
+  # =================================================================
+  rules-engine:
+    build:
+      context: .
+      dockerfile: packages/rules-engine/Dockerfile
+      target: production
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+    secrets:
+      - db_password
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  # =================================================================
+  # Scheduler Worker - Production Mode
+  # =================================================================
+  scheduler:
+    build:
+      context: .
+      dockerfile: packages/scheduler/Dockerfile
+      target: production
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+    secrets:
+      - db_password
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  # =================================================================
+  # Frontend - Production Mode
+  # =================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+      target: production
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  # =================================================================
+  # PostgreSQL - Production Mode
+  # =================================================================
+  postgres:
+    secrets:
+      - db_password
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+    command:
+      - 'postgres'
+      - '-c'
+      - 'max_connections=200'
+      - '-c'
+      - 'shared_buffers=512MB'
+      - '-c'
+      - 'effective_cache_size=1536MB'
+      - '-c'
+      - 'maintenance_work_mem=128MB'
+      - '-c'
+      - 'checkpoint_completion_target=0.9'
+      - '-c'
+      - 'wal_buffers=16MB'
+      - '-c'
+      - 'default_statistics_target=100'
+      - '-c'
+      - 'random_page_cost=1.1'
+      - '-c'
+      - 'effective_io_concurrency=200'
+      - '-c'
+      - 'work_mem=2621kB'
+      - '-c'
+      - 'min_wal_size=1GB'
+      - '-c'
+      - 'max_wal_size=4GB'
+
+  # =================================================================
+  # Redis - Production Mode
+  # =================================================================
+  redis:
+    command:
+      - redis-server
+      - --appendonly yes
+      - --maxmemory 512mb
+      - --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # =================================================================
+  # MinIO - Production Mode
+  # =================================================================
+  minio:
+    secrets:
+      - minio_root_password
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+# =================================================================
+# Docker Secrets (for Docker Swarm / Production)
+# =================================================================
+secrets:
+  jwt_secret:
+    external: true
+  db_password:
+    external: true
+  minio_root_password:
+    external: true

@@ -1,0 +1,17 @@
+# Package-specific .dockerignore for Shared
+
+# Source maps
+*.map
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__/
+test/
+
+# Build artifacts
+dist/
+coverage/
+
+# Logs
+*.log

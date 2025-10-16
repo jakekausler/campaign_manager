@@ -1,3 +1,8 @@
+---
+name: typescript-tester
+description: Subagent for running, debugging, and fixing TypeScript tests in the monorepo.
+---
+
 # TypeScript Tester Subagent
 
 ## Purpose

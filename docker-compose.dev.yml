@@ -1,0 +1,140 @@
+# =================================================================
+# Campaign Manager - Development Docker Compose Overrides
+# =================================================================
+# This file extends docker-compose.yml for development environment
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# =================================================================
+
+version: '3.8'
+
+services:
+  # =================================================================
+  # API Service - Development Mode
+  # =================================================================
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+      target: builder
+    command: pnpm --filter @campaign/api dev
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+      GRAPHQL_PLAYGROUND: 'true'
+      GRAPHQL_INTROSPECTION: 'true'
+    volumes:
+      # Mount source code for hot reload
+      - ./packages/api/src:/app/packages/api/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./packages/shared/dist:/app/packages/shared/dist:ro
+      # Preserve node_modules
+      - /app/node_modules
+      - /app/packages/api/node_modules
+      - /app/packages/shared/node_modules
+    ports:
+      - '3000:3000'
+      - '9229:9229' # Node.js debugger
+
+  # =================================================================
+  # Rules Engine Worker - Development Mode
+  # =================================================================
+  rules-engine:
+    build:
+      context: .
+      dockerfile: packages/rules-engine/Dockerfile
+      target: builder
+    command: pnpm --filter @campaign/rules-engine dev
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+    volumes:
+      # Mount source code for hot reload
+      - ./packages/rules-engine/src:/app/packages/rules-engine/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./packages/shared/dist:/app/packages/shared/dist:ro
+      # Preserve node_modules
+      - /app/node_modules
+      - /app/packages/rules-engine/node_modules
+      - /app/packages/shared/node_modules
+    ports:
+      - '9230:9229' # Node.js debugger
+
+  # =================================================================
+  # Scheduler Worker - Development Mode
+  # =================================================================
+  scheduler:
+    build:
+      context: .
+      dockerfile: packages/scheduler/Dockerfile
+      target: builder
+    command: pnpm --filter @campaign/scheduler dev
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+      LOG_FORMAT: pretty
+    volumes:
+      # Mount source code for hot reload
+      - ./packages/scheduler/src:/app/packages/scheduler/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./packages/shared/dist:/app/packages/shared/dist:ro
+      # Preserve node_modules
+      - /app/node_modules
+      - /app/packages/scheduler/node_modules
+      - /app/packages/shared/node_modules
+    ports:
+      - '9231:9229' # Node.js debugger
+
+  # =================================================================
+  # Frontend - Development Mode
+  # =================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+      target: builder
+    command: pnpm --filter @campaign/frontend dev --host 0.0.0.0
+    environment:
+      NODE_ENV: development
+      VITE_API_URL: http://localhost:3000
+      VITE_GRAPHQL_URL: http://localhost:3000/graphql
+      VITE_WS_URL: ws://localhost:3000/graphql
+    volumes:
+      # Mount source code for hot reload
+      - ./packages/frontend/src:/app/packages/frontend/src:ro
+      - ./packages/frontend/public:/app/packages/frontend/public:ro
+      - ./packages/frontend/index.html:/app/packages/frontend/index.html:ro
+      - ./packages/frontend/vite.config.ts:/app/packages/frontend/vite.config.ts:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      # Preserve node_modules
+      - /app/node_modules
+      - /app/packages/frontend/node_modules
+      - /app/packages/shared/node_modules
+    ports:
+      - '5173:5173' # Vite dev server
+
+  # =================================================================
+  # PostgreSQL - Development Mode
+  # =================================================================
+  postgres:
+    ports:
+      - '5432:5432'
+    environment:
+      # Enable statement logging for debugging
+      POSTGRES_INITDB_ARGS: '-c log_statement=all'
+
+  # =================================================================
+  # Redis - Development Mode
+  # =================================================================
+  redis:
+    ports:
+      - '6379:6379'
+
+  # =================================================================
+  # MinIO - Development Mode
+  # =================================================================
+  minio:
+    ports:
+      - '9000:9000'
+      - '9001:9001'

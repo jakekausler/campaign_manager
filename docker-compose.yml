@@ -1,0 +1,218 @@
+# =================================================================
+# Campaign Manager - Base Docker Compose Configuration
+# =================================================================
+# This is the base configuration file.
+# - For development: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# - For production: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+# =================================================================
+
+version: '3.8'
+
+services:
+  # =================================================================
+  # PostgreSQL Database with PostGIS Extension
+  # =================================================================
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: campaign_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-campaign_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campaign_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-campaign_db}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-postgis.sql:/docker-entrypoint-initdb.d/10-init-postgis.sql:ro
+    ports:
+      - '5432:5432'
+    networks:
+      - backend-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-campaign_user} -d ${POSTGRES_DB:-campaign_db}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # =================================================================
+  # Redis - Caching and Pub/Sub
+  # =================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: campaign_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - '6379:6379'
+    networks:
+      - backend-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # =================================================================
+  # MinIO - S3-Compatible Object Storage
+  # =================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: campaign_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    networks:
+      - backend-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # =================================================================
+  # API Service - NestJS GraphQL API
+  # =================================================================
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: campaign_api
+    env_file:
+      - .env.local
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER:-campaign_user}:${POSTGRES_PASSWORD:-campaign_pass}@postgres:5432/${POSTGRES_DB:-campaign_db}
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+    ports:
+      - '3000:3000'
+    networks:
+      - backend-network
+      - frontend-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # =================================================================
+  # Rules Engine Worker
+  # =================================================================
+  rules-engine:
+    build:
+      context: .
+      dockerfile: packages/rules-engine/Dockerfile
+    container_name: campaign_rules_engine
+    env_file:
+      - .env.local
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER:-campaign_user}:${POSTGRES_PASSWORD:-campaign_pass}@postgres:5432/${POSTGRES_DB:-campaign_db}
+      REDIS_URL: redis://redis:6379
+    networks:
+      - backend-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # =================================================================
+  # Scheduler Worker
+  # =================================================================
+  scheduler:
+    build:
+      context: .
+      dockerfile: packages/scheduler/Dockerfile
+    container_name: campaign_scheduler
+    env_file:
+      - .env.local
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER:-campaign_user}:${POSTGRES_PASSWORD:-campaign_pass}@postgres:5432/${POSTGRES_DB:-campaign_db}
+      REDIS_URL: redis://redis:6379
+    networks:
+      - backend-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # =================================================================
+  # Frontend - React + Nginx
+  # =================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+    container_name: campaign_frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+      VITE_GRAPHQL_URL: ${VITE_GRAPHQL_URL:-http://localhost:3000/graphql}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:3000/graphql}
+    ports:
+      - '8080:80'
+    networks:
+      - frontend-network
+    depends_on:
+      - api
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+# =================================================================
+# Networks
+# =================================================================
+networks:
+  backend-network:
+    driver: bridge
+  frontend-network:
+    driver: bridge
+
+# =================================================================
+# Volumes
+# =================================================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  minio-data:
+    driver: local

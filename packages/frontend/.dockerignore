@@ -1,0 +1,19 @@
+# Package-specific .dockerignore for Frontend
+
+# Source maps
+*.map
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+test/
+
+# Build artifacts
+dist/
+coverage/
+
+# Logs
+*.log

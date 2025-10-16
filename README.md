@@ -57,8 +57,18 @@ campaign_manager/
 
 ### Prerequisites
 
+#### Option 1: Docker (Recommended)
+
+- **Docker** >= 24.0.0
+- **Docker Compose** >= 2.20.0
+
+#### Option 2: Local Development
+
 - **Node.js** >= 18.0.0
 - **pnpm** >= 8.0.0
+- **PostgreSQL** >= 14 with PostGIS extension
+- **Redis** >= 7.0
+- **MinIO** or S3-compatible storage
 
 Install pnpm if you don't have it:
 
@@ -66,7 +76,53 @@ Install pnpm if you don't have it:
 npm install -g pnpm
 ```
 
-### Installation
+### Installation (Docker - Recommended)
+
+1. Clone the repository:
+
+```bash
+git clone <repository-url>
+cd campaign_manager
+```
+
+2. Copy the environment file:
+
+```bash
+cp .env.local.example .env.local
+```
+
+3. Update `.env.local` with your configuration (optional for local development)
+
+4. Start all services:
+
+```bash
+# Development mode with hot reload
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# Production mode
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+5. Access the application:
+
+- **Frontend**: http://localhost:5173 (dev) or http://localhost:8080 (prod)
+- **API/GraphQL**: http://localhost:3000
+- **GraphQL Playground**: http://localhost:3000/graphql (dev only)
+- **MinIO Console**: http://localhost:9001
+
+6. Stop all services:
+
+```bash
+docker-compose down
+```
+
+7. Clean up volumes (removes all data):
+
+```bash
+docker-compose down -v
+```
+
+### Installation (Local Development)
 
 1. Clone the repository:
 
@@ -284,7 +340,7 @@ This project is currently in active development. See the `plan/` directory for d
 **Milestone 1: Infrastructure & Setup (Weeks 1-2)**
 
 - [x] TICKET-001: Project Scaffolding & Repository Setup
-- [ ] TICKET-002: Docker Compose Infrastructure
+- [x] TICKET-002: Docker Compose Infrastructure
 - [ ] TICKET-003: Database Schema Design & Prisma Setup
 - [ ] TICKET-004: Authentication & Authorization System
 - [ ] TICKET-005: Basic GraphQL API with NestJS
