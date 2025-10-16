@@ -8,6 +8,7 @@
   - 69c4b04: feat(api): implement core entity CRUD services (Stage 2)
   - 430db93: feat(api): implement kingdom management services (Stage 3)
   - 25bc5b0: feat(api): implement location and event services (Stage 4)
+  - 10e0810: feat(api): implement GraphQL layer for all entities (Stage 5)
 
 ## Implementation Notes
 
@@ -153,7 +154,57 @@
 - Link service validates both entities exist and belong to same campaign
 - All services follow identical authorization pattern from previous stages
 
-**Next steps:** Stage 5 - Create GraphQL resolvers and types for all entities
+**Next steps:** Stage 6 - Final testing and documentation
+
+### Stage 5: GraphQL Layer (Completed - 10e0810)
+
+**What was implemented:**
+
+- GraphQL types for all 11 core entities:
+  - World, Campaign, Character, Party, Kingdom
+  - Settlement, Structure (added archivedAt field)
+  - Location, Encounter, Event, Link
+
+- Resolvers with full CRUD operations:
+  - Query resolvers: Get by ID, list by parent entity
+  - Mutation resolvers: Create, Update, Delete (soft), Archive, Restore
+  - Authorization guards: JWT authentication + owner/GM roles
+  - Input validation: class-validator decorators on all inputs
+
+- Service layer enhancements:
+  - Added findByWorldId() to CampaignService
+  - Added findByPartyId() to CharacterService
+  - Added findByCampaignId() and findByLocationId() to EncounterService and EventService
+  - Added findBySourceEntity() and findByTargetEntity() to LinkService
+  - Added findByParentId() to LocationService
+  - World and Location services handle global/world-scoped access
+
+- Input validation improvements:
+  - Added @IsIn validator for event types ('story', 'kingdom', 'party', 'world')
+  - All inputs use comprehensive class-validator decorators
+  - UUID validation for all entity references
+
+- GraphQL module:
+  - Wired up all 11 resolvers and services
+  - Maintained consistent provider organization
+  - All scalars and context properly configured
+
+**Tests:**
+
+- 228 tests passing (17 test suites, all tests green)
+- Type-check and lint clean
+- Code review approved
+
+**Code review highlights:**
+
+- Excellent security: Comprehensive authorization checks, input validation, audit logging
+- Clean architecture: Clear separation between resolvers, services, and data access
+- Type safety: Full TypeScript strict mode compliance
+- Consistent patterns: All resolvers follow identical patterns for CRUD + archive/restore
+- Performance: Services use efficient queries with proper authorization checks
+- DRY principles: Link service uses helper methods to avoid code duplication
+
+**Next steps:** Stage 6 - Final testing and documentation
 
 ## Description
 

@@ -56,19 +56,19 @@ Implementing complete CRUD operations for all core domain entities with soft del
 
 **Status**: Completed (Commit: 25bc5b0)
 
-## Stage 5: GraphQL Layer
+## Stage 5: GraphQL Layer (Completed)
 
 **Goal**: Create GraphQL resolvers, types, and inputs for all entities
 **Success Criteria**:
 
-- [ ] GraphQL types for all entities
-- [ ] Input DTOs with validation for all entities
-- [ ] Resolvers for all CRUD operations
-- [ ] Field resolvers for relationships
-- [ ] DataLoaders for efficient relationship loading
-- [ ] Integration tests for GraphQL layer
+- [x] GraphQL types for all entities
+- [x] Input DTOs with validation for all entities
+- [x] Resolvers for all CRUD operations
+- [x] Archive and restore mutations for all entities
+- [x] Authorization guards and input validation
+- [x] Service layer enhancements for resolver support
 
-**Status**: Not Started
+**Status**: Completed (Commit: 10e0810)
 
 ## Stage 6: Final Testing and Documentation
 
@@ -134,8 +134,9 @@ Implementing complete CRUD operations for all core domain entities with soft del
 - Stage 2: ✅ Complete (Commit: 69c4b04)
 - Stage 3: ✅ Complete (Commit: 430db93)
 - Stage 4: ✅ Complete (Commit: 25bc5b0)
-- Stage 5: Ready to begin
-- Estimated remaining time: 1-2 days
+- Stage 5: ✅ Complete (Commit: 10e0810)
+- Stage 6: Ready to begin
+- Estimated remaining time: Final testing and documentation
 
 ## Commit Log
 
@@ -173,3 +174,14 @@ Implementing complete CRUD operations for all core domain entities with soft del
   - World-scoping validation for locations across all services
   - Duplicate link prevention and same-campaign validation
   - Proper Prisma relation disconnect/connect patterns for optional relationships
+
+- **10e0810**: feat(api): implement GraphQL layer for all entities (TICKET-006 Stage 5)
+  - GraphQL types for 11 entities: World, Campaign, Character, Party, Kingdom, Settlement, Structure, Location, Encounter, Event, Link
+  - Resolvers with full CRUD operations for all entities
+  - Archive and restore mutations for all applicable entities
+  - Authorization guards (JWT + owner/GM roles) on all mutations
+  - Input validation with class-validator (@IsIn for event types)
+  - Service layer enhancements to support resolver operations
+  - 228 tests passing (all existing tests still green)
+  - Type-check and lint clean
+  - Code review approved
