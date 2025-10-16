@@ -2,13 +2,14 @@
 
 ## Status
 
-- [ ] Completed
+- [x] Completed
 - **Commits**:
   - 8e00f79: feat(api): add entity CRUD infrastructure foundation (Stage 1)
   - 69c4b04: feat(api): implement core entity CRUD services (Stage 2)
   - 430db93: feat(api): implement kingdom management services (Stage 3)
   - 25bc5b0: feat(api): implement location and event services (Stage 4)
   - 10e0810: feat(api): implement GraphQL layer for all entities (Stage 5)
+  - d3f563c: fix(api): resolve critical issues in CRUD implementation (Stage 6)
 
 ## Implementation Notes
 
@@ -206,6 +207,37 @@
 
 **Next steps:** Stage 6 - Final testing and documentation
 
+### Stage 6: Final Testing and Critical Fixes (Completed - d3f563c)
+
+**What was implemented:**
+
+- Resolved three critical issues identified during code review:
+  1. Added AuditService to GraphQL module providers (fixes dependency injection)
+  2. Optimized cascade delete N+1 queries with batch operations
+  3. Replaced console.error with NestJS Logger in AuditService
+
+**Critical fixes:**
+
+- **AuditService registration**: Added missing AuditService to GraphQL module providers array. Without this, the application would crash at startup with "Nest can't resolve dependencies" error.
+
+- **Performance optimization**: Refactored cascade delete methods in CampaignService and KingdomService to use batch `updateMany` operations instead of individual update loops. For a campaign with 10 kingdoms, each with 5 settlements and 10 structures: reduced from ~110 queries to ~6 queries.
+
+- **Logging improvement**: Replaced console.error with NestJS Logger in AuditService to enable proper production monitoring and alerting with stack traces.
+
+**Tests:**
+
+- 228 tests passing (17 test suites, all tests green)
+- Updated test mocks to verify batch operations using `updateMany`
+- Type-check and lint clean
+
+**Code review:**
+
+- Code Reviewer approved with all critical issues resolved
+- Project Manager verified all acceptance criteria met
+- No blockers identified for ticket closure
+
+**Status**: Ticket approved for closure ✅
+
 ## Description
 
 Implement complete CRUD (Create, Read, Update, Delete) operations for all core domain entities through GraphQL API, with proper validation, error handling, and relationship management.
@@ -264,24 +296,24 @@ Implement complete CRUD (Create, Read, Update, Delete) operations for all core d
 
 ## Acceptance Criteria
 
-- [ ] Can create all entity types via GraphQL mutations
-- [ ] Can query single entities by ID
-- [ ] Can query lists of entities with filters
-- [ ] Can update entity fields
-- [ ] Can delete entities (soft delete only, no hard deletes)
-- [ ] Can archive entities (separate from delete)
-- [ ] Can restore archived entities
-- [ ] Deleting parent cascades soft delete to orphaned children
-- [ ] All deletions create audit entries
-- [ ] Pagination works correctly for large result sets
-- [ ] Relationships are properly loaded (nested queries work)
-- [ ] Input validation prevents invalid data
-- [ ] Authorization prevents unauthorized mutations
-- [ ] Links between entities can be created and queried
-- [ ] Search functionality returns relevant results
-- [ ] Can filter by status (active, archived, deleted)
-- [ ] Duplicate names are allowed
-- [ ] Errors provide clear messages for debugging
+- [x] Can create all entity types via GraphQL mutations
+- [x] Can query single entities by ID
+- [x] Can query lists of entities with filters
+- [x] Can update entity fields
+- [x] Can delete entities (soft delete only, no hard deletes)
+- [x] Can archive entities (separate from delete)
+- [x] Can restore archived entities
+- [x] Deleting parent cascades soft delete to orphaned children
+- [x] All deletions create audit entries
+- [x] Pagination works correctly for large result sets
+- [x] Relationships are properly loaded (nested queries work)
+- [x] Input validation prevents invalid data
+- [x] Authorization prevents unauthorized mutations
+- [x] Links between entities can be created and queried
+- [x] Search functionality returns relevant results
+- [x] Can filter by status (active, archived, deleted)
+- [x] Duplicate names are allowed
+- [x] Errors provide clear messages for debugging
 
 ## Technical Notes
 
@@ -492,23 +524,23 @@ async createLink(
 
 ## Testing Requirements
 
-- [ ] Create entity with valid data succeeds
-- [ ] Create entity with invalid data fails with validation error
-- [ ] Update entity modifies fields correctly
-- [ ] Delete entity marks as deleted (soft delete only)
-- [ ] Archive entity marks as archived
-- [ ] Restore entity clears archivedAt
-- [ ] Cascade delete works (deleting parent deletes children)
-- [ ] Audit entries created for all mutations
-- [ ] Deleted entities don't appear in default list queries
-- [ ] Archived entities don't appear in default list queries
-- [ ] Can filter to show deleted/archived entities
-- [ ] Duplicate names are allowed
-- [ ] Pagination returns correct page of results
-- [ ] Filtering returns matching entities only
-- [ ] Unauthorized users cannot mutate entities
-- [ ] Creating links between entities works
-- [ ] Querying nested relationships doesn't cause N+1 queries
+- [x] Create entity with valid data succeeds
+- [x] Create entity with invalid data fails with validation error
+- [x] Update entity modifies fields correctly
+- [x] Delete entity marks as deleted (soft delete only)
+- [x] Archive entity marks as archived
+- [x] Restore entity clears archivedAt
+- [x] Cascade delete works (deleting parent deletes children)
+- [x] Audit entries created for all mutations
+- [x] Deleted entities don't appear in default list queries
+- [x] Archived entities don't appear in default list queries
+- [x] Can filter to show deleted/archived entities
+- [x] Duplicate names are allowed
+- [x] Pagination returns correct page of results
+- [x] Filtering returns matching entities only
+- [x] Unauthorized users cannot mutate entities
+- [x] Creating links between entities works
+- [x] Querying nested relationships doesn't cause N+1 queries
 
 ## Related Tickets
 
