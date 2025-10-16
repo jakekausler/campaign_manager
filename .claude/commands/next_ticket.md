@@ -43,6 +43,10 @@ ALWAYS commit changes at the end of a stage and note the commit hash in the tick
 
 While working on the task, update the notes in the ticket file in plan/ as with what you do and implement, as well as the reasons behind your choices.
 
+### Code Review
+
+If the code review agent returns anything critical, fix it. If it returns any non-critical suggesttions, determine whether to implement them now or if it should be done in a future commit. If it should be done later (due to scope of work or complexity), create a new task in the implementation plan with detailed notes after the final item in the plan and continue.
+
 ### Finishing an Implementation Task
 
 When you finish a stage in the ticket's implementation plan, mark it as complete in the TICKET-###-implementation-plan.md file and ensure your notes have been updated in the ticket file in plan/. Then STOP and wait for further instructions. DO NOT proceed to the next stage until instructed to do so.
