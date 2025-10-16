@@ -2,9 +2,10 @@
 
 ## Status
 
-- [ ] Completed (Stage 1 of 7 complete)
+- [ ] Completed (Stage 2 of 7 complete)
 - **Commits**:
   - Stage 1: 5f70ea5918fb3462f8b5e7a94f612118112a1f22
+  - Stage 2: c7948bfc0345a4bba1cdcec8225f3b58f38916b5
 
 ## Implementation Notes
 
@@ -40,6 +41,55 @@ Successfully implemented core spatial utilities foundation:
 
 - Updated `.eslintrc.json` with proper TypeScript import resolver for monorepo
 - Added `wkx` dependency to `@campaign/api`
+
+---
+
+### Stage 2: Database Schema and Indexes (✅ Complete)
+
+Successfully implemented database schema updates and spatial indexes:
+
+**Achievements:**
+
+- Added Campaign.srid field (Int, default 3857) to support configurable coordinate systems per campaign
+- Created GIST spatial index on Location.geom for efficient spatial query performance
+- Wrote comprehensive integration tests (8 passing tests) verifying schema and index functionality
+- Validated index usage with PostgreSQL EXPLAIN queries
+
+**Technical Details:**
+
+- Campaign.srid defaults to Web Mercator (EPSG:3857) for standard maps
+- Custom SRIDs supported for fantasy campaign maps (can use any valid SRID)
+- GIST index created with `IF NOT EXISTS` for idempotent migrations
+- Migration applied cleanly to existing database without data loss
+
+**Files Modified:**
+
+- `packages/api/prisma/schema.prisma` - Added Campaign.srid field
+- `packages/api/prisma/migrations/20251016162546_add_campaign_srid/migration.sql` - Migration with GIST index
+- `packages/api/src/common/services/spatial-indexes.integration.test.ts` - 8 comprehensive integration tests
+
+**Integration Tests:**
+
+- Verified Campaign.srid field schema (column exists, correct type, default value 3857)
+- Verified GIST index creation on Location.geom
+- Validated GIST index is used for bounding box queries (ST_Intersects)
+- Validated GIST index is used for distance queries (ST_DWithin)
+- Tested Campaign CRUD operations with default SRID
+- Tested Campaign CRUD operations with custom SRID (4326)
+- Tested Campaign SRID updates
+- Performance tested with 100 location grid
+
+**Performance:**
+
+- EXPLAIN queries confirm GIST index usage for spatial operations
+- Index enables efficient ST_Intersects and ST_DWithin queries
+- Tested with 100 test locations in 10x10 grid pattern
+- All spatial queries successfully use the index (verified via EXPLAIN)
+
+**Next Steps:**
+
+- Stage 3 will implement core spatial query methods in SpatialService
+- Query methods will leverage the GIST index for optimal performance
 
 ## Description
 
