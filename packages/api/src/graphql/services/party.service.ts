@@ -486,7 +486,11 @@ export class PartyService {
   /**
    * Add a character to the party
    */
-  async addMember(partyId: string, characterId: string, user: AuthenticatedUser): Promise<void> {
+  async addMember(
+    partyId: string,
+    characterId: string,
+    user: AuthenticatedUser
+  ): Promise<PrismaParty> {
     const party = await this.findById(partyId, user);
     if (!party) {
       throw new NotFoundException(`Party with ID ${partyId} not found`);
@@ -522,12 +526,23 @@ export class PartyService {
     await this.audit.log('party', partyId, 'UPDATE', user.id, {
       addedMember: characterId,
     });
+
+    // Return updated party
+    const updatedParty = await this.findById(partyId, user);
+    if (!updatedParty) {
+      throw new NotFoundException(`Party with ID ${partyId} not found after update`);
+    }
+    return updatedParty;
   }
 
   /**
    * Remove a character from the party
    */
-  async removeMember(partyId: string, characterId: string, user: AuthenticatedUser): Promise<void> {
+  async removeMember(
+    partyId: string,
+    characterId: string,
+    user: AuthenticatedUser
+  ): Promise<PrismaParty> {
     const party = await this.findById(partyId, user);
     if (!party) {
       throw new NotFoundException(`Party with ID ${partyId} not found`);
@@ -563,5 +578,12 @@ export class PartyService {
     await this.audit.log('party', partyId, 'UPDATE', user.id, {
       removedMember: characterId,
     });
+
+    // Return updated party
+    const updatedParty = await this.findById(partyId, user);
+    if (!updatedParty) {
+      throw new NotFoundException(`Party with ID ${partyId} not found after update`);
+    }
+    return updatedParty;
   }
 }

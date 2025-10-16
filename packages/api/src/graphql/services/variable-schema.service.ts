@@ -82,7 +82,7 @@ export class VariableSchemaService {
     entityId: string,
     schema: VariableSchema,
     user: AuthenticatedUser
-  ): Promise<void> {
+  ): Promise<VariableSchema> {
     // Fetch entity and verify permissions
     const entity = await this.getEntityWithPermissionCheck(entityType, entityId, user);
 
@@ -106,6 +106,8 @@ export class VariableSchemaService {
     await this.audit.log(entityType, entityId, 'UPDATE', user.id, {
       defineSchema: schema,
     });
+
+    return schema;
   }
 
   /**
@@ -202,7 +204,7 @@ export class VariableSchemaService {
     variableName: string,
     value: unknown,
     user: AuthenticatedUser
-  ): Promise<void> {
+  ): Promise<unknown> {
     const entity = await this.getEntityWithPermissionCheck(entityType, entityId, user);
 
     if (!entity) {
@@ -235,6 +237,8 @@ export class VariableSchemaService {
     await this.audit.log(entityType, entityId, 'UPDATE', user.id, {
       setVariable: { name: variableName, value },
     });
+
+    return value;
   }
 
   /**
