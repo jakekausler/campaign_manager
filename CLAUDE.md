@@ -50,6 +50,10 @@ campaign_manager/
 
 ## Development Commands
 
+**CRITICAL: NEVER CHANGE DIRECTORIES**
+
+**ALWAYS run all commands from the project root directory** (`/storage/programs/campaign_manager`). Do NOT use `cd` to navigate into package directories. Use `pnpm --filter` to target specific packages instead.
+
 ### Root-Level Commands
 
 Run from project root (`/storage/programs/campaign_manager`):
@@ -106,19 +110,6 @@ pnpm --filter @campaign/api type-check
 
 # Lint a specific package
 pnpm --filter @campaign/api lint
-```
-
-### Working Directory Commands
-
-From within a package directory (e.g., `packages/api/`):
-
-```bash
-pnpm run dev        # Start development server
-pnpm run build      # Build the package
-pnpm run test       # Run tests
-pnpm run test:watch # Run tests in watch mode
-pnpm run lint       # Lint the package
-pnpm run type-check # Type-check the package
 ```
 
 ## Testing Strategy
@@ -320,11 +311,10 @@ export class UserService {
 ```bash
 # Commands below are for reference only - use TypeScript Tester subagent
 
-# Start test watch mode in the package you're working on
-cd packages/api
-pnpm run test:watch
+# NEVER change directories - always run from root
+# DON'T DO THIS: cd packages/api
 
-# Or from root
+# Start test watch mode for a specific package (from root)
 pnpm --filter @campaign/api test:watch
 
 # The tests will re-run automatically on file changes
@@ -838,17 +828,18 @@ pnpm run build                        # Build all packages
 
 ## Important Reminders
 
-1. **ALWAYS use TDD when implementing new features**
-2. **NEVER fix TypeScript/ESLint errors directly - use the TypeScript Fixer subagent**
-3. **NEVER run or debug tests directly - use the TypeScript Tester subagent**
-4. **Write new tests directly - TypeScript Tester only runs/debugs**
-5. **MANDATORY: ALWAYS use Code Reviewer subagent before committing code**
-6. **MANDATORY: ALWAYS use Project Manager subagent before closing tickets**
-7. **Delegate to specialized subagents**: TypeScript Tester for running/debugging tests, TypeScript Fixer for types/linting, Code Reviewer before commits, Project Manager before ticket closure
-8. **Keep commits atomic and use conventional commit format**
-9. **Update ticket files and EPIC.md when completing work (only after Project Manager approval)**
-10. **Use TodoWrite to track complex tasks**
-11. **Read existing code patterns before implementing new features**
+1. **NEVER change directories - ALWAYS run all commands from the project root**
+2. **ALWAYS use TDD when implementing new features**
+3. **NEVER fix TypeScript/ESLint errors directly - use the TypeScript Fixer subagent**
+4. **NEVER run or debug tests directly - use the TypeScript Tester subagent**
+5. **Write new tests directly - TypeScript Tester only runs/debugs**
+6. **MANDATORY: ALWAYS use Code Reviewer subagent before committing code**
+7. **MANDATORY: ALWAYS use Project Manager subagent before closing tickets**
+8. **Delegate to specialized subagents**: TypeScript Tester for running/debugging tests, TypeScript Fixer for types/linting, Code Reviewer before commits, Project Manager before ticket closure
+9. **Keep commits atomic and use conventional commit format**
+10. **Update ticket files and EPIC.md when completing work (only after Project Manager approval)**
+11. **Use TodoWrite to track complex tasks**
+12. **Read existing code patterns before implementing new features**
 
 ---
 
