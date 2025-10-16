@@ -4,6 +4,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { GraphQLConfigModule } from './graphql/graphql.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
       },
     ]),
     AuthModule,
+    GraphQLConfigModule,
   ],
   providers: [
     // Apply JWT auth guard globally

@@ -1,0 +1,62 @@
+/**
+ * Settlement Input Types
+ * DTOs for Settlement mutations
+ */
+
+import { InputType, Field, ID, Int } from '@nestjs/graphql';
+import { IsString, IsInt, IsOptional, IsNotEmpty, Min } from 'class-validator';
+import { GraphQLJSON } from 'graphql-type-json';
+
+@InputType()
+export class CreateSettlementInput {
+  @Field(() => ID)
+  @IsString()
+  @IsNotEmpty()
+  kingdomId!: string;
+
+  @Field(() => ID)
+  @IsString()
+  @IsNotEmpty()
+  locationId!: string;
+
+  @Field()
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @Field(() => Int, { defaultValue: 1 })
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  level?: number;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  @IsOptional()
+  variables?: Record<string, unknown>;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  @IsOptional()
+  variableSchemas?: unknown[];
+}
+
+@InputType()
+export class UpdateSettlementInput {
+  @Field({ nullable: true })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @Field(() => Int, { nullable: true })
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  level?: number;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  @IsOptional()
+  variables?: Record<string, unknown>;
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  @IsOptional()
+  variableSchemas?: unknown[];
+}
