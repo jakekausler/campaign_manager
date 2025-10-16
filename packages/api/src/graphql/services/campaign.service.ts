@@ -296,8 +296,10 @@ export class CampaignService {
    * - Encounters
    * - Characters
    * - Parties
-   * - Kingdoms
+   * - Kingdoms → Settlements → Structures
    * - Branches
+   *
+   * Optimized to use batch operations to avoid N+1 queries
    */
   private async cascadeDelete(campaignId: string, deletedAt: Date): Promise<void> {
     // Soft delete all events
@@ -324,38 +326,41 @@ export class CampaignService {
       data: { deletedAt },
     });
 
-    // Soft delete all kingdoms (which will trigger their own cascade to settlements)
+    // Cascade delete kingdoms → settlements → structures (optimized batch operations)
+    // Get all kingdom IDs for this campaign
     const kingdoms = await this.prisma.kingdom.findMany({
       where: { campaignId, deletedAt: null },
       select: { id: true },
     });
+    const kingdomIds = kingdoms.map((k) => k.id);
 
-    for (const kingdom of kingdoms) {
-      // Soft delete kingdom
-      await this.prisma.kingdom.update({
-        where: { id: kingdom.id },
-        data: { deletedAt },
-      });
-
-      // Cascade to settlements
+    if (kingdomIds.length > 0) {
+      // Get all settlement IDs for these kingdoms
       const settlements = await this.prisma.settlement.findMany({
-        where: { kingdomId: kingdom.id, deletedAt: null },
+        where: { kingdomId: { in: kingdomIds }, deletedAt: null },
         select: { id: true },
       });
+      const settlementIds = settlements.map((s) => s.id);
 
-      for (const settlement of settlements) {
-        // Soft delete settlement
-        await this.prisma.settlement.update({
-          where: { id: settlement.id },
-          data: { deletedAt },
-        });
-
-        // Cascade to structures
+      // Batch update all structures for these settlements
+      if (settlementIds.length > 0) {
         await this.prisma.structure.updateMany({
-          where: { settlementId: settlement.id, deletedAt: null },
+          where: { settlementId: { in: settlementIds }, deletedAt: null },
           data: { deletedAt },
         });
       }
+
+      // Batch update all settlements
+      await this.prisma.settlement.updateMany({
+        where: { id: { in: settlementIds }, deletedAt: null },
+        data: { deletedAt },
+      });
+
+      // Batch update all kingdoms
+      await this.prisma.kingdom.updateMany({
+        where: { id: { in: kingdomIds }, deletedAt: null },
+        data: { deletedAt },
+      });
     }
 
     // Soft delete all branches

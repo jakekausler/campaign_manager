@@ -275,24 +275,26 @@ export class KingdomService {
 
   /**
    * Cascade soft delete to all settlements and their structures
+   * Optimized to use batch operations to avoid N+1 queries
    */
   private async cascadeDelete(kingdomId: string, deletedAt: Date): Promise<void> {
-    // Find all settlements in this kingdom
+    // Get all settlement IDs in this kingdom
     const settlements = await this.prisma.settlement.findMany({
       where: { kingdomId, deletedAt: null },
       select: { id: true },
     });
+    const settlementIds = settlements.map((s) => s.id);
 
-    for (const settlement of settlements) {
-      // Soft delete settlement
-      await this.prisma.settlement.update({
-        where: { id: settlement.id },
+    if (settlementIds.length > 0) {
+      // Batch update all structures for these settlements
+      await this.prisma.structure.updateMany({
+        where: { settlementId: { in: settlementIds }, deletedAt: null },
         data: { deletedAt },
       });
 
-      // Cascade to structures
-      await this.prisma.structure.updateMany({
-        where: { settlementId: settlement.id, deletedAt: null },
+      // Batch update all settlements
+      await this.prisma.settlement.updateMany({
+        where: { id: { in: settlementIds }, deletedAt: null },
         data: { deletedAt },
       });
     }

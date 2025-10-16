@@ -82,10 +82,12 @@ describe('CampaignService', () => {
             kingdom: {
               findMany: jest.fn(),
               update: jest.fn(),
+              updateMany: jest.fn(),
             },
             settlement: {
               findMany: jest.fn(),
               update: jest.fn(),
+              updateMany: jest.fn(),
             },
             structure: {
               updateMany: jest.fn(),
@@ -379,27 +381,22 @@ describe('CampaignService', () => {
       });
 
       (prisma.kingdom.findMany as jest.Mock).mockResolvedValue([mockKingdom]);
-      (prisma.kingdom.update as jest.Mock).mockResolvedValue({
-        ...mockKingdom,
-        deletedAt: new Date(),
-      });
       (prisma.settlement.findMany as jest.Mock).mockResolvedValue([mockSettlement]);
-      (prisma.settlement.update as jest.Mock).mockResolvedValue({
-        ...mockSettlement,
-        deletedAt: new Date(),
-      });
 
       await service.delete('campaign-1', mockUser);
 
-      expect(prisma.kingdom.update).toHaveBeenCalledWith({
-        where: { id: 'kingdom-1' },
+      expect(prisma.kingdom.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['kingdom-1'] }, deletedAt: null },
         data: { deletedAt: expect.any(Date) },
       });
-      expect(prisma.settlement.update).toHaveBeenCalledWith({
-        where: { id: 'settlement-1' },
+      expect(prisma.settlement.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['settlement-1'] }, deletedAt: null },
         data: { deletedAt: expect.any(Date) },
       });
-      expect(prisma.structure.updateMany).toHaveBeenCalled();
+      expect(prisma.structure.updateMany).toHaveBeenCalledWith({
+        where: { settlementId: { in: ['settlement-1'] }, deletedAt: null },
+        data: { deletedAt: expect.any(Date) },
+      });
     });
 
     it('should throw ForbiddenException if user lacks permissions', async () => {

@@ -3,7 +3,7 @@
  * Centralized service for logging all entity mutations
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
@@ -12,6 +12,8 @@ export type AuditOperation = 'CREATE' | 'UPDATE' | 'DELETE' | 'ARCHIVE' | 'RESTO
 
 @Injectable()
 export class AuditService {
+  private readonly logger = new Logger(AuditService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -45,13 +47,13 @@ export class AuditService {
       });
     } catch (error) {
       // Log audit failure but don't throw to prevent breaking main operations
-      console.error('Audit log failed:', {
+      this.logger.error('Audit log failed', {
         entityType,
         entityId,
         operation,
         error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
       });
-      // In production, this should go to a monitoring system
     }
   }
 }

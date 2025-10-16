@@ -33,6 +33,7 @@ import { DateTimeScalar } from './scalars/datetime.scalar';
 import { GeoJSONScalar } from './scalars/geojson.scalar';
 import { JSONScalar } from './scalars/json.scalar';
 import { UploadScalar } from './scalars/upload.scalar';
+import { AuditService } from './services/audit.service';
 import { CampaignService } from './services/campaign.service';
 import { CharacterService } from './services/character.service';
 import { EncounterService } from './services/encounter.service';
@@ -128,6 +129,7 @@ import { WorldService } from './services/world.service';
     // Context factory
     GraphQLContextFactory,
     // Services
+    AuditService,
     WorldService,
     CampaignService,
     CharacterService,

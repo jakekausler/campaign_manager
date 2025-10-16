@@ -67,6 +67,7 @@ describe('KingdomService', () => {
             settlement: {
               findMany: jest.fn(),
               update: jest.fn(),
+              updateMany: jest.fn(),
             },
             structure: {
               updateMany: jest.fn(),
@@ -231,10 +232,6 @@ describe('KingdomService', () => {
       (prisma.kingdom.findFirst as jest.Mock).mockResolvedValueOnce(mockKingdom);
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
       (prisma.settlement.findMany as jest.Mock).mockResolvedValue([mockSettlement]);
-      (prisma.settlement.update as jest.Mock).mockResolvedValue({
-        ...mockSettlement,
-        deletedAt: new Date(),
-      });
       (prisma.kingdom.update as jest.Mock).mockResolvedValue({
         ...mockKingdom,
         deletedAt: new Date(),
@@ -246,12 +243,12 @@ describe('KingdomService', () => {
         where: { kingdomId: 'kingdom-1', deletedAt: null },
         select: { id: true },
       });
-      expect(prisma.settlement.update).toHaveBeenCalledWith({
-        where: { id: 'settlement-1' },
+      expect(prisma.settlement.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['settlement-1'] }, deletedAt: null },
         data: { deletedAt: expect.any(Date) },
       });
       expect(prisma.structure.updateMany).toHaveBeenCalledWith({
-        where: { settlementId: 'settlement-1', deletedAt: null },
+        where: { settlementId: { in: ['settlement-1'] }, deletedAt: null },
         data: { deletedAt: expect.any(Date) },
       });
     });
