@@ -194,3 +194,27 @@ All methods include:
 - Comprehensive unit tests (25 total tests passing)
 
 Variable operations (defineSchema, setVariable, getVariable) deferred to Stage 5 for centralized implementation via VariableSchemaService.
+
+### Stage 3: Kingdom Management (Completed - Commit 60a04af)
+
+Enhanced KingdomService with comprehensive management capabilities:
+
+- **setLevel()**: Sets kingdom level with audit logging and real-time event publishing
+- **CRUD operations**: Full create, read, update, delete with soft delete
+- **Cascade delete**: Deletes cascade to settlements and structures (maintains referential integrity)
+- **Archive/Restore**: Archive doesn't cascade (allows temporary hiding without deletion)
+- **Optimistic locking**: Update operations include version checking for concurrent edit detection
+- **Time-travel queries**: `getKingdomAsOf()` retrieves historical state from version snapshots
+- **Event publishing**: Level changes publish `entity.modified` events via Redis PubSub
+
+All methods include:
+
+- Authorization checks via `hasEditPermission()` (owner or GM role)
+- Audit logging on all state-changing operations
+- Comprehensive unit tests (21 tests, all passing)
+- Proper error handling with appropriate exception types
+- Batch operations for cascade delete to avoid N+1 queries
+
+Variable operations (defineSchema, setVariable, getVariable) deferred to Stage 5 for centralized implementation via VariableSchemaService.
+
+Territory management (addTerritory, removeTerritory) deferred as not currently in requirements.
