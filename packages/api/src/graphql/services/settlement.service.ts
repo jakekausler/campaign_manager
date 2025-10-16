@@ -1,6 +1,7 @@
 /**
  * Settlement Service
  * Business logic for Settlement operations
+ * Implements CRUD with soft delete, archive, and cascade delete to Structures
  */
 
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
@@ -10,9 +11,14 @@ import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import type { CreateSettlementInput, UpdateSettlementInput } from '../inputs/settlement.input';
 
+import { AuditService } from './audit.service';
+
 @Injectable()
 export class SettlementService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
 
   /**
    * Find settlement by ID
@@ -86,6 +92,7 @@ export class SettlementService {
 
   /**
    * Create a new settlement
+   * Only owner or GM can create settlements
    */
   async create(input: CreateSettlementInput, user: AuthenticatedUser): Promise<PrismaSettlement> {
     // Verify user has access to create settlements in this kingdom
@@ -110,6 +117,9 @@ export class SettlementService {
           ],
         },
       },
+      include: {
+        campaign: true,
+      },
     });
 
     if (!kingdom) {
@@ -118,7 +128,34 @@ export class SettlementService {
       );
     }
 
-    return this.prisma.settlement.create({
+    // Verify location exists and belongs to the same world
+    const location = await this.prisma.location.findFirst({
+      where: {
+        id: input.locationId,
+        worldId: kingdom.campaign.worldId,
+        deletedAt: null,
+      },
+    });
+
+    if (!location) {
+      throw new NotFoundException(
+        `Location with ID ${input.locationId} not found in the same world`
+      );
+    }
+
+    // Check if location is already used by another settlement
+    const existingSettlement = await this.prisma.settlement.findFirst({
+      where: {
+        locationId: input.locationId,
+        deletedAt: null,
+      },
+    });
+
+    if (existingSettlement) {
+      throw new ForbiddenException('This location is already occupied by another settlement');
+    }
+
+    const settlement = await this.prisma.settlement.create({
       data: {
         kingdomId: input.kingdomId,
         locationId: input.locationId,
@@ -128,10 +165,21 @@ export class SettlementService {
         variableSchemas: (input.variableSchemas ?? []) as Prisma.InputJsonValue,
       },
     });
+
+    // Create audit entry
+    await this.audit.log('settlement', settlement.id, 'CREATE', user.id, {
+      name: settlement.name,
+      kingdomId: settlement.kingdomId,
+      locationId: settlement.locationId,
+      level: settlement.level,
+    });
+
+    return settlement;
   }
 
   /**
    * Update a settlement
+   * Only owner or GM can update
    */
   async update(
     id: string,
@@ -172,23 +220,30 @@ export class SettlementService {
       throw new ForbiddenException('You do not have permission to update this settlement');
     }
 
-    return this.prisma.settlement.update({
+    // Build update data
+    const updateData: Prisma.SettlementUpdateInput = {};
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.level !== undefined) updateData.level = input.level;
+    if (input.variables !== undefined)
+      updateData.variables = input.variables as Prisma.InputJsonValue;
+    if (input.variableSchemas !== undefined)
+      updateData.variableSchemas = input.variableSchemas as Prisma.InputJsonValue;
+
+    const updated = await this.prisma.settlement.update({
       where: { id },
-      data: {
-        ...(input.name !== undefined && { name: input.name }),
-        ...(input.level !== undefined && { level: input.level }),
-        ...(input.variables !== undefined && {
-          variables: input.variables as Prisma.InputJsonValue,
-        }),
-        ...(input.variableSchemas !== undefined && {
-          variableSchemas: input.variableSchemas as Prisma.InputJsonValue,
-        }),
-      },
+      data: updateData,
     });
+
+    // Create audit entry
+    await this.audit.log('settlement', id, 'UPDATE', user.id, updateData);
+
+    return updated;
   }
 
   /**
-   * Delete a settlement (soft delete)
+   * Soft delete a settlement
+   * Cascades to Structures
+   * Only owner or GM can delete
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaSettlement> {
     // Verify settlement exists and user has access
@@ -225,11 +280,145 @@ export class SettlementService {
       throw new ForbiddenException('You do not have permission to delete this settlement');
     }
 
-    return this.prisma.settlement.update({
+    const deletedAt = new Date();
+
+    // Soft delete settlement
+    const deleted = await this.prisma.settlement.update({
       where: { id },
-      data: {
-        deletedAt: new Date(),
+      data: { deletedAt },
+    });
+
+    // Cascade delete to structures
+    await this.prisma.structure.updateMany({
+      where: { settlementId: id, deletedAt: null },
+      data: { deletedAt },
+    });
+
+    // Create audit entry
+    await this.audit.log('settlement', id, 'DELETE', user.id, { deletedAt });
+
+    return deleted;
+  }
+
+  /**
+   * Archive a settlement
+   * Does not cascade to structures
+   * Only owner or GM can archive
+   */
+  async archive(id: string, user: AuthenticatedUser): Promise<PrismaSettlement> {
+    // Verify settlement exists and user has access
+    const settlement = await this.findById(id, user);
+    if (!settlement) {
+      throw new NotFoundException(`Settlement with ID ${id} not found`);
+    }
+
+    // Verify user has edit permissions
+    const hasPermission = await this.prisma.settlement.findFirst({
+      where: {
+        id,
+        kingdom: {
+          campaign: {
+            OR: [
+              { ownerId: user.id },
+              {
+                memberships: {
+                  some: {
+                    userId: user.id,
+                    role: {
+                      in: ['OWNER', 'GM'],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
       },
     });
+
+    if (!hasPermission) {
+      throw new ForbiddenException('You do not have permission to archive this settlement');
+    }
+
+    const archivedAt = new Date();
+
+    const archived = await this.prisma.settlement.update({
+      where: { id },
+      data: { archivedAt },
+    });
+
+    // Create audit entry
+    await this.audit.log('settlement', id, 'ARCHIVE', user.id, { archivedAt });
+
+    return archived;
+  }
+
+  /**
+   * Restore an archived settlement
+   * Only owner or GM can restore
+   */
+  async restore(id: string, user: AuthenticatedUser): Promise<PrismaSettlement> {
+    // Find settlement even if archived
+    const settlement = await this.prisma.settlement.findFirst({
+      where: {
+        id,
+        kingdom: {
+          campaign: {
+            OR: [
+              { ownerId: user.id },
+              {
+                memberships: {
+                  some: {
+                    userId: user.id,
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    if (!settlement) {
+      throw new NotFoundException(`Settlement with ID ${id} not found`);
+    }
+
+    // Verify user has edit permissions
+    const hasPermission = await this.prisma.settlement.findFirst({
+      where: {
+        id,
+        kingdom: {
+          campaign: {
+            OR: [
+              { ownerId: user.id },
+              {
+                memberships: {
+                  some: {
+                    userId: user.id,
+                    role: {
+                      in: ['OWNER', 'GM'],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    if (!hasPermission) {
+      throw new ForbiddenException('You do not have permission to restore this settlement');
+    }
+
+    const restored = await this.prisma.settlement.update({
+      where: { id },
+      data: { archivedAt: null },
+    });
+
+    // Create audit entry
+    await this.audit.log('settlement', id, 'RESTORE', user.id, { archivedAt: null });
+
+    return restored;
   }
 }

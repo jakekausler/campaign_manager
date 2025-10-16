@@ -1,6 +1,7 @@
 /**
  * Structure Service
  * Business logic for Structure operations
+ * Implements CRUD with soft delete and archive (no cascade delete)
  */
 
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
@@ -10,9 +11,14 @@ import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import type { CreateStructureInput, UpdateStructureInput } from '../inputs/structure.input';
 
+import { AuditService } from './audit.service';
+
 @Injectable()
 export class StructureService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
 
   /**
    * Find structure by ID
@@ -165,6 +171,7 @@ export class StructureService {
 
   /**
    * Create a new structure
+   * Only owner or GM can create structures
    */
   async create(input: CreateStructureInput, user: AuthenticatedUser): Promise<PrismaStructure> {
     // Verify user has access to create structures in this settlement
@@ -200,7 +207,7 @@ export class StructureService {
       );
     }
 
-    return this.prisma.structure.create({
+    const structure = await this.prisma.structure.create({
       data: {
         settlementId: input.settlementId,
         type: input.type,
@@ -210,10 +217,21 @@ export class StructureService {
         variableSchemas: (input.variableSchemas ?? []) as Prisma.InputJsonValue,
       },
     });
+
+    // Create audit entry
+    await this.audit.log('structure', structure.id, 'CREATE', user.id, {
+      name: structure.name,
+      settlementId: structure.settlementId,
+      type: structure.type,
+      level: structure.level,
+    });
+
+    return structure;
   }
 
   /**
    * Update a structure
+   * Only owner or GM can update
    */
   async update(
     id: string,
@@ -256,24 +274,31 @@ export class StructureService {
       throw new ForbiddenException('You do not have permission to update this structure');
     }
 
-    return this.prisma.structure.update({
+    // Build update data
+    const updateData: Prisma.StructureUpdateInput = {};
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.type !== undefined) updateData.type = input.type;
+    if (input.level !== undefined) updateData.level = input.level;
+    if (input.variables !== undefined)
+      updateData.variables = input.variables as Prisma.InputJsonValue;
+    if (input.variableSchemas !== undefined)
+      updateData.variableSchemas = input.variableSchemas as Prisma.InputJsonValue;
+
+    const updated = await this.prisma.structure.update({
       where: { id },
-      data: {
-        ...(input.name !== undefined && { name: input.name }),
-        ...(input.type !== undefined && { type: input.type }),
-        ...(input.level !== undefined && { level: input.level }),
-        ...(input.variables !== undefined && {
-          variables: input.variables as Prisma.InputJsonValue,
-        }),
-        ...(input.variableSchemas !== undefined && {
-          variableSchemas: input.variableSchemas as Prisma.InputJsonValue,
-        }),
-      },
+      data: updateData,
     });
+
+    // Create audit entry
+    await this.audit.log('structure', id, 'UPDATE', user.id, updateData);
+
+    return updated;
   }
 
   /**
-   * Delete a structure (soft delete)
+   * Soft delete a structure
+   * Does NOT cascade - structures are kept for audit trail
+   * Only owner or GM can delete
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaStructure> {
     // Verify structure exists and user has access
@@ -312,11 +337,143 @@ export class StructureService {
       throw new ForbiddenException('You do not have permission to delete this structure');
     }
 
-    return this.prisma.structure.update({
+    const deletedAt = new Date();
+
+    const deleted = await this.prisma.structure.update({
       where: { id },
-      data: {
-        deletedAt: new Date(),
+      data: { deletedAt },
+    });
+
+    // Create audit entry
+    await this.audit.log('structure', id, 'DELETE', user.id, { deletedAt });
+
+    return deleted;
+  }
+
+  /**
+   * Archive a structure
+   * Only owner or GM can archive
+   */
+  async archive(id: string, user: AuthenticatedUser): Promise<PrismaStructure> {
+    // Verify structure exists and user has access
+    const structure = await this.findById(id, user);
+    if (!structure) {
+      throw new NotFoundException(`Structure with ID ${id} not found`);
+    }
+
+    // Verify user has edit permissions
+    const hasPermission = await this.prisma.structure.findFirst({
+      where: {
+        id,
+        settlement: {
+          kingdom: {
+            campaign: {
+              OR: [
+                { ownerId: user.id },
+                {
+                  memberships: {
+                    some: {
+                      userId: user.id,
+                      role: {
+                        in: ['OWNER', 'GM'],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
       },
     });
+
+    if (!hasPermission) {
+      throw new ForbiddenException('You do not have permission to archive this structure');
+    }
+
+    const archivedAt = new Date();
+
+    const archived = await this.prisma.structure.update({
+      where: { id },
+      data: { archivedAt },
+    });
+
+    // Create audit entry
+    await this.audit.log('structure', id, 'ARCHIVE', user.id, { archivedAt });
+
+    return archived;
+  }
+
+  /**
+   * Restore an archived structure
+   * Only owner or GM can restore
+   */
+  async restore(id: string, user: AuthenticatedUser): Promise<PrismaStructure> {
+    // Find structure even if archived
+    const structure = await this.prisma.structure.findFirst({
+      where: {
+        id,
+        settlement: {
+          kingdom: {
+            campaign: {
+              OR: [
+                { ownerId: user.id },
+                {
+                  memberships: {
+                    some: {
+                      userId: user.id,
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    if (!structure) {
+      throw new NotFoundException(`Structure with ID ${id} not found`);
+    }
+
+    // Verify user has edit permissions
+    const hasPermission = await this.prisma.structure.findFirst({
+      where: {
+        id,
+        settlement: {
+          kingdom: {
+            campaign: {
+              OR: [
+                { ownerId: user.id },
+                {
+                  memberships: {
+                    some: {
+                      userId: user.id,
+                      role: {
+                        in: ['OWNER', 'GM'],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    if (!hasPermission) {
+      throw new ForbiddenException('You do not have permission to restore this structure');
+    }
+
+    const restored = await this.prisma.structure.update({
+      where: { id },
+      data: { archivedAt: null },
+    });
+
+    // Create audit entry
+    await this.audit.log('structure', id, 'RESTORE', user.id, { archivedAt: null });
+
+    return restored;
   }
 }
