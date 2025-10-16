@@ -64,7 +64,15 @@ export class CharacterResolver {
     @Args('input') input: UpdateCharacterInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Character> {
-    return this.characterService.update(id, input, user) as Promise<Character>;
+    const { branchId, expectedVersion, worldTime, ...data } = input;
+    return this.characterService.update(
+      id,
+      data,
+      user,
+      expectedVersion,
+      branchId,
+      worldTime
+    ) as Promise<Character>;
   }
 
   @Mutation(() => Character, { description: 'Delete a character (soft delete)' })

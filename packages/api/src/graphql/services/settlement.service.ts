@@ -4,20 +4,28 @@
  * Implements CRUD with soft delete, archive, and cascade delete to Structures
  */
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { Settlement as PrismaSettlement, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
-import type { CreateSettlementInput, UpdateSettlementInput } from '../inputs/settlement.input';
+import { OptimisticLockException } from '../exceptions';
+import type { CreateSettlementInput, UpdateSettlementData } from '../inputs/settlement.input';
 
 import { AuditService } from './audit.service';
+import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
 export class SettlementService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly versionService: VersionService
   ) {}
 
   /**
@@ -178,18 +186,51 @@ export class SettlementService {
   }
 
   /**
-   * Update a settlement
+   * Update a settlement with optimistic locking and versioning
    * Only owner or GM can update
    */
   async update(
     id: string,
-    input: UpdateSettlementInput,
-    user: AuthenticatedUser
+    input: UpdateSettlementData,
+    user: AuthenticatedUser,
+    expectedVersion: number,
+    branchId: string,
+    worldTime: Date = new Date()
   ): Promise<PrismaSettlement> {
     // Verify settlement exists and user has access
     const settlement = await this.findById(id, user);
     if (!settlement) {
       throw new NotFoundException(`Settlement with ID ${id} not found`);
+    }
+
+    // Get settlement with kingdom to access campaignId
+    const settlementWithKingdom = await this.prisma.settlement.findUnique({
+      where: { id },
+      include: { kingdom: true },
+    });
+
+    // Verify branchId belongs to this entity's campaign
+    const branch = await this.prisma.branch.findFirst({
+      where: {
+        id: branchId,
+        campaignId: settlementWithKingdom!.kingdom.campaignId,
+        deletedAt: null,
+      },
+    });
+
+    if (!branch) {
+      throw new BadRequestException(
+        `Branch with ID ${branchId} not found or does not belong to this entity's campaign`
+      );
+    }
+
+    // Optimistic locking check: verify version matches
+    if (settlement.version !== expectedVersion) {
+      throw new OptimisticLockException(
+        `Settlement was modified by another user. Expected version ${expectedVersion}, but found ${settlement.version}. Please refresh and try again.`,
+        expectedVersion,
+        settlement.version
+      );
     }
 
     // Verify user has edit permissions
@@ -220,8 +261,10 @@ export class SettlementService {
       throw new ForbiddenException('You do not have permission to update this settlement');
     }
 
-    // Build update data
-    const updateData: Prisma.SettlementUpdateInput = {};
+    // Build update data with incremented version
+    const updateData: Prisma.SettlementUpdateInput = {
+      version: settlement.version + 1,
+    };
     if (input.name !== undefined) updateData.name = input.name;
     if (input.level !== undefined) updateData.level = input.level;
     if (input.variables !== undefined)
@@ -229,9 +272,33 @@ export class SettlementService {
     if (input.variableSchemas !== undefined)
       updateData.variableSchemas = input.variableSchemas as Prisma.InputJsonValue;
 
-    const updated = await this.prisma.settlement.update({
-      where: { id },
-      data: updateData,
+    // Create new version payload (all fields)
+    const newPayload: Record<string, unknown> = {
+      ...settlement,
+      ...updateData,
+      version: settlement.version + 1,
+    };
+
+    // Use transaction to atomically update entity and create version
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Update settlement with new version
+      const updatedSettlement = await tx.settlement.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Create version snapshot
+      const versionInput: CreateVersionInput = {
+        entityType: 'settlement',
+        entityId: id,
+        branchId,
+        validFrom: worldTime,
+        validTo: null,
+        payload: newPayload,
+      };
+      await this.versionService.createVersion(versionInput, user);
+
+      return updatedSettlement;
     });
 
     // Create audit entry
@@ -420,5 +487,34 @@ export class SettlementService {
     await this.audit.log('settlement', id, 'RESTORE', user.id, { archivedAt: null });
 
     return restored;
+  }
+
+  /**
+   * Get settlement state as it existed at a specific point in world-time
+   * Supports time-travel queries for version history
+   */
+  async getSettlementAsOf(
+    id: string,
+    branchId: string,
+    worldTime: Date,
+    user: AuthenticatedUser
+  ): Promise<PrismaSettlement | null> {
+    // Verify user has access to the settlement
+    const settlement = await this.findById(id, user);
+    if (!settlement) {
+      return null;
+    }
+
+    // Resolve version at the specified time
+    const version = await this.versionService.resolveVersion('settlement', id, branchId, worldTime);
+
+    if (!version) {
+      return null;
+    }
+
+    // Decompress and return the historical payload as a Settlement object
+    const payload = await this.versionService.decompressVersion(version);
+
+    return payload as PrismaSettlement;
   }
 }

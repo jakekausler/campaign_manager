@@ -3,8 +3,18 @@
  * DTOs for Encounter mutations
  */
 
-import { InputType, Field, Int } from '@nestjs/graphql';
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsInt, Min, IsBoolean } from 'class-validator';
+import { InputType, Field, Int, ID } from '@nestjs/graphql';
+import { Type } from 'class-transformer';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsInt,
+  Min,
+  IsBoolean,
+  IsDate,
+} from 'class-validator';
 import { GraphQLJSON } from 'graphql-type-json';
 
 @InputType()
@@ -40,8 +50,20 @@ export class CreateEncounterInput {
   variables?: Record<string, unknown>;
 }
 
+/**
+ * Data fields that can be updated on an Encounter
+ */
+export interface UpdateEncounterData {
+  locationId?: string;
+  name?: string;
+  description?: string;
+  difficulty?: number;
+  isResolved?: boolean;
+  variables?: Record<string, unknown>;
+}
+
 @InputType()
-export class UpdateEncounterInput {
+export class UpdateEncounterInput implements UpdateEncounterData {
   @Field({ nullable: true })
   @IsUUID()
   @IsOptional()
@@ -71,4 +93,20 @@ export class UpdateEncounterInput {
   @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
   variables?: Record<string, unknown>;
+
+  @Field(() => ID)
+  @IsUUID()
+  @IsNotEmpty()
+  branchId!: string;
+
+  @Field(() => Number)
+  @IsInt()
+  @IsNotEmpty()
+  expectedVersion!: number;
+
+  @Field({ nullable: true })
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  worldTime?: Date;
 }

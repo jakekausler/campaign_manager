@@ -4,20 +4,28 @@
  * Implements CRUD with soft delete, archive, and cascade delete to child entities
  */
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { Campaign as PrismaCampaign, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
-import type { CreateCampaignInput, UpdateCampaignInput } from '../inputs/campaign.input';
+import { OptimisticLockException } from '../exceptions';
+import type { CreateCampaignInput, UpdateCampaignData } from '../inputs/campaign.input';
 
 import { AuditService } from './audit.service';
+import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
 export class CampaignService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly versionService: VersionService
   ) {}
 
   /**
@@ -142,18 +150,32 @@ export class CampaignService {
   }
 
   /**
-   * Update a campaign
+   * Update a campaign with optimistic locking and versioning
    * Only owner or GM can update
    */
   async update(
     id: string,
-    input: UpdateCampaignInput,
-    user: AuthenticatedUser
+    input: UpdateCampaignData,
+    user: AuthenticatedUser,
+    expectedVersion: number,
+    branchId: string,
+    worldTime: Date = new Date()
   ): Promise<PrismaCampaign> {
     // Verify campaign exists and user has access
     const campaign = await this.findById(id, user);
     if (!campaign) {
       throw new NotFoundException(`Campaign with ID ${id} not found`);
+    }
+
+    // Verify branchId belongs to this campaign
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: branchId, campaignId: id, deletedAt: null },
+    });
+
+    if (!branch) {
+      throw new BadRequestException(
+        `Branch with ID ${branchId} not found or does not belong to this campaign`
+      );
     }
 
     // Verify user has edit permissions (owner or GM)
@@ -162,16 +184,50 @@ export class CampaignService {
       throw new ForbiddenException('You do not have permission to update this campaign');
     }
 
-    // Build update data
-    const updateData: Prisma.CampaignUpdateInput = {};
+    // Optimistic locking check: verify version matches
+    if (campaign.version !== expectedVersion) {
+      throw new OptimisticLockException(
+        `Campaign was modified by another user. Expected version ${expectedVersion}, but found ${campaign.version}. Please refresh and try again.`,
+        expectedVersion,
+        campaign.version
+      );
+    }
+
+    // Build update data with incremented version
+    const updateData: Prisma.CampaignUpdateInput = {
+      version: campaign.version + 1,
+    };
     if (input.name !== undefined) updateData.name = input.name;
     if (input.settings !== undefined) updateData.settings = input.settings as Prisma.InputJsonValue;
     if (input.isActive !== undefined) updateData.isActive = input.isActive;
 
-    // Update campaign
-    const updated = await this.prisma.campaign.update({
-      where: { id },
-      data: updateData,
+    // Create new version payload (all fields)
+    const newPayload: Record<string, unknown> = {
+      ...campaign,
+      ...updateData,
+      version: campaign.version + 1,
+    };
+
+    // Use transaction to atomically update entity and create version
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Update campaign with new version
+      const updatedCampaign = await tx.campaign.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Create version snapshot
+      const versionInput: CreateVersionInput = {
+        entityType: 'campaign',
+        entityId: id,
+        branchId,
+        validFrom: worldTime,
+        validTo: null,
+        payload: newPayload,
+      };
+      await this.versionService.createVersion(versionInput, user);
+
+      return updatedCampaign;
     });
 
     // Create audit entry
@@ -395,5 +451,34 @@ export class CampaignService {
     });
 
     return campaign !== null;
+  }
+
+  /**
+   * Get campaign state as it existed at a specific point in world-time
+   * Supports time-travel queries for version history
+   */
+  async getCampaignAsOf(
+    id: string,
+    branchId: string,
+    worldTime: Date,
+    user: AuthenticatedUser
+  ): Promise<PrismaCampaign | null> {
+    // Verify user has access to the campaign
+    const campaign = await this.findById(id, user);
+    if (!campaign) {
+      return null;
+    }
+
+    // Resolve version at the specified time
+    const version = await this.versionService.resolveVersion('campaign', id, branchId, worldTime);
+
+    if (!version) {
+      return null;
+    }
+
+    // Decompress and return the historical payload as a Campaign object
+    const payload = await this.versionService.decompressVersion(version);
+
+    return payload as PrismaCampaign;
   }
 }

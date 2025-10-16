@@ -11,7 +11,11 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type { CreateCampaignInput, UpdateCampaignInput } from '../inputs/campaign.input';
+import type {
+  CreateCampaignInput,
+  UpdateCampaignInput,
+  UpdateCampaignData,
+} from '../inputs/campaign.input';
 import { CampaignService } from '../services/campaign.service';
 import { Campaign } from '../types/campaign.type';
 
@@ -55,7 +59,16 @@ export class CampaignResolver {
     @Args('input') input: UpdateCampaignInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Campaign> {
-    return this.campaignService.update(id, input, user) as Promise<Campaign>;
+    const { branchId, expectedVersion, worldTime, ...updateData } = input;
+    const campaignData: UpdateCampaignData = updateData;
+    return this.campaignService.update(
+      id,
+      campaignData,
+      user,
+      expectedVersion,
+      branchId,
+      worldTime
+    ) as Promise<Campaign>;
   }
 
   @Mutation(() => Campaign, { description: 'Delete a campaign (soft delete)' })

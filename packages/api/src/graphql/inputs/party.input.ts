@@ -4,7 +4,8 @@
  */
 
 import { InputType, Field, ID, Int } from '@nestjs/graphql';
-import { IsString, IsInt, IsOptional, IsNotEmpty, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsString, IsInt, IsOptional, IsNotEmpty, Min, IsUUID, IsDate } from 'class-validator';
 import { GraphQLJSON } from 'graphql-type-json';
 
 @InputType()
@@ -40,8 +41,19 @@ export class CreatePartyInput {
   variableSchemas?: unknown[];
 }
 
+/**
+ * Data fields that can be updated on a Party
+ */
+export interface UpdatePartyData {
+  name?: string;
+  averageLevel?: number;
+  manualLevelOverride?: number;
+  variables?: Record<string, unknown>;
+  variableSchemas?: unknown[];
+}
+
 @InputType()
-export class UpdatePartyInput {
+export class UpdatePartyInput implements UpdatePartyData {
   @Field({ nullable: true })
   @IsString()
   @IsOptional()
@@ -66,4 +78,20 @@ export class UpdatePartyInput {
   @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
   variableSchemas?: unknown[];
+
+  @Field(() => ID)
+  @IsUUID()
+  @IsNotEmpty()
+  branchId!: string;
+
+  @Field(() => Number)
+  @IsInt()
+  @IsNotEmpty()
+  expectedVersion!: number;
+
+  @Field({ nullable: true })
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  worldTime?: Date;
 }

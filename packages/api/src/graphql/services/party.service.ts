@@ -4,20 +4,28 @@
  * Implements CRUD with soft delete and archive (no cascade delete)
  */
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { Party as PrismaParty, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
-import type { CreatePartyInput, UpdatePartyInput } from '../inputs/party.input';
+import { OptimisticLockException } from '../exceptions';
+import type { CreatePartyInput, UpdatePartyData } from '../inputs/party.input';
 
 import { AuditService } from './audit.service';
+import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
 export class PartyService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly versionService: VersionService
   ) {}
 
   /**
@@ -121,14 +129,41 @@ export class PartyService {
   }
 
   /**
-   * Update a party
+   * Update a party with optimistic locking and versioning
    * Only owner or GM can update
    */
-  async update(id: string, input: UpdatePartyInput, user: AuthenticatedUser): Promise<PrismaParty> {
+  async update(
+    id: string,
+    input: UpdatePartyData,
+    user: AuthenticatedUser,
+    expectedVersion: number,
+    branchId: string,
+    worldTime: Date = new Date()
+  ): Promise<PrismaParty> {
     // Verify party exists and user has access
     const party = await this.findById(id, user);
     if (!party) {
       throw new NotFoundException(`Party with ID ${id} not found`);
+    }
+
+    // Verify branchId belongs to this entity's campaign
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: branchId, campaignId: party.campaignId, deletedAt: null },
+    });
+
+    if (!branch) {
+      throw new BadRequestException(
+        `Branch with ID ${branchId} not found or does not belong to this entity's campaign`
+      );
+    }
+
+    // Optimistic locking check: verify version matches
+    if (party.version !== expectedVersion) {
+      throw new OptimisticLockException(
+        `Party was modified by another user. Expected version ${expectedVersion}, but found ${party.version}. Please refresh and try again.`,
+        expectedVersion,
+        party.version
+      );
     }
 
     // Verify user has edit permissions
@@ -137,8 +172,10 @@ export class PartyService {
       throw new ForbiddenException('You do not have permission to update this party');
     }
 
-    // Build update data
-    const updateData: Prisma.PartyUpdateInput = {};
+    // Build update data with incremented version
+    const updateData: Prisma.PartyUpdateInput = {
+      version: party.version + 1,
+    };
     if (input.name !== undefined) updateData.name = input.name;
     if (input.averageLevel !== undefined) updateData.averageLevel = input.averageLevel;
     if (input.manualLevelOverride !== undefined)
@@ -148,10 +185,33 @@ export class PartyService {
     if (input.variableSchemas !== undefined)
       updateData.variableSchemas = input.variableSchemas as Prisma.InputJsonValue;
 
-    // Update party
-    const updated = await this.prisma.party.update({
-      where: { id },
-      data: updateData,
+    // Create new version payload (all fields)
+    const newPayload: Record<string, unknown> = {
+      ...party,
+      ...updateData,
+      version: party.version + 1,
+    };
+
+    // Use transaction to atomically update entity and create version
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Update party with new version
+      const updatedParty = await tx.party.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Create version snapshot
+      const versionInput: CreateVersionInput = {
+        entityType: 'party',
+        entityId: id,
+        branchId,
+        validFrom: worldTime,
+        validTo: null,
+        payload: newPayload,
+      };
+      await this.versionService.createVersion(versionInput, user);
+
+      return updatedParty;
     });
 
     // Create audit entry
@@ -293,5 +353,34 @@ export class PartyService {
     });
 
     return campaign !== null;
+  }
+
+  /**
+   * Get party state as it existed at a specific point in world-time
+   * Supports time-travel queries for version history
+   */
+  async getPartyAsOf(
+    id: string,
+    branchId: string,
+    worldTime: Date,
+    user: AuthenticatedUser
+  ): Promise<PrismaParty | null> {
+    // Verify user has access to the party
+    const party = await this.findById(id, user);
+    if (!party) {
+      return null;
+    }
+
+    // Resolve version at the specified time
+    const version = await this.versionService.resolveVersion('party', id, branchId, worldTime);
+
+    if (!version) {
+      return null;
+    }
+
+    // Decompress and return the historical payload as a Party object
+    const payload = await this.versionService.decompressVersion(version);
+
+    return payload as PrismaParty;
   }
 }

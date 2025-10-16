@@ -7,14 +7,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
+import { OptimisticLockException } from '../exceptions';
 
 import { AuditService } from './audit.service';
 import { CampaignService } from './campaign.service';
+import { VersionService } from './version.service';
 
 describe('CampaignService', () => {
   let service: CampaignService;
   let prisma: PrismaService;
   let audit: AuditService;
+  let versionService: VersionService;
 
   const mockUser: AuthenticatedUser = {
     id: 'user-1',
@@ -31,6 +34,7 @@ describe('CampaignService', () => {
     updatedAt: new Date(),
     deletedAt: null,
     archivedAt: null,
+    version: 1,
   };
 
   const mockCampaign = {
@@ -44,60 +48,86 @@ describe('CampaignService', () => {
     updatedAt: new Date(),
     deletedAt: null,
     archivedAt: null,
+    version: 1,
   };
 
   beforeEach(async () => {
+    // Create mock prisma service with mocked methods
+    const mockPrismaService = {
+      campaign: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        updateMany: jest.fn(),
+      },
+      world: {
+        findFirst: jest.fn(),
+      },
+      branch: {
+        create: jest.fn(),
+        updateMany: jest.fn(),
+      },
+      event: {
+        updateMany: jest.fn(),
+      },
+      encounter: {
+        updateMany: jest.fn(),
+      },
+      character: {
+        updateMany: jest.fn(),
+      },
+      party: {
+        updateMany: jest.fn(),
+      },
+      kingdom: {
+        findMany: jest.fn(),
+        update: jest.fn(),
+        updateMany: jest.fn(),
+      },
+      settlement: {
+        findMany: jest.fn(),
+        update: jest.fn(),
+        updateMany: jest.fn(),
+      },
+      structure: {
+        updateMany: jest.fn(),
+      },
+      $transaction: jest.fn(),
+    };
+
+    // Configure $transaction mock to execute callback with mock transaction client
+    (mockPrismaService.$transaction as jest.Mock).mockImplementation(async (callback) => {
+      if (typeof callback === 'function') {
+        // Create a mock transaction prisma client that delegates to the main mock
+        const txPrisma = {
+          campaign: mockPrismaService.campaign,
+        };
+        return callback(txPrisma);
+      }
+      // Fallback for array form (not used in current implementation)
+      return Promise.all(callback);
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CampaignService,
         {
           provide: PrismaService,
-          useValue: {
-            campaign: {
-              findFirst: jest.fn(),
-              findMany: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-              updateMany: jest.fn(),
-            },
-            world: {
-              findFirst: jest.fn(),
-            },
-            branch: {
-              create: jest.fn(),
-              updateMany: jest.fn(),
-            },
-            event: {
-              updateMany: jest.fn(),
-            },
-            encounter: {
-              updateMany: jest.fn(),
-            },
-            character: {
-              updateMany: jest.fn(),
-            },
-            party: {
-              updateMany: jest.fn(),
-            },
-            kingdom: {
-              findMany: jest.fn(),
-              update: jest.fn(),
-              updateMany: jest.fn(),
-            },
-            settlement: {
-              findMany: jest.fn(),
-              update: jest.fn(),
-              updateMany: jest.fn(),
-            },
-            structure: {
-              updateMany: jest.fn(),
-            },
-          },
+          useValue: mockPrismaService,
         },
         {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: VersionService,
+          useValue: {
+            createVersion: jest.fn(),
+            resolveVersion: jest.fn(),
+            decompressVersion: jest.fn(),
           },
         },
       ],
@@ -106,6 +136,7 @@ describe('CampaignService', () => {
     service = module.get<CampaignService>(CampaignService);
     prisma = module.get<PrismaService>(PrismaService);
     audit = module.get<AuditService>(AuditService);
+    versionService = module.get<VersionService>(VersionService);
   });
 
   afterEach(() => {
@@ -237,7 +268,23 @@ describe('CampaignService', () => {
   });
 
   describe('update', () => {
-    it('should update a campaign with valid data', async () => {
+    const mockBranchId = 'branch-1';
+    const mockWorldTime = new Date('2024-01-01T00:00:00Z');
+    const mockVersion = {
+      id: 'version-1',
+      entityType: 'campaign',
+      entityId: 'campaign-1',
+      branchId: mockBranchId,
+      validFrom: mockWorldTime,
+      validTo: null,
+      payloadGz: Buffer.from('compressed'),
+      createdAt: new Date(),
+      createdBy: 'user-1',
+      comment: null,
+      version: 2,
+    };
+
+    it('should update a campaign with valid data and create version', async () => {
       const input = {
         name: 'Updated Campaign',
       };
@@ -246,29 +293,70 @@ describe('CampaignService', () => {
         .mockResolvedValueOnce(mockCampaign) // findById
         .mockResolvedValueOnce(mockCampaign); // hasEditPermission
 
-      (prisma.campaign.update as jest.Mock).mockResolvedValue({
+      const updatedCampaign = {
         ...mockCampaign,
         name: input.name,
-      });
+        version: 2,
+      };
 
-      const result = await service.update('campaign-1', input, mockUser);
+      (prisma.campaign.update as jest.Mock).mockResolvedValue(updatedCampaign);
+      (versionService.createVersion as jest.Mock).mockResolvedValue(mockVersion);
+
+      const result = await service.update(
+        'campaign-1',
+        input,
+        mockUser,
+        1, // expectedVersion
+        mockBranchId,
+        mockWorldTime
+      );
 
       expect(result.name).toBe(input.name);
+      expect(result.version).toBe(2);
       expect(prisma.campaign.update).toHaveBeenCalledWith({
         where: { id: 'campaign-1' },
-        data: { name: input.name },
+        data: {
+          version: 2,
+          name: input.name,
+        },
       });
-      expect(audit.log).toHaveBeenCalledWith('campaign', 'campaign-1', 'UPDATE', mockUser.id, {
-        name: input.name,
-      });
+      expect(versionService.createVersion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: 'campaign',
+          entityId: 'campaign-1',
+          branchId: mockBranchId,
+          validFrom: mockWorldTime,
+          validTo: null,
+        }),
+        mockUser
+      );
+      expect(audit.log).toHaveBeenCalled();
+    });
+
+    it('should throw OptimisticLockException if version mismatch', async () => {
+      (prisma.campaign.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockCampaign) // findById
+        .mockResolvedValueOnce(mockCampaign); // hasEditPermission
+
+      await expect(
+        service.update(
+          'campaign-1',
+          { name: 'Test' },
+          mockUser,
+          999, // wrong expectedVersion
+          mockBranchId
+        )
+      ).rejects.toThrow(OptimisticLockException);
+      expect(prisma.campaign.update).not.toHaveBeenCalled();
+      expect(versionService.createVersion).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if campaign not found', async () => {
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('nonexistent', { name: 'Test' }, mockUser)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        service.update('nonexistent', { name: 'Test' }, mockUser, 1, mockBranchId)
+      ).rejects.toThrow(NotFoundException);
       expect(prisma.campaign.update).not.toHaveBeenCalled();
     });
 
@@ -277,10 +365,64 @@ describe('CampaignService', () => {
         .mockResolvedValueOnce(mockCampaign) // findById
         .mockResolvedValueOnce(null); // hasEditPermission
 
-      await expect(service.update('campaign-1', { name: 'Test' }, mockUser)).rejects.toThrow(
-        ForbiddenException
-      );
+      await expect(
+        service.update('campaign-1', { name: 'Test' }, mockUser, 1, mockBranchId)
+      ).rejects.toThrow(ForbiddenException);
       expect(prisma.campaign.update).not.toHaveBeenCalled();
+    });
+
+    it('should update all fields in version payload', async () => {
+      const input = {
+        name: 'Updated Campaign',
+        settings: { theme: 'dark' },
+        isActive: false,
+      };
+
+      (prisma.campaign.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockCampaign)
+        .mockResolvedValueOnce(mockCampaign);
+
+      const updatedCampaign = {
+        ...mockCampaign,
+        ...input,
+        version: 2,
+      };
+
+      (prisma.campaign.update as jest.Mock).mockResolvedValue(updatedCampaign);
+      (versionService.createVersion as jest.Mock).mockResolvedValue(mockVersion);
+
+      await service.update('campaign-1', input, mockUser, 1, mockBranchId, mockWorldTime);
+
+      expect(versionService.createVersion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            name: 'Updated Campaign',
+            settings: { theme: 'dark' },
+            isActive: false,
+            version: 2,
+          }),
+        }),
+        mockUser
+      );
+    });
+
+    it('should use transaction for atomic update', async () => {
+      const input = { name: 'Updated Campaign' };
+
+      (prisma.campaign.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockCampaign)
+        .mockResolvedValueOnce(mockCampaign);
+
+      (prisma.campaign.update as jest.Mock).mockResolvedValue({
+        ...mockCampaign,
+        ...input,
+        version: 2,
+      });
+      (versionService.createVersion as jest.Mock).mockResolvedValue(mockVersion);
+
+      await service.update('campaign-1', input, mockUser, 1, mockBranchId, mockWorldTime);
+
+      expect(prisma.$transaction).toHaveBeenCalled();
     });
   });
 
@@ -477,6 +619,103 @@ describe('CampaignService', () => {
 
       await expect(service.restore('campaign-1', mockUser)).rejects.toThrow(ForbiddenException);
       expect(prisma.campaign.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getCampaignAsOf', () => {
+    const mockBranchId = 'branch-1';
+    const mockWorldTime = new Date('2024-01-01T00:00:00Z');
+    const mockVersion = {
+      id: 'version-1',
+      entityType: 'campaign',
+      entityId: 'campaign-1',
+      branchId: mockBranchId,
+      validFrom: mockWorldTime,
+      validTo: null,
+      payloadGz: Buffer.from('compressed'),
+      createdAt: new Date(),
+      createdBy: 'user-1',
+      comment: null,
+      version: 1,
+    };
+
+    it('should return campaign state at specific world-time', async () => {
+      const historicalCampaign = {
+        ...mockCampaign,
+        name: 'Historical Campaign Name',
+      };
+
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue(mockVersion);
+      (versionService.decompressVersion as jest.Mock).mockResolvedValue(historicalCampaign);
+
+      const result = await service.getCampaignAsOf(
+        'campaign-1',
+        mockBranchId,
+        mockWorldTime,
+        mockUser
+      );
+
+      expect(result).toEqual(historicalCampaign);
+      expect(versionService.resolveVersion).toHaveBeenCalledWith(
+        'campaign',
+        'campaign-1',
+        mockBranchId,
+        mockWorldTime
+      );
+      expect(versionService.decompressVersion).toHaveBeenCalledWith(mockVersion);
+    });
+
+    it('should return null if campaign not found', async () => {
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(null);
+
+      const result = await service.getCampaignAsOf(
+        'nonexistent',
+        mockBranchId,
+        mockWorldTime,
+        mockUser
+      );
+
+      expect(result).toBeNull();
+      expect(versionService.resolveVersion).not.toHaveBeenCalled();
+    });
+
+    it('should return null if no version found at specified time', async () => {
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue(null);
+
+      const result = await service.getCampaignAsOf(
+        'campaign-1',
+        mockBranchId,
+        mockWorldTime,
+        mockUser
+      );
+
+      expect(result).toBeNull();
+      expect(versionService.decompressVersion).not.toHaveBeenCalled();
+    });
+
+    it('should verify user has access before querying version', async () => {
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await service.getCampaignAsOf('campaign-1', mockBranchId, mockWorldTime, mockUser);
+
+      expect(prisma.campaign.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: 'campaign-1',
+          deletedAt: null,
+          OR: [
+            { ownerId: mockUser.id },
+            {
+              memberships: {
+                some: {
+                  userId: mockUser.id,
+                },
+              },
+            },
+          ],
+        },
+      });
     });
   });
 });

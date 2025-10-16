@@ -4,7 +4,8 @@
  */
 
 import { InputType, Field, ID, Int } from '@nestjs/graphql';
-import { IsString, IsInt, IsOptional, IsNotEmpty, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsString, IsInt, IsOptional, IsNotEmpty, Min, IsUUID, IsDate } from 'class-validator';
 import { GraphQLJSON } from 'graphql-type-json';
 
 @InputType()
@@ -34,8 +35,18 @@ export class CreateKingdomInput {
   variableSchemas?: unknown[];
 }
 
+/**
+ * Data fields that can be updated on a Kingdom
+ */
+export interface UpdateKingdomData {
+  name?: string;
+  level?: number;
+  variables?: Record<string, unknown>;
+  variableSchemas?: unknown[];
+}
+
 @InputType()
-export class UpdateKingdomInput {
+export class UpdateKingdomInput implements UpdateKingdomData {
   @Field({ nullable: true })
   @IsString()
   @IsOptional()
@@ -54,4 +65,20 @@ export class UpdateKingdomInput {
   @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
   variableSchemas?: unknown[];
+
+  @Field(() => ID)
+  @IsUUID()
+  @IsNotEmpty()
+  branchId!: string;
+
+  @Field(() => Number)
+  @IsInt()
+  @IsNotEmpty()
+  expectedVersion!: number;
+
+  @Field({ nullable: true })
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  worldTime?: Date;
 }

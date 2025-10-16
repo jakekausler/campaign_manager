@@ -20,7 +20,11 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser, GraphQLContext } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type { CreateSettlementInput, UpdateSettlementInput } from '../inputs/settlement.input';
+import type {
+  CreateSettlementInput,
+  UpdateSettlementInput,
+  UpdateSettlementData,
+} from '../inputs/settlement.input';
 import { SettlementService } from '../services/settlement.service';
 import { Settlement } from '../types/settlement.type';
 import { Structure } from '../types/structure.type';
@@ -65,7 +69,16 @@ export class SettlementResolver {
     @Args('input') input: UpdateSettlementInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Settlement> {
-    return this.settlementService.update(id, input, user) as Promise<Settlement>;
+    const { branchId, expectedVersion, worldTime, ...updateData } = input;
+    const settlementData: UpdateSettlementData = updateData;
+    return this.settlementService.update(
+      id,
+      settlementData,
+      user,
+      expectedVersion,
+      branchId,
+      worldTime
+    ) as Promise<Settlement>;
   }
 
   @Mutation(() => Settlement, { description: 'Delete a settlement (soft delete)' })

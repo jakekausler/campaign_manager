@@ -64,7 +64,15 @@ export class EncounterResolver {
     @Args('input') input: UpdateEncounterInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Encounter> {
-    return this.encounterService.update(id, input, user) as Promise<Encounter>;
+    const { branchId, expectedVersion, worldTime, ...data } = input;
+    return this.encounterService.update(
+      id,
+      data,
+      user,
+      expectedVersion,
+      branchId,
+      worldTime
+    ) as Promise<Encounter>;
   }
 
   @Mutation(() => Encounter, { description: 'Delete an encounter (soft delete)' })

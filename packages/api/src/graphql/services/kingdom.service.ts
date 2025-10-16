@@ -4,20 +4,28 @@
  * Implements CRUD with soft delete, archive, and cascade delete to Settlements
  */
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { Kingdom as PrismaKingdom, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
-import type { CreateKingdomInput, UpdateKingdomInput } from '../inputs/kingdom.input';
+import { OptimisticLockException } from '../exceptions';
+import type { CreateKingdomInput, UpdateKingdomData } from '../inputs/kingdom.input';
 
 import { AuditService } from './audit.service';
+import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
 export class KingdomService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly versionService: VersionService
   ) {}
 
   /**
@@ -121,18 +129,41 @@ export class KingdomService {
   }
 
   /**
-   * Update a kingdom
+   * Update a kingdom with optimistic locking and versioning
    * Only owner or GM can update
    */
   async update(
     id: string,
-    input: UpdateKingdomInput,
-    user: AuthenticatedUser
+    input: UpdateKingdomData,
+    user: AuthenticatedUser,
+    expectedVersion: number,
+    branchId: string,
+    worldTime: Date = new Date()
   ): Promise<PrismaKingdom> {
     // Verify kingdom exists and user has access
     const kingdom = await this.findById(id, user);
     if (!kingdom) {
       throw new NotFoundException(`Kingdom with ID ${id} not found`);
+    }
+
+    // Verify branchId belongs to this entity's campaign
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: branchId, campaignId: kingdom.campaignId, deletedAt: null },
+    });
+
+    if (!branch) {
+      throw new BadRequestException(
+        `Branch with ID ${branchId} not found or does not belong to this entity's campaign`
+      );
+    }
+
+    // Optimistic locking check: verify version matches
+    if (kingdom.version !== expectedVersion) {
+      throw new OptimisticLockException(
+        `Kingdom was modified by another user. Expected version ${expectedVersion}, but found ${kingdom.version}. Please refresh and try again.`,
+        expectedVersion,
+        kingdom.version
+      );
     }
 
     // Verify user has edit permissions
@@ -141,8 +172,10 @@ export class KingdomService {
       throw new ForbiddenException('You do not have permission to update this kingdom');
     }
 
-    // Build update data
-    const updateData: Prisma.KingdomUpdateInput = {};
+    // Build update data with incremented version
+    const updateData: Prisma.KingdomUpdateInput = {
+      version: kingdom.version + 1,
+    };
     if (input.name !== undefined) updateData.name = input.name;
     if (input.level !== undefined) updateData.level = input.level;
     if (input.variables !== undefined)
@@ -150,10 +183,33 @@ export class KingdomService {
     if (input.variableSchemas !== undefined)
       updateData.variableSchemas = input.variableSchemas as Prisma.InputJsonValue;
 
-    // Update kingdom
-    const updated = await this.prisma.kingdom.update({
-      where: { id },
-      data: updateData,
+    // Create new version payload (all fields)
+    const newPayload: Record<string, unknown> = {
+      ...kingdom,
+      ...updateData,
+      version: kingdom.version + 1,
+    };
+
+    // Use transaction to atomically update entity and create version
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Update kingdom with new version
+      const updatedKingdom = await tx.kingdom.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Create version snapshot
+      const versionInput: CreateVersionInput = {
+        entityType: 'kingdom',
+        entityId: id,
+        branchId,
+        validFrom: worldTime,
+        validTo: null,
+        payload: newPayload,
+      };
+      await this.versionService.createVersion(versionInput, user);
+
+      return updatedKingdom;
     });
 
     // Create audit entry
@@ -326,5 +382,34 @@ export class KingdomService {
     });
 
     return campaign !== null;
+  }
+
+  /**
+   * Get kingdom state as it existed at a specific point in world-time
+   * Supports time-travel queries for version history
+   */
+  async getKingdomAsOf(
+    id: string,
+    branchId: string,
+    worldTime: Date,
+    user: AuthenticatedUser
+  ): Promise<PrismaKingdom | null> {
+    // Verify user has access to the kingdom
+    const kingdom = await this.findById(id, user);
+    if (!kingdom) {
+      return null;
+    }
+
+    // Resolve version at the specified time
+    const version = await this.versionService.resolveVersion('kingdom', id, branchId, worldTime);
+
+    if (!version) {
+      return null;
+    }
+
+    // Decompress and return the historical payload as a Kingdom object
+    const payload = await this.versionService.decompressVersion(version);
+
+    return payload as PrismaKingdom;
   }
 }

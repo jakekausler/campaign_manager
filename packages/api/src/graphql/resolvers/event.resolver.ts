@@ -64,7 +64,15 @@ export class EventResolver {
     @Args('input') input: UpdateEventInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Event> {
-    return this.eventService.update(id, input, user) as Promise<Event>;
+    const { branchId, expectedVersion, worldTime, ...data } = input;
+    return this.eventService.update(
+      id,
+      data,
+      user,
+      expectedVersion,
+      branchId,
+      worldTime
+    ) as Promise<Event>;
   }
 
   @Mutation(() => Event, { description: 'Delete an event (soft delete)' })

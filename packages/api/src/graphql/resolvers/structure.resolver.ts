@@ -55,7 +55,15 @@ export class StructureResolver {
     @Args('input') input: UpdateStructureInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Structure> {
-    return this.structureService.update(id, input, user) as Promise<Structure>;
+    const { branchId, expectedVersion, worldTime, ...data } = input;
+    return this.structureService.update(
+      id,
+      data,
+      user,
+      expectedVersion,
+      branchId,
+      worldTime
+    ) as Promise<Structure>;
   }
 
   @Mutation(() => Structure, { description: 'Delete a structure (soft delete)' })

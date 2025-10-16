@@ -3,8 +3,9 @@
  * DTOs for Location mutations
  */
 
-import { InputType, Field } from '@nestjs/graphql';
-import { IsString, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { InputType, Field, ID } from '@nestjs/graphql';
+import { Type } from 'class-transformer';
+import { IsString, IsNotEmpty, IsOptional, IsUUID, IsInt, IsDate } from 'class-validator';
 
 @InputType()
 export class CreateLocationInput {
@@ -37,8 +38,18 @@ export class CreateLocationInput {
   // Not included in input for MVP - will be added in spatial features ticket
 }
 
+/**
+ * Data fields that can be updated on a Location
+ */
+export interface UpdateLocationData {
+  type?: string;
+  name?: string;
+  description?: string;
+  parentLocationId?: string | null;
+}
+
 @InputType()
-export class UpdateLocationInput {
+export class UpdateLocationInput implements UpdateLocationData {
   @Field({ nullable: true })
   @IsString()
   @IsOptional()
@@ -58,6 +69,22 @@ export class UpdateLocationInput {
   @IsUUID()
   @IsOptional()
   parentLocationId?: string | null;
+
+  @Field(() => ID)
+  @IsUUID()
+  @IsNotEmpty()
+  branchId!: string;
+
+  @Field(() => Number)
+  @IsInt()
+  @IsNotEmpty()
+  expectedVersion!: number;
+
+  @Field({ nullable: true })
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  worldTime?: Date;
 
   // Note: geometry updates will be handled separately
 }

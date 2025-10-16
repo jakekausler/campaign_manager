@@ -11,7 +11,11 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type { CreateLocationInput, UpdateLocationInput } from '../inputs/location.input';
+import type {
+  CreateLocationInput,
+  UpdateLocationInput,
+  UpdateLocationData,
+} from '../inputs/location.input';
 import { LocationService } from '../services/location.service';
 import { Location } from '../types/location.type';
 
@@ -64,7 +68,16 @@ export class LocationResolver {
     @Args('input') input: UpdateLocationInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Location> {
-    return this.locationService.update(id, input, user) as Promise<Location>;
+    const { branchId, expectedVersion, worldTime, ...updateData } = input;
+    const locationData: UpdateLocationData = updateData;
+    return this.locationService.update(
+      id,
+      locationData,
+      user,
+      expectedVersion,
+      branchId,
+      worldTime
+    ) as Promise<Location>;
   }
 
   @Mutation(() => Location, { description: 'Delete a location (soft delete)' })

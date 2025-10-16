@@ -11,7 +11,11 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type { CreateKingdomInput, UpdateKingdomInput } from '../inputs/kingdom.input';
+import type {
+  CreateKingdomInput,
+  UpdateKingdomInput,
+  UpdateKingdomData,
+} from '../inputs/kingdom.input';
 import { KingdomService } from '../services/kingdom.service';
 import { Kingdom } from '../types/kingdom.type';
 
@@ -55,7 +59,16 @@ export class KingdomResolver {
     @Args('input') input: UpdateKingdomInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Kingdom> {
-    return this.kingdomService.update(id, input, user) as Promise<Kingdom>;
+    const { branchId, expectedVersion, worldTime, ...updateData } = input;
+    const kingdomData: UpdateKingdomData = updateData;
+    return this.kingdomService.update(
+      id,
+      kingdomData,
+      user,
+      expectedVersion,
+      branchId,
+      worldTime
+    ) as Promise<Kingdom>;
   }
 
   @Mutation(() => Kingdom, { description: 'Delete a kingdom (soft delete)' })

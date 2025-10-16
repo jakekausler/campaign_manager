@@ -4,20 +4,28 @@
  * Implements CRUD with soft delete and archive (no cascade delete)
  */
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { Structure as PrismaStructure, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
-import type { CreateStructureInput, UpdateStructureInput } from '../inputs/structure.input';
+import { OptimisticLockException } from '../exceptions';
+import type { CreateStructureInput, UpdateStructureData } from '../inputs/structure.input';
 
 import { AuditService } from './audit.service';
+import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
 export class StructureService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly versionService: VersionService
   ) {}
 
   /**
@@ -230,18 +238,42 @@ export class StructureService {
   }
 
   /**
-   * Update a structure
+   * Update a structure with optimistic locking and versioning
    * Only owner or GM can update
    */
   async update(
     id: string,
-    input: UpdateStructureInput,
-    user: AuthenticatedUser
+    input: UpdateStructureData,
+    user: AuthenticatedUser,
+    expectedVersion: number,
+    branchId: string,
+    worldTime: Date = new Date()
   ): Promise<PrismaStructure> {
     // Verify structure exists and user has access
     const structure = await this.findById(id, user);
     if (!structure) {
       throw new NotFoundException(`Structure with ID ${id} not found`);
+    }
+
+    // Get structure with settlement and kingdom to access campaignId
+    const structureWithRelations = await this.prisma.structure.findUnique({
+      where: { id },
+      include: { settlement: { include: { kingdom: true } } },
+    });
+
+    // Verify branchId belongs to this entity's campaign
+    const branch = await this.prisma.branch.findFirst({
+      where: {
+        id: branchId,
+        campaignId: structureWithRelations!.settlement.kingdom.campaignId,
+        deletedAt: null,
+      },
+    });
+
+    if (!branch) {
+      throw new BadRequestException(
+        `Branch with ID ${branchId} not found or does not belong to this entity's campaign`
+      );
     }
 
     // Verify user has edit permissions
@@ -274,8 +306,19 @@ export class StructureService {
       throw new ForbiddenException('You do not have permission to update this structure');
     }
 
-    // Build update data
-    const updateData: Prisma.StructureUpdateInput = {};
+    // Optimistic locking check: verify version matches
+    if (structure.version !== expectedVersion) {
+      throw new OptimisticLockException(
+        `Structure was modified by another user. Expected version ${expectedVersion}, but found ${structure.version}. Please refresh and try again.`,
+        expectedVersion,
+        structure.version
+      );
+    }
+
+    // Build update data with incremented version
+    const updateData: Prisma.StructureUpdateInput = {
+      version: structure.version + 1,
+    };
     if (input.name !== undefined) updateData.name = input.name;
     if (input.type !== undefined) updateData.type = input.type;
     if (input.level !== undefined) updateData.level = input.level;
@@ -284,9 +327,33 @@ export class StructureService {
     if (input.variableSchemas !== undefined)
       updateData.variableSchemas = input.variableSchemas as Prisma.InputJsonValue;
 
-    const updated = await this.prisma.structure.update({
-      where: { id },
-      data: updateData,
+    // Create new version payload (all fields)
+    const newPayload: Record<string, unknown> = {
+      ...structure,
+      ...updateData,
+      version: structure.version + 1,
+    };
+
+    // Use transaction to atomically update entity and create version
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Update structure with new version
+      const updatedStructure = await tx.structure.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Create version snapshot
+      const versionInput: CreateVersionInput = {
+        entityType: 'structure',
+        entityId: id,
+        branchId,
+        validFrom: worldTime,
+        validTo: null,
+        payload: newPayload,
+      };
+      await this.versionService.createVersion(versionInput, user);
+
+      return updatedStructure;
     });
 
     // Create audit entry
@@ -475,5 +542,34 @@ export class StructureService {
     await this.audit.log('structure', id, 'RESTORE', user.id, { archivedAt: null });
 
     return restored;
+  }
+
+  /**
+   * Get structure state as it existed at a specific point in world-time
+   * Supports time-travel queries for version history
+   */
+  async getStructureAsOf(
+    id: string,
+    branchId: string,
+    worldTime: Date,
+    user: AuthenticatedUser
+  ): Promise<PrismaStructure | null> {
+    // Verify user has access to the structure
+    const structure = await this.findById(id, user);
+    if (!structure) {
+      return null;
+    }
+
+    // Resolve version at the specified time
+    const version = await this.versionService.resolveVersion('structure', id, branchId, worldTime);
+
+    if (!version) {
+      return null;
+    }
+
+    // Decompress and return the historical payload as a Structure object
+    const payload = await this.versionService.decompressVersion(version);
+
+    return payload as PrismaStructure;
   }
 }

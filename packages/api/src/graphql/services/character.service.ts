@@ -4,20 +4,28 @@
  * Implements CRUD with soft delete and archive (no cascade delete)
  */
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { Character as PrismaCharacter, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
-import type { CreateCharacterInput, UpdateCharacterInput } from '../inputs/character.input';
+import { OptimisticLockException } from '../exceptions';
+import type { CreateCharacterInput, UpdateCharacterData } from '../inputs/character.input';
 
 import { AuditService } from './audit.service';
+import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
 export class CharacterService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly versionService: VersionService
   ) {}
 
   /**
@@ -184,13 +192,16 @@ export class CharacterService {
   }
 
   /**
-   * Update a character
+   * Update a character with optimistic locking and versioning
    * Only owner or GM can update
    */
   async update(
     id: string,
-    input: UpdateCharacterInput,
-    user: AuthenticatedUser
+    input: UpdateCharacterData,
+    user: AuthenticatedUser,
+    expectedVersion: number,
+    branchId: string,
+    worldTime: Date = new Date()
   ): Promise<PrismaCharacter> {
     // Verify character exists and user has access
     const character = await this.findById(id, user);
@@ -198,10 +209,30 @@ export class CharacterService {
       throw new NotFoundException(`Character with ID ${id} not found`);
     }
 
+    // Verify branchId belongs to this entity's campaign
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: branchId, campaignId: character.campaignId, deletedAt: null },
+    });
+
+    if (!branch) {
+      throw new BadRequestException(
+        `Branch with ID ${branchId} not found or does not belong to this entity's campaign`
+      );
+    }
+
     // Verify user has edit permissions
     const hasPermission = await this.hasEditPermission(character.campaignId, user);
     if (!hasPermission) {
       throw new ForbiddenException('You do not have permission to update this character');
+    }
+
+    // Optimistic locking check: verify version matches
+    if (character.version !== expectedVersion) {
+      throw new OptimisticLockException(
+        `Character was modified by another user. Expected version ${expectedVersion}, but found ${character.version}. Please refresh and try again.`,
+        expectedVersion,
+        character.version
+      );
     }
 
     // If partyId is being updated, verify party exists and belongs to the campaign
@@ -219,8 +250,10 @@ export class CharacterService {
       }
     }
 
-    // Build update data
-    const updateData: Prisma.CharacterUpdateInput = {};
+    // Build update data with incremented version
+    const updateData: Prisma.CharacterUpdateInput = {
+      version: character.version + 1,
+    };
     if (input.name !== undefined) updateData.name = input.name;
     if (input.partyId !== undefined) {
       updateData.party =
@@ -233,10 +266,33 @@ export class CharacterService {
     if (input.variables !== undefined)
       updateData.variables = input.variables as Prisma.InputJsonValue;
 
-    // Update character
-    const updated = await this.prisma.character.update({
-      where: { id },
-      data: updateData,
+    // Create new version payload (all fields)
+    const newPayload: Record<string, unknown> = {
+      ...character,
+      ...updateData,
+      version: character.version + 1,
+    };
+
+    // Use transaction to atomically update entity and create version
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Update character with new version
+      const updatedCharacter = await tx.character.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Create version snapshot
+      const versionInput: CreateVersionInput = {
+        entityType: 'character',
+        entityId: id,
+        branchId,
+        validFrom: worldTime,
+        validTo: null,
+        payload: newPayload,
+      };
+      await this.versionService.createVersion(versionInput, user);
+
+      return updatedCharacter;
     });
 
     // Create audit entry
@@ -378,5 +434,34 @@ export class CharacterService {
     });
 
     return campaign !== null;
+  }
+
+  /**
+   * Get character state as it existed at a specific point in world-time
+   * Supports time-travel queries for version history
+   */
+  async getCharacterAsOf(
+    id: string,
+    branchId: string,
+    worldTime: Date,
+    user: AuthenticatedUser
+  ): Promise<PrismaCharacter | null> {
+    // Verify user has access to the character
+    const character = await this.findById(id, user);
+    if (!character) {
+      return null;
+    }
+
+    // Resolve version at the specified time
+    const version = await this.versionService.resolveVersion('character', id, branchId, worldTime);
+
+    if (!version) {
+      return null;
+    }
+
+    // Decompress and return the historical payload as a Character object
+    const payload = await this.versionService.decompressVersion(version);
+
+    return payload as PrismaCharacter;
   }
 }

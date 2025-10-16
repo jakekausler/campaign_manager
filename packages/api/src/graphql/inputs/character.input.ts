@@ -4,7 +4,17 @@
  */
 
 import { InputType, Field, ID, Int } from '@nestjs/graphql';
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsUUID, IsInt, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsBoolean,
+  IsUUID,
+  IsInt,
+  Min,
+  IsDate,
+} from 'class-validator';
 import { GraphQLJSON } from 'graphql-type-json';
 
 @InputType()
@@ -50,8 +60,21 @@ export class CreateCharacterInput {
   variables?: Record<string, unknown>;
 }
 
+/**
+ * Data fields that can be updated on a Character
+ */
+export interface UpdateCharacterData {
+  name?: string;
+  partyId?: string;
+  level?: number;
+  race?: string;
+  class?: string;
+  isNPC?: boolean;
+  variables?: Record<string, unknown>;
+}
+
 @InputType()
-export class UpdateCharacterInput {
+export class UpdateCharacterInput implements UpdateCharacterData {
   @Field({ nullable: true })
   @IsString()
   @IsOptional()
@@ -86,4 +109,20 @@ export class UpdateCharacterInput {
   @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
   variables?: Record<string, unknown>;
+
+  @Field(() => ID)
+  @IsUUID()
+  @IsNotEmpty()
+  branchId!: string;
+
+  @Field(() => Number)
+  @IsInt()
+  @IsNotEmpty()
+  expectedVersion!: number;
+
+  @Field({ nullable: true })
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  worldTime?: Date;
 }

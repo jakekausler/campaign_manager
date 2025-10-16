@@ -11,7 +11,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type { CreatePartyInput, UpdatePartyInput } from '../inputs/party.input';
+import type { CreatePartyInput, UpdatePartyInput, UpdatePartyData } from '../inputs/party.input';
 import { PartyService } from '../services/party.service';
 import { Party } from '../types/party.type';
 
@@ -55,7 +55,16 @@ export class PartyResolver {
     @Args('input') input: UpdatePartyInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Party> {
-    return this.partyService.update(id, input, user) as Promise<Party>;
+    const { branchId, expectedVersion, worldTime, ...updateData } = input;
+    const partyData: UpdatePartyData = updateData;
+    return this.partyService.update(
+      id,
+      partyData,
+      user,
+      expectedVersion,
+      branchId,
+      worldTime
+    ) as Promise<Party>;
   }
 
   @Mutation(() => Party, { description: 'Delete a party (soft delete)' })

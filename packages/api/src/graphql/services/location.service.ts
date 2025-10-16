@@ -3,20 +3,23 @@
  * Handles CRUD operations for Locations with hierarchical cascade delete
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import type { Location as PrismaLocation, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
-import type { CreateLocationInput, UpdateLocationInput } from '../inputs/location.input';
+import { OptimisticLockException } from '../exceptions';
+import type { CreateLocationInput, UpdateLocationData } from '../inputs/location.input';
 
 import { AuditService } from './audit.service';
+import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
 export class LocationService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly versionService: VersionService
   ) {}
 
   /**
@@ -124,17 +127,47 @@ export class LocationService {
   }
 
   /**
-   * Update a location
+   * Update a location with optimistic locking and versioning
    */
   async update(
     id: string,
-    input: UpdateLocationInput,
-    user: AuthenticatedUser
+    input: UpdateLocationData,
+    user: AuthenticatedUser,
+    expectedVersion: number,
+    branchId: string,
+    worldTime: Date = new Date()
   ): Promise<PrismaLocation> {
     // Verify location exists
     const location = await this.findById(id);
     if (!location) {
       throw new NotFoundException(`Location with ID ${id} not found`);
+    }
+
+    // Verify branchId exists and belongs to a campaign in this world
+    const branch = await this.prisma.branch.findFirst({
+      where: {
+        id: branchId,
+        deletedAt: null,
+        campaign: {
+          worldId: location.worldId,
+          deletedAt: null,
+        },
+      },
+    });
+
+    if (!branch) {
+      throw new BadRequestException(
+        `Branch with ID ${branchId} not found or does not belong to a campaign in this location's world`
+      );
+    }
+
+    // Optimistic locking check: verify version matches
+    if (location.version !== expectedVersion) {
+      throw new OptimisticLockException(
+        `Location was modified by another user. Expected version ${expectedVersion}, but found ${location.version}. Please refresh and try again.`,
+        expectedVersion,
+        location.version
+      );
     }
 
     // Verify parent location exists and belongs to same world (if changing parent)
@@ -166,8 +199,10 @@ export class LocationService {
       }
     }
 
-    // Build update data
-    const updateData: Prisma.LocationUpdateInput = {};
+    // Build update data with incremented version
+    const updateData: Prisma.LocationUpdateInput = {
+      version: location.version + 1,
+    };
     if (input.type !== undefined) updateData.type = input.type;
     if (input.name !== undefined) updateData.name = input.name;
     if (input.description !== undefined) updateData.description = input.description;
@@ -179,10 +214,33 @@ export class LocationService {
       }
     }
 
-    // Update location
-    const updated = await this.prisma.location.update({
-      where: { id },
-      data: updateData,
+    // Create new version payload (all fields)
+    const newPayload: Record<string, unknown> = {
+      ...location,
+      ...updateData,
+      version: location.version + 1,
+    };
+
+    // Use transaction to atomically update entity and create version
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Update location with new version
+      const updatedLocation = await tx.location.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Create version snapshot
+      const versionInput: CreateVersionInput = {
+        entityType: 'location',
+        entityId: id,
+        branchId,
+        validFrom: worldTime,
+        validTo: null,
+        payload: newPayload,
+      };
+      await this.versionService.createVersion(versionInput, user);
+
+      return updatedLocation;
     });
 
     // Create audit entry
@@ -320,5 +378,33 @@ export class LocationService {
     }
 
     return false;
+  }
+
+  /**
+   * Get location state as it existed at a specific point in world-time
+   * Supports time-travel queries for version history
+   */
+  async getLocationAsOf(
+    id: string,
+    branchId: string,
+    worldTime: Date
+  ): Promise<PrismaLocation | null> {
+    // Verify location exists
+    const location = await this.findById(id);
+    if (!location) {
+      return null;
+    }
+
+    // Resolve version at the specified time
+    const version = await this.versionService.resolveVersion('location', id, branchId, worldTime);
+
+    if (!version) {
+      return null;
+    }
+
+    // Decompress and return the historical payload as a Location object
+    const payload = await this.versionService.decompressVersion(version);
+
+    return payload as PrismaLocation;
   }
 }

@@ -3,20 +3,28 @@
  * Handles CRUD operations for Encounters (no cascade delete per requirements)
  */
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { Encounter as PrismaEncounter, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
-import type { CreateEncounterInput, UpdateEncounterInput } from '../inputs/encounter.input';
+import { OptimisticLockException } from '../exceptions';
+import type { CreateEncounterInput, UpdateEncounterData } from '../inputs/encounter.input';
 
 import { AuditService } from './audit.service';
+import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
 export class EncounterService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly versionService: VersionService
   ) {}
 
   /**
@@ -117,12 +125,15 @@ export class EncounterService {
   }
 
   /**
-   * Update an encounter
+   * Update an encounter with optimistic locking and versioning
    */
   async update(
     id: string,
-    input: UpdateEncounterInput,
-    user: AuthenticatedUser
+    input: UpdateEncounterData,
+    user: AuthenticatedUser,
+    expectedVersion: number,
+    branchId: string,
+    worldTime: Date = new Date()
   ): Promise<PrismaEncounter> {
     // Verify encounter exists and user has access
     const encounter = await this.findById(id, user);
@@ -130,13 +141,35 @@ export class EncounterService {
       throw new NotFoundException(`Encounter with ID ${id} not found`);
     }
 
+    // Verify branchId belongs to this entity's campaign
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: branchId, campaignId: encounter.campaignId, deletedAt: null },
+    });
+
+    if (!branch) {
+      throw new BadRequestException(
+        `Branch with ID ${branchId} not found or does not belong to this entity's campaign`
+      );
+    }
+
+    // Optimistic locking check: verify version matches
+    if (encounter.version !== expectedVersion) {
+      throw new OptimisticLockException(
+        `Encounter was modified by another user. Expected version ${expectedVersion}, but found ${encounter.version}. Please refresh and try again.`,
+        expectedVersion,
+        encounter.version
+      );
+    }
+
     // Verify location exists and belongs to same world as campaign (if changing location)
     if (input.locationId !== undefined && input.locationId !== null) {
       await this.validateLocation(encounter.campaignId, input.locationId);
     }
 
-    // Build update data
-    const updateData: Prisma.EncounterUpdateInput = {};
+    // Build update data with incremented version
+    const updateData: Prisma.EncounterUpdateInput = {
+      version: encounter.version + 1,
+    };
     if (input.name !== undefined) updateData.name = input.name;
     if (input.description !== undefined) updateData.description = input.description;
     if (input.difficulty !== undefined) updateData.difficulty = input.difficulty;
@@ -159,10 +192,33 @@ export class EncounterService {
       }
     }
 
-    // Update encounter
-    const updated = await this.prisma.encounter.update({
-      where: { id },
-      data: updateData,
+    // Create new version payload (all fields)
+    const newPayload: Record<string, unknown> = {
+      ...encounter,
+      ...updateData,
+      version: encounter.version + 1,
+    };
+
+    // Use transaction to atomically update entity and create version
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Update encounter with new version
+      const updatedEncounter = await tx.encounter.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Create version snapshot
+      const versionInput: CreateVersionInput = {
+        entityType: 'encounter',
+        entityId: id,
+        branchId,
+        validFrom: worldTime,
+        validTo: null,
+        payload: newPayload,
+      };
+      await this.versionService.createVersion(versionInput, user);
+
+      return updatedEncounter;
     });
 
     // Create audit entry
@@ -290,5 +346,34 @@ export class EncounterService {
     if (location.worldId !== campaign?.worldId) {
       throw new Error('Location must belong to the same world as the campaign');
     }
+  }
+
+  /**
+   * Get encounter state as it existed at a specific point in world-time
+   * Supports time-travel queries for version history
+   */
+  async getEncounterAsOf(
+    id: string,
+    branchId: string,
+    worldTime: Date,
+    user: AuthenticatedUser
+  ): Promise<PrismaEncounter | null> {
+    // Verify user has access to the encounter
+    const encounter = await this.findById(id, user);
+    if (!encounter) {
+      return null;
+    }
+
+    // Resolve version at the specified time
+    const version = await this.versionService.resolveVersion('encounter', id, branchId, worldTime);
+
+    if (!version) {
+      return null;
+    }
+
+    // Decompress and return the historical payload as an Encounter object
+    const payload = await this.versionService.decompressVersion(version);
+
+    return payload as PrismaEncounter;
   }
 }
