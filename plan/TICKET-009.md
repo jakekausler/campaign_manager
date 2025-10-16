@@ -8,6 +8,7 @@
   - Stage 3 (Kingdom Management): `60a04af`
   - Stage 4 (Settlement & Structure Management): `803a4cd`
   - Stage 5 (Variable Schema Service): `8b03cbb`
+  - Stage 6 (Party GraphQL API): `a4eab8e`
 
 ## Description
 
@@ -306,3 +307,71 @@ Implemented VariableSchemaService, a centralized service for managing typed vari
 - 28 unit tests covering validation, CRUD operations, permissions, edge cases, and multi-entity support
 
 All tests passing. Service is production-ready and provides the foundation for typed variable management in future stages.
+
+### Stage 6: Party GraphQL API (Completed - Commit a4eab8e)
+
+Implemented comprehensive GraphQL API layer for Party management including typed variable system, level tracking, and party member management:
+
+**GraphQL Types Created**:
+
+- **VariableSchemaType**: GraphQL object type for variable schema definitions with enum support
+- **Variable**: GraphQL object type for typed variable values
+- **VariableTypeEnum**: GraphQL enum (STRING, NUMBER, BOOLEAN, ENUM) for type safety
+- **DefineVariableSchemaInput**: Input type for defining variable schemas
+- **SetVariableInput**: Input type for setting variable values
+- **AddPartyMemberInput**: Input type for adding characters to parties
+- **RemovePartyMemberInput**: Input type for removing characters from parties
+
+**Party Resolver Mutations Implemented**:
+
+- **setPartyLevel**: Sets manual level override for parties
+- **addPartyMember**: Adds characters to party with campaign boundary validation
+- **removePartyMember**: Removes characters from party with existence validation
+- **definePartyVariableSchema**: Defines typed variable schemas (string, number, boolean, enum)
+- **setPartyVariable**: Sets variable values with automatic type validation
+- **deletePartyVariableSchema**: Removes schema and associated variable value
+
+**Party Resolver Queries Implemented**:
+
+- **partyVariable**: Retrieves single variable value by name (returns null for non-existent)
+- **partyVariables**: Lists all variables for a party as name-value pairs
+- **partyVariableSchemas**: Lists all variable schemas for a party
+
+**Service Layer Updates**:
+
+- Updated PartyService.addMember() to return `Promise<Party>` for GraphQL compatibility
+- Updated PartyService.removeMember() to return `Promise<Party>` for GraphQL compatibility
+- Updated VariableSchemaService.defineSchema() to return `Promise<VariableSchema>`
+- Updated VariableSchemaService.setVariable() to return `Promise<unknown>`
+
+**Security & Validation**:
+
+- All mutations protected with JwtAuthGuard and RolesGuard
+- Role-based access control: 'owner' or 'gm' roles required for mutations
+- Input validation using class-validator decorators (IsString, IsNotEmpty, IsEnum, IsArray)
+- Type validation enforced by VariableSchemaService (rejects invalid types and enum values)
+- Permission checks traverse entity hierarchy correctly (party→campaign)
+
+**Error Handling**:
+
+- Graceful handling of non-existent variables (returns null instead of throwing)
+- Try-catch error handling in query resolvers for better UX
+- Type validation errors surface meaningful messages to clients
+- Proper exception types (NotFoundException, ForbiddenException, BadRequestException)
+
+**Testing Coverage**:
+
+- 24 comprehensive integration tests covering all operations
+- Tests include happy paths (successful operations) and error cases (invalid inputs)
+- Validates enum type validation (rejects invalid enum values)
+- Tests sequential operations (define schema → set variable → get variable → delete schema)
+- Proper test cleanup respecting foreign key constraints in afterAll
+- All 77 tests passing (24 integration + 25 service + 28 variable schema)
+
+**Code Quality**:
+
+- TypeScript compilation successful across all packages
+- ESLint passing with 0 errors (43 warnings from existing code, not from Stage 6)
+- Code reviewed and approved by code-reviewer subagent
+- Follows NestJS, Prisma, and GraphQL best practices
+- Consistent with existing codebase patterns
