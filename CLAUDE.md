@@ -9,13 +9,14 @@ This file contains instructions and guidelines for Claude AI agents working on t
 3. [Development Commands](#development-commands)
 4. [Testing Strategy](#testing-strategy)
 5. [Code Quality](#code-quality)
-6. [TypeScript Guidelines](#typescript-guidelines)
-7. [Test-Driven Development (TDD)](#test-driven-development-tdd)
-8. [Working with the Monorepo](#working-with-the-monorepo)
-9. [Subagent Usage](#subagent-usage)
-10. [Common Workflows](#common-workflows)
-11. [Debugging](#debugging)
-12. [Database Migrations](#database-migrations)
+6. [Git Commit Messages](#git-commit-messages)
+7. [TypeScript Guidelines](#typescript-guidelines)
+8. [Test-Driven Development (TDD)](#test-driven-development-tdd)
+9. [Working with the Monorepo](#working-with-the-monorepo)
+10. [Subagent Usage](#subagent-usage)
+11. [Common Workflows](#common-workflows)
+12. [Debugging](#debugging)
+13. [Database Migrations](#database-migrations)
 
 ---
 
@@ -192,6 +193,183 @@ pnpm run lint -- --fix
 # Auto-format code
 pnpm run format
 ```
+
+## Git Commit Messages
+
+### Commit Message Format
+
+All commits must follow the Conventional Commits format with a detailed body explaining the changes.
+
+**Structure**:
+
+```
+<type>(<scope>): <short summary>
+
+<detailed message explaining the why and what>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+### Commit Types
+
+- **feat**: A new feature
+- **fix**: A bug fix
+- **docs**: Documentation changes only
+- **refactor**: Code changes that neither fix bugs nor add features
+- **test**: Adding or updating tests
+- **chore**: Changes to build process, dependencies, or tooling
+- **perf**: Performance improvements
+- **style**: Code style changes (formatting, missing semi-colons, etc.)
+
+### Scopes
+
+Use the package name as the scope:
+
+- `api` - Changes to @campaign/api
+- `frontend` - Changes to @campaign/frontend
+- `shared` - Changes to @campaign/shared
+- `rules-engine` - Changes to @campaign/rules-engine
+- `scheduler` - Changes to @campaign/scheduler
+- `root` - Changes to root-level config or multiple packages
+
+### Writing Good Commit Messages
+
+**Summary Line** (first line):
+
+- Keep under 72 characters
+- Use imperative mood ("add feature" not "added feature")
+- Don't end with a period
+- Be specific but concise
+
+**Detailed Message** (body):
+
+- Explain WHY the change was made, not just WHAT changed
+- Include context about the problem being solved
+- Mention any important implementation decisions
+- Reference ticket numbers if applicable
+- Use bullet points for multiple changes
+- Leave a blank line between summary and body
+
+### Examples
+
+**Good commit with detailed message**:
+
+```
+feat(api): add user authentication endpoints
+
+Implements JWT-based authentication flow with refresh tokens.
+Added three new endpoints:
+- POST /auth/login - Issues access and refresh tokens
+- POST /auth/refresh - Exchanges refresh token for new access token
+- POST /auth/logout - Invalidates refresh token
+
+Uses bcrypt for password hashing with cost factor of 12.
+Tokens expire after 15 minutes (access) and 7 days (refresh).
+
+Implements requirements from TICKET-004.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**Good bug fix commit**:
+
+```
+fix(api): prevent race condition in event scheduler
+
+Fixed a race condition where multiple workers could pick up
+the same scheduled event for processing.
+
+Added a database-level lock using PostgreSQL's SELECT FOR UPDATE
+to ensure atomic event claiming. Also added a processed_at timestamp
+to track when events were actually executed.
+
+This resolves the duplicate event execution issue reported in
+production logs.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**Good refactor commit**:
+
+```
+refactor(api): extract campaign validation into separate service
+
+Moved campaign validation logic from CampaignController into
+a dedicated CampaignValidationService to improve testability
+and separation of concerns.
+
+The validation rules are now easier to test in isolation and
+can be reused by the GraphQL resolvers and REST endpoints.
+No behavior changes - existing tests still pass.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**Bad commit (too brief)**:
+
+```
+fix: bug fix
+```
+
+**Bad commit (unclear)**:
+
+```
+feat(api): update stuff
+
+Changed some files
+```
+
+### Using Git Commit in Practice
+
+When committing through the automated git workflow:
+
+1. The commit message should be passed via HEREDOC for proper formatting
+2. Include the Claude Code attribution footer
+3. Ensure the message is clear enough for team members to understand
+
+Example command:
+
+```bash
+git commit -m "$(cat <<'EOF'
+feat(api): add GraphQL mutation for campaign creation
+
+Implements createCampaign mutation that:
+- Validates campaign data against schema rules
+- Creates campaign with default settings
+- Associates campaign with authenticated user
+- Returns created campaign with all fields
+
+Includes comprehensive unit tests for validation logic
+and integration tests for the GraphQL mutation.
+
+Part of TICKET-006 implementation.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+```
+
+### Commit Message Checklist
+
+Before committing, verify:
+
+- [ ] Type and scope are correct
+- [ ] Summary is clear and under 72 characters
+- [ ] Body explains WHY, not just WHAT
+- [ ] Important implementation details are mentioned
+- [ ] Related ticket numbers are referenced
+- [ ] Claude Code attribution is included
+- [ ] Message would be clear to someone reviewing in 6 months
 
 ## TypeScript Guidelines
 
@@ -611,7 +789,7 @@ If you need a specialized subagent for a recurring task:
 7. **Stage changes** with `git add`
 8. **MANDATORY: Use Code Reviewer subagent** to review staged changes before commit
 9. Address any critical issues flagged by Code Reviewer
-10. Commit changes with conventional commit format (only after Code Reviewer approval)
+10. Commit changes with detailed conventional commit message (only after Code Reviewer approval)
 11. **MANDATORY: Use Project Manager subagent** to verify ticket completion
 12. Address any missing items flagged by Project Manager
 13. Update the ticket file with implementation notes and commit hash (only after Project Manager approval)
@@ -639,33 +817,70 @@ If you need a specialized subagent for a recurring task:
    - TypeScript Fixer: type-check and lint
    - TypeScript Tester: run all tests
    ```
-5. **Commit**
+5. **Commit with detailed message**
    ```bash
    git add .
-   git commit -m "feat(api): add user creation feature"
+   git commit -m "$(cat <<'EOF'
+   feat(api): add user creation feature
    ```
+
+Implements complete user creation flow with validation:
+
+- Email format validation and uniqueness check
+- Password strength requirements (min 8 chars, complexity rules)
+- Automatic timestamp generation for createdAt/updatedAt
+- Returns user object without sensitive fields
+
+Includes unit tests for validation logic and service methods.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+
+```
 
 ### Fixing a Bug
 
 1. **Write a failing test that reproduces the bug** - Base agent writes test
-   ```
-   - Write a test that reproduces the bug (should fail)
-   - Use TypeScript Tester to run test and verify it fails
-   ```
+```
+
+- Write a test that reproduces the bug (should fail)
+- Use TypeScript Tester to run test and verify it fails
+
+```
 2. **Fix the bug** - Base agent fixes, TypeScript Tester verifies
-   ```
-   - Implement bug fix
-   - Use TypeScript Tester to run tests and verify test now passes
-   ```
+```
+
+- Implement bug fix
+- Use TypeScript Tester to run tests and verify test now passes
+
+```
 3. **Verify no regressions** - Delegate to subagents
-   ```
-   - TypeScript Tester: run all tests
-   - TypeScript Fixer: type-check
-   ```
-4. **Commit**
-   ```bash
-   git commit -m "fix(api): correct user validation logic"
-   ```
+```
+
+- TypeScript Tester: run all tests
+- TypeScript Fixer: type-check
+
+````
+4. **Commit with detailed message**
+```bash
+git commit -m "$(cat <<'EOF'
+fix(api): correct user validation logic
+
+Fixed validation bug where empty strings were accepted as valid
+email addresses. Now properly validates email format using regex
+and rejects empty/whitespace-only strings.
+
+Added test case to prevent regression of this issue.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+````
 
 ### Adding a New Package
 
@@ -836,7 +1051,7 @@ pnpm run build                        # Build all packages
 6. **MANDATORY: ALWAYS use Code Reviewer subagent before committing code**
 7. **MANDATORY: ALWAYS use Project Manager subagent before closing tickets**
 8. **Delegate to specialized subagents**: TypeScript Tester for running/debugging tests, TypeScript Fixer for types/linting, Code Reviewer before commits, Project Manager before ticket closure
-9. **Keep commits atomic and use conventional commit format**
+9. **Use conventional commit format with detailed messages explaining WHY**
 10. **Update ticket files and EPIC.md when completing work (only after Project Manager approval)**
 11. **Use TodoWrite to track complex tasks**
 12. **Read existing code patterns before implementing new features**
