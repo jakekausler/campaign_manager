@@ -2,8 +2,13 @@
 
 ## Status
 
-- [ ] Completed
+- [x] Completed
 - **Commits**:
+  - Stage 1: 7501fd3 (Database Schema & Core Infrastructure)
+  - Stage 2: 856dc69 (Version Utilities & Compression)
+  - Stage 3: 58bc453 (VersionService Implementation)
+  - Stage 4: f127f2d (Entity Service Integration & Optimistic Locking)
+  - Stage 5: e94b74f (GraphQL API & Subscriptions for Concurrent Edit Detection)
 
 ## Description
 
@@ -48,20 +53,20 @@ Implement bitemporal versioning system that tracks all changes to entities over 
 
 ## Acceptance Criteria
 
-- [ ] Updating any entity creates a Version record (all fields versioned)
-- [ ] Version payloads are compressed with gzip
-- [ ] Versions are kept forever (no pruning)
-- [ ] Can query entity state as-of any world time
-- [ ] Version history shows all changes chronologically
-- [ ] Diffs accurately show what changed between versions
-- [ ] Branch inheritance resolves versions correctly
-- [ ] Can restore entity to previous version
-- [ ] Version queries perform efficiently with indexes
-- [ ] Concurrent edit detection works via GraphQL subscription
-- [ ] Optimistic locking prevents concurrent saves
-- [ ] User notified when entity modified by another user
-- [ ] Version payload validates against entity schema
-- [ ] Compression/decompression works correctly
+- [x] Updating any entity creates a Version record (all fields versioned)
+- [x] Version payloads are compressed with gzip
+- [x] Versions are kept forever (no pruning)
+- [x] Can query entity state as-of any world time
+- [x] Version history shows all changes chronologically
+- [x] Diffs accurately show what changed between versions
+- [x] Branch inheritance resolves versions correctly
+- [x] Can restore entity to previous version
+- [x] Version queries perform efficiently with indexes
+- [x] Concurrent edit detection works via GraphQL subscription
+- [x] Optimistic locking prevents concurrent saves
+- [x] User notified when entity modified by another user
+- [x] Version payload validates against entity schema
+- [x] Compression/decompression works correctly
 
 ## Technical Notes
 
@@ -283,20 +288,20 @@ entityModified(@Args('entityId') entityId: string) {
 
 ## Testing Requirements
 
-- [ ] Creating version stores complete compressed payload
-- [ ] Compression/decompression round-trip preserves data
-- [ ] Updating entity creates new version and closes previous
-- [ ] Querying as-of past time returns correct version
-- [ ] Branch inheritance finds parent versions
-- [ ] Version diff shows accurate changes
-- [ ] Restoring version recreates entity state
-- [ ] Concurrent updates detected by version mismatch
-- [ ] Optimistic locking throws error on version conflict
-- [ ] GraphQL subscription notifies of entity modifications
-- [ ] Query performance acceptable with many versions
-- [ ] Version validation prevents invalid payloads
-- [ ] All entity fields are properly versioned
-- [ ] Versions kept forever (no pruning)
+- [x] Creating version stores complete compressed payload
+- [x] Compression/decompression round-trip preserves data
+- [x] Updating entity creates new version and closes previous
+- [x] Querying as-of past time returns correct version
+- [x] Branch inheritance finds parent versions
+- [x] Version diff shows accurate changes
+- [x] Restoring version recreates entity state
+- [x] Concurrent updates detected by version mismatch
+- [x] Optimistic locking throws error on version conflict
+- [x] GraphQL subscription notifies of entity modifications
+- [x] Query performance acceptable with many versions
+- [x] Version validation prevents invalid payloads
+- [x] All entity fields are properly versioned
+- [x] Versions kept forever (no pruning)
 
 ## Related Tickets
 

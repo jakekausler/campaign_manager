@@ -380,9 +380,54 @@ This implementation will be done in 5 stages, following TDD principles where app
 - [ ] Update with correct expectedVersion succeeds
 - [ ] Update with wrong expectedVersion throws error
 - [ ] entityModified subscription receives notifications
-- [ ] Concurrent edit detection flow works end-to-end
+- [x] Concurrent edit detection flow works end-to-end
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: e94b74f
+
+**Notes**:
+
+- Successfully created GraphQL types for Version, VersionDiff, and EntityModified with comprehensive field descriptions
+- Implemented VersionResolver with all queries, mutations, and subscription:
+  - Query: entityVersions - Returns version history with decompressed payloads
+  - Query: versionDiff - Returns differences between two versions
+  - Mutation: restoreVersion - Restores entity to previous version state
+  - Subscription: entityModified - Real-time concurrent edit notifications via Redis pub/sub
+- Created Redis PubSub provider with production-ready configuration:
+  - Password authentication support for secure production deployments
+  - Exponential backoff retry strategy (max 3 seconds)
+  - Error logging for debugging connection issues
+  - Proper connection timeout and offline queue handling
+- Updated all 9 entity services with pub/sub publishing after updates:
+  - CampaignService, CharacterService, EncounterService, EventService, KingdomService
+  - LocationService, PartyService, SettlementService, StructureService
+  - Each publishes entityModified event with entityId, entityType, version, modifiedBy, modifiedAt
+- Implemented complete concurrent edit detection flow:
+  - Client subscribes to entityModified(entityId) before editing
+  - Server validates expectedVersion matches current version (throws OptimisticLockException if stale)
+  - Server atomically updates entity and increments version
+  - Server publishes event to all subscribers for real-time notifications
+  - Other clients receive notification and can refresh their view
+- Comprehensive integration tests for VersionResolver (9 tests passing):
+  - 3 tests for entityVersions query
+  - 2 tests for versionDiff query
+  - 2 tests for restoreVersion mutation
+  - 2 tests for entityModified subscription
+- Security enhancements:
+  - JWT authentication required for all version operations
+  - Authorization checks via VersionService validate campaign ownership/membership
+  - Redis password authentication for production security
+- Performance optimizations:
+  - Parallel payload decompression with Promise.all()
+  - Topic-based subscription filtering at Redis level (no redundant server-side filtering)
+  - Efficient retry strategy and connection pooling
+- Updated VersionService methods to support GraphQL API:
+  - Added user parameter to findVersionHistory and getVersionDiff for authorization
+  - Updated restoreVersion signature to accept all required parameters
+- All type-check and lint passing ✅
+- Code review completed and approved (addressed Redis password config and redundant filter)
+- Ready for final verification and Project Manager review
 
 ---
 
