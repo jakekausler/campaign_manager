@@ -15,7 +15,7 @@ Ensure that you follow best practices for coding, including
 - Adding comments where necessary
 - Writing tests to cover new functionality
 
-If the ticket involves multiple steps or components, break down the work into manageable parts and tackle them one at a time. Use version control effectively, committing changes frequently with clear messages and including the ticket number in the commits.
+If the ticket involves multiple steps or components, break down the work into manageable parts and tackle them one at a time using subagents for chunk. Use version control effectively, committing changes frequently with clear messages and including the ticket number in the commits.
 
 Use Test-Driven Development (TDD) where applicable, writing tests before implementing the functionality to ensure that the code meets the requirements.
 
