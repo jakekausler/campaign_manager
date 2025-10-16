@@ -1,4 +1,18 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Check formatting and linting before commit
+echo "Checking code formatting..."
+pnpm run format:check || {
+  echo "❌ Formatting check failed. Run 'pnpm run format' to fix formatting issues."
+  exit 1
+}
+
+echo "Checking linting..."
+pnpm run lint || {
+  echo "❌ Linting check failed. Run 'pnpm run lint -- --fix' to fix linting issues."
+  exit 1
+}
+
+# Apply auto-fixes to staged files only
 pnpm exec lint-staged
