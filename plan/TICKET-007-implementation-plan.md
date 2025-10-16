@@ -280,15 +280,32 @@ This implementation will be done in 5 stages, following TDD principles where app
 
 **Tests**:
 
-- [ ] Updating entity creates Version record
-- [ ] All entity fields included in version payload
-- [ ] Version payload is compressed
-- [ ] Optimistic locking prevents concurrent saves
-- [ ] Version mismatch throws OptimisticLockException
-- [ ] getEntityAsOf returns correct historical state
-- [ ] Transaction ensures atomicity
+- [x] Updating entity creates Version record
+- [x] All entity fields included in version payload
+- [x] Version payload is compressed
+- [x] Optimistic locking prevents concurrent saves
+- [x] Version mismatch throws OptimisticLockException
+- [x] getEntityAsOf returns correct historical state
+- [x] Transaction ensures atomicity
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: f127f2d
+
+**Notes**:
+
+- Successfully integrated versioning into all 9 entity services (Campaign, Location, Party, Kingdom, Settlement, Structure, Character, Encounter, Event)
+- Implemented optimistic locking with OptimisticLockException
+- Added branch-campaign validation to prevent cross-campaign version pollution
+- Updated all input classes with versioning fields (branchId, expectedVersion, worldTime)
+- Created separate UpdateEntityData interfaces for clean API separation
+- Updated all resolvers to pass versioning parameters
+- Used Prisma $transaction callback form for atomic entity + version updates
+- Special handling for world-scoped Location entity (validates branch belongs to campaign in same world)
+- All authorization and permission checks maintained
+- Comprehensive test coverage for CampaignService (25 tests passing)
+- Code review completed and critical data integrity issue fixed (branch validation)
+- All code formatted and linting passing
 
 ---
 
