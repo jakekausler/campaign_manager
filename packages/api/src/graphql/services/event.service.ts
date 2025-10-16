@@ -57,6 +57,30 @@ export class EventService {
   }
 
   /**
+   * Find all events at a location (non-deleted, non-archived)
+   */
+  async findByLocationId(locationId: string, user: AuthenticatedUser): Promise<PrismaEvent[]> {
+    // Find events at this location
+    const events = await this.prisma.event.findMany({
+      where: {
+        locationId,
+        deletedAt: null,
+        archivedAt: null,
+      },
+      orderBy: {
+        scheduledAt: 'asc',
+      },
+    });
+
+    // Check campaign access for the first event (all should have same campaign through location's world)
+    if (events.length > 0) {
+      await this.checkCampaignAccess(events[0].campaignId, user);
+    }
+
+    return events;
+  }
+
+  /**
    * Create a new event
    */
   async create(input: CreateEventInput, user: AuthenticatedUser): Promise<PrismaEvent> {

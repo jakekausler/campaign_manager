@@ -17,15 +17,33 @@ import { DatabaseModule } from '../database/database.module';
 
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
 import { StructureDataLoader } from './dataloaders/structure.dataloader';
+import { CampaignResolver } from './resolvers/campaign.resolver';
+import { CharacterResolver } from './resolvers/character.resolver';
+import { EncounterResolver } from './resolvers/encounter.resolver';
+import { EventResolver } from './resolvers/event.resolver';
 import { HealthResolver } from './resolvers/health.resolver';
+import { KingdomResolver } from './resolvers/kingdom.resolver';
+import { LinkResolver } from './resolvers/link.resolver';
+import { LocationResolver } from './resolvers/location.resolver';
+import { PartyResolver } from './resolvers/party.resolver';
 import { SettlementResolver } from './resolvers/settlement.resolver';
 import { StructureResolver } from './resolvers/structure.resolver';
+import { WorldResolver } from './resolvers/world.resolver';
 import { DateTimeScalar } from './scalars/datetime.scalar';
 import { GeoJSONScalar } from './scalars/geojson.scalar';
 import { JSONScalar } from './scalars/json.scalar';
 import { UploadScalar } from './scalars/upload.scalar';
+import { CampaignService } from './services/campaign.service';
+import { CharacterService } from './services/character.service';
+import { EncounterService } from './services/encounter.service';
+import { EventService } from './services/event.service';
+import { KingdomService } from './services/kingdom.service';
+import { LinkService } from './services/link.service';
+import { LocationService } from './services/location.service';
+import { PartyService } from './services/party.service';
 import { SettlementService } from './services/settlement.service';
 import { StructureService } from './services/structure.service';
+import { WorldService } from './services/world.service';
 
 @Module({
   imports: [
@@ -110,14 +128,32 @@ import { StructureService } from './services/structure.service';
     // Context factory
     GraphQLContextFactory,
     // Services
+    WorldService,
+    CampaignService,
+    CharacterService,
+    PartyService,
+    KingdomService,
     SettlementService,
     StructureService,
+    LocationService,
+    EncounterService,
+    EventService,
+    LinkService,
     // DataLoaders
     StructureDataLoader,
     // Resolvers
     HealthResolver,
+    WorldResolver,
+    CampaignResolver,
+    CharacterResolver,
+    PartyResolver,
+    KingdomResolver,
     SettlementResolver,
     StructureResolver,
+    LocationResolver,
+    EncounterResolver,
+    EventResolver,
+    LinkResolver,
     // Register custom scalars
     DateTimeScalar,
     JSONScalar,

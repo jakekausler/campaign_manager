@@ -39,4 +39,7 @@ export class Structure {
 
   @Field({ nullable: true })
   deletedAt?: Date;
+
+  @Field({ nullable: true })
+  archivedAt?: Date;
 }

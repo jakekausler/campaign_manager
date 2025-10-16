@@ -1,21 +1,18 @@
 /**
- * Settlement GraphQL Type
- * Represents a settlement within a kingdom
+ * Kingdom GraphQL Type
+ * Represents a kingdom in a campaign
  */
 
 import { ObjectType, Field, ID, Int } from '@nestjs/graphql';
 import { GraphQLJSON } from 'graphql-type-json';
 
 @ObjectType()
-export class Settlement {
+export class Kingdom {
   @Field(() => ID)
   id!: string;
 
   @Field(() => ID)
-  kingdomId!: string;
-
-  @Field(() => ID)
-  locationId!: string;
+  campaignId!: string;
 
   @Field()
   name!: string;
@@ -23,12 +20,10 @@ export class Settlement {
   @Field(() => Int)
   level!: number;
 
-  @Field(() => GraphQLJSON, { description: 'Typed variables for this settlement' })
+  @Field(() => GraphQLJSON, { description: 'Kingdom-level typed variables' })
   variables!: Record<string, unknown>;
 
-  @Field(() => GraphQLJSON, {
-    description: 'Variable schema definitions for validation',
-  })
+  @Field(() => GraphQLJSON, { description: 'Variable schema definitions for validation' })
   variableSchemas!: unknown[];
 
   @Field()

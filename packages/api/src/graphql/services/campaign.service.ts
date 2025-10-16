@@ -71,6 +71,32 @@ export class CampaignService {
   }
 
   /**
+   * Find campaigns by world ID
+   */
+  async findByWorldId(worldId: string, user: AuthenticatedUser): Promise<PrismaCampaign[]> {
+    return this.prisma.campaign.findMany({
+      where: {
+        worldId,
+        deletedAt: null,
+        archivedAt: null,
+        OR: [
+          { ownerId: user.id },
+          {
+            memberships: {
+              some: {
+                userId: user.id,
+              },
+            },
+          },
+        ],
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+  }
+
+  /**
    * Create a new campaign
    * User becomes the owner and a default branch is created
    */

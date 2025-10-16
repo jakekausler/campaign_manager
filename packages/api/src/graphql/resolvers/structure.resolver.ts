@@ -67,4 +67,24 @@ export class StructureResolver {
   ): Promise<Structure> {
     return this.structureService.delete(id, user) as Promise<Structure>;
   }
+
+  @Mutation(() => Structure, { description: 'Archive a structure' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async archiveStructure(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Structure> {
+    return this.structureService.archive(id, user) as Promise<Structure>;
+  }
+
+  @Mutation(() => Structure, { description: 'Restore an archived structure' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async restoreStructure(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Structure> {
+    return this.structureService.restore(id, user) as Promise<Structure>;
+  }
 }

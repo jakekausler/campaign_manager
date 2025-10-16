@@ -87,6 +87,47 @@ export class CharacterService {
   }
 
   /**
+   * Find characters by party
+   */
+  async findByPartyId(partyId: string, user: AuthenticatedUser): Promise<PrismaCharacter[]> {
+    // First verify party exists and user has access
+    const party = await this.prisma.party.findFirst({
+      where: {
+        id: partyId,
+        deletedAt: null,
+        campaign: {
+          deletedAt: null,
+          OR: [
+            { ownerId: user.id },
+            {
+              memberships: {
+                some: {
+                  userId: user.id,
+                },
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    if (!party) {
+      throw new NotFoundException(`Party with ID ${partyId} not found`);
+    }
+
+    return this.prisma.character.findMany({
+      where: {
+        partyId,
+        deletedAt: null,
+        archivedAt: null,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+  }
+
+  /**
    * Create a new character
    * Only owner or GM can create characters
    */

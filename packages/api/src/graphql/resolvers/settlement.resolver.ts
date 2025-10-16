@@ -78,6 +78,26 @@ export class SettlementResolver {
     return this.settlementService.delete(id, user) as Promise<Settlement>;
   }
 
+  @Mutation(() => Settlement, { description: 'Archive a settlement' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async archiveSettlement(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Settlement> {
+    return this.settlementService.archive(id, user) as Promise<Settlement>;
+  }
+
+  @Mutation(() => Settlement, { description: 'Restore an archived settlement' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async restoreSettlement(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Settlement> {
+    return this.settlementService.restore(id, user) as Promise<Settlement>;
+  }
+
   @ResolveField(() => [Structure], { description: 'Structures in this settlement' })
   async structures(
     @Parent() settlement: Settlement,

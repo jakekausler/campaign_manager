@@ -4,7 +4,15 @@
  */
 
 import { InputType, Field } from '@nestjs/graphql';
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsBoolean, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsBoolean,
+  IsDateString,
+  IsIn,
+} from 'class-validator';
 import { GraphQLJSON } from 'graphql-type-json';
 
 @InputType()
@@ -32,6 +40,7 @@ export class CreateEventInput {
   @Field()
   @IsString()
   @IsNotEmpty()
+  @IsIn(['story', 'kingdom', 'party', 'world'])
   eventType!: string; // "story" | "kingdom" | "party" | "world"
 
   @Field({ nullable: true })
@@ -64,6 +73,7 @@ export class UpdateEventInput {
   @Field({ nullable: true })
   @IsString()
   @IsOptional()
+  @IsIn(['story', 'kingdom', 'party', 'world'])
   eventType?: string;
 
   @Field({ nullable: true })

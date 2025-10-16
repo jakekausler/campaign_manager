@@ -57,6 +57,30 @@ export class EncounterService {
   }
 
   /**
+   * Find all encounters at a location (non-deleted, non-archived)
+   */
+  async findByLocationId(locationId: string, user: AuthenticatedUser): Promise<PrismaEncounter[]> {
+    // Find encounters at this location
+    const encounters = await this.prisma.encounter.findMany({
+      where: {
+        locationId,
+        deletedAt: null,
+        archivedAt: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Check campaign access for the first encounter (all should have same campaign through location's world)
+    if (encounters.length > 0) {
+      await this.checkCampaignAccess(encounters[0].campaignId, user);
+    }
+
+    return encounters;
+  }
+
+  /**
    * Create a new encounter
    */
   async create(input: CreateEncounterInput, user: AuthenticatedUser): Promise<PrismaEncounter> {

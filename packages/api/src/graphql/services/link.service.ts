@@ -64,6 +64,52 @@ export class LinkService {
   }
 
   /**
+   * Find all links where an entity is the source
+   */
+  async findBySourceEntity(
+    sourceType: string,
+    sourceId: string,
+    user: AuthenticatedUser
+  ): Promise<PrismaLink[]> {
+    // Verify user has access to this entity
+    await this.checkEntityAccess(sourceType, sourceId, user);
+
+    return this.prisma.link.findMany({
+      where: {
+        sourceType,
+        sourceId,
+        deletedAt: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  /**
+   * Find all links where an entity is the target
+   */
+  async findByTargetEntity(
+    targetType: string,
+    targetId: string,
+    user: AuthenticatedUser
+  ): Promise<PrismaLink[]> {
+    // Verify user has access to this entity
+    await this.checkEntityAccess(targetType, targetId, user);
+
+    return this.prisma.link.findMany({
+      where: {
+        targetType,
+        targetId,
+        deletedAt: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  /**
    * Create a new link between entities
    */
   async create(input: CreateLinkInput, user: AuthenticatedUser): Promise<PrismaLink> {

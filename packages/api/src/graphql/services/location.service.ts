@@ -67,6 +67,13 @@ export class LocationService {
   }
 
   /**
+   * Find locations by parent ID (alias for findChildren)
+   */
+  async findByParentId(parentLocationId: string): Promise<PrismaLocation[]> {
+    return this.findChildren(parentLocationId);
+  }
+
+  /**
    * Create a new location
    */
   async create(input: CreateLocationInput, user: AuthenticatedUser): Promise<PrismaLocation> {
