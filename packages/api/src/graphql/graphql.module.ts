@@ -39,6 +39,7 @@ import { GeoJSONScalar } from './scalars/geojson.scalar';
 import { JSONScalar } from './scalars/json.scalar';
 import { UploadScalar } from './scalars/upload.scalar';
 import { AuditService } from './services/audit.service';
+import { CampaignContextService } from './services/campaign-context.service';
 import { CampaignService } from './services/campaign.service';
 import { CharacterService } from './services/character.service';
 import { EncounterService } from './services/encounter.service';
@@ -144,6 +145,7 @@ import { WorldService } from './services/world.service';
     VersionService,
     WorldService,
     CampaignService,
+    CampaignContextService,
     CharacterService,
     PartyService,
     KingdomService,
