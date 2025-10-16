@@ -56,9 +56,7 @@ export class ApiKeyService {
   /**
    * Validate an API key and return the associated user
    */
-  async validate(
-    apiKey: string
-  ): Promise<{
+  async validate(apiKey: string): Promise<{
     user: { id: string; email: string; name: string };
     apiKey: { id: string; scopes: unknown; campaignId: string | null };
   }> {
