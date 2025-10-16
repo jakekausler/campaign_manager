@@ -7,6 +7,9 @@ import { Injectable, NotFoundException, BadRequestException, Inject } from '@nes
 import type { Location as PrismaLocation, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
+import type { GeoJSONGeometry } from '@campaign/shared';
+
+import { SpatialService } from '../../common/services/spatial.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
@@ -16,28 +19,64 @@ import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 import { AuditService } from './audit.service';
 import { VersionService, type CreateVersionInput } from './version.service';
 
+/**
+ * Location type with geom field included
+ * Prisma excludes Unsupported fields from generated types, so we extend the type manually
+ */
+export type LocationWithGeometry = PrismaLocation & {
+  geom: Buffer | null;
+};
+
 @Injectable()
 export class LocationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
+    private readonly spatialService: SpatialService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
   /**
    * Find location by ID
    * Locations are world-scoped (no campaign-specific access control for now)
+   * Uses raw SQL with ST_AsBinary to properly retrieve PostGIS geometry field
    */
-  async findById(id: string): Promise<PrismaLocation | null> {
-    const location = await this.prisma.location.findFirst({
-      where: {
+  async findById(id: string): Promise<LocationWithGeometry | null> {
+    const locations = await this.prisma.$queryRaw<
+      Array<Omit<LocationWithGeometry, 'geom'> & { geom: Buffer | null }>
+    >`
+      SELECT
         id,
-        deletedAt: null,
-      },
-    });
+        "worldId",
+        type,
+        name,
+        description,
+        "parentLocationId",
+        version,
+        "createdAt",
+        "updatedAt",
+        "deletedAt",
+        "archivedAt",
+        ST_AsBinary(geom) as geom
+      FROM "Location"
+      WHERE id = ${id}
+        AND "deletedAt" IS NULL
+      LIMIT 1
+    `;
 
-    return location;
+    if (!locations[0]) {
+      return null;
+    }
+
+    // Ensure geom is a Buffer (Prisma might return it as a hex string or Uint8Array)
+    const location = locations[0];
+    if (location.geom && !Buffer.isBuffer(location.geom)) {
+      // Convert to Buffer if it's not already
+      location.geom = Buffer.from(location.geom as unknown as Uint8Array);
+    }
+
+    return location as LocationWithGeometry;
   }
 
   /**
@@ -420,5 +459,166 @@ export class LocationService {
     const payload = await this.versionService.decompressVersion(version);
 
     return payload as PrismaLocation;
+  }
+
+  /**
+   * Update location geometry with GeoJSON data
+   * Creates a new entity version with geometry update
+   * @param id Location ID
+   * @param geoJson GeoJSON geometry (Point, Polygon, MultiPolygon)
+   * @param user Authenticated user making the change
+   * @param expectedVersion Expected version for optimistic locking
+   * @param branchId Branch ID for versioning
+   * @param srid Optional SRID (defaults to campaign's SRID or Web Mercator 3857)
+   * @param worldTime Optional world time for version (defaults to current time)
+   * @returns Updated location with new geometry
+   */
+  async updateLocationGeometry(
+    id: string,
+    geoJson: GeoJSONGeometry,
+    user: AuthenticatedUser,
+    expectedVersion: number,
+    branchId: string,
+    srid?: number,
+    worldTime: Date = new Date()
+  ): Promise<LocationWithGeometry> {
+    // Verify location exists
+    const location = await this.findById(id);
+    if (!location) {
+      throw new NotFoundException(`Location with ID ${id} not found`);
+    }
+
+    // Verify branchId exists and belongs to a campaign in this world
+    const branch = await this.prisma.branch.findFirst({
+      where: {
+        id: branchId,
+        deletedAt: null,
+        campaign: {
+          worldId: location.worldId,
+          deletedAt: null,
+        },
+      },
+      include: {
+        campaign: {
+          select: { srid: true },
+        },
+      },
+    });
+
+    if (!branch) {
+      throw new BadRequestException(
+        `Branch with ID ${branchId} not found or does not belong to a campaign in this location's world`
+      );
+    }
+
+    // Validate GeoJSON geometry
+    const validation = await this.spatialService.validateGeometry(geoJson);
+    if (!validation.valid) {
+      throw new BadRequestException(`Invalid GeoJSON geometry: ${validation.errors.join(', ')}`);
+    }
+
+    // Determine SRID (use provided, campaign default, or Web Mercator)
+    const effectiveSRID = srid ?? branch.campaign.srid ?? 3857;
+
+    // Convert GeoJSON to EWKB with SRID
+    const ewkb = this.spatialService.geoJsonToEWKB(geoJson, effectiveSRID);
+
+    // Use transaction to atomically update location and create version
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // Update location geometry using raw SQL with atomic optimistic locking
+      // We need raw SQL because Prisma doesn't support PostGIS geometry type directly
+      // The version check in WHERE clause ensures atomic concurrent update protection
+      const updateResult = await tx.$executeRaw`
+        UPDATE "Location"
+        SET geom = ST_GeomFromEWKB(${ewkb}),
+            version = version + 1,
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+          AND version = ${expectedVersion}
+      `;
+
+      // Check if update succeeded (row was found and updated)
+      if (updateResult === 0) {
+        // Version mismatch - another transaction updated this location
+        throw new OptimisticLockException(
+          `Location was modified by another user. Expected version ${expectedVersion}. Please refresh and try again.`,
+          expectedVersion,
+          location.version
+        );
+      }
+
+      // Fetch updated location with geometry field using raw SQL with ST_AsBinary
+      // Prisma's findUnique doesn't properly retrieve PostGIS Unsupported("geometry") fields
+      const updatedLocations = await tx.$queryRaw<
+        Array<Omit<LocationWithGeometry, 'geom'> & { geom: Buffer | null }>
+      >`
+        SELECT
+          id,
+          "worldId",
+          type,
+          name,
+          description,
+          "parentLocationId",
+          version,
+          "createdAt",
+          "updatedAt",
+          "deletedAt",
+          "archivedAt",
+          ST_AsBinary(geom) as geom
+        FROM "Location"
+        WHERE id = ${id}
+        LIMIT 1
+      `;
+
+      const updatedLocation = updatedLocations[0];
+      if (!updatedLocation) {
+        throw new NotFoundException(`Location with ID ${id} not found after update`);
+      }
+
+      // Ensure geom is a Buffer (Prisma might return it as a hex string or Uint8Array)
+      if (updatedLocation.geom && !Buffer.isBuffer(updatedLocation.geom)) {
+        updatedLocation.geom = Buffer.from(updatedLocation.geom as unknown as Uint8Array);
+      }
+
+      // Create new version payload (all fields including new geometry)
+      const newPayload: Record<string, unknown> = {
+        ...location,
+        geom: updatedLocation.geom,
+        version: updatedLocation.version,
+        updatedAt: updatedLocation.updatedAt,
+      };
+
+      // Create version snapshot
+      const versionInput: CreateVersionInput = {
+        entityType: 'location',
+        entityId: id,
+        branchId,
+        validFrom: worldTime,
+        validTo: null,
+        payload: newPayload,
+      };
+      await this.versionService.createVersion(versionInput, user);
+
+      return updatedLocation;
+    });
+
+    // Create audit entry
+    await this.audit.log('location', id, 'UPDATE', user.id, {
+      geometry: 'updated',
+      srid: effectiveSRID,
+    });
+
+    // Publish entityModified event for concurrent edit detection
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'location',
+        version: updated.version,
+        modifiedBy: user.id,
+        modifiedAt: updated.updatedAt,
+      },
+    });
+
+    return updated;
   }
 }
