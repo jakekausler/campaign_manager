@@ -23,6 +23,7 @@ import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
 import { CampaignContextService } from './campaign-context.service';
+import { LevelValidator } from './level-validator';
 import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
@@ -526,6 +527,9 @@ export class SettlementService {
    * Only owner or GM can set level
    */
   async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaSettlement> {
+    // Validate level range before processing
+    LevelValidator.validateLevel(level, 'settlement');
+
     const settlement = await this.findById(id, user);
     if (!settlement) {
       throw new NotFoundException(`Settlement with ID ${id} not found`);

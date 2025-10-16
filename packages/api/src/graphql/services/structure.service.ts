@@ -23,6 +23,7 @@ import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
 import { CampaignContextService } from './campaign-context.service';
+import { LevelValidator } from './level-validator';
 import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
@@ -568,6 +569,9 @@ export class StructureService {
    * Only owner or GM can set level
    */
   async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaStructure> {
+    // Validate level range before processing
+    LevelValidator.validateLevel(level, 'structure');
+
     const structure = await this.findById(id, user);
     if (!structure) {
       throw new NotFoundException(`Structure with ID ${id} not found`);

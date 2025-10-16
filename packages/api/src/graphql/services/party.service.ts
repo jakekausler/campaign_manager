@@ -23,6 +23,7 @@ import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
 import { CampaignContextService } from './campaign-context.service';
+import { LevelValidator } from './level-validator';
 import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
@@ -455,6 +456,9 @@ export class PartyService {
    * This overrides the calculated average level
    */
   async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaParty> {
+    // Validate level range before processing
+    LevelValidator.validateLevel(level, 'party');
+
     const party = await this.findById(id, user);
     if (!party) {
       throw new NotFoundException(`Party with ID ${id} not found`);
