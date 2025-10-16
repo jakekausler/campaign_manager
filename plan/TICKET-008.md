@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] Completed (Stage 6 of 7 complete)
+- [x] Completed (All 7 stages complete)
 - **Commits**:
   - Stage 1: 5f70ea5918fb3462f8b5e7a94f612118112a1f22
   - Stage 2: c7948bfc0345a4bba1cdcec8225f3b58f38916b5
@@ -10,6 +10,7 @@
   - Stage 4: a8fde52
   - Stage 5: b63eea6
   - Stage 6: c329ee5
+  - Stage 7: a7441b6, 2356148
 
 ## Implementation Notes
 
@@ -467,6 +468,119 @@ Code Review identified N+1 query patterns for future optimization:
 **Next Steps:**
 
 - Stage 7 will implement tile generation and caching (final stage)
+
+---
+
+### Stage 7: Tile Generation and Caching (✅ Complete)
+
+Successfully implemented in-memory tile caching for map layer GeoJSON responses:
+
+**Achievements:**
+
+- Implemented TileCacheService for in-memory GeoJSON FeatureCollection caching
+- Integrated caching into SpatialResolver.mapLayer query
+- Added world-level cache invalidation on all location mutations
+- Wrote comprehensive unit and integration tests (22 passing tests)
+- Code Reviewer approval with all critical issues addressed
+
+**Tile Generation Approach:**
+
+- Selected GeoJSON tiles over MVT (Mapbox Vector Tiles) for simplicity
+- Leverages existing mapLayer query that returns GeoJSON FeatureCollection
+- Pragmatic choice: GeoJSON works well for campaign maps (10-100 locations)
+- Can upgrade to MVT later if performance becomes an issue
+
+**TileCacheService Implementation:**
+
+- In-memory Map-based cache for GeoJSON FeatureCollections
+- Cache key generation from worldId + bounding box coordinates (6 decimal precision) + optional filters
+- World-level cache invalidation for bulk clearing
+- Cache statistics API for monitoring (size, keys)
+- Efficient single-iteration invalidation (O(n) not O(2n))
+
+**Integration:**
+
+- SpatialResolver.mapLayer checks cache before generating tiles
+- Cache hit returns immediately without database queries
+- Cache miss generates tiles, stores in cache, and returns
+- Proper dependency injection via NestJS
+
+**Cache Invalidation:**
+
+LocationService invalidates world cache on all mutations:
+
+- `create()` - new locations appear on map
+- `update()` - location metadata (name, type, description) changed
+- `delete()` - locations removed from map
+- `updateLocationGeometry()` - geometry changed
+
+Ensures map tiles stay consistent with database state.
+
+**Type Safety:**
+
+- Updated GraphQL types to use literal 'Feature' and 'FeatureCollection'
+- Aligns with GeoJSON RFC 7946 specification
+- Type assertions documented for cache boundary crossings
+
+**Limitations (documented in code):**
+
+- No cache size limits or LRU eviction
+- No TTL (time-to-live) for cache entries
+- Invalidation is world-level only (could be more granular)
+- For production, consider adding LRU or TTL-based expiration
+
+**Testing:**
+
+Unit Tests (14 tests):
+
+- TileCacheService: key generation, get/set, invalidation, stats
+- All 14 tests passing
+
+Integration Tests (8 tests):
+
+- mapLayer caching with bbox variations
+- Cache hit/miss behavior
+- World-specific invalidation
+- Cache statistics tracking
+- All 8 tests passing
+
+**Files Added:**
+
+- `packages/api/src/common/services/tile-cache.service.ts` (109 lines)
+- `packages/api/src/common/services/tile-cache.service.test.ts` (218 lines)
+- `packages/api/src/graphql/resolvers/tile-caching.integration.test.ts` (301 lines)
+
+**Files Modified:**
+
+- `packages/api/src/common/services/index.ts` - Export TileCacheService
+- `packages/api/src/graphql/graphql.module.ts` - Register TileCacheService
+- `packages/api/src/graphql/resolvers/spatial.resolver.ts` - Add caching to mapLayer (76 lines added)
+- `packages/api/src/graphql/services/location.service.ts` - Add cache invalidation (4 calls added)
+- `packages/api/src/graphql/types/spatial.type.ts` - Fix GeoJSON type literals
+- `packages/api/src/graphql/services/location.service.test.ts` - Add TileCacheService mocks
+
+**Code Quality:**
+
+- Code Reviewer approval after addressing all critical issues:
+  - Removed unnecessary type casts
+  - Optimized invalidateWorld to single iteration
+  - Added cache invalidation to all location mutations
+  - Documented cache limitations
+- TypeScript strict mode compliant, all checks passing
+- ESLint all rules passing
+- Prettier formatted
+- 22 new tests, 100% passing
+- JSDoc comments and limitation documentation
+
+**Performance:**
+
+- Cache key generation: O(1) with coordinate rounding
+- Cache lookup: O(1) Map access
+- Cache invalidation: O(n) where n = total cache size
+- World invalidation: O(n) single iteration with inline deletion
+- No unnecessary allocations during invalidation
+
+---
 
 ## Description
 
