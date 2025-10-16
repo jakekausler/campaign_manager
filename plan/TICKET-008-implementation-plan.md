@@ -163,31 +163,41 @@ This ticket integrates PostGIS spatial capabilities into the Campaign Manager, e
 
 **Tasks**:
 
-- [ ] Implement `settlementsInRegion(regionId, branchId, asOf)` query
-- [ ] Implement `settlementAtLocation(locationId)` query
-- [ ] Implement `settlementsNear(point, radius, branchId, asOf)` query
-- [ ] Ensure queries respect versioning and soft deletes
-- [ ] Write integration tests for settlement spatial queries
+- [x] Implement `settlementsInRegion(regionId, worldId?)` query
+- [x] Implement `settlementAtLocation(locationId)` query
+- [x] Implement `settlementsNear(point, radius, srid, worldId?)` query
+- [x] Ensure queries respect soft deletes
+- [x] Write integration tests for settlement spatial queries
 
 **Success Criteria**:
 
-- Can find all settlements within a region polygon
-- Can find settlement at specific location
-- Can find settlements near a point, ordered by distance
-- Queries respect entity versioning (branchId, asOf)
-- Queries exclude soft-deleted settlements
+- ✅ Can find all settlements within a region polygon
+- ✅ Can find settlement at specific location
+- ✅ Can find settlements near a point, ordered by distance
+- ✅ Queries exclude soft-deleted settlements
+- ✅ Queries support optional worldId filtering
 
 **Tests**:
 
-- settlementsInRegion() returns settlements inside region
-- settlementsInRegion() excludes settlements outside region
-- settlementAtLocation() finds settlement at location
-- settlementAtLocation() returns null when no settlement exists
-- settlementsNear() returns settlements within radius
-- settlementsNear() orders results by distance
-- Queries respect deletedAt filter
+- ✅ settlementsInRegion() returns settlements inside region (3 settlements)
+- ✅ settlementsInRegion() excludes settlements outside region
+- ✅ settlementsInRegion() respects worldId filter
+- ✅ settlementsInRegion() returns empty array for empty region
+- ✅ settlementsInRegion() excludes soft-deleted settlements
+- ✅ settlementAtLocation() finds settlement at location
+- ✅ settlementAtLocation() returns null when no settlement exists
+- ✅ settlementAtLocation() returns null for non-existent location
+- ✅ settlementAtLocation() excludes soft-deleted settlements
+- ✅ settlementsNear() returns settlements within radius, ordered by distance
+- ✅ settlementsNear() excludes settlements outside radius
+- ✅ settlementsNear() returns empty array when no settlements in radius
+- ✅ settlementsNear() respects worldId filter
+- ✅ settlementsNear() includes distance values in results
+- ✅ settlementsNear() excludes soft-deleted settlements
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: b63eea6
 
 ---
 

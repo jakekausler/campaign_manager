@@ -2,12 +2,13 @@
 
 ## Status
 
-- [ ] Completed (Stage 4 of 7 complete)
+- [ ] Completed (Stage 5 of 7 complete)
 - **Commits**:
   - Stage 1: 5f70ea5918fb3462f8b5e7a94f612118112a1f22
   - Stage 2: c7948bfc0345a4bba1cdcec8225f3b58f38916b5
   - Stage 3: 00947a331e89e0d6ce17af3d3f886b111032ffd8
   - Stage 4: a8fde52
+  - Stage 5: b63eea6
 
 ## Implementation Notes
 
@@ -241,7 +242,93 @@ All 14 tests passing:
 
 **Next Steps:**
 
-- Stage 5 will implement Settlement spatial queries (settlementsInRegion, settlementAtLocation, settlementsNear)
+- Stage 6 will implement GraphQL API and map layer generation
+
+---
+
+### Stage 5: Settlement Spatial Queries (✅ Complete)
+
+Successfully implemented Settlement spatial query methods in SpatialService:
+
+**Achievements:**
+
+- Implemented 3 Settlement spatial query methods using PostGIS spatial functions
+- All methods properly handle soft-deleted settlements and locations
+- Added comprehensive integration tests (15 passing tests)
+- Queries leverage GIST spatial index for optimal performance
+
+**Technical Details:**
+
+- **settlementsInRegion(regionId, worldId?)**: Uses ST_Within to find settlements within a region polygon. Joins Settlement with Location table to access geometry. Supports optional worldId filtering for multi-world campaigns.
+
+- **settlementAtLocation(locationId)**: Direct query to find settlement at specific location using unique locationId relationship. Returns null if no settlement exists.
+
+- **settlementsNear(point, radius, srid, worldId?)**: Uses ST_DWithin for efficient spatial index usage and ST_Distance for ordering by proximity. Joins Settlement with Location to access geometry. Supports custom SRID per query.
+
+**Implementation Decisions:**
+
+1. **WorldId filtering**: All methods support optional worldId parameter for multi-world campaign support, consistent with Location spatial queries.
+
+2. **Soft-delete handling**: All queries filter both Settlement.deletedAt and Location.deletedAt to ensure deleted entities are excluded.
+
+3. **Return types**: Methods return essential settlement fields (id, name, locationId, kingdomId, level) plus distance for settlementsNear. Kept lightweight for performance.
+
+4. **Spatial functions**:
+   - ST_Within for region containment (settlements inside polygon)
+   - ST_DWithin for radius queries with spatial index support
+   - ST_Distance for ordering by proximity
+
+**Files Modified:**
+
+- `packages/api/src/common/services/spatial.service.ts` - Added 3 Settlement spatial query methods
+- `packages/api/src/common/services/settlement-spatial.integration.test.ts` - 15 comprehensive integration tests
+
+**Integration Tests:**
+
+All 15 tests passing:
+
+**settlementsInRegion** (5 tests):
+
+- Returns settlements within the region (3 settlements)
+- Excludes settlements outside the region
+- Respects worldId filter
+- Returns empty array for region with no settlements
+- Excludes soft-deleted settlements
+
+**settlementAtLocation** (4 tests):
+
+- Finds settlement at specific location
+- Returns null when no settlement at location
+- Returns null for non-existent location
+- Excludes soft-deleted settlements
+
+**settlementsNear** (6 tests):
+
+- Returns settlements within radius, ordered by distance
+- Excludes settlements outside radius
+- Returns empty array when no settlements in radius
+- Respects worldId filter
+- Includes distance values in results
+- Excludes soft-deleted settlements
+
+**Performance:**
+
+- All queries use the GIST spatial index on Location.geom
+- ST_DWithin queries benefit from spatial indexing for efficient radius searches
+- Joins are efficient due to Settlement.locationId unique index
+- WorldId filtering reduces result set for better performance
+
+**Code Quality:**
+
+- Code Reviewer approval with no critical issues
+- Follows existing SpatialService patterns
+- Proper TypeScript type safety throughout
+- Consistent with Location spatial query methods
+- JSDoc documentation for all methods
+
+**Next Steps:**
+
+- Stage 6 will implement GraphQL API and map layer generation
 
 ## Description
 
