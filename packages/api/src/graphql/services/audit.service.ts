@@ -32,15 +32,26 @@ export class AuditService {
     changes: Record<string, unknown>,
     metadata: Record<string, unknown> = {}
   ): Promise<void> {
-    await this.prisma.audit.create({
-      data: {
+    try {
+      await this.prisma.audit.create({
+        data: {
+          entityType,
+          entityId,
+          operation,
+          userId,
+          changes: changes as Prisma.InputJsonValue,
+          metadata: metadata as Prisma.InputJsonValue,
+        },
+      });
+    } catch (error) {
+      // Log audit failure but don't throw to prevent breaking main operations
+      console.error('Audit log failed:', {
         entityType,
         entityId,
         operation,
-        userId,
-        changes: changes as Prisma.InputJsonValue,
-        metadata: metadata as Prisma.InputJsonValue,
-      },
-    });
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      // In production, this should go to a monitoring system
+    }
   }
 }

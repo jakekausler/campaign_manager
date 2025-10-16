@@ -7,7 +7,8 @@ import type { Edge, PageInfo, PaginatedResponse } from '../types/pagination.type
 
 /**
  * Encode a cursor from an entity ID
- * Uses base64 encoding for obfuscation
+ * Uses base64 encoding for serialization (not security - easily decoded)
+ * Note: Cursors should be validated before use to prevent ID enumeration
  */
 export function encodeCursor(id: string): string {
   return Buffer.from(`cursor:${id}`).toString('base64');
@@ -78,27 +79,28 @@ export function buildPaginatedResponse<T>(
 }
 
 /**
- * Calculate skip value for Prisma query from cursor
- * Returns 0 if no cursor provided
+ * Get Prisma cursor pagination params
+ * When using cursors with Prisma, you must use both cursor AND skip: 1
+ * See: https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination
+ *
+ * @param after - The cursor string to paginate after
+ * @returns Object with cursor and skip params for Prisma, or empty object if no cursor
  */
-export function getSkipFromCursor(after?: string): number {
+export function getCursorPaginationParams(after?: string): {
+  cursor?: { id: string };
+  skip?: number;
+} {
   if (!after) {
-    return 0;
+    return {};
   }
-  // When using cursor, we skip 1 to exclude the cursor item itself
-  return 1;
-}
-
-/**
- * Get cursor ID for Prisma query
- * Returns undefined if no cursor provided
- */
-export function getCursorIdFromCursor(after?: string): string | undefined {
-  if (!after) {
-    return undefined;
+  const cursorId = decodeCursor(after);
+  if (!cursorId) {
+    return {};
   }
-  const id = decodeCursor(after);
-  return id || undefined;
+  return {
+    cursor: { id: cursorId },
+    skip: 1, // Skip the cursor itself
+  };
 }
 
 /**
