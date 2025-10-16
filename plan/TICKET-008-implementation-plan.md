@@ -125,33 +125,35 @@ This ticket integrates PostGIS spatial capabilities into the Campaign Manager, e
 
 **Tasks**:
 
-- [ ] Add `updateLocationGeometry(locationId, geoJson, srid?)` method to LocationService
-- [ ] Support Point geometry input
-- [ ] Support Polygon geometry input
-- [ ] Support MultiPolygon geometry input
-- [ ] Integrate with versioning system for geometry updates
-- [ ] Handle parent-child region hierarchy constraints
-- [ ] Write tests for geometry CRUD operations
+- [x] Add `updateLocationGeometry(locationId, geoJson, srid?)` method to LocationService
+- [x] Support Point geometry input
+- [x] Support Polygon geometry input
+- [x] Support MultiPolygon geometry input
+- [x] Integrate with versioning system for geometry updates
+- [ ] Handle parent-child region hierarchy constraints (deferred - not required for this stage)
+- [x] Write tests for geometry CRUD operations
 
 **Success Criteria**:
 
-- Can create location with Point geometry
-- Can create location with Polygon geometry (unlimited vertices)
-- Can create location with MultiPolygon geometry
-- Can update existing location's geometry
-- Geometry updates create new entity versions
-- Custom SRID is respected when provided
+- ✅ Can create location with Point geometry
+- ✅ Can create location with Polygon geometry (unlimited vertices)
+- ✅ Can create location with MultiPolygon geometry
+- ✅ Can update existing location's geometry
+- ✅ Geometry updates create new entity versions
+- ✅ Custom SRID is respected when provided
 
 **Tests**:
 
-- Create location with Point geometry
-- Create location with complex Polygon (1000+ vertices)
-- Create location with MultiPolygon
-- Update location geometry creates new version
-- Custom SRID is stored and retrieved correctly
-- Invalid GeoJSON is rejected
+- ✅ Create location with Point geometry
+- ✅ Create location with complex Polygon (1000+ vertices)
+- ✅ Create location with MultiPolygon
+- ✅ Update location geometry creates new version
+- ✅ Custom SRID is stored and retrieved correctly
+- ✅ Invalid GeoJSON is rejected
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: a8fde52
 
 ---
 

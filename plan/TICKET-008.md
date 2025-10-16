@@ -2,11 +2,12 @@
 
 ## Status
 
-- [ ] Completed (Stage 3 of 7 complete)
+- [ ] Completed (Stage 4 of 7 complete)
 - **Commits**:
   - Stage 1: 5f70ea5918fb3462f8b5e7a94f612118112a1f22
   - Stage 2: c7948bfc0345a4bba1cdcec8225f3b58f38916b5
   - Stage 3: 00947a331e89e0d6ce17af3d3f886b111032ffd8
+  - Stage 4: a8fde52
 
 ## Implementation Notes
 
@@ -161,7 +162,86 @@ All 23 tests passing:
 
 **Next Steps:**
 
-- Stage 4 will add Location geometry CRUD operations to LocationService
+- Stage 5 will add Settlement spatial queries
+
+---
+
+### Stage 4: Location Geometry Operations (✅ Complete)
+
+Successfully implemented complete geometry CRUD operations for LocationService:
+
+**Achievements:**
+
+- Implemented `updateLocationGeometry` method with full versioning integration
+- Supports Point, Polygon, and MultiPolygon geometries from GeoJSON input
+- Custom SRID support per update (defaults to campaign SRID or Web Mercator 3857)
+- Comprehensive GeoJSON validation before storage
+- Atomic optimistic locking prevents concurrent update race conditions
+
+**Technical Details:**
+
+- **Geometry Storage**: Uses raw SQL with `ST_GeomFromEWKB` to store PostGIS geometry data
+- **Geometry Retrieval**: Modified `findById()` to use `ST_AsBinary` for proper geometry retrieval (workaround for Prisma's `Unsupported("geometry")` type limitation)
+- **Atomic Locking**: Optimistic locking check moved into UPDATE statement's WHERE clause with `version = ${expectedVersion}` for atomic protection against race conditions
+- **Version Integration**: Creates version snapshots with geometry data included in compressed payload
+- **Buffer Handling**: Proper handling of WKB/EWKB binary data as Buffers (with Uint8Array conversion when needed)
+- **LocationWithGeometry type**: Extends Prisma types to include geom field for TypeScript type safety
+
+**Files Modified:**
+
+- `packages/api/src/graphql/services/location.service.ts` - Added `updateLocationGeometry` method and updated `findById` with ST_AsBinary
+- `packages/api/src/graphql/services/location-geometry.integration.test.ts` - 14 comprehensive integration tests
+
+**Integration Tests:**
+
+All 14 tests passing:
+
+- Point geometry: creation and updates (2 tests)
+- Polygon geometry: simple, complex (1000+ vertices), and polygons with holes (3 tests)
+- MultiPolygon: non-contiguous regions (1 test)
+- Custom SRID: explicit SRID and campaign defaults (2 tests)
+- Validation: invalid GeoJSON, unclosed rings, NaN/Infinity coordinates (3 tests)
+- Versioning: version increment, optimistic locking, payload storage (3 tests)
+
+**Implementation Decisions:**
+
+1. **Raw SQL for PostGIS**: Prisma doesn't fully support PostGIS `Unsupported("geometry")` type, requiring raw SQL with `ST_GeomFromEWKB` for storage and `ST_AsBinary` for retrieval
+
+2. **Atomic Optimistic Locking**: Originally had version check outside transaction, creating race condition. Fixed by moving check into UPDATE WHERE clause:
+
+   ```sql
+   UPDATE "Location"
+   SET geom = ST_GeomFromEWKB(${ewkb}),
+       version = version + 1,
+       "updatedAt" = CURRENT_TIMESTAMP
+   WHERE id = ${id}
+     AND version = ${expectedVersion}
+   ```
+
+   This ensures only one concurrent update succeeds, with others failing atomically.
+
+3. **Buffer Conversion**: PostgreSQL returns WKB data as either Buffer or Uint8Array depending on driver. Implemented explicit Buffer conversion to ensure consistent type for wkx library.
+
+4. **Version Payload**: Geometry data (as Buffer) is included in version payload for historical tracking and time-travel queries.
+
+**Performance:**
+
+- Tested with complex polygons (1000+ vertices) - storage and retrieval work correctly
+- Geometry validation happens before database interaction (fail-fast approach)
+- Uses GIST spatial index created in Stage 2 for efficient spatial queries
+- Transaction scope minimized to critical operations only (audit and pubsub outside transaction)
+
+**Code Quality:**
+
+- Code Reviewer approval after fixing critical race condition
+- All tests passing with proper concurrent update protection
+- Follows NestJS patterns with dependency injection
+- Comprehensive JSDoc documentation
+- TypeScript strict mode compliant
+
+**Next Steps:**
+
+- Stage 5 will implement Settlement spatial queries (settlementsInRegion, settlementAtLocation, settlementsNear)
 
 ## Description
 
