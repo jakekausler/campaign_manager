@@ -5,7 +5,9 @@ description: Read the next ticket and begin working on it.
 
 # Next Ticket
 
-Read @plan/EPIC.md to understand the overall plan and find the next incomplete ticket. Read that ticket from @plan/ and begin working on it.
+Use a generic subagent to read @plan/EPIC.md to understand the overall plan and find the next incomplete ticket.
+
+Use the baee agent to read that ticket from @plan/ and begin working on it.
 
 ## Implementation
 
@@ -15,7 +17,9 @@ Ensure that you follow best practices for coding, including
 - Adding comments where necessary
 - Writing tests to cover new functionality
 
-If the ticket involves multiple steps or components, break down the work into manageable parts and tackle them one at a time using subagents for chunk. Use version control effectively, committing changes frequently with clear messages and including the ticket number in the commits.
+If the ticket involves multiple steps or components, break down the work into manageable parts and tackle them one at a time using generic subagents if a task is complex.
+
+Use version control effectively, committing changes frequently with clear messages and including the ticket number in the commits.
 
 Use Test-Driven Development (TDD) where applicable, writing tests before implementing the functionality to ensure that the code meets the requirements.
 
