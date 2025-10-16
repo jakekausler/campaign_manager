@@ -398,4 +398,170 @@ export class PartyService {
 
     return payload as PrismaParty;
   }
+
+  /**
+   * Calculate average level from party members
+   * Returns the mean of all member character levels
+   */
+  async calculateAverageLevel(id: string, user: AuthenticatedUser): Promise<number | null> {
+    const party = await this.prisma.party.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+        campaign: {
+          deletedAt: null,
+          OR: [
+            { ownerId: user.id },
+            {
+              memberships: {
+                some: {
+                  userId: user.id,
+                },
+              },
+            },
+          ],
+        },
+      },
+      include: {
+        members: {
+          where: {
+            deletedAt: null,
+          },
+          select: {
+            level: true,
+          },
+        },
+      },
+    });
+
+    if (!party) {
+      throw new NotFoundException(`Party with ID ${id} not found`);
+    }
+
+    if (party.members.length === 0) {
+      return null;
+    }
+
+    const totalLevel = party.members.reduce((sum, member) => sum + member.level, 0);
+    return Math.round(totalLevel / party.members.length);
+  }
+
+  /**
+   * Set party level using manual override
+   * This overrides the calculated average level
+   */
+  async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaParty> {
+    const party = await this.findById(id, user);
+    if (!party) {
+      throw new NotFoundException(`Party with ID ${id} not found`);
+    }
+
+    const hasPermission = await this.hasEditPermission(party.campaignId, user);
+    if (!hasPermission) {
+      throw new ForbiddenException('You do not have permission to set level for this party');
+    }
+
+    const updated = await this.prisma.party.update({
+      where: { id },
+      data: { manualLevelOverride: level },
+    });
+
+    // Create audit entry
+    await this.audit.log('party', id, 'UPDATE', user.id, { manualLevelOverride: level });
+
+    // Publish entityModified event for level change
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'party',
+        version: updated.version,
+        modifiedBy: user.id,
+        modifiedAt: updated.updatedAt,
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Add a character to the party
+   */
+  async addMember(partyId: string, characterId: string, user: AuthenticatedUser): Promise<void> {
+    const party = await this.findById(partyId, user);
+    if (!party) {
+      throw new NotFoundException(`Party with ID ${partyId} not found`);
+    }
+
+    const hasPermission = await this.hasEditPermission(party.campaignId, user);
+    if (!hasPermission) {
+      throw new ForbiddenException('You do not have permission to modify this party');
+    }
+
+    // Verify character exists and belongs to the same campaign
+    const character = await this.prisma.character.findFirst({
+      where: {
+        id: characterId,
+        campaignId: party.campaignId,
+        deletedAt: null,
+      },
+    });
+
+    if (!character) {
+      throw new NotFoundException(
+        `Character with ID ${characterId} not found or does not belong to this campaign`
+      );
+    }
+
+    // Add character to party
+    await this.prisma.character.update({
+      where: { id: characterId },
+      data: { partyId },
+    });
+
+    // Create audit entry
+    await this.audit.log('party', partyId, 'UPDATE', user.id, {
+      addedMember: characterId,
+    });
+  }
+
+  /**
+   * Remove a character from the party
+   */
+  async removeMember(partyId: string, characterId: string, user: AuthenticatedUser): Promise<void> {
+    const party = await this.findById(partyId, user);
+    if (!party) {
+      throw new NotFoundException(`Party with ID ${partyId} not found`);
+    }
+
+    const hasPermission = await this.hasEditPermission(party.campaignId, user);
+    if (!hasPermission) {
+      throw new ForbiddenException('You do not have permission to modify this party');
+    }
+
+    // Verify character exists and is in this party
+    const character = await this.prisma.character.findFirst({
+      where: {
+        id: characterId,
+        partyId,
+        deletedAt: null,
+      },
+    });
+
+    if (!character) {
+      throw new NotFoundException(
+        `Character with ID ${characterId} not found or is not in this party`
+      );
+    }
+
+    // Remove character from party
+    await this.prisma.character.update({
+      where: { id: characterId },
+      data: { partyId: null },
+    });
+
+    // Create audit entry
+    await this.audit.log('party', partyId, 'UPDATE', user.id, {
+      removedMember: characterId,
+    });
+  }
 }
