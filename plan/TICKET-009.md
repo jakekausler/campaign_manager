@@ -9,6 +9,8 @@
   - Stage 4 (Settlement & Structure Management): `803a4cd`
   - Stage 5 (Variable Schema Service): `8b03cbb`
   - Stage 6 (Party GraphQL API): `a4eab8e`
+  - Stage 7 (Kingdom, Settlement, Structure GraphQL APIs): `a259f55`
+  - Stage 8 (Context System Integration): `6e9b5fc`
 
 ## Description
 
@@ -308,6 +310,52 @@ Implemented VariableSchemaService, a centralized service for managing typed vari
 
 All tests passing. Service is production-ready and provides the foundation for typed variable management in future stages.
 
+### Stage 8: Context System Integration (Completed - Commit 6e9b5fc)
+
+Implemented CampaignContextService to aggregate all entity state for the future rules engine (TICKET-013, TICKET-015):
+
+**Service Architecture**:
+
+- **getCampaignContext()**: Aggregates all parties, kingdoms, settlements, and structures for a campaign
+- Returns standardized context with entity IDs, names, levels, and typed variables
+- Supports multiple parties per campaign (critical requirement)
+- Proper authorization checks (campaign owner or member access only)
+
+**Context Format**:
+
+- **PartyContext**: {id, name, level (manualLevelOverride ?? averageLevel), variables}
+- **KingdomContext**: {id, name, level, variables}
+- **SettlementContext**: {id, name, kingdomId, level, variables}
+- **StructureContext**: {id, name, type, settlementId, level, variables}
+
+**Caching & Performance**:
+
+- In-memory cache with 60-second TTL to reduce database load
+- Cache invalidation API: invalidateContext(campaignId), invalidateContextForEntity(type, id, campaignId)
+- Defensive array checks for robust handling of edge cases
+
+**Known Limitations** (for future optimization):
+
+- N+1 query problem when fetching settlements/structures (can optimize with batch findByKingdoms/findBySettlements methods)
+- In-memory cache won't work across multiple API instances (needs Redis migration)
+- No context size limits (should add monitoring for large campaigns with 1000+ entities)
+- Mapper functions use 'any' type (can improve with proper Prisma types)
+
+**Testing & Quality**:
+
+- 12 comprehensive unit tests covering all operations and edge cases
+- All tests passing with proper mocking of service dependencies
+- TypeScript compilation successful
+- Code reviewed and approved by code-reviewer subagent
+- Formatted with Prettier and linted with ESLint (warnings only)
+
+**Integration**:
+
+- Service registered in GraphQLConfigModule providers
+- Ready for consumption by TICKET-013 (State Variable System) and TICKET-015 (Rules Engine Worker)
+
+This provides the foundation for the rules engine to query campaign state and evaluate conditions based on entity levels and variables.
+
 ### Stage 6: Party GraphQL API (Completed - Commit a4eab8e)
 
 Implemented comprehensive GraphQL API layer for Party management including typed variable system, level tracking, and party member management:
@@ -375,3 +423,60 @@ Implemented comprehensive GraphQL API layer for Party management including typed
 - Code reviewed and approved by code-reviewer subagent
 - Follows NestJS, Prisma, and GraphQL best practices
 - Consistent with existing codebase patterns
+
+### Stage 7: Kingdom, Settlement, Structure GraphQL APIs (Completed - Commit a259f55)
+
+Implemented comprehensive GraphQL API layers for Kingdom, Settlement, and Structure management, mirroring the Party resolver patterns from Stage 6:
+
+**GraphQL Type Updates**:
+
+- **Kingdom.type.ts**: Updated to use VariableSchemaType[] and added version field
+- **Settlement.type.ts**: Updated to use VariableSchemaType[] and added version field
+- **Structure.type.ts**: Updated to use VariableSchemaType[] and added version field
+
+**Kingdom Resolver Operations** (13 total):
+
+- **Queries**: kingdom(id), kingdomsByCampaign(campaignId), kingdomVariable, kingdomVariables, kingdomVariableSchemas
+- **Mutations**: createKingdom, updateKingdom, deleteKingdom, archiveKingdom, restoreKingdom, setKingdomLevel, defineKingdomVariableSchema, setKingdomVariable, deleteKingdomVariableSchema
+
+**Settlement Resolver Operations** (13 total):
+
+- **Queries**: settlement(id), settlementsByKingdom(kingdomId), settlementVariable, settlementVariables, settlementVariableSchemas
+- **Mutations**: createSettlement, updateSettlement, deleteSettlement, archiveSettlement, restoreSettlement, setSettlementLevel, defineSettlementVariableSchema, setSettlementVariable, deleteSettlementVariableSchema
+- **Field Resolvers**: structures (uses DataLoader for efficient batching)
+
+**Structure Resolver Operations** (13 total):
+
+- **Queries**: structure(id), structuresBySettlement(settlementId), structureVariable, structureVariables, structureVariableSchemas
+- **Mutations**: createStructure, updateStructure, deleteStructure, archiveStructure, restoreStructure, setStructureLevel, defineStructureVariableSchema, setStructureVariable, deleteStructureVariableSchema
+
+**Security & Authorization**:
+
+- All mutations protected with JwtAuthGuard and RolesGuard
+- Role-based access control: 'owner' or 'gm' roles required for mutations
+- Queries protected with JwtAuthGuard (read access for campaign members)
+- Variable operations use VariableSchemaService with permission hierarchy traversal
+
+**Error Handling**:
+
+- Consistent with Party resolver: null return for non-existent variables
+- Try-catch blocks in variable query resolvers for graceful error handling
+- Type validation errors surface meaningful messages via VariableSchemaService
+
+**Testing Coverage**:
+
+- **63 integration tests** (21 per entity resolver)
+- Tests cover all CRUD operations, variable schemas, and error cases
+- Validates enum type validation (rejects invalid enum values)
+- Tests sequential operations (define schema → set variable → get variable → delete schema)
+- Proper test setup/teardown with foreign key constraint handling
+- All 63 tests passing successfully
+
+**Code Quality**:
+
+- TypeScript compilation successful (type casting fixed with `as unknown as Type` pattern)
+- ESLint passing with 0 errors (43 warnings are pre-existing from earlier stages)
+- Code reviewed and approved by code-reviewer subagent
+- Formatted with Prettier (pre-commit hooks enforced)
+- Follows established Party resolver patterns precisely
+- Consistent use of VariableSchemaService for all three entity types
