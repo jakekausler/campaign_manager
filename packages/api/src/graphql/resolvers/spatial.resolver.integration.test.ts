@@ -11,6 +11,7 @@ import type { Campaign, Location as PrismaLocation, Settlement, World } from '@p
 import type { GeoJSONPoint, GeoJSONPolygon } from '@campaign/shared';
 
 import { SpatialService } from '../../common/services/spatial.service';
+import { TileCacheService } from '../../common/services/tile-cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
@@ -46,6 +47,7 @@ describe('SpatialResolver Integration Tests', () => {
         LocationService,
         SettlementService,
         SpatialService,
+        TileCacheService,
         PrismaService,
         AuditService,
         VersionService,
