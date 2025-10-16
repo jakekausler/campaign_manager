@@ -2,13 +2,14 @@
 
 ## Status
 
-- [ ] Completed (Stage 5 of 7 complete)
+- [ ] Completed (Stage 6 of 7 complete)
 - **Commits**:
   - Stage 1: 5f70ea5918fb3462f8b5e7a94f612118112a1f22
   - Stage 2: c7948bfc0345a4bba1cdcec8225f3b58f38916b5
   - Stage 3: 00947a331e89e0d6ce17af3d3f886b111032ffd8
   - Stage 4: a8fde52
   - Stage 5: b63eea6
+  - Stage 6: c329ee5
 
 ## Implementation Notes
 
@@ -326,9 +327,146 @@ All 15 tests passing:
 - Consistent with Location spatial query methods
 - JSDoc documentation for all methods
 
+---
+
+### Stage 6: GraphQL API and Map Layer Generation (✅ Complete)
+
+Successfully implemented comprehensive GraphQL API for spatial queries and map layer generation:
+
+**Achievements:**
+
+- Created complete GraphQL input/output types for spatial operations
+- Implemented SpatialResolver with 8 queries/mutations (all spatial operations)
+- Added 14 comprehensive integration tests (100% passing)
+- Proper authentication guards and role-based authorization
+- Full input validation with class-validator decorators
+
+**GraphQL Inputs Created:**
+
+- BoundingBoxInput: Map viewport coordinates for bbox queries
+- PointInput: Longitude/latitude for spatial searches
+- MapFilterInput: Optional filters (location types, tags, availability)
+- UpdateLocationGeometryInput: GeoJSON geometry updates with versioning support
+- LocationsNearInput/SettlementsNearInput: Radius searches with optional SRID
+
+**GraphQL Output Types:**
+
+- GeoJSONFeature/GeoJSONFeatureCollection: Map layer output following RFC 7946
+- LocationWithDistance: Location results with computed distance from query point
+- SettlementWithDistance: Settlement results with computed distance
+- RegionOverlapResult: Boolean result for overlap detection queries
+
+**SpatialResolver Implementation:**
+
+1. **mapLayer Query**: Returns GeoJSON FeatureCollection for map viewport
+   - Accepts bounding box and optional filters
+   - Includes settlement metadata in feature properties
+   - Filters null geometries automatically
+   - Protected with JwtAuthGuard
+
+2. **updateLocationGeometry Mutation**: Updates location geometry with versioning
+   - Supports Point, Polygon, and MultiPolygon geometries
+   - Optional custom SRID per update
+   - Optimistic locking via expectedVersion
+   - Protected with JwtAuthGuard + RolesGuard (owner/gm only)
+
+3. **locationsNear Query**: Find locations within radius, ordered by distance
+   - Custom SRID support (defaults to Web Mercator 3857)
+   - Optional worldId filtering
+   - Results include computed distance in meters
+
+4. **locationsInRegion Query**: Find all locations within region polygon
+   - Uses ST_Within for precise containment queries
+   - Optional worldId filtering
+   - Excludes soft-deleted locations
+
+5. **checkRegionOverlap Query**: Detect if two regions overlap
+   - Utility function for region validation
+   - Uses ST_Overlaps PostGIS function
+   - Returns boolean result with region IDs
+
+6. **settlementsInRegion Query**: Find settlements within region
+   - Joins Settlement with Location for geometry queries
+   - Optional worldId filtering
+   - Respects soft deletes on both entities
+
+7. **settlementAtLocation Query**: Find settlement at specific location
+   - Direct lookup by locationId (unique constraint)
+   - Returns null if no settlement exists
+   - Protected with JwtAuthGuard
+
+8. **settlementsNear Query**: Find settlements within radius, ordered by distance
+   - Similar to locationsNear but for settlements
+   - Includes distance values in results
+   - Custom SRID support
+
+**Service Updates:**
+
+- Added `SettlementService.findByLocationId()` method for efficient settlement lookups
+- Fixed `SpatialService.wkbToGeoJSON()` Buffer handling (converts Uint8Array to Buffer)
+- Registered SpatialResolver and SpatialService in GraphQL module
+- All services properly integrated with dependency injection
+
+**Shared Package Updates:**
+
+- Added optional `srid` field to BoundingBox interface for custom coordinate systems
+- Maintains backward compatibility (field is optional)
+- Allows SRID specification for fantasy map projections
+
+**Integration Tests (14 tests, 100% passing):**
+
+Test suite: `packages/api/src/graphql/resolvers/spatial.resolver.integration.test.ts`
+
+- **mapLayer Query** (3 tests): FeatureCollection generation, settlement metadata inclusion, location type filtering
+- **updateLocationGeometry Mutation** (1 test): Geometry updates with version increment
+- **locationsNear Query** (2 tests): Radius searches with distance ordering
+- **locationsInRegion Query** (2 tests): Region containment with exclusion of external locations
+- **checkRegionOverlap Query** (1 test): Non-overlapping region detection
+- **settlementsInRegion Query** (1 test): Settlement region containment
+- **settlementAtLocation Query** (2 tests): Settlement lookup and null handling
+- **settlementsNear Query** (2 tests): Settlement proximity with distance ordering
+
+**Security Implementation:**
+
+- All queries protected with `@UseGuards(JwtAuthGuard)`
+- Mutation restricted with `@Roles('owner', 'gm')` decorator
+- Input validation using class-validator decorators
+- Proper authentication and authorization checks throughout
+
+**Performance Considerations:**
+
+Code Review identified N+1 query patterns for future optimization:
+
+- mapLayer resolver: Fetches settlements one-by-one (acceptable for 10-50 locations)
+- locationsNear/settlement resolvers: Sequential full data fetches
+- Should be addressed in follow-up ticket with batch loading
+
+**Code Quality:**
+
+- TypeScript strict mode compliant
+- All ESLint rules passing
+- Prettier formatted
+- Comprehensive JSDoc documentation
+- Follows existing NestJS resolver patterns
+- Proper error handling with descriptive messages
+
+**Files Added:**
+
+- `packages/api/src/graphql/inputs/spatial.input.ts` (180 lines)
+- `packages/api/src/graphql/types/spatial.type.ts` (96 lines)
+- `packages/api/src/graphql/resolvers/spatial.resolver.ts` (358 lines)
+- `packages/api/src/graphql/resolvers/spatial.resolver.integration.test.ts` (480 lines)
+
+**Files Modified:**
+
+- `packages/api/src/graphql/services/settlement.service.ts` - Added findByLocationId method
+- `packages/api/src/graphql/graphql.module.ts` - Registered SpatialResolver and SpatialService
+- `packages/api/src/common/services/spatial.service.ts` - Fixed Buffer handling in wkbToGeoJSON
+- `packages/shared/src/types/geojson.ts` - Added optional srid field to BoundingBox
+
 **Next Steps:**
 
-- Stage 6 will implement GraphQL API and map layer generation
+- Stage 7 will implement tile generation and caching (final stage)
 
 ## Description
 

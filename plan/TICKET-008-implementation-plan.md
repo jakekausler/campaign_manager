@@ -242,7 +242,9 @@ This ticket integrates PostGIS spatial capabilities into the Campaign Manager, e
 - settlementAtLocation() GraphQL query works
 - settlementsNear() GraphQL query works
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: c329ee5
 
 ---
 
