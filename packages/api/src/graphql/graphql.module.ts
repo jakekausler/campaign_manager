@@ -17,6 +17,7 @@ import { DatabaseModule } from '../database/database.module';
 
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
 import { StructureDataLoader } from './dataloaders/structure.dataloader';
+import { createRedisPubSub, REDIS_PUBSUB } from './pubsub/redis-pubsub.provider';
 import { CampaignResolver } from './resolvers/campaign.resolver';
 import { CharacterResolver } from './resolvers/character.resolver';
 import { EncounterResolver } from './resolvers/encounter.resolver';
@@ -28,6 +29,7 @@ import { LocationResolver } from './resolvers/location.resolver';
 import { PartyResolver } from './resolvers/party.resolver';
 import { SettlementResolver } from './resolvers/settlement.resolver';
 import { StructureResolver } from './resolvers/structure.resolver';
+import { VersionResolver } from './resolvers/version.resolver';
 import { WorldResolver } from './resolvers/world.resolver';
 import { DateTimeScalar } from './scalars/datetime.scalar';
 import { GeoJSONScalar } from './scalars/geojson.scalar';
@@ -44,6 +46,7 @@ import { LocationService } from './services/location.service';
 import { PartyService } from './services/party.service';
 import { SettlementService } from './services/settlement.service';
 import { StructureService } from './services/structure.service';
+import { VersionService } from './services/version.service';
 import { WorldService } from './services/world.service';
 
 @Module({
@@ -128,8 +131,14 @@ import { WorldService } from './services/world.service';
   providers: [
     // Context factory
     GraphQLContextFactory,
+    // Redis PubSub for subscriptions
+    {
+      provide: REDIS_PUBSUB,
+      useFactory: createRedisPubSub,
+    },
     // Services
     AuditService,
+    VersionService,
     WorldService,
     CampaignService,
     CharacterService,
@@ -145,6 +154,7 @@ import { WorldService } from './services/world.service';
     StructureDataLoader,
     // Resolvers
     HealthResolver,
+    VersionResolver,
     WorldResolver,
     CampaignResolver,
     CharacterResolver,

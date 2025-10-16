@@ -9,13 +9,16 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import type { Campaign as PrismaCampaign, Prisma } from '@prisma/client';
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
 import type { CreateCampaignInput, UpdateCampaignData } from '../inputs/campaign.input';
+import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
 import { VersionService, type CreateVersionInput } from './version.service';
@@ -25,7 +28,8 @@ export class CampaignService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly versionService: VersionService
+    private readonly versionService: VersionService,
+    @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
   /**
@@ -232,6 +236,17 @@ export class CampaignService {
 
     // Create audit entry
     await this.audit.log('campaign', id, 'UPDATE', user.id, updateData);
+
+    // Publish entityModified event for concurrent edit detection
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'campaign',
+        version: updated.version,
+        modifiedBy: user.id,
+        modifiedAt: updated.updatedAt,
+      },
+    });
 
     return updated;
   }

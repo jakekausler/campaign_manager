@@ -9,13 +9,16 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import type { Kingdom as PrismaKingdom, Prisma } from '@prisma/client';
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
 import type { CreateKingdomInput, UpdateKingdomData } from '../inputs/kingdom.input';
+import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
 import { VersionService, type CreateVersionInput } from './version.service';
@@ -25,7 +28,8 @@ export class KingdomService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly versionService: VersionService
+    private readonly versionService: VersionService,
+    @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
   /**
@@ -214,6 +218,17 @@ export class KingdomService {
 
     // Create audit entry
     await this.audit.log('kingdom', id, 'UPDATE', user.id, updateData);
+
+    // Publish entityModified event for concurrent edit detection
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'kingdom',
+        version: updated.version,
+        modifiedBy: user.id,
+        modifiedAt: updated.updatedAt,
+      },
+    });
 
     return updated;
   }

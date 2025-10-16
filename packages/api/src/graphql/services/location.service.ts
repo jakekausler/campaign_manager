@@ -3,13 +3,15 @@
  * Handles CRUD operations for Locations with hierarchical cascade delete
  */
 
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import type { Location as PrismaLocation, Prisma } from '@prisma/client';
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
 import type { CreateLocationInput, UpdateLocationData } from '../inputs/location.input';
+import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
 import { VersionService, type CreateVersionInput } from './version.service';
@@ -19,7 +21,8 @@ export class LocationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly versionService: VersionService
+    private readonly versionService: VersionService,
+    @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
   /**
@@ -245,6 +248,17 @@ export class LocationService {
 
     // Create audit entry
     await this.audit.log('location', id, 'UPDATE', user.id, updateData);
+
+    // Publish entityModified event for concurrent edit detection
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'location',
+        version: updated.version,
+        modifiedBy: user.id,
+        modifiedAt: updated.updatedAt,
+      },
+    });
 
     return updated;
   }

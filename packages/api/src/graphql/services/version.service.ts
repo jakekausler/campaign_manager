@@ -151,13 +151,33 @@ export class VersionService {
    * @param entityType - Type of the entity
    * @param entityId - ID of the entity
    * @param branchId - ID of the branch
+   * @param user - Authenticated user requesting the history
    * @returns Array of versions ordered by validFrom ascending
    */
   async findVersionHistory(
     entityType: string,
     entityId: string,
-    branchId: string
+    branchId: string,
+    user: AuthenticatedUser
   ): Promise<Version[]> {
+    // Verify branch exists and check authorization
+    const branch = await this.prisma.branch.findUnique({
+      where: { id: branchId },
+      include: { campaign: { select: { ownerId: true, memberships: true } } },
+    });
+
+    if (!branch) {
+      throw new NotFoundException(`Branch with ID ${branchId} not found`);
+    }
+
+    // Check authorization: user must be campaign owner or member
+    const isOwner = branch.campaign.ownerId === user.id;
+    const isMember = branch.campaign.memberships.some((m) => m.userId === user.id);
+
+    if (!isOwner && !isMember) {
+      throw new ForbiddenException('You do not have permission to view versions for this entity');
+    }
+
     return this.prisma.version.findMany({
       where: {
         entityType,
@@ -262,9 +282,14 @@ export class VersionService {
    * Calculates the diff between two versions
    * @param versionId1 - ID of the first (older) version
    * @param versionId2 - ID of the second (newer) version
+   * @param user - Authenticated user requesting the diff
    * @returns VersionDiff showing added, modified, and removed fields
    */
-  async getVersionDiff(versionId1: string, versionId2: string): Promise<VersionDiff> {
+  async getVersionDiff(
+    versionId1: string,
+    versionId2: string,
+    user: AuthenticatedUser
+  ): Promise<VersionDiff> {
     // Fetch both versions
     const version1 = await this.prisma.version.findFirst({
       where: { id: versionId1 },
@@ -282,6 +307,30 @@ export class VersionService {
       throw new NotFoundException(`Version with ID ${versionId2} not found`);
     }
 
+    // Verify both versions belong to the same branch and check authorization
+    if (version1.branchId !== version2.branchId) {
+      throw new BadRequestException('Cannot compare versions from different branches');
+    }
+
+    const branch = await this.prisma.branch.findUnique({
+      where: { id: version1.branchId },
+      include: { campaign: { select: { ownerId: true, memberships: true } } },
+    });
+
+    if (!branch) {
+      throw new NotFoundException(`Branch with ID ${version1.branchId} not found`);
+    }
+
+    // Check authorization: user must be campaign owner or member
+    const isOwner = branch.campaign.ownerId === user.id;
+    const isMember = branch.campaign.memberships.some((m) => m.userId === user.id);
+
+    if (!isOwner && !isMember) {
+      throw new ForbiddenException(
+        'You do not have permission to view version diffs for this entity'
+      );
+    }
+
     // Decompress both payloads in parallel for better performance
     const [payload1, payload2] = await Promise.all([
       decompressPayload(Buffer.from(version1.payloadGz)),
@@ -296,17 +345,23 @@ export class VersionService {
    * Restores an entity to a previous version state
    * Creates a new version with the payload from the historical version
    * @param versionId - ID of the version to restore
+   * @param branchId - Branch to restore the version in
    * @param user - Authenticated user performing the restore
    * @param validFrom - Timestamp for the new restored version (default: now)
+   * @param comment - Optional comment for the restoration (default: "Restored from {versionId}")
    * @returns The newly created version
    */
   async restoreVersion(
     versionId: string,
+    branchId: string,
     user: AuthenticatedUser,
-    validFrom: Date = new Date()
+    validFrom?: Date,
+    comment?: string
   ): Promise<Version> {
+    const worldTime = validFrom ?? new Date();
+
     // Validate validFrom
-    if (!validFrom || isNaN(validFrom.getTime())) {
+    if (!worldTime || isNaN(worldTime.getTime())) {
       throw new BadRequestException('validFrom must be a valid date');
     }
 
@@ -321,12 +376,12 @@ export class VersionService {
 
     // Verify branch exists and check authorization
     const branch = await this.prisma.branch.findUnique({
-      where: { id: historicalVersion.branchId },
+      where: { id: branchId },
       include: { campaign: { select: { ownerId: true, memberships: true } } },
     });
 
     if (!branch) {
-      throw new NotFoundException(`Branch with ID ${historicalVersion.branchId} not found`);
+      throw new NotFoundException(`Branch with ID ${branchId} not found`);
     }
 
     // Check authorization: user must be campaign owner or have GM/OWNER role
@@ -346,7 +401,7 @@ export class VersionService {
       where: {
         entityType: historicalVersion.entityType,
         entityId: historicalVersion.entityId,
-        branchId: historicalVersion.branchId,
+        branchId,
       },
       orderBy: { version: 'desc' },
       select: { version: true },
@@ -362,12 +417,12 @@ export class VersionService {
       data: {
         entityType: historicalVersion.entityType,
         entityId: historicalVersion.entityId,
-        branchId: historicalVersion.branchId,
-        validFrom,
+        branchId,
+        validFrom: worldTime,
         validTo: null,
         payloadGz,
         createdBy: user.id,
-        comment: `Restored from ${versionId}`,
+        comment: comment ?? `Restored from ${versionId}`,
         version: nextVersionNumber,
       },
     });
