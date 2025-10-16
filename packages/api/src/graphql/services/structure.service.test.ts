@@ -7,9 +7,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
+import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
 import { StructureService } from './structure.service';
+import { VersionService } from './version.service';
 
 describe('StructureService', () => {
   let service: StructureService;
@@ -34,6 +36,7 @@ describe('StructureService', () => {
     type: 'temple',
     name: 'Temple of Gondor',
     level: 2,
+    version: 1,
     variables: {},
     variableSchemas: [],
     createdAt: new Date(),
@@ -65,6 +68,20 @@ describe('StructureService', () => {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: VersionService,
+          useValue: {
+            createVersion: jest.fn(),
+            resolveVersion: jest.fn(),
+            decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: REDIS_PUBSUB,
+          useValue: {
+            publish: jest.fn(),
           },
         },
       ],
@@ -198,35 +215,81 @@ describe('StructureService', () => {
   });
 
   describe('update', () => {
+    const mockCampaign = {
+      id: 'campaign-1',
+      worldId: 'world-1',
+      ownerId: 'user-1',
+    };
+
+    const mockKingdom = {
+      id: 'kingdom-1',
+      campaignId: 'campaign-1',
+      name: 'Gondor',
+      campaign: mockCampaign,
+    };
+
+    const mockSettlementWithKingdom = {
+      ...mockSettlement,
+      kingdom: mockKingdom,
+    };
+
+    const mockStructureWithSettlement = {
+      ...mockStructure,
+      settlement: mockSettlementWithKingdom,
+    };
+
+    const mockBranch = {
+      id: 'branch-1',
+      campaignId: 'campaign-1',
+      deletedAt: null,
+    };
+
+    beforeEach(() => {
+      // Add additional mocks needed for update
+      (prisma as any).branch = {
+        findFirst: jest.fn(),
+      };
+      (prisma as any).structure.findUnique = jest.fn();
+      (prisma as any).$transaction = jest.fn((callback) => callback(prisma));
+    });
+
     it('should update a structure with valid data', async () => {
       const input = {
         name: 'Updated Temple',
         level: 3,
       };
+      const expectedVersion = 1;
+      const branchId = 'branch-1';
 
       (prisma.structure.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockStructure) // findById
         .mockResolvedValueOnce(mockStructure); // hasPermission check
+      (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
+      ((prisma as any).branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.structure.update as jest.Mock).mockResolvedValue({
         ...mockStructure,
         ...input,
+        version: 2,
       });
 
-      const result = await service.update('structure-1', input, mockUser);
+      const result = await service.update(
+        'structure-1',
+        input,
+        mockUser,
+        expectedVersion,
+        branchId
+      );
 
       expect(result.name).toBe(input.name);
-      expect(audit.log).toHaveBeenCalledWith('structure', 'structure-1', 'UPDATE', mockUser.id, {
-        name: input.name,
-        level: input.level,
-      });
+      expect(result.version).toBe(2);
     });
 
     it('should throw NotFoundException if structure not found', async () => {
       (prisma.structure.findFirst as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('nonexistent', { name: 'Test' }, mockUser)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        service.update('nonexistent', { name: 'Test' }, mockUser, 1, 'branch-1')
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -307,6 +370,46 @@ describe('StructureService', () => {
       (prisma.structure.findFirst as jest.Mock).mockResolvedValue(null);
 
       await expect(service.restore('nonexistent', mockUser)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('setLevel', () => {
+    it('should set structure level', async () => {
+      const newLevel = 4;
+      (prisma.structure.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockStructure) // findById
+        .mockResolvedValueOnce(mockStructure); // hasPermission check
+      (prisma.structure.update as jest.Mock).mockResolvedValue({
+        ...mockStructure,
+        level: newLevel,
+      });
+
+      const result = await service.setLevel('structure-1', newLevel, mockUser);
+
+      expect(result.level).toBe(newLevel);
+      expect(prisma.structure.update).toHaveBeenCalledWith({
+        where: { id: 'structure-1' },
+        data: { level: newLevel },
+      });
+      expect(audit.log).toHaveBeenCalledWith('structure', 'structure-1', 'UPDATE', mockUser.id, {
+        level: newLevel,
+      });
+    });
+
+    it('should throw NotFoundException if structure not found', async () => {
+      (prisma.structure.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.setLevel('nonexistent', 4, mockUser)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if user lacks permission', async () => {
+      (prisma.structure.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockStructure) // findById
+        .mockResolvedValueOnce(null); // hasPermission check fails
+
+      await expect(service.setLevel('structure-1', 4, mockUser)).rejects.toThrow(
+        ForbiddenException
+      );
     });
   });
 });

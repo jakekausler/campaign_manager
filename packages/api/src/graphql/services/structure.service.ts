@@ -560,6 +560,68 @@ export class StructureService {
   }
 
   /**
+   * Set structure level
+   * Only owner or GM can set level
+   */
+  async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaStructure> {
+    const structure = await this.findById(id, user);
+    if (!structure) {
+      throw new NotFoundException(`Structure with ID ${id} not found`);
+    }
+
+    // Verify user has edit permissions
+    const hasPermission = await this.prisma.structure.findFirst({
+      where: {
+        id,
+        settlement: {
+          kingdom: {
+            campaign: {
+              OR: [
+                { ownerId: user.id },
+                {
+                  memberships: {
+                    some: {
+                      userId: user.id,
+                      role: {
+                        in: ['OWNER', 'GM'],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    if (!hasPermission) {
+      throw new ForbiddenException('You do not have permission to set level for this structure');
+    }
+
+    const updated = await this.prisma.structure.update({
+      where: { id },
+      data: { level },
+    });
+
+    // Create audit entry
+    await this.audit.log('structure', id, 'UPDATE', user.id, { level });
+
+    // Publish entityModified event for level change
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'structure',
+        version: updated.version,
+        modifiedBy: user.id,
+        modifiedAt: updated.updatedAt,
+      },
+    });
+
+    return updated;
+  }
+
+  /**
    * Get structure state as it existed at a specific point in world-time
    * Supports time-travel queries for version history
    */

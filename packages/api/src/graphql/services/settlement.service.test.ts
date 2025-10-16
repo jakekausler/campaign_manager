@@ -7,9 +7,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
+import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
 import { SettlementService } from './settlement.service';
+import { VersionService } from './version.service';
 
 describe('SettlementService', () => {
   let service: SettlementService;
@@ -48,6 +50,7 @@ describe('SettlementService', () => {
     locationId: 'location-1',
     name: 'Minas Tirith',
     level: 3,
+    version: 1,
     variables: {},
     variableSchemas: [],
     createdAt: new Date(),
@@ -84,6 +87,20 @@ describe('SettlementService', () => {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: VersionService,
+          useValue: {
+            createVersion: jest.fn(),
+            resolveVersion: jest.fn(),
+            decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: REDIS_PUBSUB,
+          useValue: {
+            publish: jest.fn(),
           },
         },
       ],
@@ -217,35 +234,68 @@ describe('SettlementService', () => {
   });
 
   describe('update', () => {
+    const mockBranch = {
+      id: 'branch-1',
+      campaignId: 'campaign-1',
+      deletedAt: null,
+    };
+
+    const mockSettlementWithVersion = {
+      ...mockSettlement,
+      version: 1,
+    };
+
+    const mockSettlementWithKingdom = {
+      ...mockSettlementWithVersion,
+      kingdom: mockKingdom,
+    };
+
+    beforeEach(() => {
+      // Add branch mock to the prisma mock object
+      (prisma as any).branch = {
+        findFirst: jest.fn(),
+      };
+      (prisma as any).settlement.findUnique = jest.fn();
+      (prisma as any).$transaction = jest.fn((callback) => callback(prisma));
+    });
+
     it('should update a settlement with valid data', async () => {
       const input = {
         name: 'Updated Minas Tirith',
         level: 5,
       };
+      const expectedVersion = 1;
+      const branchId = 'branch-1';
 
       (prisma.settlement.findFirst as jest.Mock)
-        .mockResolvedValueOnce(mockSettlement) // findById
-        .mockResolvedValueOnce(mockSettlement); // hasPermission check
+        .mockResolvedValueOnce(mockSettlementWithVersion) // findById
+        .mockResolvedValueOnce(mockSettlementWithVersion); // hasPermission check
+      (prisma.settlement.findUnique as jest.Mock).mockResolvedValue(mockSettlementWithKingdom);
+      ((prisma as any).branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
       (prisma.settlement.update as jest.Mock).mockResolvedValue({
-        ...mockSettlement,
+        ...mockSettlementWithVersion,
         ...input,
+        version: 2,
       });
 
-      const result = await service.update('settlement-1', input, mockUser);
+      const result = await service.update(
+        'settlement-1',
+        input,
+        mockUser,
+        expectedVersion,
+        branchId
+      );
 
       expect(result.name).toBe(input.name);
-      expect(audit.log).toHaveBeenCalledWith('settlement', 'settlement-1', 'UPDATE', mockUser.id, {
-        name: input.name,
-        level: input.level,
-      });
+      expect(result.version).toBe(2);
     });
 
     it('should throw NotFoundException if settlement not found', async () => {
       (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.update('nonexistent', { name: 'Test' }, mockUser)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        service.update('nonexistent', { name: 'Test' }, mockUser, 1, 'branch-1')
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -333,6 +383,46 @@ describe('SettlementService', () => {
       expect(audit.log).toHaveBeenCalledWith('settlement', 'settlement-1', 'RESTORE', mockUser.id, {
         archivedAt: null,
       });
+    });
+  });
+
+  describe('setLevel', () => {
+    it('should set settlement level', async () => {
+      const newLevel = 5;
+      (prisma.settlement.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockSettlement) // findById
+        .mockResolvedValueOnce(mockSettlement); // hasPermission check
+      (prisma.settlement.update as jest.Mock).mockResolvedValue({
+        ...mockSettlement,
+        level: newLevel,
+      });
+
+      const result = await service.setLevel('settlement-1', newLevel, mockUser);
+
+      expect(result.level).toBe(newLevel);
+      expect(prisma.settlement.update).toHaveBeenCalledWith({
+        where: { id: 'settlement-1' },
+        data: { level: newLevel },
+      });
+      expect(audit.log).toHaveBeenCalledWith('settlement', 'settlement-1', 'UPDATE', mockUser.id, {
+        level: newLevel,
+      });
+    });
+
+    it('should throw NotFoundException if settlement not found', async () => {
+      (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.setLevel('nonexistent', 5, mockUser)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException if user lacks permission', async () => {
+      (prisma.settlement.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockSettlement) // findById
+        .mockResolvedValueOnce(null); // hasPermission check fails
+
+      await expect(service.setLevel('settlement-1', 5, mockUser)).rejects.toThrow(
+        ForbiddenException
+      );
     });
   });
 });

@@ -518,6 +518,66 @@ export class SettlementService {
   }
 
   /**
+   * Set settlement level
+   * Only owner or GM can set level
+   */
+  async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaSettlement> {
+    const settlement = await this.findById(id, user);
+    if (!settlement) {
+      throw new NotFoundException(`Settlement with ID ${id} not found`);
+    }
+
+    // Verify user has edit permissions
+    const hasPermission = await this.prisma.settlement.findFirst({
+      where: {
+        id,
+        kingdom: {
+          campaign: {
+            OR: [
+              { ownerId: user.id },
+              {
+                memberships: {
+                  some: {
+                    userId: user.id,
+                    role: {
+                      in: ['OWNER', 'GM'],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    if (!hasPermission) {
+      throw new ForbiddenException('You do not have permission to set level for this settlement');
+    }
+
+    const updated = await this.prisma.settlement.update({
+      where: { id },
+      data: { level },
+    });
+
+    // Create audit entry
+    await this.audit.log('settlement', id, 'UPDATE', user.id, { level });
+
+    // Publish entityModified event for level change
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'settlement',
+        version: updated.version,
+        modifiedBy: user.id,
+        modifiedAt: updated.updatedAt,
+      },
+    });
+
+    return updated;
+  }
+
+  /**
    * Get settlement state as it existed at a specific point in world-time
    * Supports time-travel queries for version history
    */
