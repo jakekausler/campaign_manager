@@ -7,6 +7,7 @@
   - 8e00f79: feat(api): add entity CRUD infrastructure foundation (Stage 1)
   - 69c4b04: feat(api): implement core entity CRUD services (Stage 2)
   - 430db93: feat(api): implement kingdom management services (Stage 3)
+  - 25bc5b0: feat(api): implement location and event services (Stage 4)
 
 ## Implementation Notes
 
@@ -93,6 +94,66 @@
 - Location validation prevents data integrity issues
 
 **Next steps:** Stage 4 - Implement Location, Encounter, Event, and Link services
+
+### Stage 4: Location and Event Services (Completed - 25bc5b0)
+
+**What was implemented:**
+
+- LocationService: Full CRUD + archive + hierarchical cascade delete
+  - Parent-child location relationships with world-scoping validation
+  - Circular reference detection to prevent invalid hierarchies
+  - Recursive cascade delete through entire location tree
+  - Support for removing parent (disconnect relationship)
+
+- EncounterService: Full CRUD + archive (no cascade per requirements)
+  - Campaign-scoped with authorization checks (owner/GM permissions)
+  - Optional location linking with world validation
+  - Resolved state management with auto-set resolvedAt timestamps
+  - World-scoping validation ensures locations belong to campaign's world
+
+- EventService: Full CRUD + archive (no cascade per requirements)
+  - Campaign-scoped with authorization checks (owner/GM permissions)
+  - Event scheduling with scheduledAt and occurredAt timestamps
+  - Auto-set occurredAt when marking event as completed
+  - Event type categorization (story, kingdom, party, world)
+
+- LinkService: Create and query links between Encounters and Events
+  - Typed relationships (prerequisite, blocks, triggers, related)
+  - Bidirectional link queries (find by source or target)
+  - Duplicate link prevention (same type between same entities)
+  - Same-campaign validation for all linked entities
+  - Full authorization through entity ownership checks
+
+- Input types: CreateLocationInput, UpdateLocationInput, CreateEncounterInput, UpdateEncounterInput, CreateEventInput, UpdateEventInput, CreateLinkInput, UpdateLinkInput
+
+**Tests:**
+
+- LocationService: 20 tests (hierarchical relationships, cascade delete through multiple levels, circular reference prevention, world validation)
+- EncounterService: 16 tests (CRUD, authorization, world validation, resolved state transitions)
+- EventService: 17 tests (CRUD, authorization, scheduling, completion state management)
+- LinkService: 14 tests (cross-entity linking, duplicate prevention, same-campaign validation)
+- Total: 228 tests across 17 suites, all passing ✅
+
+**Code review highlights:**
+
+- Excellent security: Comprehensive authorization checks for campaign-scoped entities
+- Smart validation: Circular reference detection, world-scoping, duplicate prevention
+- Efficient cascade: Batch operations with recursive depth-first pattern for hierarchies
+- Proper Prisma patterns: Relation disconnect/connect for optional relationships
+- Type safety: Full TypeScript strict mode compliance, no `any` types
+- Clean architecture: Consistent patterns with Stages 1-3, DRY principles followed
+- Comprehensive tests: 67 new tests covering happy paths, errors, edge cases
+
+**Technical details:**
+
+- Hierarchical cascade delete uses recursive pattern with batch updates per level
+- Location parent updates validate against circular references before committing
+- Event completion auto-sets occurredAt only if not already set
+- Encounter/Event location updates use Prisma disconnect/connect patterns
+- Link service validates both entities exist and belong to same campaign
+- All services follow identical authorization pattern from previous stages
+
+**Next steps:** Stage 5 - Create GraphQL resolvers and types for all entities
 
 ## Description
 

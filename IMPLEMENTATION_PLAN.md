@@ -43,18 +43,18 @@ Implementing complete CRUD operations for all core domain entities with soft del
 
 **Status**: Completed (Commit: 430db93)
 
-## Stage 4: Location and Event Services
+## Stage 4: Location and Event Services (Completed)
 
 **Goal**: Implement Location, Encounter, Event, and Link services
 **Success Criteria**:
 
-- [ ] LocationService: CRUD + archive + hierarchical cascade delete
-- [ ] EncounterService: CRUD + archive (no cascade per ticket)
-- [ ] EventService: CRUD + archive (no cascade per ticket)
-- [ ] LinkService: Create and query links between entities
-- [ ] Tests written and passing for each service
+- [x] LocationService: CRUD + archive + hierarchical cascade delete
+- [x] EncounterService: CRUD + archive (no cascade per ticket)
+- [x] EventService: CRUD + archive (no cascade per ticket)
+- [x] LinkService: Create and query links between entities
+- [x] Tests written and passing for each service
 
-**Status**: Not Started
+**Status**: Completed (Commit: 25bc5b0)
 
 ## Stage 5: GraphQL Layer
 
@@ -133,8 +133,9 @@ Implementing complete CRUD operations for all core domain entities with soft del
 - Stage 1: ✅ Complete (Commit: 8e00f79)
 - Stage 2: ✅ Complete (Commit: 69c4b04)
 - Stage 3: ✅ Complete (Commit: 430db93)
-- Stage 4: Ready to begin
-- Estimated remaining time: 2-3 days
+- Stage 4: ✅ Complete (Commit: 25bc5b0)
+- Stage 5: Ready to begin
+- Estimated remaining time: 1-2 days
 
 ## Commit Log
 
@@ -162,3 +163,13 @@ Implementing complete CRUD operations for all core domain entities with soft del
   - Location validation for settlements (world-scoping, uniqueness)
   - Comprehensive authorization checks (owner/GM permissions)
   - Audit logging for all mutations
+
+- **25bc5b0**: feat(api): implement location and event services (TICKET-006 Stage 4)
+  - LocationService: Full CRUD + archive + hierarchical cascade delete with circular reference detection
+  - EncounterService: Full CRUD + archive (no cascade) with campaign authorization
+  - EventService: Full CRUD + archive (no cascade) with scheduling and completion tracking
+  - LinkService: Create and query typed links between Encounters and Events
+  - 228 tests passing (17 test suites, 67 new tests for Stage 4)
+  - World-scoping validation for locations across all services
+  - Duplicate link prevention and same-campaign validation
+  - Proper Prisma relation disconnect/connect patterns for optional relationships
