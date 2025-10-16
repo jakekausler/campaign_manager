@@ -4,6 +4,7 @@
 
 - [ ] Completed
 - **Commits**:
+  - Stage 2 (Party Management): `4d12e2d`
 
 ## Description
 
@@ -174,3 +175,22 @@ async setPartyLevel(
 ## Estimated Effort
 
 4-5 days (expanded scope with Settlements, Structures, and typed variable schemas)
+
+## Implementation Notes
+
+### Stage 2: Party Management (Completed)
+
+Enhanced PartyService with the following new methods:
+
+- **calculateAverageLevel()**: Calculates mean level from party members, returns null for empty parties
+- **setLevel()**: Sets manual level override with event emission for real-time UI updates
+- **addMember()**: Adds characters to party with campaign boundary validation
+- **removeMember()**: Removes characters from party with existence validation
+
+All methods include:
+
+- Proper authorization checks via `hasEditPermission()`
+- Audit logging for compliance
+- Comprehensive unit tests (25 total tests passing)
+
+Variable operations (defineSchema, setVariable, getVariable) deferred to Stage 5 for centralized implementation via VariableSchemaService.
