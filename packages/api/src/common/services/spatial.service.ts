@@ -11,12 +11,26 @@ import {
   SRID,
 } from '@campaign/shared';
 
+import { PrismaService } from '../../database/prisma.service';
+
+/**
+ * Bounding box for spatial queries
+ */
+export interface BoundingBox {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+  srid?: number;
+}
+
 /**
  * Service for spatial data operations
- * Handles GeoJSON ↔ PostGIS WKB conversion and geometry validation
+ * Handles GeoJSON ↔ PostGIS WKB conversion, geometry validation, and spatial queries
  */
 @Injectable()
 export class SpatialService {
+  constructor(private readonly prisma: PrismaService) {}
   /**
    * Default CRS configurations
    */
@@ -392,5 +406,198 @@ export class SpatialService {
    */
   isValidSRID(srid: number): boolean {
     return Number.isInteger(srid) && srid > 0;
+  }
+
+  // =================================================================
+  // Spatial Query Operations
+  // =================================================================
+
+  /**
+   * Check if a point location is within a region location
+   * Includes points on the boundary of the region
+   * @param pointId ID of the point location
+   * @param regionId ID of the region location
+   * @returns True if point is within region (including boundary), false otherwise
+   */
+  async pointWithinRegion(pointId: string, regionId: string): Promise<boolean> {
+    const result = await this.prisma.$queryRaw<[{ within: boolean }]>`
+      SELECT ST_Covers(
+        (SELECT geom FROM "Location" WHERE id = ${regionId}),
+        (SELECT geom FROM "Location" WHERE id = ${pointId})
+      ) as within
+    `;
+    return result[0]?.within ?? false;
+  }
+
+  /**
+   * Calculate distance between two locations
+   * @param location1Id ID of the first location
+   * @param location2Id ID of the second location
+   * @returns Distance in meters (for projected CRS) or degrees (for geographic CRS)
+   */
+  async distance(location1Id: string, location2Id: string): Promise<number> {
+    const result = await this.prisma.$queryRaw<[{ distance: number }]>`
+      SELECT ST_Distance(
+        (SELECT geom FROM "Location" WHERE id = ${location1Id}),
+        (SELECT geom FROM "Location" WHERE id = ${location2Id})
+      ) as distance
+    `;
+    return result[0]?.distance ?? 0;
+  }
+
+  /**
+   * Find all locations within a bounding box
+   * @param bbox Bounding box with west, south, east, north coordinates
+   * @param worldId Optional world ID to filter locations
+   * @returns Array of locations within the bounding box
+   */
+  async locationsInBounds(
+    bbox: BoundingBox,
+    worldId?: string
+  ): Promise<{ id: string; name: string | null; type: string; geom: Buffer | null }[]> {
+    const srid = bbox.srid ?? SRID.WEB_MERCATOR;
+
+    if (worldId) {
+      return this.prisma.$queryRaw`
+        SELECT id, name, type, ST_AsBinary(geom) as geom
+        FROM "Location"
+        WHERE "worldId" = ${worldId}
+          AND "deletedAt" IS NULL
+          AND ST_Intersects(
+            geom,
+            ST_MakeEnvelope(
+              ${bbox.west}::double precision,
+              ${bbox.south}::double precision,
+              ${bbox.east}::double precision,
+              ${bbox.north}::double precision,
+              ${srid}::integer
+            )
+          )
+      `;
+    }
+
+    return this.prisma.$queryRaw`
+      SELECT id, name, type, ST_AsBinary(geom) as geom
+      FROM "Location"
+      WHERE "deletedAt" IS NULL
+        AND ST_Intersects(
+          geom,
+          ST_MakeEnvelope(
+            ${bbox.west}::double precision,
+            ${bbox.south}::double precision,
+            ${bbox.east}::double precision,
+            ${bbox.north}::double precision,
+            ${srid}::integer
+          )
+        )
+    `;
+  }
+
+  /**
+   * Find all locations near a point within a given radius
+   * @param point GeoJSON point coordinates
+   * @param radius Radius in meters
+   * @param srid Spatial reference system ID (default: Web Mercator 3857)
+   * @param worldId Optional world ID to filter locations
+   * @returns Array of locations within radius, ordered by distance
+   */
+  async locationsNear(
+    point: GeoJSONPoint,
+    radius: number,
+    srid: number = SRID.WEB_MERCATOR,
+    worldId?: string
+  ): Promise<
+    { id: string; name: string | null; type: string; geom: Buffer | null; distance: number }[]
+  > {
+    const wkb = this.geoJsonToEWKB(point, srid);
+
+    if (worldId) {
+      return this.prisma.$queryRaw`
+        SELECT
+          id,
+          name,
+          type,
+          ST_AsBinary(geom) as geom,
+          ST_Distance(geom, ST_GeomFromEWKB(${wkb})) as distance
+        FROM "Location"
+        WHERE "worldId" = ${worldId}
+          AND "deletedAt" IS NULL
+          AND ST_DWithin(
+            geom,
+            ST_GeomFromEWKB(${wkb}),
+            ${radius}
+          )
+        ORDER BY ST_Distance(geom, ST_GeomFromEWKB(${wkb}))
+      `;
+    }
+
+    return this.prisma.$queryRaw`
+      SELECT
+        id,
+        name,
+        type,
+        ST_AsBinary(geom) as geom,
+        ST_Distance(geom, ST_GeomFromEWKB(${wkb})) as distance
+      FROM "Location"
+      WHERE "deletedAt" IS NULL
+        AND ST_DWithin(
+          geom,
+          ST_GeomFromEWKB(${wkb}),
+          ${radius}
+        )
+      ORDER BY ST_Distance(geom, ST_GeomFromEWKB(${wkb}))
+    `;
+  }
+
+  /**
+   * Find all locations within a region
+   * @param regionId ID of the region location
+   * @param worldId Optional world ID to filter locations
+   * @returns Array of locations within the region
+   */
+  async locationsInRegion(
+    regionId: string,
+    worldId?: string
+  ): Promise<{ id: string; name: string | null; type: string; geom: Buffer | null }[]> {
+    if (worldId) {
+      return this.prisma.$queryRaw`
+        SELECT id, name, type, ST_AsBinary(geom) as geom
+        FROM "Location"
+        WHERE "worldId" = ${worldId}
+          AND "deletedAt" IS NULL
+          AND id != ${regionId}
+          AND ST_Within(
+            geom,
+            (SELECT geom FROM "Location" WHERE id = ${regionId})
+          )
+      `;
+    }
+
+    return this.prisma.$queryRaw`
+      SELECT id, name, type, ST_AsBinary(geom) as geom
+      FROM "Location"
+      WHERE "deletedAt" IS NULL
+        AND id != ${regionId}
+        AND ST_Within(
+          geom,
+          (SELECT geom FROM "Location" WHERE id = ${regionId})
+        )
+    `;
+  }
+
+  /**
+   * Check if two regions overlap
+   * @param region1Id ID of the first region
+   * @param region2Id ID of the second region
+   * @returns True if regions overlap, false otherwise
+   */
+  async checkRegionOverlap(region1Id: string, region2Id: string): Promise<boolean> {
+    const result = await this.prisma.$queryRaw<[{ overlaps: boolean }]>`
+      SELECT ST_Overlaps(
+        (SELECT geom FROM "Location" WHERE id = ${region1Id}),
+        (SELECT geom FROM "Location" WHERE id = ${region2Id})
+      ) as overlaps
+    `;
+    return result[0]?.overlaps ?? false;
   }
 }

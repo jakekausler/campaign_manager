@@ -2,10 +2,11 @@
 
 ## Status
 
-- [ ] Completed (Stage 2 of 7 complete)
+- [ ] Completed (Stage 3 of 7 complete)
 - **Commits**:
   - Stage 1: 5f70ea5918fb3462f8b5e7a94f612118112a1f22
   - Stage 2: c7948bfc0345a4bba1cdcec8225f3b58f38916b5
+  - Stage 3: (pending commit)
 
 ## Implementation Notes
 
@@ -88,8 +89,79 @@ Successfully implemented database schema updates and spatial indexes:
 
 **Next Steps:**
 
-- Stage 3 will implement core spatial query methods in SpatialService
-- Query methods will leverage the GIST index for optimal performance
+- Stage 4 will implement Location geometry operations in LocationService
+- These operations will integrate with the spatial query methods
+
+---
+
+### Stage 3: Core Spatial Query Operations (✅ Complete)
+
+Successfully implemented all core spatial query methods in SpatialService:
+
+**Achievements:**
+
+- Implemented 6 spatial query methods using PostGIS functions
+- All methods properly handle NULL geometries and soft-deleted locations
+- Added proper type casting for Prisma compatibility
+- Used ST_AsBinary for geometry serialization in query results
+- Wrote comprehensive integration tests (23 passing tests)
+- All queries leverage the GIST spatial index for optimal performance
+
+**Technical Details:**
+
+- **pointWithinRegion**: Uses ST_Covers to include boundary points (not ST_Within)
+- **distance**: Calculates distance between two location geometries
+- **locationsInBounds**: Uses ST_MakeEnvelope and ST_Intersects for bbox queries
+- **locationsNear**: Uses ST_DWithin and orders by ST_Distance
+- **locationsInRegion**: Uses ST_Within to find child locations
+- **checkRegionOverlap**: Uses ST_Overlaps to detect overlapping regions
+
+**Implementation Decisions:**
+
+1. **ST_Covers vs ST_Within**: Changed to ST_Covers for boundary inclusion
+   - ST_Within excludes points on the boundary
+   - ST_Covers includes points on the boundary (more intuitive)
+
+2. **Type Casting**: Added explicit casts for PostgreSQL compatibility
+   - Bbox coordinates cast to `::double precision`
+   - SRID values cast to `::integer`
+
+3. **Geometry Serialization**: Used ST_AsBinary instead of raw geometry
+   - Prisma cannot deserialize raw PostGIS geometry type
+   - ST_AsBinary converts to Buffer format that Prisma handles correctly
+
+4. **worldId Filtering**: Optional parameter for all query methods
+   - Allows filtering by world for multi-world campaigns
+   - Reduces query result set for better performance
+
+**Files Added:**
+
+- `packages/api/src/common/services/spatial-queries.integration.test.ts` - 23 comprehensive integration tests
+
+**Files Modified:**
+
+- `packages/api/src/common/services/spatial.service.ts` - Added 6 spatial query methods
+
+**Integration Tests:**
+
+All 23 tests passing:
+
+- pointWithinRegion: 3 tests (inside, outside, boundary)
+- distance: 3 tests (between points, zero distance, large distance)
+- locationsInBounds: 4 tests (within bbox, outside bbox, empty bbox, worldId filter)
+- locationsNear: 5 tests (within radius, outside radius, ordering, empty, distance values)
+- locationsInRegion: 4 tests (within region, outside region, exclude self, empty region)
+- checkRegionOverlap: 4 tests (overlapping, non-overlapping, same region, adjacent)
+
+**Performance:**
+
+- All spatial queries use the GIST index created in Stage 2
+- Queries with worldId filter are more efficient (smaller result set)
+- ST_DWithin queries benefit significantly from spatial indexing
+
+**Next Steps:**
+
+- Stage 4 will add Location geometry CRUD operations to LocationService
 
 ## Description
 

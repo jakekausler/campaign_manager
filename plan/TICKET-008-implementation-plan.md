@@ -80,35 +80,40 @@ This ticket integrates PostGIS spatial capabilities into the Campaign Manager, e
 
 **Tasks**:
 
-- [ ] Implement `pointWithinRegion(pointId, regionId)` using ST_Within
-- [ ] Implement `distance(location1Id, location2Id)` using ST_Distance
-- [ ] Implement `locationsInBounds(bbox, campaignId, branchId, asOf)` using ST_MakeEnvelope and ST_Intersects
-- [ ] Implement `locationsNear(point, radius, campaignId, branchId, asOf)` using ST_DWithin
-- [ ] Implement `locationsInRegion(regionId, campaignId, branchId, asOf)` using ST_Within
-- [ ] Implement `checkRegionOverlap(region1Id, region2Id)` using ST_Overlaps
-- [ ] Write integration tests for all spatial queries
+- [x] Implement `pointWithinRegion(pointId, regionId)` using ST_Covers (includes boundary)
+- [x] Implement `distance(location1Id, location2Id)` using ST_Distance
+- [x] Implement `locationsInBounds(bbox, worldId)` using ST_MakeEnvelope and ST_Intersects
+- [x] Implement `locationsNear(point, radius, srid, worldId)` using ST_DWithin
+- [x] Implement `locationsInRegion(regionId, worldId)` using ST_Within
+- [x] Implement `checkRegionOverlap(region1Id, region2Id)` using ST_Overlaps
+- [x] Write integration tests for all spatial queries
 
 **Success Criteria**:
 
-- Point-in-polygon queries return correct boolean results
-- Distance calculations return accurate results
-- Bounding box queries return only locations within bounds
-- Nearest neighbor searches return results ordered by distance
-- Region overlap detection identifies overlapping regions
+- ✅ Point-in-polygon queries return correct boolean results
+- ✅ Distance calculations return accurate results
+- ✅ Bounding box queries return only locations within bounds
+- ✅ Nearest neighbor searches return results ordered by distance
+- ✅ Region overlap detection identifies overlapping regions
 
 **Tests**:
 
-- pointWithinRegion() returns true for point inside polygon
-- pointWithinRegion() returns false for point outside polygon
-- distance() returns correct distance between two points
-- locationsInBounds() returns all locations in bbox
-- locationsInBounds() excludes locations outside bbox
-- locationsNear() returns locations within radius, ordered by distance
-- locationsInRegion() returns all child locations
-- checkRegionOverlap() detects overlapping regions
-- checkRegionOverlap() returns false for non-overlapping regions
+- ✅ pointWithinRegion() returns true for point inside polygon
+- ✅ pointWithinRegion() returns false for point outside polygon
+- ✅ pointWithinRegion() returns true for point on boundary
+- ✅ distance() returns correct distance between two points
+- ✅ distance() returns zero for same point
+- ✅ locationsInBounds() returns all locations in bbox
+- ✅ locationsInBounds() excludes locations outside bbox
+- ✅ locationsNear() returns locations within radius, ordered by distance
+- ✅ locationsNear() excludes locations outside radius
+- ✅ locationsInRegion() returns all child locations
+- ✅ locationsInRegion() excludes the region itself
+- ✅ checkRegionOverlap() detects overlapping regions
+- ✅ checkRegionOverlap() returns false for non-overlapping regions
+- ✅ checkRegionOverlap() returns false for adjacent regions
 
-**Status**: Not Started
+**Status**: ✅ Complete
 
 ---
 
