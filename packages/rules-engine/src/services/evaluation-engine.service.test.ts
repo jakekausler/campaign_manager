@@ -1,11 +1,14 @@
 /**
  * Unit tests for EvaluationEngineService
+ * Stage 5: Added caching integration tests
  */
 
 import { Logger } from '@nestjs/common';
 import { type Prisma, type PrismaClient } from '@prisma/client';
 import { type DeepMockProxy, mockDeep } from 'jest-mock-extended';
 
+import { CacheService } from './cache.service';
+import { DependencyGraphService } from './dependency-graph.service';
 import { EvaluationEngineService } from './evaluation-engine.service';
 
 // Type helper to access private methods in tests
@@ -21,10 +24,18 @@ interface EvaluationEngineServiceTestAccess {
 describe('EvaluationEngineService', () => {
   let service: EvaluationEngineService;
   let prismaMock: DeepMockProxy<PrismaClient>;
+  let cacheService: CacheService;
+  let graphService: DeepMockProxy<DependencyGraphService>;
 
   beforeEach(() => {
+    // Create real cache service for testing
+    cacheService = new CacheService();
+
+    // Mock graph service
+    graphService = mockDeep<DependencyGraphService>();
+
     // Create a new instance for each test
-    service = new EvaluationEngineService();
+    service = new EvaluationEngineService(graphService, cacheService);
 
     // Mock Prisma Client
     prismaMock = mockDeep<PrismaClient>();
@@ -38,6 +49,8 @@ describe('EvaluationEngineService', () => {
   });
 
   afterEach(async () => {
+    cacheService.clear();
+    cacheService.onModuleDestroy();
     await service.onModuleDestroy();
   });
 
@@ -66,7 +79,13 @@ describe('EvaluationEngineService', () => {
       prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition);
 
       // Act
-      const result = await service.evaluateCondition(conditionId, context, false);
+      const result = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       expect(result.success).toBe(true);
@@ -85,7 +104,13 @@ describe('EvaluationEngineService', () => {
       prismaMock.fieldCondition.findUnique.mockResolvedValue(null);
 
       // Act
-      const result = await service.evaluateCondition(conditionId, context, false);
+      const result = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       expect(result.success).toBe(false);
@@ -117,7 +142,13 @@ describe('EvaluationEngineService', () => {
       prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition);
 
       // Act
-      const result = await service.evaluateCondition(conditionId, context, false);
+      const result = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       expect(result.success).toBe(false);
@@ -149,7 +180,13 @@ describe('EvaluationEngineService', () => {
       prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition);
 
       // Act
-      const result = await service.evaluateCondition(conditionId, context, true);
+      const result = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        true
+      );
 
       // Assert
       expect(result.success).toBe(true);
@@ -196,7 +233,13 @@ describe('EvaluationEngineService', () => {
       prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition);
 
       // Act
-      const result = await service.evaluateCondition(conditionId, context, false);
+      const result = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       expect(result.success).toBe(true);
@@ -227,7 +270,13 @@ describe('EvaluationEngineService', () => {
       prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition);
 
       // Act
-      const result = await service.evaluateCondition(conditionId, context, false);
+      const result = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       // JSONLogic treats missing variables as null, so this should still succeed
@@ -266,7 +315,13 @@ describe('EvaluationEngineService', () => {
       prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition);
 
       // Act
-      const result = await service.evaluateCondition(conditionId, context, false);
+      const result = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       expect(result.success).toBe(false);
@@ -283,7 +338,13 @@ describe('EvaluationEngineService', () => {
       );
 
       // Act
-      const result = await service.evaluateCondition(conditionId, context, false);
+      const result = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       expect(result.success).toBe(false);
@@ -314,7 +375,13 @@ describe('EvaluationEngineService', () => {
       prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition);
 
       // Act
-      const result = await service.evaluateCondition(conditionId, context, false);
+      const result = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       expect(result.evaluationTimeMs).toBeGreaterThanOrEqual(0);
@@ -366,7 +433,13 @@ describe('EvaluationEngineService', () => {
         .mockResolvedValueOnce(mockCondition2);
 
       // Act
-      const results = await service.evaluateConditions(conditionIds, context, false);
+      const results = await service.evaluateConditions(
+        conditionIds,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       expect(Object.keys(results)).toHaveLength(2);
@@ -382,7 +455,13 @@ describe('EvaluationEngineService', () => {
       const context = { population: 5000 };
 
       // Act
-      const results = await service.evaluateConditions(conditionIds, context, false);
+      const results = await service.evaluateConditions(
+        conditionIds,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       expect(Object.keys(results)).toHaveLength(0);
@@ -415,7 +494,13 @@ describe('EvaluationEngineService', () => {
         .mockResolvedValueOnce(mockCondition2);
 
       // Act
-      const results = await service.evaluateConditions(conditionIds, context, false);
+      const results = await service.evaluateConditions(
+        conditionIds,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
 
       // Assert
       expect(Object.keys(results)).toHaveLength(2);
@@ -448,7 +533,13 @@ describe('EvaluationEngineService', () => {
       prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition1);
 
       // Act
-      const results = await service.evaluateConditions(conditionIds, context, true);
+      const results = await service.evaluateConditions(
+        conditionIds,
+        context,
+        'campaign-123',
+        'main',
+        true
+      );
 
       // Assert
       expect(results['condition-1'].trace.length).toBeGreaterThan(0);
@@ -654,6 +745,223 @@ describe('EvaluationEngineService', () => {
 
       // Assert
       expect(value).toBeUndefined();
+    });
+  });
+
+  describe('cache integration (Stage 5)', () => {
+    it('should cache evaluation results', async () => {
+      // Arrange
+      const conditionId = 'condition-123';
+      const context = { population: 5000 };
+      const mockCondition = {
+        id: conditionId,
+        entityType: 'Settlement',
+        entityId: 'settlement-123',
+        field: 'is_large',
+        expression: { '>=': [{ var: 'population' }, 5000] } as Prisma.JsonValue,
+        isActive: true,
+        priority: 100,
+        version: 1,
+        deletedAt: null,
+        createdBy: 'user-123',
+        updatedBy: 'user-123',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        description: null,
+      };
+
+      prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition);
+
+      // Act - First call (should evaluate and cache)
+      const result1 = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
+
+      // Second call (should return from cache)
+      const result2 = await service.evaluateCondition(
+        conditionId,
+        context,
+        'campaign-123',
+        'main',
+        false
+      );
+
+      // Assert
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+      // Database should only be called once (first evaluation)
+      expect(prismaMock.fieldCondition.findUnique).toHaveBeenCalledTimes(1);
+
+      // Verify cache hit
+      const stats = cacheService.getStats();
+      expect(stats.hits).toBe(1); // Second call was a hit
+      expect(stats.misses).toBe(1); // First call was a miss
+    });
+
+    it('should bypass cache when trace is requested', async () => {
+      // Arrange
+      const conditionId = 'condition-123';
+      const context = { population: 5000 };
+      const mockCondition = {
+        id: conditionId,
+        entityType: 'Settlement',
+        entityId: 'settlement-123',
+        field: 'is_large',
+        expression: { '>=': [{ var: 'population' }, 5000] } as Prisma.JsonValue,
+        isActive: true,
+        priority: 100,
+        version: 1,
+        deletedAt: null,
+        createdBy: 'user-123',
+        updatedBy: 'user-123',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        description: null,
+      };
+
+      prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition);
+
+      // Act - Two calls with trace=true (should not cache)
+      await service.evaluateCondition(conditionId, context, 'campaign-123', 'main', true);
+      await service.evaluateCondition(conditionId, context, 'campaign-123', 'main', true);
+
+      // Assert - Database should be called twice (no caching)
+      expect(prismaMock.fieldCondition.findUnique).toHaveBeenCalledTimes(2);
+
+      // Verify no cache activity
+      const stats = cacheService.getStats();
+      expect(stats.hits).toBe(0);
+      expect(stats.misses).toBe(0);
+    });
+
+    it('should cache results per campaign/branch/condition', async () => {
+      // Arrange
+      const conditionId = 'condition-123';
+      const context = { population: 5000 };
+      const mockCondition = {
+        id: conditionId,
+        entityType: 'Settlement',
+        entityId: 'settlement-123',
+        field: 'is_large',
+        expression: { '>=': [{ var: 'population' }, 5000] } as Prisma.JsonValue,
+        isActive: true,
+        priority: 100,
+        version: 1,
+        deletedAt: null,
+        createdBy: 'user-123',
+        updatedBy: 'user-123',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        description: null,
+      };
+
+      prismaMock.fieldCondition.findUnique.mockResolvedValue(mockCondition);
+
+      // Act - Evaluate same condition in different campaigns/branches
+      await service.evaluateCondition(conditionId, context, 'campaign-123', 'main', false);
+      await service.evaluateCondition(conditionId, context, 'campaign-123', 'feature', false);
+      await service.evaluateCondition(conditionId, context, 'campaign-456', 'main', false);
+
+      // Second evaluation of each - should hit cache
+      await service.evaluateCondition(conditionId, context, 'campaign-123', 'main', false);
+      await service.evaluateCondition(conditionId, context, 'campaign-123', 'feature', false);
+      await service.evaluateCondition(conditionId, context, 'campaign-456', 'main', false);
+
+      // Assert - Database should be called 3 times (once per unique combination)
+      expect(prismaMock.fieldCondition.findUnique).toHaveBeenCalledTimes(3);
+
+      // Verify cache hits
+      const stats = cacheService.getStats();
+      expect(stats.hits).toBe(3); // Three cache hits on second evaluations
+      expect(stats.keys).toBe(3); // Three unique cache entries
+    });
+
+    it('should not cache failed evaluations', async () => {
+      // Arrange
+      const conditionId = 'nonexistent';
+      const context = { population: 5000 };
+
+      prismaMock.fieldCondition.findUnique.mockResolvedValue(null);
+
+      // Act - Two failed evaluations
+      await service.evaluateCondition(conditionId, context, 'campaign-123', 'main', false);
+      await service.evaluateCondition(conditionId, context, 'campaign-123', 'main', false);
+
+      // Assert - Database should be called twice (no caching of failures)
+      expect(prismaMock.fieldCondition.findUnique).toHaveBeenCalledTimes(2);
+
+      // Verify no cache hits
+      const stats = cacheService.getStats();
+      expect(stats.keys).toBe(0); // No entries cached
+    });
+
+    it('should work with batch evaluation and caching', async () => {
+      // Arrange
+      const conditionIds = ['condition-1', 'condition-2'];
+      const context = { population: 5000 };
+
+      const mockCondition1 = {
+        id: 'condition-1',
+        entityType: 'Settlement',
+        entityId: 'settlement-123',
+        field: 'is_large',
+        expression: { '>=': [{ var: 'population' }, 5000] } as Prisma.JsonValue,
+        isActive: true,
+        priority: 100,
+        version: 1,
+        deletedAt: null,
+        createdBy: 'user-123',
+        updatedBy: 'user-123',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        description: null,
+      };
+
+      const mockCondition2 = {
+        id: 'condition-2',
+        entityType: 'Settlement',
+        entityId: 'settlement-123',
+        field: 'has_merchants',
+        expression: { '>': [{ var: 'merchant_count' }, 10] } as Prisma.JsonValue,
+        isActive: true,
+        priority: 100,
+        version: 1,
+        deletedAt: null,
+        createdBy: 'user-123',
+        updatedBy: 'user-123',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        description: null,
+      };
+
+      prismaMock.fieldCondition.findUnique
+        .mockResolvedValueOnce(mockCondition1)
+        .mockResolvedValueOnce(mockCondition2)
+        .mockResolvedValueOnce(mockCondition1) // Second batch
+        .mockResolvedValueOnce(mockCondition2); // Second batch
+
+      // Mock graph service (needed for evaluateConditions)
+      graphService.getGraph.mockResolvedValue({
+        detectCycles: () => ({ hasCycles: false, cycleCount: 0, cycles: [] }),
+        topologicalSort: () => ({ order: [], isPartial: false }),
+      } as any);
+
+      // Act - Two batch evaluations
+      await service.evaluateConditions(conditionIds, context, 'campaign-123', 'main', false);
+      await service.evaluateConditions(conditionIds, context, 'campaign-123', 'main', false);
+
+      // Assert - Database should be called 2 times for first batch, then cache hits for second
+      // Due to empty graph, conditions fall back to direct evaluation, which hits cache on second batch
+      expect(prismaMock.fieldCondition.findUnique).toHaveBeenCalledTimes(2);
+
+      // Verify cache activity
+      const stats = cacheService.getStats();
+      expect(stats.hits).toBe(2); // Two conditions cached and hit
+      expect(stats.keys).toBe(2); // Two unique entries
     });
   });
 });

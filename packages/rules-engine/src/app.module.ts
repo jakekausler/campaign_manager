@@ -3,6 +3,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 
 import { RulesEngineController } from './controllers/rules-engine.controller';
 import { GrpcLoggingInterceptor } from './interceptors/grpc-logging.interceptor';
+import { CacheService } from './services/cache.service';
 import { DependencyGraphBuilderService } from './services/dependency-graph-builder.service';
 import { DependencyGraphService } from './services/dependency-graph.service';
 import { EvaluationEngineService } from './services/evaluation-engine.service';
@@ -14,12 +15,13 @@ import { EvaluationEngineService } from './services/evaluation-engine.service';
  * - Evaluating conditions using JSONLogic expressions (Stage 3: implemented)
  * - Maintaining dependency graphs per campaign/branch (Stage 4: implemented)
  * - Performing incremental recomputation on state changes (Stage 4: implemented)
- * - Caching evaluation results (Stage 5: planned)
+ * - Caching evaluation results (Stage 5: implemented)
  * - Communicating via gRPC and Redis pub/sub (Stage 6: planned)
  */
 @Module({
   imports: [],
   providers: [
+    CacheService,
     DependencyGraphBuilderService,
     DependencyGraphService,
     EvaluationEngineService,

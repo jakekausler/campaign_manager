@@ -13,6 +13,7 @@ import {
   ValidateDependenciesRequest,
   ValidationResult,
 } from '../generated/rules-engine.types';
+import { CacheService } from '../services/cache.service';
 import { DependencyGraphService } from '../services/dependency-graph.service';
 import { EvaluationEngineService } from '../services/evaluation-engine.service';
 
@@ -22,6 +23,7 @@ import { EvaluationEngineService } from '../services/evaluation-engine.service';
  * Handles all gRPC method calls defined in proto/rules-engine.proto
  * Stage 3: Implemented evaluation methods using EvaluationEngineService
  * Stage 4: Integrated DependencyGraphService for ordering and validation
+ * Stage 5: Integrated CacheService for evaluation result caching
  */
 @Controller()
 export class RulesEngineController {
@@ -29,11 +31,13 @@ export class RulesEngineController {
 
   constructor(
     private readonly evaluationEngine: EvaluationEngineService,
-    private readonly graphService: DependencyGraphService
+    private readonly graphService: DependencyGraphService,
+    private readonly cacheService: CacheService
   ) {}
 
   /**
    * Evaluate a single condition with provided context
+   * Stage 5: Now passes campaignId/branchId for caching support
    */
   @GrpcMethod('RulesEngine', 'EvaluateCondition')
   async evaluateCondition(request: EvaluateConditionRequest): Promise<EvaluationResult> {
@@ -47,6 +51,8 @@ export class RulesEngineController {
       const result = await this.evaluationEngine.evaluateCondition(
         request.conditionId,
         context,
+        request.campaignId,
+        request.branchId || 'main',
         request.includeTrace
       );
 
@@ -207,18 +213,43 @@ export class RulesEngineController {
 
   /**
    * Invalidate cache for specific campaign/branch
-   * Stage 4: Implemented using DependencyGraphService
+   * Stage 4: Implemented dependency graph cache invalidation
+   * Stage 5: Added evaluation result cache invalidation
    */
   @GrpcMethod('RulesEngine', 'InvalidateCache')
   async invalidateCache(request: InvalidateCacheRequest): Promise<InvalidateCacheResponse> {
     this.logger.debug(`InvalidateCache called for campaign ${request.campaignId}`);
 
     try {
+      let totalInvalidated = 0;
+
+      // Invalidate dependency graph cache
       this.graphService.invalidateGraph(request.campaignId, request.branchId || 'main');
+      totalInvalidated++;
+
+      // Invalidate evaluation result cache
+      // If specific nodeIds provided, invalidate only those
+      if (request.nodeIds && request.nodeIds.length > 0) {
+        for (const nodeId of request.nodeIds) {
+          const deleted = this.cacheService.invalidate({
+            campaignId: request.campaignId,
+            branchId: request.branchId || 'main',
+            nodeId,
+          });
+          totalInvalidated += deleted;
+        }
+      } else {
+        // Otherwise, invalidate all evaluation results for campaign/branch
+        const deleted = this.cacheService.invalidateByPrefix(
+          request.campaignId,
+          request.branchId || 'main'
+        );
+        totalInvalidated += deleted;
+      }
 
       return {
-        invalidatedCount: 1,
-        message: `Successfully invalidated cache for campaign ${request.campaignId}, branch ${request.branchId || 'main'}`,
+        invalidatedCount: totalInvalidated,
+        message: `Successfully invalidated ${totalInvalidated} cache entries for campaign ${request.campaignId}, branch ${request.branchId || 'main'}`,
       };
     } catch (error) {
       this.logger.error('InvalidateCache failed', {

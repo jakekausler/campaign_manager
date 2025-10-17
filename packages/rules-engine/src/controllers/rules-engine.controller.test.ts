@@ -8,6 +8,8 @@ import {
   InvalidateCacheRequest,
   ValidateDependenciesRequest,
 } from '../generated/rules-engine.types';
+import { CacheService } from '../services/cache.service';
+import { DependencyGraphService } from '../services/dependency-graph.service';
 import { EvaluationEngineService } from '../services/evaluation-engine.service';
 
 import { RulesEngineController } from './rules-engine.controller';
@@ -23,12 +25,45 @@ describe('RulesEngineController', () => {
       evaluateConditions: jest.fn(),
     };
 
+    // Create mock dependency graph service
+    const mockGraphService = {
+      getGraph: jest.fn(),
+      invalidateGraph: jest.fn(),
+      getDependenciesOf: jest.fn(),
+      getDependentsOf: jest.fn(),
+      validateNoCycles: jest.fn(),
+      getEvaluationOrder: jest.fn(),
+    };
+
+    // Create mock cache service
+    const mockCacheService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      invalidate: jest.fn(),
+      invalidateByPrefix: jest.fn(),
+      clear: jest.fn(),
+      getStats: jest.fn(),
+      getConfig: jest.fn(),
+      has: jest.fn(),
+      keys: jest.fn(),
+      keysByPrefix: jest.fn(),
+      onModuleDestroy: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [RulesEngineController],
       providers: [
         {
           provide: EvaluationEngineService,
           useValue: mockEvaluationEngineService,
+        },
+        {
+          provide: DependencyGraphService,
+          useValue: mockGraphService,
+        },
+        {
+          provide: CacheService,
+          useValue: mockCacheService,
         },
       ],
     }).compile();
@@ -63,6 +98,8 @@ describe('RulesEngineController', () => {
       expect(evaluationEngineService.evaluateCondition).toHaveBeenCalledWith(
         'condition-123',
         { population: 5000 },
+        'campaign-456',
+        'main',
         false
       );
     });
@@ -116,6 +153,8 @@ describe('RulesEngineController', () => {
       expect(evaluationEngineService.evaluateCondition).toHaveBeenCalledWith(
         'condition-123',
         { population: 5000 },
+        'campaign-456',
+        'main',
         true
       );
     });
@@ -168,6 +207,8 @@ describe('RulesEngineController', () => {
       expect(evaluationEngineService.evaluateConditions).toHaveBeenCalledWith(
         ['condition-1', 'condition-2', 'condition-3'],
         { population: 5000 },
+        'campaign-456',
+        'main',
         false
       );
     });
@@ -189,7 +230,13 @@ describe('RulesEngineController', () => {
       expect(result).toBeDefined();
       expect(Object.keys(result.results)).toHaveLength(0);
       expect(result.evaluationOrder).toEqual([]);
-      expect(evaluationEngineService.evaluateConditions).toHaveBeenCalledWith([], {}, false);
+      expect(evaluationEngineService.evaluateConditions).toHaveBeenCalledWith(
+        [],
+        {},
+        'campaign-456',
+        'main',
+        false
+      );
     });
 
     it('should handle invalid JSON context', async () => {

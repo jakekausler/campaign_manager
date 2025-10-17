@@ -6,6 +6,12 @@
  * - Dependency-based evaluation ordering (topological sort)
  * - Cycle detection before evaluation
  * - Incremental recomputation tracking
+ *
+ * Stage 5: Integrated with CacheService for:
+ * - Result caching with TTL-based expiration
+ * - Cache lookup before evaluation
+ * - Cache population after successful evaluation
+ * - Trace requests bypass cache (for debugging)
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -14,6 +20,7 @@ import * as jsonLogic from 'json-logic-js';
 
 import type { EvaluationResult, TraceStep } from '../generated/rules-engine.types';
 
+import { CacheService } from './cache.service';
 import { DependencyGraphService } from './dependency-graph.service';
 
 /**
@@ -24,7 +31,10 @@ export class EvaluationEngineService {
   private readonly logger = new Logger(EvaluationEngineService.name);
   private readonly prisma: PrismaClient;
 
-  constructor(private readonly graphService: DependencyGraphService) {
+  constructor(
+    private readonly graphService: DependencyGraphService,
+    private readonly cacheService: CacheService
+  ) {
     this.prisma = new PrismaClient();
   }
 
@@ -38,18 +48,46 @@ export class EvaluationEngineService {
   /**
    * Evaluate a single condition by ID
    *
+   * Stage 5: Now includes caching support
+   * - Checks cache before evaluation (unless includeTrace is true)
+   * - Stores results in cache after successful evaluation
+   * - Trace requests bypass cache for debugging purposes
+   *
    * @param conditionId - ID of the FieldCondition to evaluate
    * @param context - Evaluation context (entity data)
-   * @param includeTrace - Whether to generate detailed trace
+   * @param campaignId - Campaign ID for cache key generation
+   * @param branchId - Branch ID for cache key generation (defaults to 'main')
+   * @param includeTrace - Whether to generate detailed trace (bypasses cache)
    * @returns Evaluation result with success status, value, and optional trace
    */
   async evaluateCondition(
     conditionId: string,
     context: Record<string, unknown>,
+    campaignId: string,
+    branchId: string = 'main',
     includeTrace: boolean = false
   ): Promise<EvaluationResult> {
     const startTime = Date.now();
     const trace: TraceStep[] = [];
+
+    // Cache lookup (skip if trace requested)
+    if (!includeTrace) {
+      const cacheKey = {
+        campaignId,
+        branchId,
+        nodeId: `CONDITION:${conditionId}`,
+      };
+
+      const cached = this.cacheService.get<EvaluationResult>(cacheKey);
+      if (cached) {
+        this.logger.debug(`Cache hit for condition ${conditionId}`);
+        // Update evaluation time to reflect cache lookup time
+        return {
+          ...cached,
+          evaluationTimeMs: Date.now() - startTime,
+        };
+      }
+    }
 
     try {
       // Fetch the condition from database
@@ -223,13 +261,26 @@ export class EvaluationEngineService {
         }
       }
 
-      return {
+      const evaluationResult: EvaluationResult = {
         success: result.success,
         valueJson: result.success ? JSON.stringify(result.value) : null,
         error: result.error || null,
         trace,
         evaluationTimeMs: Date.now() - startTime,
       };
+
+      // Cache successful results (skip if trace requested)
+      if (!includeTrace && result.success) {
+        const cacheKey = {
+          campaignId,
+          branchId,
+          nodeId: `CONDITION:${conditionId}`,
+        };
+        this.cacheService.set(cacheKey, evaluationResult);
+        this.logger.debug(`Cached result for condition ${conditionId}`);
+      }
+
+      return evaluationResult;
     } catch (error) {
       this.logger.error('Condition evaluation failed', {
         conditionId,
@@ -319,7 +370,13 @@ export class EvaluationEngineService {
 
       // Evaluate conditions in topological order
       for (const conditionId of orderedConditionIds) {
-        results[conditionId] = await this.evaluateCondition(conditionId, context, includeTrace);
+        results[conditionId] = await this.evaluateCondition(
+          conditionId,
+          context,
+          campaignId,
+          branchId,
+          includeTrace
+        );
       }
 
       // Evaluate any remaining conditions that weren't in the graph
@@ -329,7 +386,13 @@ export class EvaluationEngineService {
           this.logger.debug(
             `Condition ${conditionId} not found in dependency graph, evaluating directly`
           );
-          results[conditionId] = await this.evaluateCondition(conditionId, context, includeTrace);
+          results[conditionId] = await this.evaluateCondition(
+            conditionId,
+            context,
+            campaignId,
+            branchId,
+            includeTrace
+          );
         }
       }
 
@@ -342,7 +405,13 @@ export class EvaluationEngineService {
 
       // Fallback: evaluate sequentially without ordering
       for (const conditionId of conditionIds) {
-        results[conditionId] = await this.evaluateCondition(conditionId, context, includeTrace);
+        results[conditionId] = await this.evaluateCondition(
+          conditionId,
+          context,
+          campaignId,
+          branchId,
+          includeTrace
+        );
       }
 
       return results;
