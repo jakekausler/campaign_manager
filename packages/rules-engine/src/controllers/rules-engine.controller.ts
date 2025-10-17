@@ -13,16 +13,19 @@ import {
   ValidateDependenciesRequest,
   ValidationResult,
 } from '../generated/rules-engine.types';
+import { EvaluationEngineService } from '../services/evaluation-engine.service';
 
 /**
  * gRPC Controller for Rules Engine Service
  *
  * Handles all gRPC method calls defined in proto/rules-engine.proto
- * Implements stubs for Stage 2, full implementation in Stage 3+
+ * Stage 3: Implemented evaluation methods using EvaluationEngineService
  */
 @Controller()
 export class RulesEngineController {
   private readonly logger = new Logger(RulesEngineController.name);
+
+  constructor(private readonly evaluationEngine: EvaluationEngineService) {}
 
   /**
    * Evaluate a single condition with provided context
@@ -31,14 +34,32 @@ export class RulesEngineController {
   async evaluateCondition(request: EvaluateConditionRequest): Promise<EvaluationResult> {
     this.logger.debug(`EvaluateCondition called for condition ${request.conditionId}`);
 
-    // Stub implementation - will be implemented in Stage 3
-    return {
-      success: true,
-      valueJson: JSON.stringify(true),
-      error: null,
-      trace: [],
-      evaluationTimeMs: 0,
-    };
+    try {
+      // Parse context from JSON string
+      const context = JSON.parse(request.contextJson);
+
+      // Use evaluation engine to evaluate the condition
+      const result = await this.evaluationEngine.evaluateCondition(
+        request.conditionId,
+        context,
+        request.includeTrace
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error('EvaluateCondition failed', {
+        conditionId: request.conditionId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      return {
+        success: false,
+        valueJson: null,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        trace: [],
+        evaluationTimeMs: 0,
+      };
+    }
   }
 
   /**
@@ -50,23 +71,40 @@ export class RulesEngineController {
   ): Promise<EvaluateConditionsResponse> {
     this.logger.debug(`EvaluateConditions called for ${request.conditionIds.length} conditions`);
 
-    // Stub implementation - will be implemented in Stage 3
-    const results: Record<string, EvaluationResult> = {};
-    for (const conditionId of request.conditionIds) {
-      results[conditionId] = {
-        success: true,
-        valueJson: JSON.stringify(true),
-        error: null,
-        trace: [],
-        evaluationTimeMs: 0,
+    const startTime = Date.now();
+
+    try {
+      // Parse context from JSON string
+      const context = JSON.parse(request.contextJson);
+
+      // Use evaluation engine to evaluate all conditions
+      const results = await this.evaluationEngine.evaluateConditions(
+        request.conditionIds,
+        context,
+        request.includeTrace
+      );
+
+      // Note: useDependencyOrder will be implemented in Stage 4 with DependencyGraphService
+      // For now, evaluations are sequential in the order provided
+
+      return {
+        results,
+        totalEvaluationTimeMs: Date.now() - startTime,
+        evaluationOrder: request.conditionIds,
+      };
+    } catch (error) {
+      this.logger.error('EvaluateConditions failed', {
+        conditionCount: request.conditionIds.length,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      // Return empty results on error
+      return {
+        results: {},
+        totalEvaluationTimeMs: Date.now() - startTime,
+        evaluationOrder: [],
       };
     }
-
-    return {
-      results,
-      totalEvaluationTimeMs: 0,
-      evaluationOrder: request.conditionIds,
-    };
   }
 
   /**
