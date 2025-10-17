@@ -4,6 +4,27 @@
 
 - [ ] Completed
 - **Commits**:
+  - Stage 1 (Database Schema & Migration): 3934e7c588bd5886d328721b2fd9244fa4c3e1da
+
+## Implementation Progress
+
+### Stage 1: Database Schema & Migration ✅ Complete
+
+**What was implemented:**
+
+- Added `currentWorldTime DateTime?` field to Campaign model in schema.prisma
+- Created database migration `add_campaign_current_world_time`
+- Added index on `currentWorldTime` for time-based queries
+- Updated seed.ts to initialize currentWorldTime to '4707-03-15T12:00:00Z' (mid-day Pharast 4707 AR)
+
+**Technical decisions:**
+
+- Made field nullable for backward compatibility with existing campaigns
+- Positioned field after `srid` to group campaign-level state together
+- Used TIMESTAMP(3) precision for millisecond-level accuracy
+- Index supports future time-travel queries and time-based filtering
+
+**Note:** Migration also dropped `Location_geom_gist_idx` (PostGIS spatial index), which appears to be from prior schema drift. May need restoration in future spatial optimization ticket.
 
 ## Description
 

@@ -34,16 +34,25 @@ Implement a world time management system that tracks campaign-specific time, sup
 **Goal**: Add currentWorldTime field to Campaign model
 **Success Criteria**: Migration runs successfully, field is available in Prisma Client
 **Tests**: Database migration applies without errors
-**Status**: Not Started
+**Status**: ✅ Complete
+**Commit**: 3934e7c588bd5886d328721b2fd9244fa4c3e1da
 
 ### Tasks
 
-- [ ] Add `currentWorldTime DateTime?` field to Campaign model in schema.prisma
-- [ ] Add index on currentWorldTime for time-based queries
-- [ ] Create and name migration: `add_campaign_current_world_time`
-- [ ] Run migration in development environment
-- [ ] Verify Prisma Client regenerates with new field
-- [ ] Update seed.ts to set initial currentWorldTime for sample campaign
+- [x] Add `currentWorldTime DateTime?` field to Campaign model in schema.prisma
+- [x] Add index on currentWorldTime for time-based queries
+- [x] Create and name migration: `add_campaign_current_world_time`
+- [x] Run migration in development environment
+- [x] Verify Prisma Client regenerates with new field
+- [x] Update seed.ts to set initial currentWorldTime for sample campaign
+
+### Implementation Notes
+
+- Added nullable `currentWorldTime` field to Campaign model for backward compatibility
+- Field positioned after `srid` to group campaign-level state together
+- Index created on `currentWorldTime` to support time-based queries
+- Seed data initializes to '4707-03-15T12:00:00Z' (mid-day Pharast 4707 AR)
+- Migration also dropped `Location_geom_gist_idx` (PostGIS spatial index) - appears to be from prior schema drift
 
 **Technical Details**:
 
