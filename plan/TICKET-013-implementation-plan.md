@@ -58,41 +58,43 @@ Implement a StateVariable system for storing and querying dynamic campaign state
 
 ---
 
-### Stage 2: GraphQL Type Definitions
+### Stage 2: GraphQL Type Definitions ✅
+
+**Status:** COMPLETE (Commit: b6d254f)
 
 **Goal**: Define GraphQL types, inputs, and enums for StateVariable operations
 
 **Tasks**:
 
-- [ ] Create enum `VariableScope` (world/campaign/party/kingdom/settlement/structure/character/location/event/encounter)
-- [ ] Create enum `VariableType` (string/integer/float/boolean/json/derived)
-- [ ] Create type `StateVariable` with all fields
-- [ ] Create input `CreateStateVariableInput`:
+- [x] Create enum `VariableScope` (world/campaign/party/kingdom/settlement/structure/character/location/event/encounter)
+- [x] Create enum `VariableType` (string/integer/float/boolean/json/derived)
+- [x] Create type `StateVariable` with all fields
+- [x] Create input `CreateStateVariableInput`:
   - scope, scopeId, key, value (nullable), type, formula (nullable), description (nullable)
-- [ ] Create input `UpdateStateVariableInput`:
+- [x] Create input `UpdateStateVariableInput`:
   - value (nullable), formula (nullable), description (nullable), isActive (nullable), expectedVersion (nullable)
-- [ ] Create input `StateVariableWhereInput` for filtering:
+- [x] Create input `StateVariableWhereInput` for filtering:
   - scope, scopeId, key, isActive, type, createdBy, createdAfter, createdBefore, includeDeleted
-- [ ] Create input `EvaluateVariableInput`:
+- [x] Create input `EvaluateVariableInput`:
   - id, context (Json, nullable)
-- [ ] Create type `VariableEvaluationResult`:
+- [x] Create type `VariableEvaluationResult`:
   - variableId, key, scope, scopeId, value (Json), success, error (nullable), trace (nullable)
-- [ ] Create enum `StateVariableSortField` (key, scope, type, createdAt, updatedAt)
-- [ ] Create input `StateVariableOrderByInput` (field, order ASC/DESC)
-- [ ] Add schema documentation for all types
-- [ ] Verify type-check passes
-- [ ] Commit Stage 2
+- [x] Create enum `StateVariableSortField` (key, scope, type, createdAt, updatedAt)
+- [x] Create input `StateVariableOrderByInput` (field, order ASC/DESC)
+- [x] Add schema documentation for all types
+- [x] Verify type-check passes
+- [x] Commit Stage 2
 
 **Success Criteria**:
 
-- [ ] All GraphQL types compile
-- [ ] Types align with Prisma schema
-- [ ] Input validation is comprehensive
-- [ ] Supports settlement and structure scopes
+- [x] All GraphQL types compile
+- [x] Types align with Prisma schema
+- [x] Input validation is comprehensive
+- [x] Supports settlement and structure scopes
 
 **Tests**:
 
-- `pnpm run type-check` passes
+- `pnpm run type-check` passes ✅
 
 ---
 

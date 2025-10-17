@@ -2,9 +2,10 @@
 
 ## Status
 
-- [ ] Completed (Stage 1/7 complete)
+- [ ] Completed (Stage 2/7 complete)
 - **Commits**:
   - Stage 1: ec59dfb - Database Schema and Prisma Model
+  - Stage 2: b6d254f - GraphQL Type Definitions
 
 ## Description
 
@@ -155,3 +156,46 @@ Implement StateVariable system for storing and querying dynamic campaign state (
 
 - `packages/api/prisma/schema.prisma` - Updated StateVariable model and User relations
 - `packages/api/prisma/migrations/20251017140736_update_state_variable_model/migration.sql` - Comprehensive migration with constraints and optimized indexes
+
+---
+
+### Stage 2: GraphQL Type Definitions (b6d254f)
+
+**Completed:** 2025-10-17
+
+**Summary:** Created comprehensive GraphQL type definitions and input types for StateVariable operations with support for derived variables.
+
+**Key Changes:**
+
+- Type Definitions:
+  - `VariableScope` enum with 10 scope types (world, campaign, party, kingdom, settlement, structure, character, location, event, encounter)
+  - `VariableType` enum with 6 data types (string, integer, float, boolean, json, derived)
+  - `StateVariable` type with all fields including formula support for derived variables
+  - `VariableEvaluationResult` type with detailed trace information for debugging
+  - `EvaluationStep` type for step-by-step evaluation trace
+- Input Types:
+  - `CreateStateVariableInput` with conditional validation (derived requires formula, non-derived requires value)
+  - `UpdateStateVariableInput` with optimistic locking via expectedVersion
+  - `StateVariableWhereInput` with comprehensive filtering (scope, type, active, dates)
+  - `StateVariableSortField` enum and `StateVariableOrderByInput` for flexible sorting
+  - `EvaluateVariableInput` for variable evaluation with custom context
+- Validation:
+  - Used `ValidateIf` decorators for conditional requirements based on variable type
+  - Comprehensive class-validator decorators on all inputs
+  - Enum registration with descriptive GraphQL documentation
+- Alignment:
+  - All fields match Prisma schema from Stage 1
+  - Consistent with FieldCondition implementation patterns
+  - Follows project conventions for type definitions
+
+**Code Review Notes:**
+
+- Approved by code-reviewer subagent with suggestions for Stage 3
+- Campaign scope authorization to be handled in service layer (no direct Prisma relation)
+- Formula depth validation (max 10 levels) to be implemented in service layer
+- Value type validation to be implemented in service layer
+
+**Files Created:**
+
+- `packages/api/src/graphql/types/state-variable.type.ts` - GraphQL type definitions
+- `packages/api/src/graphql/inputs/state-variable.input.ts` - Input type definitions
