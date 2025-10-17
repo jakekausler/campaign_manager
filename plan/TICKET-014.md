@@ -2,8 +2,8 @@
 
 ## Status
 
-- [ ] Completed
-- **Commits**:
+- [ ] Completed (Stages 1-5 done, Stages 6-9 remaining)
+- **Commits**: 82b5bf1 (Stages 1-5: Core data structures, extraction, and graph algorithms)
 
 ## Description
 
