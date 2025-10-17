@@ -22,13 +22,15 @@ import { VariableScope, VariableType, type EvaluationStep } from '../types/state
 
 import { AuditService } from './audit.service';
 import { VariableEvaluationService } from './variable-evaluation.service';
+import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
 export class StateVariableService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly evaluationService: VariableEvaluationService
+    private readonly evaluationService: VariableEvaluationService,
+    private readonly versionService: VersionService
   ) {}
 
   /**
@@ -220,11 +222,20 @@ export class StateVariableService {
   /**
    * Update an existing state variable
    * Uses optimistic locking to prevent race conditions
+   * Optionally creates Version snapshot for bitemporal queries
+   *
+   * @param id - Variable ID
+   * @param input - Update data
+   * @param user - Authenticated user
+   * @param branchId - Optional branch ID for versioning (defaults to finding "main" branch)
+   * @param worldTime - Optional world time for version validFrom (defaults to Campaign.currentWorldTime or now)
    */
   async update(
     id: string,
     input: UpdateStateVariableInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser,
+    branchId?: string,
+    worldTime?: Date
   ): Promise<PrismaStateVariable> {
     // Fetch existing variable
     const variable = await this.findById(id, user);
@@ -235,7 +246,7 @@ export class StateVariableService {
     // Optimistic locking check
     if (input.expectedVersion !== undefined && variable.version !== input.expectedVersion) {
       throw new OptimisticLockException(
-        `StateVariable was modified by another user. Expected version ${input.expectedVersion}, but found ${variable.version}. Please refresh and try again.`,
+        `StateVariable with ID ${id} was modified by another user. Expected version ${input.expectedVersion}, but found ${variable.version}. Please refresh and try again.`,
         input.expectedVersion,
         variable.version
       );
@@ -272,11 +283,73 @@ export class StateVariableService {
       updateData.isActive = input.isActive;
     }
 
-    // Update variable
-    const updated = await this.prisma.stateVariable.update({
-      where: { id },
-      data: updateData,
-    });
+    // Check if versioning is requested and possible (campaign-scoped or below)
+    const shouldCreateVersion =
+      branchId !== undefined && variable.scope !== VariableScope.WORLD && variable.scopeId;
+
+    let updated: PrismaStateVariable;
+
+    if (shouldCreateVersion) {
+      // Get campaign ID and verify branch
+      const campaignId = await this.getCampaignIdForScope(
+        variable.scope as VariableScope,
+        variable.scopeId!
+      );
+      const branch = await this.prisma.branch.findFirst({
+        where: { id: branchId, campaignId, deletedAt: null },
+      });
+
+      if (!branch) {
+        throw new BadRequestException(
+          `Branch with ID ${branchId} not found or does not belong to this variable's campaign`
+        );
+      }
+
+      // Get world time (from parameter, campaign, or default to now)
+      let validFrom = worldTime;
+      if (!validFrom) {
+        const campaign = await this.prisma.campaign.findUnique({
+          where: { id: campaignId },
+          select: { currentWorldTime: true },
+        });
+        validFrom = campaign?.currentWorldTime ?? new Date();
+      }
+
+      // Create new version payload (all fields)
+      const newPayload: Record<string, unknown> = {
+        ...variable,
+        ...updateData,
+        version: variable.version + 1,
+      };
+
+      // Use transaction to atomically update variable and create version
+      updated = await this.prisma.$transaction(async (tx) => {
+        // Update variable with new version
+        const updatedVariable = await tx.stateVariable.update({
+          where: { id },
+          data: updateData,
+        });
+
+        // Create version snapshot
+        const versionInput: CreateVersionInput = {
+          entityType: 'state_variable',
+          entityId: id,
+          branchId: branch.id,
+          validFrom,
+          validTo: null,
+          payload: newPayload,
+        };
+        await this.versionService.createVersion(versionInput, user);
+
+        return updatedVariable;
+      });
+    } else {
+      // Update without versioning
+      updated = await this.prisma.stateVariable.update({
+        where: { id },
+        data: updateData,
+      });
+    }
 
     // Create audit entry
     await this.audit.log('state_variable', id, 'UPDATE', user.id, updateData);
@@ -633,6 +706,193 @@ export class StateVariableService {
       default:
         throw new BadRequestException(`Unsupported scope: ${scope}`);
     }
+  }
+
+  /**
+   * Get campaign ID from scope entity
+   * Required for version tracking which is tied to campaigns
+   */
+  private async getCampaignIdForScope(scope: VariableScope, scopeId: string): Promise<string> {
+    const scopeLower = scope.toLowerCase();
+
+    switch (scopeLower) {
+      case 'campaign': {
+        return scopeId;
+      }
+
+      case 'party': {
+        const party = await this.prisma.party.findUnique({
+          where: { id: scopeId },
+          select: { campaignId: true },
+        });
+        if (!party) {
+          throw new NotFoundException(`Party with ID ${scopeId} not found`);
+        }
+        return party.campaignId;
+      }
+
+      case 'kingdom': {
+        const kingdom = await this.prisma.kingdom.findUnique({
+          where: { id: scopeId },
+          select: { campaignId: true },
+        });
+        if (!kingdom) {
+          throw new NotFoundException(`Kingdom with ID ${scopeId} not found`);
+        }
+        return kingdom.campaignId;
+      }
+
+      case 'settlement': {
+        const settlement = await this.prisma.settlement.findUnique({
+          where: { id: scopeId },
+          select: { kingdom: { select: { campaignId: true } } },
+        });
+        if (!settlement) {
+          throw new NotFoundException(`Settlement with ID ${scopeId} not found`);
+        }
+        return settlement.kingdom.campaignId;
+      }
+
+      case 'structure': {
+        const structure = await this.prisma.structure.findUnique({
+          where: { id: scopeId },
+          select: { settlement: { select: { kingdom: { select: { campaignId: true } } } } },
+        });
+        if (!structure) {
+          throw new NotFoundException(`Structure with ID ${scopeId} not found`);
+        }
+        return structure.settlement.kingdom.campaignId;
+      }
+
+      case 'character': {
+        const character = await this.prisma.character.findUnique({
+          where: { id: scopeId },
+          select: { campaignId: true },
+        });
+        if (!character) {
+          throw new NotFoundException(`Character with ID ${scopeId} not found`);
+        }
+        return character.campaignId;
+      }
+
+      case 'event': {
+        const event = await this.prisma.event.findUnique({
+          where: { id: scopeId },
+          select: { campaignId: true },
+        });
+        if (!event) {
+          throw new NotFoundException(`Event with ID ${scopeId} not found`);
+        }
+        return event.campaignId;
+      }
+
+      case 'encounter': {
+        const encounter = await this.prisma.encounter.findUnique({
+          where: { id: scopeId },
+          select: { campaignId: true },
+        });
+        if (!encounter) {
+          throw new NotFoundException(`Encounter with ID ${scopeId} not found`);
+        }
+        return encounter.campaignId;
+      }
+
+      case 'location': {
+        // Location is tied to World, not directly to Campaign
+        // For versioning, we need to find which campaign(s) use this location
+        // This is more complex - for now, throw an error
+        throw new BadRequestException(
+          'Location-scoped variables cannot be versioned (no direct campaign association)'
+        );
+      }
+
+      default:
+        throw new BadRequestException(`Cannot get campaign ID for scope: ${scope}`);
+    }
+  }
+
+  /**
+   * Get variable state as it existed at a specific point in world-time
+   * Supports time-travel queries for version history
+   */
+  async getVariableAsOf(
+    id: string,
+    branchId: string,
+    worldTime: Date,
+    user: AuthenticatedUser
+  ): Promise<PrismaStateVariable | null> {
+    // Verify user has access to the variable
+    const variable = await this.findById(id, user);
+    if (!variable) {
+      return null;
+    }
+
+    // Only campaign-scoped and below variables can be versioned
+    if (variable.scope === VariableScope.WORLD) {
+      throw new BadRequestException('World-scoped variables do not have version history');
+    }
+
+    // Resolve version at the specified time
+    const version = await this.versionService.resolveVersion(
+      'state_variable',
+      id,
+      branchId,
+      worldTime
+    );
+
+    if (!version) {
+      return null;
+    }
+
+    // Decompress and return the historical payload as a StateVariable object
+    const payload = await this.versionService.decompressVersion(version);
+
+    return payload as PrismaStateVariable;
+  }
+
+  /**
+   * Get full version history for a variable
+   * Returns all Version records ordered by validFrom DESC
+   */
+  async getVariableHistory(
+    id: string,
+    branchId: string,
+    user: AuthenticatedUser
+  ): Promise<
+    Array<{
+      version: number;
+      validFrom: Date;
+      validTo: Date | null;
+      createdBy: string;
+      createdAt: Date;
+    }>
+  > {
+    // Verify user has access to the variable
+    const variable = await this.findById(id, user);
+    if (!variable) {
+      throw new NotFoundException(`StateVariable with ID ${id} not found`);
+    }
+
+    // Only campaign-scoped and below variables can be versioned
+    if (variable.scope === VariableScope.WORLD) {
+      throw new BadRequestException('World-scoped variables do not have version history');
+    }
+
+    // Get version history using VersionService
+    const history = await this.versionService.findVersionHistory(
+      'state_variable',
+      id,
+      branchId,
+      user
+    );
+
+    return history.map((v) => ({
+      version: v.version,
+      validFrom: v.validFrom,
+      validTo: v.validTo,
+      createdBy: v.createdBy,
+      createdAt: v.createdAt,
+    }));
   }
 
   /**
