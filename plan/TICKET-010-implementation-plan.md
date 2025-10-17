@@ -352,24 +352,130 @@ The currentWorldTime field is automatically included in Prisma queries since it'
 **Goal**: Add calendar-aware time utilities and validation
 **Success Criteria**: Can parse/format dates according to world calendars
 **Tests**: Calendar utilities work correctly with various calendar systems
-**Status**: Not Started
+**Status**: ✅ Complete
+**Commit**: 57e1b7162f5f408dd1b802b617572c99b8c71f05
 
 ### Tasks
 
-- [ ] Create `packages/api/src/graphql/utils/calendar.utils.ts`
-- [ ] Implement `parseWorldDate(dateString, calendar)` function
+- [x] Create `packages/api/src/graphql/utils/calendar.utils.ts`
+- [x] Implement `parseWorldDate(dateString, calendar)` function
   - Parse date string according to calendar definition
   - Return JavaScript Date object
-- [ ] Implement `formatWorldDate(date, calendar)` function
+- [x] Implement `formatWorldDate(date, calendar)` function
   - Format Date according to calendar's month names and structure
   - Return formatted string
-- [ ] Implement `validateWorldDate(date, calendar)` function
+- [x] Implement `validateWorldDate(date, calendar)` function
   - Check date is valid for calendar (valid month, day, etc.)
   - Return validation result
-- [ ] Create unit tests in `calendar.utils.test.ts`
+- [x] Create unit tests in `calendar.utils.test.ts`
   - Test with Absalom Reckoning calendar from seed data
   - Test with edge cases (invalid months, days)
   - Test with null/undefined calendars (should use ISO format)
+
+### Implementation Notes
+
+**What was implemented:**
+
+- Created calendar utilities in `packages/api/src/graphql/utils/calendar.utils.ts`
+- Three main functions: `parseWorldDate`, `formatWorldDate`, `validateWorldDate`
+- CalendarDefinition interface matching World model's calendar JSON structure
+- Comprehensive test suite with 31 unit tests (100% passing)
+
+**Key Features:**
+
+1. **parseWorldDate Function**:
+   - Supports both ISO 8601 format (e.g., "4707-03-15T12:00:00Z") and custom format (e.g., "15 Pharast 4707")
+   - Custom format patterns: "DD MonthName YYYY" or "DD MonthName YYYY HH:MM:SS"
+   - Case-insensitive month name matching
+   - Validates day ranges per month (e.g., 1-28 for Calistril, 1-31 for Abadius)
+   - Graceful fallback to ISO parsing when no calendar provided
+
+2. **formatWorldDate Function**:
+   - Converts JavaScript Date to custom calendar format
+   - Returns "DD MonthName YYYY" or with time component "DD MonthName YYYY HH:MM:SS"
+   - Uses calendar's month names and day counts for accurate conversion
+   - Falls back to ISO 8601 format when no calendar provided
+   - Proper zero-padding for time components
+
+3. **validateWorldDate Function**:
+   - Validates Date objects against calendar constraints
+   - Checks if date is after calendar epoch
+   - Validates month and day are within calendar bounds
+   - Returns structured validation result `{ isValid: boolean, error?: string }`
+   - Provides descriptive error messages for debugging
+
+**Technical Decisions:**
+
+1. **Accurate Calendar Arithmetic**:
+   - Calculates exact days per year from calendar definition (not approximation)
+   - Uses `daysPerMonth.reduce((sum, days) => sum + days, 0)` for precise year length
+   - Proper handling of month boundaries and year transitions
+
+2. **Timezone Handling**:
+   - Date-only ISO strings (YYYY-MM-DD) parsed in local timezone to match test expectations
+   - Custom calendar times interpreted as local time but stored internally as UTC
+   - Formatting uses UTC methods for consistent time display
+
+3. **Error Handling**:
+   - Clear, descriptive error messages with context
+   - parseWorldDate throws errors with details (invalid month, day out of range, etc.)
+   - validateWorldDate returns validation object instead of throwing
+
+4. **Dual Mode Support**:
+   - With calendar: Uses custom month names and day counts
+   - Without calendar: Falls back to ISO 8601 standard
+   - Null/undefined calendar handled consistently across all functions
+
+**Code Review Outcomes:**
+
+- ✅ Approved by Code Reviewer with no critical issues
+- ✅ All 31 unit tests passing
+- ✅ Type-checking passes (0 errors)
+- ✅ Linting passes (0 errors, 56 pre-existing warnings in unrelated files)
+- ✅ Follows all project conventions
+- ✅ No security vulnerabilities
+- ✅ No performance issues
+- ✅ Excellent test coverage including edge cases
+
+**Test Coverage:**
+
+- **parseWorldDate**: 13 tests
+  - ISO format parsing (with and without calendar)
+  - Custom format parsing ("DD MonthName YYYY [HH:MM:SS]")
+  - Case-insensitive month names
+  - Day range validation (valid/invalid days)
+  - Error cases (invalid format, unknown month, day 0)
+
+- **formatWorldDate**: 6 tests
+  - ISO format output (with and without time)
+  - Custom calendar format output (with and without time)
+  - Epoch date formatting
+  - Year boundary conditions
+  - Time component zero-padding
+
+- **validateWorldDate**: 8 tests
+  - Valid/invalid Date objects
+  - Dates before/at/after epoch
+  - Month and day boundary validation
+  - Null/undefined calendar handling
+
+- **Integration tests**: 4 tests
+  - Round-trip conversion (parse → format → parse)
+  - Validation of parsed dates
+  - Consistent null/undefined calendar behavior
+
+**Files Created:**
+
+- packages/api/src/graphql/utils/calendar.utils.ts (237 lines)
+- packages/api/src/graphql/utils/calendar.utils.test.ts (289 lines)
+
+**Minor Suggestions from Code Review (not blockers):**
+
+- Consider extracting `MILLISECONDS_PER_DAY` constant
+- Consider extracting `getDaysPerYear()` helper function
+- Consider adding JSDoc field descriptions to CalendarDefinition interface
+
+These are optional improvements for future iterations.
 
 **Technical Details**:
 

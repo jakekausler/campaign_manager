@@ -9,6 +9,7 @@
   - Stage 3 (WorldTimeService - Core Logic): ece354df86dccff2295c0cb292d58da15ad7ce6e
   - Stage 4 (GraphQL Resolver): 39e0b635578eed2ca210ae29c52d8c88fce38bd7
   - Stage 5 (Campaign Service Integration): 91b3cf02467670268c4eb15fc0a3d25e791046b4
+  - Stage 6 (Calendar System Support): 57e1b7162f5f408dd1b802b617572c99b8c71f05
 
 ## Implementation Progress
 
@@ -257,6 +258,75 @@
 **Technical insight:**
 
 The implementation plan originally suggested updating service methods to include currentWorldTime in select clauses, but this proved unnecessary. Prisma's default behavior of returning all scalar fields meant the database change from Stage 1 and GraphQL type update from Stage 2 were sufficient. This stage simply added test coverage to verify and document that integration.
+
+### Stage 6: Calendar System Support ✅ Complete
+
+**What was implemented:**
+
+- Created calendar utilities in `packages/api/src/graphql/utils/calendar.utils.ts`
+- Implemented `CalendarDefinition` interface matching World model's calendar JSON structure
+- Implemented three main utility functions: `parseWorldDate`, `formatWorldDate`, `validateWorldDate`
+- Comprehensive test suite with 31 unit tests in `calendar.utils.test.ts` (100% passing)
+
+**Key features:**
+
+1. **parseWorldDate Function**:
+   - Supports both ISO 8601 format (e.g., "4707-03-15T12:00:00Z") and custom calendar format (e.g., "15 Pharast 4707")
+   - Custom format patterns: "DD MonthName YYYY" or "DD MonthName YYYY HH:MM:SS"
+   - Case-insensitive month name matching
+   - Validates day ranges per month (e.g., 1-28 for Calistril, 1-31 for Abadius)
+   - Throws descriptive errors for invalid dates, months, or day ranges
+   - Graceful fallback to ISO parsing when no calendar provided
+
+2. **formatWorldDate Function**:
+   - Converts JavaScript Date to custom calendar format
+   - Returns "DD MonthName YYYY" or with time component "DD MonthName YYYY HH:MM:SS"
+   - Uses calendar's month names and day counts for accurate conversion
+   - Falls back to ISO 8601 format when no calendar provided
+   - Proper zero-padding for time components (01:05:09)
+
+3. **validateWorldDate Function**:
+   - Validates Date objects against calendar constraints
+   - Checks if date is after calendar epoch
+   - Validates month and day are within calendar bounds
+   - Returns structured validation result `{ isValid: boolean, error?: string }`
+   - Provides descriptive error messages for debugging
+
+**Technical decisions:**
+
+- **Accurate Calendar Arithmetic**: Calculates exact days per year from calendar definition using `daysPerMonth.reduce((sum, days) => sum + days, 0)` (not approximation of 365 days)
+- **Timezone Handling**: Date-only ISO strings parsed in local timezone; custom calendar times interpreted as local time but stored internally as UTC; formatting uses UTC methods for consistency
+- **Error Handling**: parseWorldDate throws descriptive errors; validateWorldDate returns validation object instead of throwing
+- **Dual Mode Support**: With calendar uses custom month names/day counts; without calendar falls back to ISO 8601
+
+**Code review:**
+
+- ✅ Approved by Code Reviewer subagent with no critical issues
+- ✅ All 31 unit tests passing
+- ✅ Type-checking passes with no errors
+- ✅ Linting passes (only 56 pre-existing warnings in unrelated files)
+- ✅ Follows all project conventions
+- ✅ No security vulnerabilities
+- ✅ No performance issues
+- ✅ Excellent test coverage including edge cases
+
+**Test coverage:**
+
+- **parseWorldDate**: 13 tests (ISO/custom formats, case-insensitive, validation, error cases)
+- **formatWorldDate**: 6 tests (ISO/custom output, time handling, boundaries, zero-padding)
+- **validateWorldDate**: 8 tests (valid/invalid dates, epoch boundaries, null handling)
+- **Integration**: 4 tests (round-trip conversion, validation of parsed dates, null handling)
+
+**Files created:**
+
+- packages/api/src/graphql/utils/calendar.utils.ts (237 lines)
+- packages/api/src/graphql/utils/calendar.utils.test.ts (289 lines)
+
+**Minor suggestions from Code Review (optional for future):**
+
+- Consider extracting `MILLISECONDS_PER_DAY` constant
+- Consider extracting `getDaysPerYear()` helper function
+- Consider adding JSDoc field descriptions to CalendarDefinition interface
 
 ## Description
 
