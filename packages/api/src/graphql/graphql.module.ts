@@ -24,8 +24,10 @@ import { StructureDataLoader } from './dataloaders/structure.dataloader';
 import { createRedisPubSub, REDIS_PUBSUB } from './pubsub/redis-pubsub.provider';
 import { CampaignResolver } from './resolvers/campaign.resolver';
 import { CharacterResolver } from './resolvers/character.resolver';
+import { DependencyGraphResolver } from './resolvers/dependency-graph.resolver';
 import { EncounterResolver } from './resolvers/encounter.resolver';
 import { EventResolver } from './resolvers/event.resolver';
+import { FieldConditionResolver } from './resolvers/field-condition.resolver';
 import { HealthResolver } from './resolvers/health.resolver';
 import { KingdomResolver } from './resolvers/kingdom.resolver';
 import { LinkResolver } from './resolvers/link.resolver';
@@ -46,6 +48,10 @@ import { AuditService } from './services/audit.service';
 import { CampaignContextService } from './services/campaign-context.service';
 import { CampaignService } from './services/campaign.service';
 import { CharacterService } from './services/character.service';
+import { ConditionEvaluationService } from './services/condition-evaluation.service';
+import { ConditionService } from './services/condition.service';
+import { DependencyGraphBuilderService } from './services/dependency-graph-builder.service';
+import { DependencyGraphService } from './services/dependency-graph.service';
 import { EncounterService } from './services/encounter.service';
 import { EventService } from './services/event.service';
 import { KingdomService } from './services/kingdom.service';
@@ -61,6 +67,7 @@ import { VariableSchemaService } from './services/variable-schema.service';
 import { VersionService } from './services/version.service';
 import { WorldTimeService } from './services/world-time.service';
 import { WorldService } from './services/world.service';
+import { DependencyExtractor } from './utils/dependency-extractor';
 
 @Module({
   imports: [
@@ -177,6 +184,11 @@ import { WorldService } from './services/world.service';
     ExpressionParserService,
     VariableEvaluationService,
     StateVariableService,
+    ConditionService,
+    ConditionEvaluationService,
+    DependencyExtractor,
+    DependencyGraphBuilderService,
+    DependencyGraphService,
     // DataLoaders
     StructureDataLoader,
     // Resolvers
@@ -196,6 +208,8 @@ import { WorldService } from './services/world.service';
     SpatialResolver,
     WorldTimeResolver,
     StateVariableResolver,
+    FieldConditionResolver,
+    DependencyGraphResolver,
     // Register custom scalars
     DateTimeScalar,
     JSONScalar,
