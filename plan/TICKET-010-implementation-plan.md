@@ -506,14 +506,15 @@ export function formatWorldDate(date: Date, calendar?: CalendarDefinition): stri
 **Goal**: Add hook for rules engine invalidation on time advancement
 **Success Criteria**: Time advancement triggers cache invalidation placeholder
 **Tests**: Verify invalidation is called (mock for now)
-**Status**: Not Started
+**Status**: ✅ Complete
+**Commit**: 5e7fe2fbb0275ac950ac6cf0c0dea892b0ca7a0b
 
 ### Tasks
 
-- [ ] Update WorldTimeService.advanceWorldTime to call campaign context invalidation
-- [ ] Add comment/TODO for future rules engine integration
-- [ ] Ensure CampaignContextService.invalidateCache is called with correct params
-- [ ] Add test verifying invalidation is called
+- [x] Update WorldTimeService.advanceWorldTime to call campaign context invalidation
+- [x] Add comment/TODO for future rules engine integration
+- [x] Ensure CampaignContextService.invalidateCache is called with correct params
+- [x] Add test verifying invalidation is called
 
 **Technical Details**:
 

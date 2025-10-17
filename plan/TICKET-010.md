@@ -10,6 +10,7 @@
   - Stage 4 (GraphQL Resolver): 39e0b635578eed2ca210ae29c52d8c88fce38bd7
   - Stage 5 (Campaign Service Integration): 91b3cf02467670268c4eb15fc0a3d25e791046b4
   - Stage 6 (Calendar System Support): 57e1b7162f5f408dd1b802b617572c99b8c71f05
+  - Stage 7 (Rules Engine Integration): 5e7fe2fbb0275ac950ac6cf0c0dea892b0ca7a0b
 
 ## Implementation Progress
 
@@ -327,6 +328,56 @@ The implementation plan originally suggested updating service methods to include
 - Consider extracting `MILLISECONDS_PER_DAY` constant
 - Consider extracting `getDaysPerYear()` helper function
 - Consider adding JSDoc field descriptions to CalendarDefinition interface
+
+### Stage 7: Rules Engine Integration (Future Hook) ✅ Complete
+
+**What was implemented:**
+
+- Added comprehensive TODO comment in WorldTimeService.advanceWorldTime for future rules engine integration
+- Documented where rules engine invalidation should be called when implemented (TICKET-020+)
+- Verified cache invalidation is already implemented and thoroughly tested
+
+**Technical decisions:**
+
+- **Minimal Change Principle**: Added only documentation, no premature implementation
+- **Strategic Placement**: Positioned TODO immediately after cache invalidation for logical flow
+- **Comprehensive Documentation**: TODO includes:
+  - Specific ticket reference (TICKET-020+) for when to implement
+  - Example API call signature: `await this.rulesEngine.invalidate({ campaignId, worldTime: to, branchId })`
+  - List of specific recalculation scenarios:
+    - Conditional effects based on time
+    - Time-based triggers
+    - Scheduled events that should activate
+    - Derived properties depending on world time
+- **Existing Implementation Verified**: Cache invalidation via `campaignContext.invalidateContext(campaignId)` already in place
+- **Test Coverage Complete**: Existing tests already verify cache invalidation:
+  - Test: "should invalidate cache by default"
+  - Test: "should not invalidate cache if invalidateCache is false"
+  - Mock properly configured for CampaignContextService
+
+**Code review:**
+
+- ✅ Approved by Code Reviewer subagent with no critical issues
+- ✅ All 17 WorldTimeService unit tests passing
+- ✅ Type-checking passes (0 errors)
+- ✅ Linting passes (only 56 pre-existing warnings in unrelated files)
+- ✅ Follows all project conventions
+- ✅ No security vulnerabilities
+- ✅ No performance issues
+- ✅ Stage 7 requirements fully met
+
+**Stage 7 requirements met:**
+
+- ✅ Update WorldTimeService.advanceWorldTime to call campaign context invalidation (already implemented in Stage 3)
+- ✅ Add comment/TODO for future rules engine integration (this stage)
+- ✅ Ensure CampaignContextService.invalidateCache is called with correct params (verified)
+- ✅ Add test verifying invalidation is called (existing tests already cover this)
+
+**Files modified:**
+
+- packages/api/src/graphql/services/world-time.service.ts (added 9 lines of documentation)
+
+**Note:** Stage 7 is intentionally minimal - it establishes the integration hook without implementing the rules engine itself. The actual rules engine integration will occur in TICKET-020+ (Rules Engine tickets). This approach follows the "placeholder for future integration" strategy outlined in the implementation plan.
 
 ## Description
 
