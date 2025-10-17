@@ -155,6 +155,7 @@ async function main() {
       name: 'Rise of the Runelords',
       worldId: world.id,
       ownerId: adminUser.id,
+      currentWorldTime: new Date('4707-03-15T12:00:00Z'), // Start mid-day in Pharast (March) 4707 AR
       settings: {
         difficulty: 'normal',
         startDate: '4707-01-01',

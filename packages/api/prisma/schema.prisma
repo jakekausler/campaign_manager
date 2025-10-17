@@ -171,20 +171,21 @@ model World {
 }
 
 model Campaign {
-  id         String    @id @default(cuid())
-  name       String
-  worldId    String
-  world      World     @relation(fields: [worldId], references: [id])
-  ownerId    String
-  owner      User      @relation(fields: [ownerId], references: [id])
-  srid       Int       @default(3857) // Spatial Reference System ID (Web Mercator default)
-  settings   Json      @default("{}")
-  isActive   Boolean   @default(true)
-  version    Int       @default(1) // For optimistic locking
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
-  archivedAt DateTime?
+  id               String    @id @default(cuid())
+  name             String
+  worldId          String
+  world            World     @relation(fields: [worldId], references: [id])
+  ownerId          String
+  owner            User      @relation(fields: [ownerId], references: [id])
+  srid             Int       @default(3857) // Spatial Reference System ID (Web Mercator default)
+  currentWorldTime DateTime? // Current world time for this campaign
+  settings         Json      @default("{}")
+  isActive         Boolean   @default(true)
+  version          Int       @default(1) // For optimistic locking
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+  archivedAt       DateTime?
 
   // Relations
   branches    Branch[]
@@ -201,6 +202,7 @@ model Campaign {
   @@index([deletedAt])
   @@index([archivedAt])
   @@index([isActive])
+  @@index([currentWorldTime])
 }
 
 model Branch {
