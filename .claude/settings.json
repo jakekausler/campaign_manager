@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "case \"{{filePath}}\" in *.ts|*.tsx|*.js|*.jsx|*.json|*.md|*.yml|*.yaml) pnpm exec prettier --write \"{{filePath}}\" --log-level silent || true ;; esac"
+            "command": "sh -c 'case \"{{filePath}}\" in *.ts|*.tsx|*.js|*.jsx|*.json|*.md|*.yml|*.yaml) pnpm exec prettier --write \"{{filePath}}\" --log-level silent || true ;; esac'"
           }
         ]
       },
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "case \"{{filePath}}\" in *.ts|*.tsx|*.js|*.jsx|*.json|*.md|*.yml|*.yaml) pnpm exec prettier --write \"{{filePath}}\" --log-level silent || true ;; esac"
+            "command": "sh -c 'case \"{{filePath}}\" in *.ts|*.tsx|*.js|*.jsx|*.json|*.md|*.yml|*.yaml) pnpm exec prettier --write \"{{filePath}}\" --log-level silent || true ;; esac'"
           }
         ]
       }
