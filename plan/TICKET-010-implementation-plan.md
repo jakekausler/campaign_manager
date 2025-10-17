@@ -297,18 +297,53 @@ export class WorldTimeResolver {
 **Goal**: Update CampaignService to expose currentWorldTime in queries
 **Success Criteria**: Campaign queries return currentWorldTime field
 **Tests**: Existing campaign tests pass, new field is populated
-**Status**: Not Started
+**Status**: ✅ Complete
+**Commit**: 91b3cf02467670268c4eb15fc0a3d25e791046b4
 
 ### Tasks
 
-- [ ] Update CampaignService.findById to include currentWorldTime in select
-- [ ] Update CampaignService.findAll to include currentWorldTime
-- [ ] Update CampaignService.findByWorldId to include currentWorldTime
-- [ ] Update campaign tests to verify currentWorldTime is returned
-- [ ] Test that campaign queries include the new field
+- [x] Update CampaignService.findById to include currentWorldTime in select
+- [x] Update CampaignService.findAll to include currentWorldTime
+- [x] Update CampaignService.findByWorldId to include currentWorldTime
+- [x] Update campaign tests to verify currentWorldTime is returned
+- [x] Test that campaign queries include the new field
+
+### Implementation Notes
+
+**What was implemented:**
+
+- Updated mockCampaign fixture to include currentWorldTime field (4707-03-15T12:00:00Z)
+- Added test in findById describe block to verify currentWorldTime field is returned
+- Added test in findAll describe block to verify currentWorldTime with null handling
+- Added new findByWorldId describe block with tests for:
+  - Basic findByWorldId functionality
+  - currentWorldTime field presence with null handling
+
+**Key findings:**
+
+- **No service code changes needed**: The currentWorldTime field is automatically included in all Prisma query results because:
+  1. It's a scalar field (DateTime?) in the Campaign model
+  2. Service methods (findById, findAll, findByWorldId) don't use explicit `select` clauses
+  3. Prisma returns all scalar fields by default unless excluded
+- **GraphQL type already updated**: The Campaign GraphQL type was updated in Stage 2 to include the currentWorldTime field
+- **Tests verify integration**: All 29 campaign service tests pass, including 3 new tests for currentWorldTime
+
+**Test coverage:**
+
+- findById: 3 tests (including currentWorldTime verification)
+- findAll: 2 tests (including currentWorldTime with null handling)
+- findByWorldId: 2 tests (new describe block with basic test and currentWorldTime verification)
+
+**Code Review:**
+
+- ✅ Approved by Code Reviewer subagent with no critical issues
+- ✅ All tests passing (29 total)
+- ✅ Type-checking passes (0 errors)
+- ✅ Linting passes (only 56 pre-existing warnings in unrelated files)
+- ✅ Follows all project conventions
 
 **Technical Details**:
-The currentWorldTime field should be automatically included in Prisma queries since it's a scalar field. Main task is ensuring it appears in GraphQL responses.
+The currentWorldTime field is automatically included in Prisma queries since it's a scalar field and the service methods don't use explicit select clauses. The tests confirm this integration works correctly for both non-null (future date) and null scenarios.
 
 ---
 
