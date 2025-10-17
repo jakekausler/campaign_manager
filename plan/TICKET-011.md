@@ -8,6 +8,7 @@
   - ea4f328 - Stage 1 complete (Core JSONLogic Integration & Setup)
   - 9ad4ae4 - Stage 2 complete (Custom Operator Framework & Spatial Operators)
   - 21fa7a8 - Stage 3 complete (Temporal Operators & Expression Validation)
+  - e4eeeb7 - Stage 4 complete (Sandbox Execution & Security)
 
 ## Implementation Notes
 
@@ -132,7 +133,102 @@ Implementation plan created in TICKET-011-implementation-plan.md with 5 stages.
 - Recursive validation handles arbitrarily nested expressions
 - Graceful null returns instead of throwing errors (fail-safe pattern)
 
-**Next Stage**: Stage 4 - Sandbox Execution & Security
+**Next Stage**: Stage 5 - Expression Caching & Performance Optimization
+
+### Stage 4: Sandbox Execution & Security ✅ COMPLETE
+
+**Commit**: e4eeeb7
+
+**Completed**:
+
+- Created SandboxExecutor class in packages/api/src/rules/sandbox/ for safe expression execution
+- Implemented comprehensive security controls:
+  - Code injection prevention via context sanitization (filters **proto**, eval, Function, global, process, etc.)
+  - Prototype pollution protection (blocks dangerous property access at all levels)
+  - Recursive sanitization of nested objects while preserving arrays
+  - Security event logging for monitoring dangerous property attempts
+- Implemented resource protection mechanisms:
+  - Recursion depth limits (default: 50, configurable via maxDepth)
+  - Iteration count limits (default: 10,000, configurable via maxIterations)
+  - Execution timeout (default: 5000ms, configurable, can be disabled with 0)
+  - Pre-execution traversal for fail-fast limit checking
+- Created SandboxOptions interface with input validation:
+  - Validates all options (rejects negative values)
+  - Provides sensible defaults for all limits
+  - Allows customization per use case (untrusted input, batch processing, etc.)
+- Implemented comprehensive error handling:
+  - Type-safe EvaluationResult with success/error status
+  - Clear error messages with context (e.g., "Maximum recursion depth exceeded: 51 > 50")
+  - Safe error logging without exposing sensitive data
+  - Graceful handling of null/undefined inputs
+- Comprehensive test coverage: 29 tests passing
+  - Basic execution tests (simple, with context, nested expressions)
+  - Recursion depth limit tests (within limit, exceeding, custom limits)
+  - Iteration count limit tests (within limit, exceeding, custom limits)
+  - Timeout tests (fast expressions, long-running expressions)
+  - Code injection prevention tests (eval, Function, global, **proto**, safe access)
+  - Error handling tests (null/undefined inputs, validation failures)
+  - Options validation tests (defaults, partials, negative rejection)
+  - Resource cleanup tests (timeout cleanup, memory leak prevention)
+- Created comprehensive SECURITY.md documentation (375 lines):
+  - Detailed threat models with real attack examples
+  - Usage guidelines for different trust levels (untrusted input, admin tools, batch processing)
+  - Recommended settings table for various use cases
+  - Known limitations with mitigation strategies
+  - Testing and incident response procedures
+  - References to OWASP and security best practices
+- Architecture ready for integration:
+  - Follows NestJS patterns with dependency injection
+  - Integrates with existing Rules Engine types (Expression, EvaluationContext, EvaluationResult)
+  - Defense-in-depth approach with multiple security layers
+  - Stateless execution model (state reset on each execute() call)
+
+**Test Results**: All 719 tests passing (29 new)
+**Type-check**: ✅ Pass
+**Lint**: ✅ Pass (0 errors, 82 pre-existing warnings in other test files)
+
+**Code Review**: Approved with no blocking issues by Code Reviewer subagent
+
+- Strong security awareness with defense-in-depth approach
+- Comprehensive testing covering all security scenarios
+- Exceptional documentation (SECURITY.md)
+- Clean, maintainable code with proper error handling
+- Full TypeScript type safety with generics
+- Ready for production use
+
+**Architecture Decisions**:
+
+- Multi-layered security (sanitization + limits + timeout) for defense-in-depth
+- Pre-execution traversal for fail-fast resource limit checking
+- Context sanitization filters dangerous properties recursively
+- Separate SandboxExecutor class keeps concerns separated (validation vs execution vs security)
+- Timeout checked during traversal (trade-off for simpler implementation)
+- Iteration counting includes all structural elements (not just data) to prevent complex expression trees
+- Security event logging enables monitoring for attack attempts
+- Configurable limits allow different settings for different trust levels
+
+**Security Features**:
+
+1. **Code Injection Prevention**:
+   - Filters **proto**, constructor, prototype (prototype pollution)
+   - Filters eval, Function (code execution)
+   - Filters global, process, require, module, exports (Node.js internals)
+   - Filters **dirname, **filename (filesystem access)
+   - Recursive sanitization of nested objects
+
+2. **Resource Protection**:
+   - Recursion depth limits prevent stack overflow
+   - Iteration count limits prevent memory exhaustion
+   - Timeout limits prevent event loop blocking
+   - All limits checked before execution (fail-fast)
+
+3. **Defense in Depth**:
+   - Multiple security layers working together
+   - Security event logging for monitoring
+   - Graceful degradation on errors
+   - Safe defaults with customization options
+
+**Next Stage**: Stage 5 - Expression Caching & Performance Optimization
 
 ## Description
 
