@@ -11,7 +11,6 @@ import {
 } from '../types/dependency-graph.type';
 
 import { DependencyGraph } from './dependency-graph';
-
 describe('DependencyGraph', () => {
   let graph: DependencyGraph;
 
@@ -466,7 +465,8 @@ describe('DependencyGraph', () => {
 
   describe('topologicalSort', () => {
     it('should sort simple linear chain', () => {
-      // A -> B -> C
+      // A -> B -> C (A depends on B, B depends on C)
+      // Evaluation order: dependencies first (C, B, A)
       graph.addNode(createNode('A'));
       graph.addNode(createNode('B'));
       graph.addNode(createNode('C'));
@@ -476,13 +476,15 @@ describe('DependencyGraph', () => {
       const result = graph.topologicalSort();
 
       expect(result.success).toBe(true);
-      expect(result.order).toEqual(['A', 'B', 'C']);
+      expect(result.order).toEqual(['C', 'B', 'A']);
       expect(result.remainingNodes).toEqual([]);
       expect(result.error).toBeNull();
     });
 
     it('should handle diamond dependency', () => {
       // A -> B, A -> C, B -> D, C -> D
+      // (A depends on B and C, B and C depend on D)
+      // Evaluation order: D first, then B and C (order may vary), then A last
       graph.addNode(createNode('A'));
       graph.addNode(createNode('B'));
       graph.addNode(createNode('C'));
@@ -495,8 +497,8 @@ describe('DependencyGraph', () => {
       const result = graph.topologicalSort();
 
       expect(result.success).toBe(true);
-      expect(result.order[0]).toBe('A');
-      expect(result.order[3]).toBe('D');
+      expect(result.order[0]).toBe('D'); // D has no dependencies, evaluated first
+      expect(result.order[3]).toBe('A'); // A depends on everything, evaluated last
       expect(result.remainingNodes).toEqual([]);
     });
 

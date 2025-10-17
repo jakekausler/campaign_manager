@@ -389,9 +389,15 @@ export class DependencyGraph {
 
     const success = remainingNodes.length === 0;
 
+    // Reverse the order for evaluation: dependencies should be evaluated first
+    // In our graph, edge A->B means "A depends on B", so B must be evaluated before A
+    // Kahn's algorithm gives us nodes with no dependencies first, which is the opposite
+    // of what we want for evaluation order
+    const evaluationOrder = order.reverse();
+
     return {
       success,
-      order,
+      order: evaluationOrder,
       remainingNodes,
       error: success ? null : `Cycle detected: ${remainingNodes.length} nodes could not be sorted`,
     };
