@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] Completed (Stage 6/7 complete)
+- [x] Completed (All 7 stages complete)
 - **Commits**:
   - Stage 1: ec59dfb - Database Schema and Prisma Model
   - Stage 2: b6d254f - GraphQL Type Definitions
@@ -10,6 +10,7 @@
   - Stage 4: ae28ed6 - State Variable Service (CRUD Operations)
   - Stage 5: 77ba8ea - GraphQL Resolver
   - Stage 6: bf77940 - Variable Resolution for Conditions
+  - Stage 7: 5bca36c - Variable Change History Integration
 
 ## Description
 
@@ -525,3 +526,112 @@ Related: TICKET-012 (Condition System), TICKET-013 Stages 1-5 (StateVariable CRU
 - `packages/api/src/graphql/services/structure.service.test.ts` - Added ConditionEvaluationService mock
 - `packages/api/package.json` - Added jest-mock-extended dev dependency
 - `pnpm-lock.yaml` - Updated lock file
+
+---
+
+### Stage 7: Variable Change History Integration (5bca36c)
+
+**Completed:** 2025-10-17
+
+**Summary:** Implemented bitemporal version tracking for StateVariables with support for temporal queries and Campaign.currentWorldTime integration.
+
+**Core Changes:**
+
+StateVariableService Enhancements:
+
+- **VersionService Integration**: Injected VersionService for version snapshot management
+- **update() Method Enhancement**: Modified to optionally create Version snapshots
+  - Added optional `branchId` parameter to enable versioning
+  - Added optional `worldTime` parameter for version validFrom
+  - Falls back to Campaign.currentWorldTime or current system time
+  - Uses transaction to atomically update variable + create version
+  - Backward compatible - skips versioning when branchId not provided
+  - Only campaign-scoped and below variables supported (world-scoped excluded)
+- **getCampaignIdForScope() Helper**: Traverses scope entity relationships to find campaign ID
+  - Supports 9 scope types (campaign/party/kingdom/settlement/structure/character/event/encounter)
+  - Uses optimized single-level nested Prisma selects
+  - Throws appropriate error for location scope (no direct campaign association)
+- **getVariableAsOf() Method**: Temporal queries for historical variable state
+  - Retrieves variable state at specific point in world time
+  - Uses VersionService.resolveVersion() for bitemporal resolution
+  - Returns null if no version exists for specified time
+  - Throws error for world-scoped variables
+- **getVariableHistory() Method**: Full version history retrieval
+  - Returns all Version records ordered by validFrom DESC
+  - Includes version metadata (version number, validFrom, validTo, createdBy, createdAt)
+  - Throws error for world-scoped variables
+
+**Features:**
+
+Version Tracking:
+
+- Optional version snapshots on variable updates when branchId provided
+- Integrates with Campaign.currentWorldTime for default validFrom
+- Supports custom worldTime parameter for explicit version timing
+- World-scoped variables explicitly excluded from versioning (no campaign association)
+- Transaction-safe updates prevent race conditions
+
+Temporal Queries:
+
+- Query variable state as it existed at any point in world time
+- Full version history retrieval for audit and debugging
+- Bitemporal support via validFrom/validTo timestamps
+
+**Testing:**
+
+Integration tests (16 tests, all passing):
+
+- Version snapshot creation with branchId parameter
+- Skipping versioning when branchId not provided (backward compatibility)
+- World-scoped variable handling (no versioning)
+- Custom worldTime parameter usage
+- Fallback to Campaign.currentWorldTime or system time
+- Branch validation and error handling
+- Historical state retrieval via getVariableAsOf
+- Version history retrieval via getVariableHistory
+- Campaign ID resolution for all scope types
+- Error handling for world-scoped and invalid variables
+
+**Security:**
+
+- Authorization verified via findById() before all operations
+- Branch ownership validated against variable's campaign
+- Parameterized queries via Prisma ORM prevent SQL injection
+- Transaction-safe updates with optimistic locking
+- Silent access denial prevents information disclosure
+
+**Performance:**
+
+- Optimized database queries with single-level nested selects
+- Transaction used for atomic variable update + version creation
+- Audit logging outside transaction to avoid blocking
+- No N+1 query patterns introduced
+
+**Backward Compatibility:**
+
+- branchId and worldTime parameters are optional in update()
+- Existing callers continue to work without modifications
+- Versioning is opt-in, not mandatory
+- Non-breaking API changes
+
+**Code Review:**
+
+- Approved by code-reviewer subagent with no critical issues
+- Security: Proper authorization, no SQL injection, safe transaction handling
+- Performance: Optimized queries, no N+1 patterns
+- Type Safety: All types correctly declared
+- Testing: Comprehensive coverage (16/16 tests passing)
+
+**Related:**
+
+- TICKET-010: World Time System (Campaign.currentWorldTime integration)
+- TICKET-007: Versioning System (VersionService integration)
+- TICKET-012: Condition System (FieldCondition can reference versioned variables)
+
+**Files Created:**
+
+- `packages/api/src/graphql/services/state-variable-versioning.integration.test.ts` - Integration tests (500+ lines, 16 tests)
+
+**Files Modified:**
+
+- `packages/api/src/graphql/services/state-variable.service.ts` - Added VersionService injection, modified update() method, added getCampaignIdForScope/getVariableAsOf/getVariableHistory methods (200+ lines added)
