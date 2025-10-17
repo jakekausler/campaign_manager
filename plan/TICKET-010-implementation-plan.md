@@ -102,60 +102,75 @@ Follow existing patterns from `packages/api/src/graphql/types/campaign.type.ts` 
 **Goal**: Create service to manage world time advancement and queries
 **Success Criteria**: Service methods work correctly in isolation
 **Tests**: Unit tests for all service methods
-**Status**: Not Started
+**Status**: ✅ Complete
+**Commit**: ece354df86dccff2295c0cb292d58da15ad7ce6e
 
 ### Tasks
 
-- [ ] Create `packages/api/src/graphql/services/world-time.service.ts`
-- [ ] Implement constructor with PrismaService, AuditService, CampaignContextService dependencies
-- [ ] Implement `advanceWorldTime(campaignId, to, branchId?, userId)` method
+- [x] Create `packages/api/src/graphql/services/world-time.service.ts`
+- [x] Implement constructor with PrismaService, CampaignContextService dependencies
+- [x] Implement `advanceWorldTime(campaignId, to, userId, expectedVersion, branchId?, invalidateCache?)` method
   - Validate campaign exists and user has permission
+  - Optimistic locking with version checking
   - Validate new time is after current time (if current time exists)
-  - Update Campaign.currentWorldTime
-  - Create audit log entry
+  - Update Campaign.currentWorldTime in transaction
+  - Create audit log entry in same transaction
   - Invalidate campaign context cache
   - Return WorldTimeResult
-- [ ] Implement `getCurrentWorldTime(campaignId)` query method
-- [ ] Implement `validateTimeAdvancement(campaign, newTime)` helper
-  - Check newTime >= currentWorldTime (if set)
+- [x] Implement `getCurrentWorldTime(campaignId, user)` query method
+- [x] Implement `validateTimeAdvancement(currentTime, newTime)` helper
+  - Check newTime > currentWorldTime (if set)
   - Check newTime is valid date
-  - Optional: Validate against calendar system if available
-- [ ] Create comprehensive unit tests in `world-time.service.test.ts`
+- [x] Implement `verifyCampaignAccess(campaignId, userId, select?)` helper
+  - Extracted authorization logic for DRY
+  - Type-safe selective field fetching
+- [x] Create comprehensive unit tests in `world-time.service.test.ts`
   - Test successful time advancement
   - Test validation errors (past time, invalid campaign, etc.)
   - Test permission checks
-  - Test audit logging
+  - Test transaction behavior
+  - Test optimistic locking (version mismatch)
   - Test cache invalidation
 
-**Technical Details**:
+### Implementation Notes
 
-```typescript
-@Injectable()
-export class WorldTimeService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly audit: AuditService,
-    private readonly campaignContext: CampaignContextService
-  ) {}
+**What was implemented:**
 
-  async advanceWorldTime(
-    campaignId: string,
-    to: Date,
-    userId: string,
-    branchId?: string
-  ): Promise<WorldTimeResult> {
-    // Implementation
-  }
+- Created WorldTimeService in `packages/api/src/graphql/services/world-time.service.ts`
+- Two main public methods: `getCurrentWorldTime` and `advanceWorldTime`
+- Two private helper methods: `validateTimeAdvancement` and `verifyCampaignAccess`
+- Comprehensive test suite with 17 unit tests (100% passing)
 
-  async getCurrentWorldTime(campaignId: string): Promise<Date | null> {
-    // Implementation
-  }
+**Key Technical Decisions:**
 
-  private validateTimeAdvancement(currentTime: Date | null, newTime: Date): void {
-    // Validation logic
-  }
-}
-```
+1. **Transaction Safety**: Wrapped campaign update and audit log creation in Prisma transaction for atomicity
+2. **Optimistic Locking**: Added `expectedVersion` parameter and dual-layer version checking (app + database)
+3. **Authorization Extraction**: Created reusable `verifyCampaignAccess<T>` helper with type-safe selective field fetching
+4. **Direct Audit Logging**: Used `tx.audit.create` in transaction instead of AuditService (which swallows errors)
+5. **Cache Control**: Made cache invalidation configurable via `invalidateCache` parameter (default: true)
+6. **Null Handling**: Properly handles null `currentWorldTime` for first-time setting
+
+**Code Review Outcomes:**
+
+- ✅ All critical issues addressed
+- ✅ Transaction safety implemented
+- ✅ Race condition protection via optimistic locking
+- ✅ Authorization logic extracted and reusable
+- ✅ Performance optimized with selective field fetching
+- ✅ Comprehensive test coverage including edge cases
+- ✅ Code reviewer approved for commit
+
+**Dependencies:**
+
+- PrismaService: Database operations
+- CampaignContextService: Cache invalidation
+- OptimisticLockException: Concurrency control
+
+**Test Coverage:**
+
+- getCurrentWorldTime: 4 tests (success, null time, not found, access denied)
+- advanceWorldTime: 9 tests (success, first time, not found, access denied, past time, same time, cache control, version mismatch)
+- validateTimeAdvancement: 4 tests (null current, valid advancement, past time, same time)
 
 ---
 

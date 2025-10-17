@@ -6,6 +6,7 @@
 - **Commits**:
   - Stage 1 (Database Schema & Migration): 3934e7c588bd5886d328721b2fd9244fa4c3e1da
   - Stage 2 (GraphQL Types & Inputs): 2f5ee47f0ee8c3fae89c6f38e4fba7bb5f0a6b8d
+  - Stage 3 (WorldTimeService - Core Logic): ece354df86dccff2295c0cb292d58da15ad7ce6e
 
 ## Implementation Progress
 
@@ -58,6 +59,81 @@
 - ✅ All linting passes (only pre-existing warnings in unrelated test files)
 - Suggestions for future enhancement: custom validation for time advancement logic, JSDoc comments
 - These suggestions will be considered in future iterations but are not blockers
+
+### Stage 3: WorldTimeService - Core Logic ✅ Complete
+
+**What was implemented:**
+
+- Created `WorldTimeService` in `packages/api/src/graphql/services/world-time.service.ts`
+- Implemented `getCurrentWorldTime(campaignId, user)` query method
+- Implemented `advanceWorldTime(campaignId, to, userId, expectedVersion, branchId?, invalidateCache?)` mutation method
+- Created private helper methods:
+  - `validateTimeAdvancement(currentTime, newTime)` for time validation
+  - `verifyCampaignAccess<T>(campaignId, userId, select?)` for DRY authorization
+- Comprehensive test suite with 17 unit tests in `world-time.service.test.ts`
+
+**Technical decisions:**
+
+- **Transaction Safety**: Wrapped campaign update and audit log in Prisma `$transaction` for atomicity
+  - Ensures both operations succeed or fail together
+  - Direct audit creation via `tx.audit.create` instead of AuditService (which swallows errors)
+- **Optimistic Locking**: Added `expectedVersion` parameter for race condition protection
+  - Dual-layer protection: application-level check + database WHERE clause
+  - Throws `OptimisticLockException` on version mismatch
+  - Increments version on successful update
+- **Authorization Extraction**: Created reusable `verifyCampaignAccess` helper
+  - Generic type parameter for type-safe selective field fetching
+  - Single source of truth for campaign access logic
+  - Used by both `getCurrentWorldTime` and `advanceWorldTime`
+- **Performance Optimization**: Selective field fetching using Prisma `select`
+  - Only fetches required fields (`id`, `currentWorldTime`, `version`)
+  - Reduces data transfer and memory usage
+- **Cache Control**: Configurable cache invalidation
+  - `invalidateCache` parameter (default: true)
+  - Allows disabling for batch operations
+- **Null Handling**: Proper support for first-time world time setting
+  - Validates `newTime > currentWorldTime` only if `currentWorldTime` exists
+  - Returns `undefined` for `previousWorldTime` when null (matches GraphQL optional field)
+
+**Code review:**
+
+- ✅ Approved by Code Reviewer subagent after addressing critical issues
+- ✅ All 17 unit tests passing
+- ✅ Type-checking passes with no errors
+- ✅ Linting passes (only pre-existing warnings in unrelated files)
+- ✅ Transaction safety verified
+- ✅ Optimistic locking implementation validated
+- ✅ Authorization logic properly extracted
+- ✅ Performance optimizations confirmed
+
+**Test coverage:**
+
+- `getCurrentWorldTime`: 4 tests
+  - Returns current world time for valid campaign
+  - Returns null when campaign has no time set
+  - Throws NotFoundException when campaign doesn't exist
+  - Throws NotFoundException when user lacks access
+- `advanceWorldTime`: 9 tests
+  - Successfully advances time with all validations
+  - Handles first-time setting (null current time)
+  - Throws NotFoundException for invalid campaign
+  - Throws NotFoundException when user lacks access
+  - Throws BadRequestException for past time
+  - Throws BadRequestException for same time
+  - Respects invalidateCache parameter
+  - Invalidates cache by default
+  - Throws OptimisticLockException on version mismatch
+- `validateTimeAdvancement`: 4 tests
+  - Allows any time when current time is null
+  - Validates new time after current time
+  - Rejects past time
+  - Rejects same time
+
+**Dependencies:**
+
+- PrismaService: Database operations and transactions
+- CampaignContextService: Campaign context cache invalidation
+- OptimisticLockException: Thrown on concurrent modification conflicts
 
 ## Description
 
