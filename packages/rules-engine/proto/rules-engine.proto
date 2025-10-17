@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package rulesengine;
+
+// Rules Engine Service - Evaluates conditions and manages dependency graphs
+service RulesEngine {
+  // Evaluate a single condition with provided context
+  rpc EvaluateCondition(EvaluateConditionRequest) returns (EvaluationResult);
+
+  // Evaluate multiple conditions in batch
+  rpc EvaluateConditions(EvaluateConditionsRequest) returns (EvaluateConditionsResponse);
+
+  // Get topological evaluation order for conditions
+  rpc GetEvaluationOrder(GetEvaluationOrderRequest) returns (EvaluationOrderResponse);
+
+  // Validate dependency graph for cycles
+  rpc ValidateDependencies(ValidateDependenciesRequest) returns (ValidationResult);
+
+  // Invalidate cache for specific campaign/branch
+  rpc InvalidateCache(InvalidateCacheRequest) returns (InvalidateCacheResponse);
+}
+
+// Request to evaluate a single condition
+message EvaluateConditionRequest {
+  string condition_id = 1;           // ID of the condition to evaluate
+  string campaign_id = 2;            // Campaign context
+  string branch_id = 3;              // Branch context (defaults to "main")
+  string context_json = 4;           // JSON-encoded evaluation context
+  bool include_trace = 5;            // Whether to include evaluation trace
+}
+
+// Result of a condition evaluation
+message EvaluationResult {
+  bool success = 1;                  // Whether evaluation succeeded
+  string value_json = 2;             // JSON-encoded result value (nullable)
+  string error = 3;                  // Error message if failed (nullable)
+  repeated TraceStep trace = 4;      // Evaluation trace if requested
+  int64 evaluation_time_ms = 5;      // Evaluation time in milliseconds
+}
+
+// A single step in the evaluation trace
+message TraceStep {
+  int32 step = 1;                    // Step number
+  string description = 2;            // Description of the step
+  string input_json = 3;             // JSON-encoded input (nullable)
+  string output_json = 4;            // JSON-encoded output (nullable)
+  bool passed = 5;                   // Whether the step passed
+}
+
+// Request to evaluate multiple conditions
+message EvaluateConditionsRequest {
+  repeated string condition_ids = 1; // IDs of conditions to evaluate
+  string campaign_id = 2;            // Campaign context
+  string branch_id = 3;              // Branch context (defaults to "main")
+  string context_json = 4;           // JSON-encoded evaluation context
+  bool include_trace = 5;            // Whether to include evaluation traces
+  bool use_dependency_order = 6;     // Whether to evaluate in dependency order
+}
+
+// Response with multiple evaluation results
+message EvaluateConditionsResponse {
+  map<string, EvaluationResult> results = 1; // Map of condition_id to result
+  int64 total_evaluation_time_ms = 2;        // Total evaluation time
+  repeated string evaluation_order = 3;       // Order in which conditions were evaluated
+}
+
+// Request to get evaluation order
+message GetEvaluationOrderRequest {
+  string campaign_id = 1;            // Campaign context
+  string branch_id = 2;              // Branch context (defaults to "main")
+  repeated string condition_ids = 3; // Optional: specific conditions to order
+}
+
+// Response with evaluation order
+message EvaluationOrderResponse {
+  repeated string node_ids = 1;      // Node IDs in topological order
+  int32 total_nodes = 2;             // Total number of nodes in graph
+}
+
+// Request to validate dependencies
+message ValidateDependenciesRequest {
+  string campaign_id = 1;            // Campaign context
+  string branch_id = 2;              // Branch context (defaults to "main")
+}
+
+// Result of dependency validation
+message ValidationResult {
+  bool has_cycle = 1;                // Whether cycles were detected
+  repeated string cycles = 2;        // Cycle paths if detected
+  string message = 3;                // Human-readable message
+}
+
+// Request to invalidate cache
+message InvalidateCacheRequest {
+  string campaign_id = 1;            // Campaign context
+  string branch_id = 2;              // Branch context (defaults to "main")
+  repeated string node_ids = 3;      // Optional: specific nodes to invalidate
+}
+
+// Response for cache invalidation
+message InvalidateCacheResponse {
+  int32 invalidated_count = 1;       // Number of cache entries invalidated
+  string message = 2;                // Confirmation message
+}

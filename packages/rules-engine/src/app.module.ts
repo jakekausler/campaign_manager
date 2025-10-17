@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+
+import { RulesEngineController } from './controllers/rules-engine.controller';
+import { GrpcLoggingInterceptor } from './interceptors/grpc-logging.interceptor';
 
 /**
  * Root module for the Rules Engine Worker Service
@@ -12,7 +16,12 @@ import { Module } from '@nestjs/common';
  */
 @Module({
   imports: [],
-  providers: [],
-  controllers: [],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: GrpcLoggingInterceptor,
+    },
+  ],
+  controllers: [RulesEngineController],
 })
 export class AppModule {}
