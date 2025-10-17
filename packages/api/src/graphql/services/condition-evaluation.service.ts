@@ -6,9 +6,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
+import { PrismaService } from '../../database/prisma.service';
 import { ExpressionParserService } from '../../rules/expression-parser.service';
 import type { Expression, EvaluationContext } from '../../rules/types/expression.types';
 import type { EvaluationResult, EvaluationTrace } from '../types/field-condition.type';
+
+import { VariableEvaluationService } from './variable-evaluation.service';
 
 /**
  * Interface for traced evaluation steps
@@ -27,7 +30,11 @@ interface TraceStep {
 export class ConditionEvaluationService {
   private readonly logger = new Logger(ConditionEvaluationService.name);
 
-  constructor(private readonly expressionParser: ExpressionParserService) {}
+  constructor(
+    private readonly expressionParser: ExpressionParserService,
+    private readonly prisma: PrismaService,
+    private readonly variableEvaluation: VariableEvaluationService
+  ) {}
 
   /**
    * Evaluate a JSONLogic expression with the given context
@@ -202,6 +209,57 @@ export class ConditionEvaluationService {
   }
 
   /**
+   * Build evaluation context with StateVariable integration
+   * Fetches and merges StateVariables for the entity scope
+   *
+   * @param entity - The entity data to format
+   * @param options - Options for context building
+   * @param options.includeVariables - Whether to fetch and include StateVariables (default: false)
+   * @param options.scope - Entity scope type (required if includeVariables is true)
+   * @param options.scopeId - Entity ID (required if includeVariables is true)
+   * @returns Formatted context with variables merged in
+   */
+  async buildContextWithVariables(
+    entity: Record<string, unknown>,
+    options: {
+      includeVariables?: boolean;
+      scope?: string;
+      scopeId?: string;
+    } = {}
+  ): Promise<EvaluationContext> {
+    // Start with basic context
+    const context = this.buildContext(entity);
+
+    // If includeVariables is false or not specified, return basic context
+    if (!options.includeVariables) {
+      return context;
+    }
+
+    // Validate scope and scopeId are provided
+    if (!options.scope || !options.scopeId) {
+      this.logger.warn(
+        'includeVariables is true but scope or scopeId not provided, skipping variable fetch'
+      );
+      return context;
+    }
+
+    // Fetch variables for this scope
+    const variables = await this.fetchScopeVariables(options.scope, options.scopeId);
+
+    // If no variables found, return context as-is
+    if (Object.keys(variables).length === 0) {
+      return context;
+    }
+
+    // Merge variables into context under 'var' namespace
+    // This allows conditions to reference variables via var.{key}
+    return {
+      ...context,
+      var: variables,
+    };
+  }
+
+  /**
    * Validate a JSONLogic expression structure
    *
    * @param expression - The expression to validate
@@ -349,5 +407,66 @@ export class ConditionEvaluationService {
     }
 
     return current;
+  }
+
+  /**
+   * Fetch StateVariables for a specific scope and scopeId
+   * Evaluates derived variables and returns key-value map
+   *
+   * @param scope - The entity scope type (settlement, structure, etc.)
+   * @param scopeId - The specific entity ID
+   * @returns Key-value map of variable names to evaluated values
+   */
+  private async fetchScopeVariables(
+    scope: string,
+    scopeId: string
+  ): Promise<Record<string, unknown>> {
+    try {
+      // Fetch all active variables for this scope
+      const variables = await this.prisma.stateVariable.findMany({
+        where: {
+          scope: scope.toLowerCase(),
+          scopeId,
+          isActive: true,
+          deletedAt: null,
+        },
+      });
+
+      if (variables.length === 0) {
+        return {};
+      }
+
+      // Build key-value map
+      const variableMap: Record<string, unknown> = {};
+
+      for (const variable of variables) {
+        try {
+          // Evaluate the variable (handles both stored and derived)
+          const result = await this.variableEvaluation.evaluateVariable(
+            variable,
+            {} // Empty additional context - variable should have all needed data
+          );
+
+          if (result.success && result.value !== undefined) {
+            variableMap[variable.key] = result.value;
+          }
+        } catch (error) {
+          // Log error but continue processing other variables
+          this.logger.error(
+            `Failed to evaluate variable ${variable.key} for scope ${scope}:${scopeId}`,
+            error instanceof Error ? error.stack : undefined
+          );
+        }
+      }
+
+      return variableMap;
+    } catch (error) {
+      // Log error but return empty object - don't fail the whole evaluation
+      this.logger.error(
+        `Failed to fetch scope variables for ${scope}:${scopeId}`,
+        error instanceof Error ? error.stack : undefined
+      );
+      return {};
+    }
   }
 }

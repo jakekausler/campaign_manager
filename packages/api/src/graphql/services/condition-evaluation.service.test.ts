@@ -5,10 +5,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Prisma } from '@prisma/client';
 
+import { PrismaService } from '../../database/prisma.service';
 import { ExpressionParserService } from '../../rules/expression-parser.service';
 import type { EvaluationResult as ExpressionResult } from '../../rules/types/expression.types';
 
 import { ConditionEvaluationService } from './condition-evaluation.service';
+import { VariableEvaluationService } from './variable-evaluation.service';
 
 describe('ConditionEvaluationService', () => {
   let service: ConditionEvaluationService;
@@ -22,6 +24,20 @@ describe('ConditionEvaluationService', () => {
           provide: ExpressionParserService,
           useValue: {
             evaluate: jest.fn(),
+          },
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            stateVariable: {
+              findMany: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: VariableEvaluationService,
+          useValue: {
+            evaluateVariable: jest.fn(),
           },
         },
       ],

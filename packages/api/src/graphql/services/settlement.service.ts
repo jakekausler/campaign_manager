@@ -737,8 +737,8 @@ export class SettlementService {
         return {};
       }
 
-      // Build context from settlement data
-      const context = {
+      // Build context from settlement data with StateVariable integration
+      const entityData = {
         settlement: {
           id: settlement.id,
           name: settlement.name,
@@ -751,6 +751,13 @@ export class SettlementService {
           updatedAt: settlement.updatedAt,
         },
       };
+
+      // Build context with variables included
+      const context = await this.conditionEvaluation.buildContextWithVariables(entityData, {
+        includeVariables: true,
+        scope: 'settlement',
+        scopeId: settlement.id,
+      });
 
       // Evaluate each condition and build computed fields map
       const computedFields: Record<string, unknown> = {};

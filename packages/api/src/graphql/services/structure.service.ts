@@ -787,8 +787,8 @@ export class StructureService {
         return {};
       }
 
-      // Build context from structure data
-      const context = {
+      // Build context from structure data with StateVariable integration
+      const entityData = {
         structure: {
           id: structure.id,
           name: structure.name,
@@ -801,6 +801,13 @@ export class StructureService {
           updatedAt: structure.updatedAt,
         },
       };
+
+      // Build context with variables included
+      const context = await this.conditionEvaluation.buildContextWithVariables(entityData, {
+        includeVariables: true,
+        scope: 'structure',
+        scopeId: structure.id,
+      });
 
       // Evaluate each condition and build computed fields map
       const computedFields: Record<string, unknown> = {};
