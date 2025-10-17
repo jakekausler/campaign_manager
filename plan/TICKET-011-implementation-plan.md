@@ -73,28 +73,28 @@ Implement a safe JSONLogic-based expression parser with custom domain operators 
 
 **Tasks**:
 
-- [ ] Implement `daysSince` operator (temporal query)
-- [ ] Implement any additional temporal operators needed
-- [ ] Create mock temporal service for testing
-- [ ] Write unit tests for temporal operators
-- [ ] Create `ExpressionValidator` class in `validators/expression.validator.ts`
-- [ ] Implement schema validation (check expression structure)
-- [ ] Implement operator validation (verify all operators exist)
-- [ ] Add validation for operator arguments (type checking)
-- [ ] Write comprehensive validation tests
-- [ ] Verify all tests pass
-- [ ] Run type-check and lint
-- [ ] Commit changes
+- [x] Implement `daysSince` operator (temporal query)
+- [x] Implement any additional temporal operators needed
+- [x] Create mock temporal service for testing
+- [x] Write unit tests for temporal operators
+- [x] Create `ExpressionValidator` class in `validators/expression.validator.ts`
+- [x] Implement schema validation (check expression structure)
+- [x] Implement operator validation (verify all operators exist)
+- [x] Add validation for operator arguments (type checking)
+- [x] Write comprehensive validation tests
+- [x] Verify all tests pass
+- [x] Run type-check and lint
+- [x] Commit changes
 
 **Success Criteria**:
 
-- Temporal operators work correctly with time-based queries
-- Validator catches malformed expressions before execution
-- Validator catches references to undefined operators
-- Validator provides helpful error messages
-- All validation rules have test coverage
+- ✅ Temporal operators work correctly with time-based queries
+- ✅ Validator catches malformed expressions before execution
+- ✅ Validator catches references to undefined operators
+- ✅ Validator provides helpful error messages
+- ✅ All validation rules have test coverage
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: 21fa7a8)
 
 ---
 
