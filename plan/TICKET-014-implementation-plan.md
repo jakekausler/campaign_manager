@@ -243,40 +243,41 @@ Build a dependency graph system that tracks relationships between conditions, va
 
 **Tasks**:
 
-- [ ] Create `DependencyGraphService` in `packages/api/src/graphql/services/dependency-graph.service.ts`
-- [ ] Inject DependencyGraphBuilderService
-- [ ] Implement in-memory cache: `Map<string, DependencyGraph>` keyed by `${campaignId}:${branchId}`
-- [ ] Implement `getGraph(campaignId: string, branchId: string, user: User): Promise<DependencyGraph>` - with campaign access check
-- [ ] Implement `invalidateGraph(campaignId: string, branchId: string): void` - clear cache
-- [ ] Implement `getDependenciesOf(campaignId: string, branchId: string, nodeId: string, user: User): Promise<DependencyNode[]>` - get all dependent nodes
-- [ ] Implement `getDependents(campaignId: string, branchId: string, nodeId: string, user: User): Promise<DependencyNode[]>` - get all nodes that depend on this node
-- [ ] Implement `validateNoCycles(campaignId: string, branchId: string, user: User): Promise<CycleDetectionResult>` - check for cycles
-- [ ] Implement `getEvaluationOrder(campaignId: string, branchId: string, user: User): Promise<string[]>` - get topological order
-- [ ] Add authorization checks via CampaignService
-- [ ] Write comprehensive unit tests with mocked dependencies (20+ test cases)
+- [x] Create `DependencyGraphService` in `packages/api/src/graphql/services/dependency-graph.service.ts`
+- [x] Inject DependencyGraphBuilderService
+- [x] Implement in-memory cache: `Map<string, DependencyGraph>` keyed by `${campaignId}:${branchId}`
+- [x] Implement `getGraph(campaignId: string, branchId: string, user: User): Promise<DependencyGraph>` - with campaign access check
+- [x] Implement `invalidateGraph(campaignId: string, branchId: string): void` - clear cache
+- [x] Implement `getDependenciesOf(campaignId: string, branchId: string, nodeId: string, user: User): Promise<DependencyNode[]>` - get all dependent nodes
+- [x] Implement `getDependents(campaignId: string, branchId: string, nodeId: string, user: User): Promise<DependencyNode[]>` - get all nodes that depend on this node
+- [x] Implement `validateNoCycles(campaignId: string, branchId: string, user: User): Promise<CycleDetectionResult>` - check for cycles
+- [x] Implement `getEvaluationOrder(campaignId: string, branchId: string, user: User): Promise<string[]>` - get topological order
+- [x] Add authorization checks via CampaignService
+- [x] Write comprehensive unit tests with mocked dependencies (28 test cases)
+- [x] Fix topological sort order in DependencyGraph utility (reversed for correct evaluation semantics)
 
 **Success Criteria**:
 
-- Graph cached per campaign/branch for performance
-- Authorization enforced on all operations
-- Cache invalidation works correctly
-- All query operations return correct results
-- All unit tests pass
+- Graph cached per campaign/branch for performance ✅
+- Authorization enforced on all operations ✅
+- Cache invalidation works correctly ✅
+- All query operations return correct results ✅
+- All unit tests pass ✅
 
 **Tests**:
 
-- Get graph (builds and caches)
-- Get graph (returns cached version)
-- Invalidate cache (forces rebuild)
-- Get dependencies of variable
-- Get dependents of condition
-- Validate no cycles on valid graph
-- Validate cycles detected on invalid graph
-- Get evaluation order
-- Authorization denied for non-member
-- Handle non-existent campaign
+- Get graph (builds and caches) ✅
+- Get graph (returns cached version) ✅
+- Invalidate cache (forces rebuild) ✅
+- Get dependencies of variable ✅
+- Get dependents of condition ✅
+- Validate no cycles on valid graph ✅
+- Validate cycles detected on invalid graph ✅
+- Get evaluation order ✅
+- Authorization denied for non-member ✅
+- Handle non-existent campaign ✅
 
-**Status**: Not Started
+**Status**: Completed (Commit: 1ad5696)
 
 ---
 
