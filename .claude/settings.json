@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"{{filePath}}\" =~ \\.(ts|tsx|js|jsx|json|md|yml|yaml)$ ]]; then pnpm exec prettier --write \"{{filePath}}\" --log-level silent || true; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"{{filePath}}\" =~ \\.(ts|tsx|js|jsx|json|md|yml|yaml)$ ]]; then pnpm exec prettier --write \"{{filePath}}\" --log-level silent || true; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
