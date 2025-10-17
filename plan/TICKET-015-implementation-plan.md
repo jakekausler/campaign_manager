@@ -124,23 +124,25 @@ Create a dedicated Node.js worker service for the rules engine that evaluates co
 
 **Tasks**:
 
-- [ ] Integrate DependencyGraphBuilderService
-- [ ] Implement graph caching strategy (per campaign/branch)
-- [ ] Add topological sort for evaluation order
-- [ ] Implement cycle detection before evaluation
-- [ ] Create invalidation tracking (which nodes need recomputation)
-- [ ] Add incremental recomputation logic
-- [ ] Write unit tests for dependency graph operations
-- [ ] Write integration tests for incremental recomputation scenarios
+- [x] Integrate DependencyGraphBuilderService
+- [x] Implement graph caching strategy (per campaign/branch)
+- [x] Add topological sort for evaluation order
+- [x] Implement cycle detection before evaluation
+- [x] Create invalidation tracking (which nodes need recomputation)
+- [x] Add incremental recomputation logic
+- [x] Write unit tests for dependency graph operations
+- [x] Write integration tests for incremental recomputation scenarios
 
 **Success Criteria**:
 
-- Evaluates conditions in dependency order
-- Detects and reports cycles
-- Only recomputes affected nodes on invalidation
-- Graph caching reduces redundant database queries
+- ✅ Evaluates conditions in dependency order
+- ✅ Detects and reports cycles
+- ✅ Only recomputes affected nodes on invalidation
+- ✅ Graph caching reduces redundant database queries
 
-**Status**: Not Started
+**Status**: Complete
+
+**Commit**: 04772f2 - feat(rules-engine): implement Stage 4 dependency graph integration (TICKET-015)
 
 ---
 

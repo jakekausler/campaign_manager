@@ -8,6 +8,7 @@
   - 3717b35 - Stage 1: Service package setup complete
   - 0ec4355 - Stage 2: gRPC service definition and server complete
   - d1d8563 - Stage 3: Evaluation engine core complete
+  - 04772f2 - Stage 4: Dependency graph integration complete
 
 ## Description
 
@@ -285,3 +286,151 @@ Implemented the core condition evaluation logic for the rules engine worker, int
 - No dependency graph integration yet (Stage 4)
 
 **Next Stage**: Stage 4 - Dependency Graph Integration
+
+---
+
+### Stage 4: Dependency Graph Integration (Complete - 04772f2)
+
+Integrated dependency graph system into the rules engine worker for dependency-based evaluation ordering, cycle detection, and incremental recomputation tracking.
+
+**Core Infrastructure** (894 lines):
+
+- `src/types/dependency-graph.types.ts` (130 lines) - TypeScript interfaces for nodes, edges, cycles, topological sort
+- `src/utils/dependency-graph.ts` (461 lines) - In-memory directed graph with:
+  - Adjacency list data structure for O(1) lookups
+  - DFS-based cycle detection with white/gray/black coloring
+  - Kahn's algorithm for topological sort
+  - Path finding with BFS
+  - wouldCreateCycle validation before edge addition
+- `src/utils/dependency-extractor.ts` (184 lines) - Recursive JSONLogic walker:
+  - Extracts variable reads from expressions
+  - Handles nested objects, arrays, var operators
+  - Supports dot-notation paths (e.g., "kingdom.gold")
+  - Placeholder for effect writes (future TICKET-016)
+
+**Service Layer** (619 lines):
+
+- `src/services/dependency-graph-builder.service.ts` (370 lines) - Builds graphs from database:
+  - Queries all active FieldConditions and StateVariables
+  - Creates nodes with proper ID format (CONDITION:<id>, VARIABLE:<id>)
+  - Extracts variable dependencies from expressions
+  - Creates READS edges from conditions to variables
+  - Incremental update methods (updateGraphForCondition, updateGraphForVariable)
+  - Implements OnModuleDestroy for Prisma cleanup
+- `src/services/dependency-graph.service.ts` (265 lines) - Caching and management:
+  - In-memory Map cache keyed by `campaignId:branchId`
+  - Input validation (campaignId/branchId sanitization, length limits)
+  - Cache hit/miss handling with automatic rebuild
+  - Methods: getGraph, invalidateGraph, getDependenciesOf, getDependentsOf
+  - validateNoCycles, getEvaluationOrder delegation
+  - updateCondition/updateVariable for incremental updates
+  - Cache statistics (getCacheStats, clearAllCaches)
+
+**Evaluation Engine Integration** (118 lines modified):
+
+- `src/services/evaluation-engine.service.ts`:
+  - Injected DependencyGraphService
+  - Updated `evaluateConditions` signature to accept campaignId, branchId
+  - Implemented dependency-based ordering via topological sort
+  - Added cycle detection with warning logging
+  - Filter evaluation order to only requested conditions
+  - Fallback to sequential evaluation on graph failures
+  - Graceful handling of conditions not in graph
+
+**gRPC Controller Enhancements** (167 lines modified):
+
+- `src/controllers/rules-engine.controller.ts`:
+  - Injected DependencyGraphService
+  - Implemented `GetEvaluationOrder` RPC:
+    - Returns topological sort order
+    - Optional filtering to requested condition IDs
+    - Error handling with empty result on failure
+  - Implemented `ValidateDependencies` RPC:
+    - Detects cycles in dependency graph
+    - Returns cycle paths and count
+    - Human-readable cycle descriptions
+  - Implemented `InvalidateCache` RPC:
+    - Clears cached graph for campaign/branch
+    - Returns success message with invalidation count
+  - Enhanced `EvaluateConditions` RPC:
+    - Passes campaignId/branchId to evaluation engine
+    - Optionally returns actual evaluation order from graph
+
+**Module Configuration**:
+
+- `src/app.module.ts` - Registered DependencyGraphBuilderService and DependencyGraphService providers
+
+**Security Enhancements**:
+
+- Input validation in DependencyGraphService:
+  - `validateCampaignId()` - Rejects empty, null, overly long (>100 chars), or malformed IDs
+  - `validateBranchId()` - Validates length (>200 chars) and character set
+  - Regex validation: `/^[a-zA-Z0-9_-]+$/` for campaignId, `/^[a-zA-Z0-9_/-]+$/` for branchId
+  - Prevents cache poisoning and injection attacks
+
+**Testing** (239 lines, 10 tests):
+
+- `src/services/dependency-graph.service.test.ts`:
+  - Cache operations: build and cache on first access, return cached on subsequent calls
+  - Separate caching by campaign and branch
+  - Cache invalidation and rebuild
+  - Upstream dependency queries (getDependenciesOf)
+  - Downstream dependent queries (getDependentsOf)
+  - Cycle detection validation
+  - Evaluation order (topological sort)
+  - Cache statistics retrieval
+  - Clear all caches operation
+  - All tests using mocked DependencyGraphBuilderService
+
+**Performance Characteristics**:
+
+- Time Complexity:
+  - Graph build: O(C + V) where C=conditions, V=variables
+  - Cycle detection: O(N + E) via DFS
+  - Topological sort: O(N + E) via Kahn's algorithm
+  - Cache lookup: O(1)
+- Space Complexity:
+  - In-memory cache: O(G × (N + E)) where G=campaigns
+  - Adjacency lists: O(N + E) per graph
+
+**Caching Strategy**:
+
+- Build once per campaign/branch, cache until invalidated
+- Separate caches for different campaigns/branches
+- Manual invalidation via RPC (future: automatic on mutations)
+- Cache statistics available via getCacheStats()
+
+**Validation**:
+
+- ✅ Type-check passes with no errors
+- ✅ ESLint passes (19 warnings on `any` types, matching API package patterns)
+- ✅ All 10 new unit tests passing
+- ✅ Service starts successfully
+- ✅ Code review completed with critical fixes applied:
+  - Added OnModuleDestroy implementation
+  - Added input validation for campaignId/branchId
+  - Documented known limitations (Prisma DI, unbounded queries, cache size)
+
+**Known Limitations (Acceptable for MVP)**:
+
+1. **Prisma Client Instantiation**: Services create new PrismaClient() instances. Acknowledged in code comments as future refactor work. Acceptable for Stage 4 MVP - will be addressed with shared PrismaService.
+
+2. **Unbounded Graph Queries**: Queries all active conditions/variables without campaign filtering or limits. Acknowledged MVP limitation. Production will add campaign-specific filtering and result limits.
+
+3. **No Cache Size Limit**: In-memory cache can grow unbounded. Will be addressed in Stage 5 (Caching Layer) with LRU eviction or Redis migration.
+
+4. **N+1 Variable Lookup**: Linear search for variables during graph building (findVariableNodeByKey). Acceptable for MVP with small graphs. Can be optimized with index map if profiling shows issues.
+
+5. **Simplified Scope Resolution**: Variable lookup matches on key only, doesn't consider scope/scopeId. Documented in code as requiring proper scope resolution in production.
+
+**Key Achievements**:
+
+- ✅ Dependency-based evaluation ordering implemented
+- ✅ Cycle detection prevents infinite loops
+- ✅ Incremental update support (updateCondition, updateVariable)
+- ✅ Cache invalidation infrastructure in place
+- ✅ Input validation prevents cache poisoning
+- ✅ Graceful fallback on graph operation failures
+- ✅ Comprehensive logging for observability
+
+**Next Stage**: Stage 5 - Caching Layer
