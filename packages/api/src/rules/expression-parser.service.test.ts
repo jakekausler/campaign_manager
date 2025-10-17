@@ -5,21 +5,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ExpressionParserService } from './expression-parser.service';
+import { OperatorRegistry } from './operator-registry';
 import type { Expression, EvaluationContext } from './types/expression.types';
 
 describe('ExpressionParserService', () => {
   let service: ExpressionParserService;
+  let registry: OperatorRegistry;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ExpressionParserService],
+      providers: [ExpressionParserService, OperatorRegistry],
     }).compile();
 
     service = module.get<ExpressionParserService>(ExpressionParserService);
+    registry = module.get<OperatorRegistry>(OperatorRegistry);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    registry.clear(); // Clean up registered operators between tests
   });
 
   describe('parse', () => {
@@ -361,6 +365,76 @@ describe('ExpressionParserService', () => {
         // JSONLogic returns Infinity for division by zero, which is technically successful
         expect(result.success).toBe(true);
         expect(result.value).toBe(Infinity);
+      });
+    });
+
+    describe('custom operators', () => {
+      it('should evaluate expression with custom operator', () => {
+        // Register a custom operator
+        registry.register({
+          name: 'double',
+          implementation: (...args: unknown[]) => (args[0] as number) * 2,
+        });
+
+        const expr = { double: [{ var: 'value' }] } as unknown as Expression;
+        const context: EvaluationContext = { value: 5 };
+
+        const result = service.evaluate(expr, context);
+
+        expect(result.success).toBe(true);
+        expect(result.value).toBe(10);
+      });
+
+      it('should evaluate expression with multiple custom operators', () => {
+        // Register custom operators
+        registry.register({
+          name: 'triple',
+          implementation: (...args: unknown[]) => (args[0] as number) * 3,
+        });
+        registry.register({
+          name: 'add10',
+          implementation: (...args: unknown[]) => (args[0] as number) + 10,
+        });
+
+        const expr = { triple: [{ add10: [{ var: 'value' }] }] } as unknown as Expression;
+        const context: EvaluationContext = { value: 5 };
+
+        const result = service.evaluate(expr, context);
+
+        expect(result.success).toBe(true);
+        expect(result.value).toBe(45); // (5 + 10) * 3
+      });
+
+      it('should combine custom and standard operators', () => {
+        // Register a custom operator
+        registry.register({
+          name: 'square',
+          implementation: (...args: unknown[]) => {
+            const x = args[0] as number;
+            return x * x;
+          },
+        });
+
+        const expr = {
+          '+': [{ square: [3] } as unknown as Expression, { square: [4] } as unknown as Expression],
+        } as Expression;
+        const context: EvaluationContext = {};
+
+        const result = service.evaluate(expr, context);
+
+        expect(result.success).toBe(true);
+        expect(result.value).toBe(25); // 3^2 + 4^2 = 9 + 16 = 25
+      });
+
+      it('should work when no custom operators are registered', () => {
+        // Don't register any custom operators
+        const expr: Expression = { '+': [1, 2] };
+        const context: EvaluationContext = {};
+
+        const result = service.evaluate(expr, context);
+
+        expect(result.success).toBe(true);
+        expect(result.value).toBe(3);
       });
     });
   });

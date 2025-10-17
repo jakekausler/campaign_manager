@@ -6,11 +6,14 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import * as jsonLogic from 'json-logic-js';
 
+import { OperatorRegistry } from './operator-registry';
 import type { Expression, EvaluationContext, EvaluationResult } from './types/expression.types';
 
 @Injectable()
 export class ExpressionParserService {
   private readonly logger = new Logger(ExpressionParserService.name);
+
+  constructor(private readonly operatorRegistry: OperatorRegistry) {}
 
   /**
    * Parse a JSONLogic expression
@@ -46,6 +49,14 @@ export class ExpressionParserService {
     context: EvaluationContext = {}
   ): EvaluationResult<T> {
     try {
+      // Get custom operators from the registry
+      const customOperators = this.operatorRegistry.getOperatorMap();
+
+      // Add custom operators to JSONLogic before evaluation
+      for (const [name, implementation] of Object.entries(customOperators)) {
+        jsonLogic.add_operation(name, implementation);
+      }
+
       // Use json-logic-js to evaluate the expression
       const value = jsonLogic.apply(expression, context) as T;
 

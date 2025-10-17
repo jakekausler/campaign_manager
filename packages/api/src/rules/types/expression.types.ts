@@ -75,3 +75,30 @@ export interface EvaluateOptions {
    */
   useCache?: boolean;
 }
+
+/**
+ * Custom operator function signature
+ * Takes variable number of arguments and returns any value
+ */
+export type CustomOperatorFunction = (...args: unknown[]) => unknown;
+
+/**
+ * Custom operator definition
+ * Maps operator name to its implementation function
+ */
+export interface CustomOperator {
+  /**
+   * Unique name of the custom operator (e.g., "inside", "distanceFrom")
+   */
+  name: string;
+
+  /**
+   * The function that implements the operator logic
+   */
+  implementation: CustomOperatorFunction;
+
+  /**
+   * Optional description of what the operator does
+   */
+  description?: string;
+}
