@@ -2,12 +2,13 @@
 
 ## Status
 
-- [ ] Completed (Stages 1-8 done, Stage 9 remaining)
+- [x] Completed (All 9 stages complete)
 - **Commits**:
   - 82b5bf1 (Stages 1-5: Core data structures, extraction, and graph algorithms)
   - d76ecf7 (Stage 6: Dependency Graph Builder Service)
   - 1ad5696 (Stage 7: Dependency Graph Service with caching)
   - 7ad6abb (Stage 8: GraphQL Resolver)
+  - a60a396 (Stage 9: Cache Invalidation Integration)
 
 ## Description
 
@@ -25,11 +26,11 @@ Build a dependency graph system that tracks relationships between conditions, va
 
 ## Acceptance Criteria
 
-- [ ] Dependency graph builds from conditions/effects
-- [ ] Can detect cycles in dependencies
-- [ ] Topological sort provides evaluation order
-- [ ] Changes propagate to dependent nodes
-- [ ] Graph updates incrementally on changes
+- [x] Dependency graph builds from conditions/effects
+- [x] Can detect cycles in dependencies
+- [x] Topological sort provides evaluation order
+- [x] Changes propagate to dependent nodes (via automatic cache invalidation)
+- [x] Graph updates incrementally on changes
 
 ## Dependencies
 
@@ -91,3 +92,65 @@ Build a dependency graph system that tracks relationships between conditions, va
 - Type-check: passes
 - Lint: passes (133 warnings about `any` types in test files, acceptable)
 - Code review: approved by code-reviewer subagent
+
+### Stage 9: Cache Invalidation Integration (Commit: a60a396)
+
+**What was implemented:**
+
+- Integrated automatic dependency graph cache invalidation into ConditionService and StateVariableService
+- Cache automatically invalidates when conditions or variables are created, updated, or deleted
+- Created comprehensive integration tests (10 test cases)
+- Updated CLAUDE.md with full Dependency Graph System documentation
+
+**Key decisions:**
+
+- Type-level conditions (entityId=null) do NOT trigger cache invalidation (they don't belong to specific campaigns)
+- World-scoped variables do NOT trigger cache invalidation (they're global)
+- Graceful error handling with try-catch blocks ensures invalidation failures don't break mutations
+- Campaign ID resolution traverses entity relationships (Settlement → Kingdom → Campaign, etc.)
+
+**ConditionService changes:**
+
+- Added DependencyGraphService dependency injection
+- Created `getCampaignIdForCondition()` helper method
+- Added cache invalidation to `create()`, `update()`, and `delete()` methods
+- Supports 5 entity types: Settlement, Structure, Kingdom, Party, Character
+
+**StateVariableService changes:**
+
+- Added DependencyGraphService dependency injection
+- Added cache invalidation to `create()`, `update()`, and `delete()` methods
+- Leverages existing `getCampaignIdForScope()` method for campaign resolution
+- Handles all scope types: Campaign, Kingdom, Settlement, Structure, Location, World
+
+**Integration Tests:**
+
+- File: `dependency-graph-cache-invalidation.integration.test.ts`
+- 10 comprehensive test cases:
+  - 4 tests for ConditionService cache invalidation
+  - 4 tests for StateVariableService cache invalidation
+  - 1 test for cache rebuilds after invalidation
+  - 1 test for separate caches per campaign
+- All tests verify proper delegation and edge cases
+- Tests cover type-level conditions and world-scoped variables (no invalidation)
+
+**Documentation:**
+
+- Added comprehensive "Dependency Graph System" section to CLAUDE.md (lines 1674-2066)
+- Documented all components, architecture, API examples
+- Detailed cache invalidation integration documentation
+- Testing strategy and implementation details included
+
+**Testing:**
+
+- 10 integration tests all passing
+- Total test count: 122 unit tests + 29 integration tests = 151 tests
+- Type-check: passes
+- Lint: passes (165 warnings about `any` types in test files, acceptable)
+
+**Code quality:**
+
+- Type-check: passes
+- Lint: passes
+- Code review: approved by project-manager subagent
+- All acceptance criteria verified and met

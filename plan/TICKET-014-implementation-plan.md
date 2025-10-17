@@ -359,7 +359,7 @@ Build a dependency graph system that tracks relationships between conditions, va
 - Type-level conditions (entityId=null) do NOT trigger invalidation ✅
 - World-scoped variables do NOT trigger invalidation ✅
 
-**Status**: Completed (Commit: TBD - awaiting commit)
+**Status**: Completed (Commit: a60a396)
 
 ---
 
