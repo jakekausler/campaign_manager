@@ -95,44 +95,45 @@ Implement a Condition system that binds JSONLogic expressions to entity fields f
 
 ### Stage 3: Condition Evaluation Service
 
-**Status**: [ ] Complete
+**Status**: [x] Complete
+**Commit**: ac69733
 
 **Goal**: Create service to evaluate JSONLogic conditions with trace generation
 
 **Tasks**:
 
-- [ ] Create ConditionEvaluationService in packages/api/src/graphql/services/
-- [ ] Implement evaluateExpression(expression: Json, context: any) method:
+- [x] Create ConditionEvaluationService in packages/api/src/graphql/services/
+- [x] Implement evaluateExpression(expression: Json, context: any) method:
   - Use JSONLogicParser from TICKET-011
   - Validate expression structure
   - Execute expression against context
   - Return result with success flag
-- [ ] Implement evaluateWithTrace(expression: Json, context: any) method:
+- [x] Implement evaluateWithTrace(expression: Json, context: any) method:
   - Wrap JSONLogic evaluation to capture intermediate steps
   - Build trace array showing each operation and result
   - Include variable resolution details
   - Return EvaluationResult with full trace
-- [ ] Implement buildContext(entity: any) helper:
+- [x] Implement buildContext(entity: any) helper:
   - Extract relevant fields from entity for evaluation
   - Format data for JSONLogic variable access
   - Handle nested objects and relations
-- [ ] Implement validateExpression(expression: Json) method:
+- [x] Implement validateExpression(expression: Json) method:
   - Check expression is valid JSON
   - Verify it follows JSONLogic structure
   - Return validation errors if any
-- [ ] Add error handling for:
+- [x] Add error handling for:
   - Invalid expressions
   - Missing context variables
   - Evaluation failures
-- [ ] Add unit tests for ConditionEvaluationService:
+- [x] Add unit tests for ConditionEvaluationService:
   - Test basic expression evaluation
   - Test complex nested expressions
   - Test trace generation
   - Test context building
   - Test validation
   - Test error scenarios
-- [ ] Run tests and verify all pass
-- [ ] Run type-check and lint
+- [x] Run tests and verify all pass
+- [x] Run type-check and lint
 
 **Success Criteria**:
 

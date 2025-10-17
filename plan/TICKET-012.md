@@ -6,6 +6,7 @@
 - **Commits**:
   - Stage 1: 4377bae (Database Schema)
   - Stage 2: 765af11 (GraphQL Type Definitions)
+  - Stage 3: ac69733 (Condition Evaluation Service)
 
 ## Description
 
@@ -98,3 +99,42 @@ Implement the Condition system that binds JSONLogic expressions to entity fields
 - Migration includes recreation of PostGIS spatial index on Location.geom
 - This is necessary because Prisma cannot track indexes on Unsupported geometry types
 - Without recreation, the index would be dropped, severely degrading spatial query performance
+
+### Stage 3: Condition Evaluation Service (Complete)
+
+**Service Implementation:**
+
+Created `ConditionEvaluationService` in `packages/api/src/graphql/services/condition-evaluation.service.ts` with the following key methods:
+
+- `evaluateExpression<T>(expression, context)` - Core evaluation method that uses ExpressionParserService to evaluate JSONLogic expressions with entity context data. Returns success status, value, and optional error message.
+
+- `evaluateWithTrace(expression, context)` - Enhanced evaluation with detailed trace generation for debugging. Captures each step of the evaluation process including validation, context building, evaluation, and variable resolution.
+
+- `buildContext(entity)` - Formats entity data into evaluation context for JSONLogic variable access. Handles nested objects and preserves structure for dot-notation variable paths.
+
+- `validateExpression(expression)` - Validates expression structure before evaluation. Checks for null/undefined, validates object structure, ensures at least one operator exists, and enforces maximum depth limit (10 levels) to prevent recursion attacks.
+
+- `extractVariables(expression)` - Private helper that extracts all variable paths from a JSONLogic expression using Set for deduplication.
+
+- `resolveVariable(varPath, context)` - Private helper that resolves dot-notation variable paths in the context for trace generation.
+
+**Security Features:**
+
+- Expression depth validation (max 10 levels) prevents infinite recursion attacks
+- Safe evaluation via JSONLogic library (no eval or code execution)
+- Context validation ensures only valid objects are processed
+- Logger excludes sensitive context values (logs keys only, not values)
+
+**Testing:**
+
+- Comprehensive test suite with 38 passing unit tests
+- Coverage includes: simple/complex expressions, null/undefined handling, context validation, error handling, trace generation, variable extraction/resolution
+- All tests passing, no TypeScript or ESLint errors
+- Code reviewed and approved by Code Reviewer subagent
+
+**Integration Points:**
+
+- Depends on ExpressionParserService from TICKET-011 (JSONLogic rules engine)
+- Uses GraphQL types from Stage 2 (EvaluationResult, EvaluationTrace)
+- Aligns with FieldCondition Prisma model from Stage 1
+- Ready to be used by ConditionService (Stage 4) for CRUD operations
