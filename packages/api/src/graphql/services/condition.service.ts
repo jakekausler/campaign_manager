@@ -106,24 +106,28 @@ export class ConditionService {
    * Find many conditions with filtering, sorting, and pagination
    */
   async findMany(
-    where: FieldConditionWhereInput,
-    orderBy: FieldConditionOrderByInput,
+    where?: FieldConditionWhereInput,
+    orderBy?: FieldConditionOrderByInput,
     skip?: number,
     take?: number,
     user?: AuthenticatedUser
   ): Promise<PrismaFieldCondition[]> {
     // Build Prisma where clause
-    const prismaWhere: Prisma.FieldConditionWhereInput = {
-      entityType: where.entityType,
-      entityId: where.entityId,
-      field: where.field,
-      isActive: where.isActive,
-      createdBy: where.createdBy,
-      deletedAt: where.includeDeleted ? undefined : null,
-    };
+    const prismaWhere: Prisma.FieldConditionWhereInput = where
+      ? {
+          entityType: where.entityType,
+          entityId: where.entityId,
+          field: where.field,
+          isActive: where.isActive,
+          createdBy: where.createdBy,
+          deletedAt: where.includeDeleted ? undefined : null,
+        }
+      : {
+          deletedAt: null,
+        };
 
     // Add date range filters
-    if (where.createdAfter || where.createdBefore) {
+    if (where?.createdAfter || where?.createdBefore) {
       prismaWhere.createdAt = {};
       if (where.createdAfter) {
         prismaWhere.createdAt.gte = where.createdAfter;
@@ -134,7 +138,7 @@ export class ConditionService {
     }
 
     // Build order by clause
-    const prismaOrderBy = this.buildOrderBy(orderBy);
+    const prismaOrderBy = orderBy ? this.buildOrderBy(orderBy) : { priority: 'desc' as const };
 
     // Query conditions
     const conditions = await this.prisma.fieldCondition.findMany({
@@ -173,7 +177,7 @@ export class ConditionService {
   async findForEntity(
     entityType: string,
     entityId: string | null,
-    field: string | null,
+    field: string | null | undefined,
     user: AuthenticatedUser
   ): Promise<PrismaFieldCondition[]> {
     // Verify entity access if instance-level
