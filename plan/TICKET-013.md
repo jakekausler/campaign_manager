@@ -2,11 +2,12 @@
 
 ## Status
 
-- [ ] Completed (Stage 3/7 complete)
+- [ ] Completed (Stage 4/7 complete)
 - **Commits**:
   - Stage 1: ec59dfb - Database Schema and Prisma Model
   - Stage 2: b6d254f - GraphQL Type Definitions
   - Stage 3: 889baaa - Variable Evaluation Service
+  - Stage 4: ae28ed6 - State Variable Service (CRUD Operations)
 
 ## Description
 
@@ -261,3 +262,75 @@ Implement StateVariable system for storing and querying dynamic campaign state (
 
 - `packages/api/src/graphql/services/variable-evaluation.service.ts` - Implementation (500 lines)
 - `packages/api/src/graphql/services/variable-evaluation.service.test.ts` - Tests (677 lines, 35 tests)
+
+---
+
+### Stage 4: State Variable Service (CRUD Operations) (ae28ed6)
+
+**Completed:** 2025-10-17
+
+**Summary:** Implemented comprehensive StateVariable service for managing dynamic campaign state with support for 10 scope types and derived variables.
+
+**Core Features:**
+
+- Full CRUD operations (create, read, update, delete) with authorization
+- Support for 10 scope types: world, campaign, party, kingdom, settlement, structure, character, location, event, encounter
+- Derived variable support with JSONLogic formula validation
+- Optimistic locking with version checking to prevent race conditions
+- Soft delete pattern with deletedAt timestamps
+- Silent access denial in findById to prevent information disclosure
+- Comprehensive audit logging for all mutations
+
+**Key Methods:**
+
+- `create()` - Creates variables with formula validation and scope access verification
+- `findById()` - Fetches variable with silent access control
+- `findMany()` - Paginated queries with filtering, sorting, and access filtering
+- `findByScope()` - Retrieves variables for specific scope/scopeId
+- `update()` - Updates with optimistic locking and formula validation
+- `delete()` - Soft delete with audit logging
+- `toggleActive()` - Quick enable/disable without full update
+- `evaluateVariable()` - Evaluates variable with trace support
+- `verifyScopeAccess()` - Private helper for all 10 scope types
+- `buildOrderBy()` - Maps GraphQL sort fields to Prisma fields
+
+**Authorization:**
+
+- Campaign-based access control via entity relationship traversal
+- Verifies user access to scope entities before operations
+- World-level variables accessible to all authenticated users
+- Instance-level variables require campaign membership
+- Silent access denial prevents information disclosure
+
+**Security Features:**
+
+- Formula depth validation (max 10 levels) prevents recursion attacks
+- Parameterized queries via Prisma ORM prevent SQL injection
+- Silent access denial prevents information disclosure
+- Comprehensive audit trail for compliance
+
+**Performance Considerations:**
+
+- Known N+1 query pattern in findMany when filtering by user access
+- Acceptable for typical use cases with small result sets
+- Documented for future optimization with batch access verification
+
+**Testing:**
+
+- 37 comprehensive unit tests covering all scenarios
+- Authorization tests for all 10 scope types
+- Edge cases: null handling, deleted entities, version conflicts
+- Formula validation, pagination, filtering, sorting tests
+- All tests passing with zero TypeScript or linting errors
+
+**Code Review:**
+
+- Approved by code-reviewer subagent with no critical issues
+- Minor suggestions for future optimization include batch access verification and enhanced type safety for JSON value handling
+- Security, authorization, and audit logging all properly implemented
+- Follows project conventions and patterns from FieldConditionService
+
+**Files Created:**
+
+- `packages/api/src/graphql/services/state-variable.service.ts` - Main CRUD service (658 lines)
+- `packages/api/src/graphql/services/state-variable.service.test.ts` - Comprehensive unit tests (1,014 lines, 37 tests)
