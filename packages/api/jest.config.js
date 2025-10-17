@@ -7,6 +7,7 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/*.spec.ts', '!src/main.ts'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
+  maxWorkers: 2, // Reduce worker count to avoid stack overflow issues
   moduleNameMapper: {
     '^@campaign/shared$': '<rootDir>/../shared/src',
   },
