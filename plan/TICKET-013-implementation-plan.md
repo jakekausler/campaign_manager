@@ -6,13 +6,15 @@ Implement a StateVariable system for storing and querying dynamic campaign state
 
 ## Implementation Stages
 
-### Stage 1: Database Schema and Prisma Model
+### Stage 1: Database Schema and Prisma Model ✅
+
+**Status:** COMPLETE (Commit: ec59dfb)
 
 **Goal**: Create StateVariable database schema with support for multiple scopes and versioning
 
 **Tasks**:
 
-- [ ] Design StateVariable Prisma model with fields:
+- [x] Design StateVariable Prisma model with fields:
   - `id` (String, CUID primary key)
   - `scope` (String enum: world/campaign/party/kingdom/settlement/structure/character/location/event/encounter)
   - `scopeId` (String, nullable for world-level vars)
@@ -26,22 +28,29 @@ Implement a StateVariable system for storing and querying dynamic campaign state
   - `version` (Int, optimistic locking)
   - `createdAt`/`updatedAt` (DateTime)
   - `createdBy`/`updatedBy` (relations to User)
-- [ ] Add composite unique constraint on (scope, scopeId, key, deletedAt)
-- [ ] Add indexes:
+- [x] Add composite unique constraint on (scope, scopeId, key, deletedAt)
+- [x] Add indexes:
   - Composite (scope, scopeId, key) for scope-based lookups
+  - Composite (scope, scopeId, isActive) with partial WHERE deletedAt IS NULL
   - Individual on isActive, deletedAt for filtering
-  - Individual on createdBy, updatedBy for audit queries
-- [ ] Create Prisma migration
-- [ ] Run migration on development database
-- [ ] Verify migration with Prisma Studio
-- [ ] Commit Stage 1
+  - Individual on createdBy, partial on updatedBy for audit queries
+- [x] Add CHECK constraints:
+  - Type validation (string/integer/float/boolean/json/derived)
+  - Formula/value relationship (derived must have formula, others must have value)
+- [x] Create Prisma migration
+- [x] Run migration on development database
+- [x] Verify migration with Prisma Studio
+- [x] Code review and address critical issues
+- [x] Commit Stage 1
 
 **Success Criteria**:
 
-- [ ] Migration applies successfully
-- [ ] Schema matches technical requirements
-- [ ] Can query variables by scope and key
-- [ ] Supports all 10 scope types including settlement and structure
+- [x] Migration applies successfully
+- [x] Schema matches technical requirements
+- [x] Can query variables by scope and key
+- [x] Supports all 10 scope types including settlement and structure
+- [x] Database constraints enforce data integrity
+- [x] Partial indexes optimize common query patterns
 
 **Tests**:
 
