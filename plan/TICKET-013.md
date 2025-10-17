@@ -2,10 +2,11 @@
 
 ## Status
 
-- [ ] Completed (Stage 2/7 complete)
+- [ ] Completed (Stage 3/7 complete)
 - **Commits**:
   - Stage 1: ec59dfb - Database Schema and Prisma Model
   - Stage 2: b6d254f - GraphQL Type Definitions
+  - Stage 3: 889baaa - Variable Evaluation Service
 
 ## Description
 
@@ -199,3 +200,64 @@ Implement StateVariable system for storing and querying dynamic campaign state (
 
 - `packages/api/src/graphql/types/state-variable.type.ts` - GraphQL type definitions
 - `packages/api/src/graphql/inputs/state-variable.input.ts` - Input type definitions
+
+---
+
+### Stage 3: Variable Evaluation Service (889baaa)
+
+**Completed:** 2025-10-17
+
+**Summary:** Implemented comprehensive evaluation service for StateVariable values, especially derived variables with JSONLogic formulas.
+
+**Key Features:**
+
+- Core Functionality:
+  - `evaluateVariable()` - Evaluates stored values (non-derived) or formulas (derived)
+  - `evaluateWithTrace()` - Provides detailed debugging trace of evaluation steps
+  - `buildEvaluationContext()` - Fetches scope entity data for formula evaluation
+  - `validateFormula()` - Enforces JSONLogic structure and max depth limits
+- Scope Support:
+  - Supports all 9 entity types: World, Campaign, Party, Kingdom, Settlement, Structure, Character, Location, Event, Encounter
+  - Context building automatically fetches appropriate entity for scope
+  - Merges scope entity data with additional context
+- Security Features:
+  - Formula depth validation (max 10 levels) prevents recursion attacks
+  - Safe evaluation via ExpressionParserService (no code execution)
+  - Input validation for derived variables
+  - Proper error handling without exposing sensitive data
+- Integration:
+  - Follows pattern from ConditionEvaluationService
+  - Uses ExpressionParserService for JSONLogic evaluation
+  - Integrates with Prisma for scope entity fetching
+
+**Implementation Details:**
+
+- Non-derived variables return stored value directly without evaluation
+- Derived variables require formula field and evaluate using JSONLogic
+- Context building fetches scope entity and merges with additional context
+- Formula validation recursively checks structure and enforces depth limit
+- Variable extraction and resolution for trace debugging
+- Graceful error handling with proper logging
+
+**Testing:**
+
+- 35 comprehensive unit tests covering all scenarios
+- evaluateVariable method (6 tests)
+- evaluateWithTrace method (4 tests)
+- buildEvaluationContext for all 9 scopes (14 tests)
+- validateFormula method (11 tests)
+- All edge cases and error paths covered
+- Zero TypeScript or linting errors
+
+**Code Review:**
+
+- Approved by code-reviewer subagent with no critical issues
+- Excellent test coverage and documentation
+- Security-conscious implementation
+- Performance-aware with efficient short-circuits
+- Consistent with existing codebase patterns
+
+**Files Created:**
+
+- `packages/api/src/graphql/services/variable-evaluation.service.ts` - Implementation (500 lines)
+- `packages/api/src/graphql/services/variable-evaluation.service.test.ts` - Tests (677 lines, 35 tests)

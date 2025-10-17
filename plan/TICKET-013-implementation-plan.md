@@ -98,34 +98,36 @@ Implement a StateVariable system for storing and querying dynamic campaign state
 
 ---
 
-### Stage 3: Variable Evaluation Service
+### Stage 3: Variable Evaluation Service ✅
+
+**Status:** COMPLETE (Commit: 889baaa)
 
 **Goal**: Create service for evaluating derived variables using JSONLogic formulas
 
 **Tasks**:
 
-- [ ] Create `VariableEvaluationService` in `packages/api/src/graphql/services/variable-evaluation.service.ts`
-- [ ] Implement `evaluateVariable(variable, context)` method:
+- [x] Create `VariableEvaluationService` in `packages/api/src/graphql/services/variable-evaluation.service.ts`
+- [x] Implement `evaluateVariable(variable, context)` method:
   - Return stored value if type is not 'derived'
   - Validate formula exists for derived variables
   - Build evaluation context from provided context
   - Use ExpressionParserService to evaluate formula
   - Return evaluation result with success/error
-- [ ] Implement `evaluateWithTrace(variable, context)` method:
+- [x] Implement `evaluateWithTrace(variable, context)` method:
   - Same as evaluateVariable but include detailed trace
   - Capture formula validation, context building, evaluation steps
   - Extract and resolve variables used in formula
-- [ ] Implement `buildEvaluationContext(scopeType, scopeId, additionalContext)` method:
+- [x] Implement `buildEvaluationContext(scopeType, scopeId, additionalContext)` method:
   - Fetch scope entity data (campaign, party, settlement, structure, etc.)
   - Merge entity data with additionalContext
   - Format for JSONLogic evaluation
-- [ ] Implement `validateFormula(formula)` method:
+- [x] Implement `validateFormula(formula)` method:
   - Check formula is valid JSONLogic
   - Enforce maximum depth limit (10 levels)
   - Validate operator syntax
-- [ ] Add comprehensive error handling
-- [ ] Add NestJS Logger for debugging
-- [ ] Write unit tests (30+ tests):
+- [x] Add comprehensive error handling
+- [x] Add NestJS Logger for debugging
+- [x] Write unit tests (35 tests):
   - Simple/complex formula evaluation
   - All variable types (non-derived return stored value)
   - Derived variables with various formulas
@@ -133,22 +135,22 @@ Implement a StateVariable system for storing and querying dynamic campaign state
   - Formula validation (valid/invalid/depth limit)
   - Error handling (missing formula, invalid formula, evaluation failure)
   - Trace generation
-- [ ] Run tests via TypeScript Tester subagent
-- [ ] Verify type-check and lint pass
-- [ ] Commit Stage 3
+- [x] Run tests via TypeScript Tester subagent
+- [x] Verify type-check and lint pass
+- [x] Commit Stage 3
 
 **Success Criteria**:
 
-- [ ] Can evaluate derived variables with formulas
-- [ ] Non-derived variables return stored values
-- [ ] Context building works for all scopes
-- [ ] Formula validation prevents attacks
-- [ ] Comprehensive test coverage
-- [ ] Supports settlement and structure scopes
+- [x] Can evaluate derived variables with formulas
+- [x] Non-derived variables return stored values
+- [x] Context building works for all scopes
+- [x] Formula validation prevents attacks
+- [x] Comprehensive test coverage
+- [x] Supports settlement and structure scopes
 
 **Tests**:
 
-- Unit tests (30+ tests covering all scenarios)
+- Unit tests (35 tests covering all scenarios) ✅
 
 ---
 
