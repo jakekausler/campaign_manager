@@ -10,6 +10,7 @@
   - Stage 4: a8c8961 (Condition Service CRUD Operations)
   - Stage 5: 649e679 (GraphQL Resolver)
   - Stage 6: 039ddd6 (Entity Computed Fields Integration)
+  - Stage 7: 3e17650 (Documentation and Examples)
 
 ## Description
 
@@ -374,3 +375,76 @@ Added GraphQL field resolvers:
 - packages/api/src/graphql/resolvers/settlement.resolver.ts
 - packages/api/src/graphql/services/structure.service.ts
 - packages/api/src/graphql/resolvers/structure.resolver.ts
+
+### Stage 7: Documentation and Examples (Complete)
+
+**Documentation Added:**
+
+Added comprehensive Condition System section to CLAUDE.md with 502 lines of documentation covering:
+
+1. **Overview and Key Features**
+   - Dynamic computed fields using JSONLogic expressions
+   - Instance-level and type-level condition support
+   - Priority-based evaluation with full trace debugging
+   - Integration with Settlement and Structure entities
+
+2. **Component Documentation**
+   - FieldCondition model: Complete field descriptions, indexes, and database schema
+   - ConditionEvaluationService: All methods with security features (expression depth validation, safe evaluation)
+   - ConditionService: Full CRUD operations with authorization system for 5 entity types
+   - FieldConditionResolver: All GraphQL queries and mutations with role requirements
+   - Entity Integration: Settlement and Structure computed fields with known limitations
+
+3. **GraphQL API Examples**
+   - Create instance-level and type-level conditions
+   - List, filter, and paginate conditions with all sort options
+   - Evaluate conditions with custom context and trace output
+   - Update conditions with optimistic locking
+   - Toggle condition active status
+   - Query computed fields on entities
+
+4. **Technical Details**
+   - Context building with variable resolution examples
+   - Evaluation trace structure for debugging
+   - Common use cases (dynamic availability, computed properties, event triggers)
+   - Integration points with JSONLogic Parser (TICKET-011), versioning, audit system
+   - Validation rules and security considerations
+   - Performance considerations with known limitations documented
+
+5. **Implementation Reference**
+   - All 7 stage commit hashes referenced
+   - Migration name: `add_field_condition_model`
+   - File locations for all components
+   - Testing details: 38 (ConditionEvaluationService), 45 (ConditionService), 28 (FieldConditionResolver) tests
+   - Test coverage areas: evaluation, tracing, validation, CRUD operations, authorization, pagination
+
+**Documentation Quality:**
+
+- Follows consistent style with existing World Time System section
+- Comprehensive GraphQL examples for all major operations
+- Clear explanation of complex concepts (JSONLogic evaluation, context building, trace debugging)
+- Honest documentation of known limitations (N+1 queries, sequential evaluation, type-level condition gap)
+- All examples verified against actual implementation
+- Approved by Code Reviewer subagent with 10/10 scores for completeness, clarity, accuracy
+
+**Code Comments:**
+
+All implementation files already have comprehensive inline comments:
+
+- ConditionEvaluationService: Full JSDoc documentation on all methods
+- ConditionService: Detailed comments on authorization system and helper methods
+- Settlement/Structure services: TODO comments documenting performance considerations (DataLoader pattern, parallel evaluation, type-level conditions)
+
+**Future Enhancements Documented:**
+
+- DataLoader pattern for batch condition loading (resolves N+1 query problem)
+- Parallelize condition evaluation with Promise.all
+- Support type-level conditions (entityId: null) in computed field resolution
+- Condition versioning with time-travel queries
+- Condition templates for common patterns
+- Visual condition builder UI
+- Condition impact analysis
+
+**Files Modified:**
+
+- CLAUDE.md (502 lines added)

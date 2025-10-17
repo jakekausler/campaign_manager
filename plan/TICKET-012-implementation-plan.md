@@ -333,27 +333,28 @@ Implement a Condition system that binds JSONLogic expressions to entity fields f
 
 ### Stage 7: Documentation and Examples
 
-**Status**: [ ] Complete
+**Status**: [x] Complete
+**Commit**: 3e17650
 
 **Goal**: Document the Condition system and provide usage examples
 
 **Tasks**:
 
-- [ ] Update CLAUDE.md with Condition System section:
+- [x] Update CLAUDE.md with Condition System section:
   - Overview of condition system
   - Key components (models, services, resolvers)
   - How to create and evaluate conditions
   - Context building details
   - Trace interpretation
   - Integration points with Settlement and Structure
-- [ ] Create example GraphQL queries and mutations in documentation:
+- [x] Create example GraphQL queries and mutations in documentation:
   - Creating conditions for settlements
   - Creating conditions for structures
   - Evaluating conditions with test context
   - Querying computed fields
-- [ ] Add inline code comments for complex logic
-- [ ] Update README.md if needed
-- [ ] Commit documentation updates
+- [x] Add inline code comments for complex logic
+- [x] Update README.md if needed (not needed - CLAUDE.md sufficient)
+- [x] Commit documentation updates
 
 **Success Criteria**:
 
