@@ -150,7 +150,8 @@ Implement a Condition system that binds JSONLogic expressions to entity fields f
 
 ### Stage 4: Condition Service (CRUD Operations)
 
-**Status**: [ ] Complete
+**Status**: [x] Complete
+**Commit**: a8c8961
 
 **Goal**: Create service for Condition CRUD operations with authorization
 

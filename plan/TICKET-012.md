@@ -7,6 +7,7 @@
   - Stage 1: 4377bae (Database Schema)
   - Stage 2: 765af11 (GraphQL Type Definitions)
   - Stage 3: ac69733 (Condition Evaluation Service)
+  - Stage 4: a8c8961 (Condition Service CRUD Operations)
 
 ## Description
 
@@ -137,4 +138,92 @@ Created `ConditionEvaluationService` in `packages/api/src/graphql/services/condi
 - Depends on ExpressionParserService from TICKET-011 (JSONLogic rules engine)
 - Uses GraphQL types from Stage 2 (EvaluationResult, EvaluationTrace)
 - Aligns with FieldCondition Prisma model from Stage 1
-- Ready to be used by ConditionService (Stage 4) for CRUD operations
+- Used by ConditionService (Stage 4) for expression validation and evaluation
+
+### Stage 4: Condition Service (CRUD Operations) (Complete)
+
+**Service Implementation:**
+
+Created `ConditionService` in `packages/api/src/graphql/services/condition.service.ts` implementing full CRUD operations for FieldCondition entities with comprehensive authorization, validation, and audit logging.
+
+**Key Methods:**
+
+- `create(input, user)` - Creates new conditions with expression validation via ConditionEvaluationService and entity access verification. Supports both instance-level and type-level conditions.
+
+- `findById(id, user)` - Fetches conditions with silent access control that prevents information disclosure to unauthorized users. Returns null for both missing conditions and access denial.
+
+- `findMany(where, orderBy, skip, take, user?)` - Paginated queries with filtering, sorting, and optional user-based access filtering. Supports date range filters, active status, and inclusion of deleted records.
+
+- `findForEntity(entityType, entityId, field, user)` - Retrieves conditions for specific entities/fields ordered by priority DESC. Supports null field parameter to get all fields.
+
+- `update(id, input, user)` - Updates conditions with optimistic locking (version checking), expression validation if changed, and version increment. Uses Prisma relation syntax for updatedBy field.
+
+- `delete(id, user)` - Soft deletes conditions by setting deletedAt timestamp. All mutations are audited.
+
+- `toggleActive(id, isActive, user)` - Enables/disables conditions without full update. Useful for quick activation control.
+
+- `evaluateCondition(id, context, user)` - Evaluates condition with provided context and returns full trace for debugging.
+
+**Authorization System:**
+
+- Campaign-based access control via entity relationship traversal
+- Supports 5 entity types: Settlement (via kingdom→campaign), Structure (via settlement→kingdom→campaign), Kingdom (via campaign), Party (via campaign), Character (via campaign)
+- Type-level conditions (entityId=null) accessible to all authenticated users
+- Instance-level conditions require campaign membership verification
+- Silent failures in findById prevent information leakage
+- Case-insensitive entity type handling prevents bypass attacks
+
+**Helper Methods:**
+
+- `verifyEntityAccess(entityType, entityId, user)` - Private method verifying user has access to entity via campaign membership. Uses fail-secure pattern by throwing NotFoundException for both missing entities and access denial.
+
+- `buildOrderBy(orderBy)` - Maps GraphQL sort field enums to Prisma field names. Supports sorting by entityType, field, priority, createdAt, updatedAt with ASC/DESC order.
+
+**Security Features:**
+
+- Expression validation before storage (max 10 levels depth) prevents recursion attacks
+- Parameterized queries via Prisma ORM prevent SQL injection
+- Optimistic locking with version field prevents race conditions
+- Audit logging for all mutations (create, update, delete, toggleActive)
+- Soft delete pattern prevents accidental data loss
+- Type safety with full TypeScript strict mode
+
+**Testing:**
+
+- Comprehensive unit test suite with 45 passing tests
+- Coverage includes:
+  - All CRUD operations (create, findById, findMany, findForEntity, update, delete, toggleActive, evaluateCondition)
+  - Authorization verification for all 5 entity types (Settlement, Structure, Kingdom, Party, Character)
+  - Expression validation (valid/invalid expressions, null handling)
+  - Optimistic locking version mismatch scenarios
+  - Soft delete and active status toggling
+  - Pagination, filtering, and sorting with all sort fields
+  - Edge cases (null values, missing entities, access denial, type-level conditions)
+  - Private helper methods (verifyEntityAccess, buildOrderBy)
+- All tests use proper mocking (PrismaService, AuditService, ConditionEvaluationService)
+- Test quality: Clear naming, comprehensive edge case coverage, proper assertions
+- All tests passing, no TypeScript or ESLint errors
+
+**Code Quality:**
+
+- Follows NestJS best practices with @Injectable() decorator
+- Single Responsibility Principle - each method has focused purpose
+- DRY principle with reusable helper methods
+- Clear JSDoc documentation on all public methods
+- Proper dependency injection (PrismaService, AuditService, ConditionEvaluationService)
+- Type-safe implementation with Prisma-generated types
+- Appropriate exception types (BadRequestException, NotFoundException, OptimisticLockException)
+- Code reviewed and approved by Code Reviewer subagent
+
+**Performance Considerations:**
+
+- Minor N+1 query potential in findMany when filtering by user access with large result sets
+- Acceptable for typical use cases with small result sets
+- Can be optimized with batch access verification if profiling shows issues
+
+**Integration Points:**
+
+- Depends on ConditionEvaluationService (Stage 3) for expression validation and evaluation
+- Uses GraphQL input types from Stage 2 (CreateFieldConditionInput, UpdateFieldConditionInput, FieldConditionWhereInput, etc.)
+- Aligns with FieldCondition Prisma model from Stage 1
+- Ready for GraphQL resolver integration (Stage 5)
