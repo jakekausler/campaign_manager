@@ -352,6 +352,7 @@ This project is currently in active development. See the `plan/` directory for d
 - [x] TICKET-007: Audit System & Event Publishing
 - [x] TICKET-008: Versioning System
 - [x] TICKET-009: Party & Kingdom Management
+- [x] TICKET-010: World Time System
 
 **Party & Kingdom Management (TICKET-009)**
 
@@ -361,5 +362,15 @@ This project is currently in active development. See the `plan/` directory for d
 - Typed custom variables (string, number, boolean, enum)
 - Campaign context aggregation for rules engine
 - Comprehensive GraphQL API for all operations
+
+**World Time System (TICKET-010)**
+
+- Campaign-specific world time tracking with `currentWorldTime` field
+- Time advancement via `advanceWorldTime` GraphQL mutation
+- Custom calendar system support (parse, format, validate dates)
+- Calendar-aware time utilities for world-specific date formats
+- Integration with versioning system for time-travel queries
+- Transaction-safe time advancement with audit logging and optimistic locking
+- Rules engine integration hook for future recalculation (TICKET-015+)
 
 See `plan/EPIC.md` for the complete project roadmap and upcoming features.
