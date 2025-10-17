@@ -1,6 +1,3 @@
--- DropIndex
-DROP INDEX "public"."Location_geom_gist_idx";
-
 -- AlterTable
 ALTER TABLE "Campaign" ADD COLUMN     "currentWorldTime" TIMESTAMP(3);
 
