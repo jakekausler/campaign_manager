@@ -37,4 +37,7 @@ export class Campaign {
 
   @Field({ nullable: true })
   archivedAt?: Date;
+
+  @Field({ nullable: true, description: 'Current world time for this campaign' })
+  currentWorldTime?: Date;
 }
