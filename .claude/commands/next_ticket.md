@@ -5,7 +5,7 @@ description: Read the next ticket and begin working on it.
 
 # Next Ticket and Scope of Work
 
-Use a generic subagent (NOT the base agent) to read plan/EPIC.md to understand the overall plan and find the next incomplete ticket.
+Use a generic subagent (NOT the base agent) to read plan/EPIC.md to understand the overall plan and find the next incomplete ticket. If the ticket has an implementation plan, determine the next incomplete stage in that plan as well using the same subagent.
 
 Use the base agent to read that ticket from plan/ and begin working on it.
 
@@ -29,7 +29,7 @@ Ensure that you follow best practices for coding, including
 - Adding comments where necessary
 - Writing tests to cover new functionality
 
-If the task involves multiple steps or components, break down the work into manageable parts and tackle them one at a time using generic subagents if a task is complex.
+If the stage involves multiple steps or components, break down the work into manageable parts and tackle them one at a time using generic subagents if a task is complex.
 
 Use version control effectively, committing changes frequently with clear messages and including the ticket number in the commits.
 
@@ -41,21 +41,27 @@ ALWAYS commit changes at the end of a stage and note the commit hash in the tick
 
 ### Documentation
 
-While working on the task, update the notes in the ticket file in plan/ as with what you do and implement, as well as the reasons behind your choices.
+While working on the stage, update the notes in the ticket file in plan/ as with what you do and implement, as well as the reasons behind your choices.
 
 ### Code Review
 
-If the code review agent returns anything critical, fix it. If it returns any non-critical suggesttions, determine whether to implement them now, if it should be done in a future commit, or if they are not valid suggestions and should be ignored. If it should be done later (due to scope of work or complexity), create a new task in the implementation plan with detailed notes after the final item in the plan and continue.
+If the code review agent returns anything critical, fix it.
 
-### Finishing an Implementation Task
+If it returns any non-critical suggestions, determine whether to implement them now, if it should be done in a future commit, or if they are not valid suggestions and should be ignored.
+
+If it should be done later (due to scope of work or complexity), create a new stage in the implementation plan with detailed notes after the current item in the plan and continue working on the current stage. Ensure you make changes to the ticket file and the implementation plan to reflect the new location of the stage in the list of stages.
+
+If it should be done now, implement the change using a generic subagent.
+
+### Finishing an Implementation Stage
 
 When you finish a stage in the ticket's implementation plan, mark it as complete in the TICKET-###-implementation-plan.md file and ensure your notes have been updated in the ticket file in plan/. Then STOP and wait for further instructions. DO NOT proceed to the next stage until instructed to do so.
 
 ### Finishing a Ticket
 
-When you finish the ticket (i.e. the last task of the ticket's implementation plan), first run the product manager agent to ensure all requirements have been met.
+When you finish the ticket (i.e. the last stage of the ticket's implementation plan), first run the product manager agent to ensure all requirements have been met.
 
-- If they have not, assign new tasks to the implementation plan with detailed notes and STOP.
+- If they have not, assign new stages to the implementation plan with detailed notes and STOP.
 - If they have, mark the ticket as complete in the ticket file in plan/ and include all commit hashes done as part of the work. Then mark it as complete in the epic file plan/EPIC.md. Update the CLAUDE.md file, the README.md file, and any other relevant documentation to reflect the changes made in the ticket.
 
 DO NOT proceed to the next ticket until instructed to do so.
