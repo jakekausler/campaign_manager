@@ -39,6 +39,8 @@ Before commiting any changes, run tests and linting tools on the appropriate fil
 
 ALWAYS commit changes at the end of a stage and note the commit hash in the ticket file in plan/.
 
+DO NOT proceed to the next stage or ticket until EXPLICITLY instructed to do so.
+
 ### Documentation
 
 While working on the stage, update the notes in the ticket file in plan/ as with what you do and implement, as well as the reasons behind your choices.

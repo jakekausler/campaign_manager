@@ -1,6 +1,11 @@
 /**
  * Evaluation Engine Service
  * Core service for evaluating FieldCondition expressions using JSONLogic
+ *
+ * Stage 4: Integrated with DependencyGraphService for:
+ * - Dependency-based evaluation ordering (topological sort)
+ * - Cycle detection before evaluation
+ * - Incremental recomputation tracking
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -8,6 +13,8 @@ import { PrismaClient, type Prisma } from '@prisma/client';
 import * as jsonLogic from 'json-logic-js';
 
 import type { EvaluationResult, TraceStep } from '../generated/rules-engine.types';
+
+import { DependencyGraphService } from './dependency-graph.service';
 
 /**
  * Service responsible for evaluating FieldCondition expressions
@@ -17,7 +24,7 @@ export class EvaluationEngineService {
   private readonly logger = new Logger(EvaluationEngineService.name);
   private readonly prisma: PrismaClient;
 
-  constructor() {
+  constructor(private readonly graphService: DependencyGraphService) {
     this.prisma = new PrismaClient();
   }
 
@@ -253,27 +260,93 @@ export class EvaluationEngineService {
   }
 
   /**
-   * Evaluate multiple conditions
+   * Evaluate multiple conditions with dependency-based ordering
+   *
+   * Stage 4: Now uses dependency graph for topological ordering and cycle detection
    *
    * @param conditionIds - Array of FieldCondition IDs to evaluate
    * @param context - Evaluation context (entity data)
+   * @param campaignId - Campaign ID for dependency graph lookup
+   * @param branchId - Branch ID (defaults to 'main')
    * @param includeTrace - Whether to generate detailed traces
    * @returns Map of condition IDs to evaluation results
    */
   async evaluateConditions(
     conditionIds: string[],
     context: Record<string, unknown>,
+    campaignId: string,
+    branchId: string = 'main',
     includeTrace: boolean = false
   ): Promise<Record<string, EvaluationResult>> {
     const results: Record<string, EvaluationResult> = {};
 
-    // Evaluate each condition
-    // Note: This is sequential for now. Stage 4 will add dependency-based ordering
-    for (const conditionId of conditionIds) {
-      results[conditionId] = await this.evaluateCondition(conditionId, context, includeTrace);
+    // If no conditions, return empty results
+    if (conditionIds.length === 0) {
+      return results;
     }
 
-    return results;
+    try {
+      // Get dependency graph for ordering
+      const graph = await this.graphService.getGraph(campaignId, branchId);
+
+      // Detect cycles before evaluation
+      const cycleDetection = graph.detectCycles();
+      if (cycleDetection.hasCycles) {
+        this.logger.warn(
+          `Dependency graph has ${cycleDetection.cycleCount} cycles. Evaluation may be incorrect.`,
+          { cycles: cycleDetection.cycles }
+        );
+        // Continue with evaluation but log warning
+      }
+
+      // Get topological sort order
+      const sortResult = graph.topologicalSort();
+
+      // Convert condition IDs to node IDs (CONDITION:<id>)
+      const conditionNodeIds = new Set(conditionIds.map((id) => `CONDITION:${id}`));
+
+      // Filter evaluation order to only include requested conditions
+      const orderedNodeIds = sortResult.order.filter((nodeId) => conditionNodeIds.has(nodeId));
+
+      // Extract condition IDs from node IDs
+      const orderedConditionIds = orderedNodeIds.map((nodeId) => nodeId.replace('CONDITION:', ''));
+
+      this.logger.debug(`Evaluating ${orderedConditionIds.length} conditions in dependency order`, {
+        requested: conditionIds.length,
+        ordered: orderedConditionIds.length,
+        hasCycles: cycleDetection.hasCycles,
+      });
+
+      // Evaluate conditions in topological order
+      for (const conditionId of orderedConditionIds) {
+        results[conditionId] = await this.evaluateCondition(conditionId, context, includeTrace);
+      }
+
+      // Evaluate any remaining conditions that weren't in the graph
+      // (This can happen if conditions haven't been added to the graph yet)
+      for (const conditionId of conditionIds) {
+        if (!results[conditionId]) {
+          this.logger.debug(
+            `Condition ${conditionId} not found in dependency graph, evaluating directly`
+          );
+          results[conditionId] = await this.evaluateCondition(conditionId, context, includeTrace);
+        }
+      }
+
+      return results;
+    } catch (error) {
+      this.logger.error('Batch evaluation failed, falling back to sequential evaluation', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        conditionCount: conditionIds.length,
+      });
+
+      // Fallback: evaluate sequentially without ordering
+      for (const conditionId of conditionIds) {
+        results[conditionId] = await this.evaluateCondition(conditionId, context, includeTrace);
+      }
+
+      return results;
+    }
   }
 
   /**

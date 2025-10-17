@@ -13,6 +13,7 @@ import {
   ValidateDependenciesRequest,
   ValidationResult,
 } from '../generated/rules-engine.types';
+import { DependencyGraphService } from '../services/dependency-graph.service';
 import { EvaluationEngineService } from '../services/evaluation-engine.service';
 
 /**
@@ -20,12 +21,16 @@ import { EvaluationEngineService } from '../services/evaluation-engine.service';
  *
  * Handles all gRPC method calls defined in proto/rules-engine.proto
  * Stage 3: Implemented evaluation methods using EvaluationEngineService
+ * Stage 4: Integrated DependencyGraphService for ordering and validation
  */
 @Controller()
 export class RulesEngineController {
   private readonly logger = new Logger(RulesEngineController.name);
 
-  constructor(private readonly evaluationEngine: EvaluationEngineService) {}
+  constructor(
+    private readonly evaluationEngine: EvaluationEngineService,
+    private readonly graphService: DependencyGraphService
+  ) {}
 
   /**
    * Evaluate a single condition with provided context
@@ -64,6 +69,7 @@ export class RulesEngineController {
 
   /**
    * Evaluate multiple conditions in batch
+   * Stage 4: Now uses dependency graph for proper evaluation ordering
    */
   @GrpcMethod('RulesEngine', 'EvaluateConditions')
   async evaluateConditions(
@@ -77,20 +83,39 @@ export class RulesEngineController {
       // Parse context from JSON string
       const context = JSON.parse(request.contextJson);
 
-      // Use evaluation engine to evaluate all conditions
+      // Use evaluation engine with dependency ordering
       const results = await this.evaluationEngine.evaluateConditions(
         request.conditionIds,
         context,
+        request.campaignId,
+        request.branchId || 'main',
         request.includeTrace
       );
 
-      // Note: useDependencyOrder will be implemented in Stage 4 with DependencyGraphService
-      // For now, evaluations are sequential in the order provided
+      // Get actual evaluation order from dependency graph if requested
+      let evaluationOrder = request.conditionIds;
+      if (request.useDependencyOrder) {
+        try {
+          const graph = await this.graphService.getGraph(
+            request.campaignId,
+            request.branchId || 'main'
+          );
+          const sortResult = graph.topologicalSort();
+          const conditionNodeIds = new Set(request.conditionIds.map((id) => `CONDITION:${id}`));
+          evaluationOrder = sortResult.order
+            .filter((nodeId) => conditionNodeIds.has(nodeId))
+            .map((nodeId) => nodeId.replace('CONDITION:', ''));
+        } catch (error) {
+          this.logger.warn('Failed to get evaluation order from graph, using request order', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
 
       return {
         results,
         totalEvaluationTimeMs: Date.now() - startTime,
-        evaluationOrder: request.conditionIds,
+        evaluationOrder,
       };
     } catch (error) {
       this.logger.error('EvaluateConditions failed', {
@@ -109,44 +134,102 @@ export class RulesEngineController {
 
   /**
    * Get topological evaluation order for conditions
+   * Stage 4: Implemented using DependencyGraphService
    */
   @GrpcMethod('RulesEngine', 'GetEvaluationOrder')
   async getEvaluationOrder(request: GetEvaluationOrderRequest): Promise<EvaluationOrderResponse> {
     this.logger.debug(`GetEvaluationOrder called for campaign ${request.campaignId}`);
 
-    // Stub implementation - will be implemented in Stage 4
-    return {
-      nodeIds: request.conditionIds || [],
-      totalNodes: request.conditionIds?.length || 0,
-    };
+    try {
+      const sortResult = await this.graphService.getEvaluationOrder(
+        request.campaignId,
+        request.branchId || 'main'
+      );
+
+      // Filter to only requested conditions if provided
+      let nodeIds = sortResult.order;
+      if (request.conditionIds && request.conditionIds.length > 0) {
+        const conditionNodeIds = new Set(request.conditionIds.map((id) => `CONDITION:${id}`));
+        nodeIds = sortResult.order.filter((nodeId) => conditionNodeIds.has(nodeId));
+      }
+
+      return {
+        nodeIds,
+        totalNodes: nodeIds.length,
+      };
+    } catch (error) {
+      this.logger.error('GetEvaluationOrder failed', {
+        campaignId: request.campaignId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      return {
+        nodeIds: [],
+        totalNodes: 0,
+      };
+    }
   }
 
   /**
    * Validate dependency graph for cycles
+   * Stage 4: Implemented using DependencyGraphService
    */
   @GrpcMethod('RulesEngine', 'ValidateDependencies')
   async validateDependencies(request: ValidateDependenciesRequest): Promise<ValidationResult> {
     this.logger.debug(`ValidateDependencies called for campaign ${request.campaignId}`);
 
-    // Stub implementation - will be implemented in Stage 4
-    return {
-      hasCycle: false,
-      cycles: [],
-      message: 'No cycles detected (stub implementation)',
-    };
+    try {
+      const cycleDetection = await this.graphService.validateNoCycles(
+        request.campaignId,
+        request.branchId || 'main'
+      );
+
+      return {
+        hasCycle: cycleDetection.hasCycles,
+        cycles: cycleDetection.cycles.map((cycle) => cycle.path.join(' -> ')),
+        message: cycleDetection.hasCycles
+          ? `Detected ${cycleDetection.cycleCount} cycle(s) in dependency graph`
+          : 'No cycles detected in dependency graph',
+      };
+    } catch (error) {
+      this.logger.error('ValidateDependencies failed', {
+        campaignId: request.campaignId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      return {
+        hasCycle: false,
+        cycles: [],
+        message: `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
   }
 
   /**
    * Invalidate cache for specific campaign/branch
+   * Stage 4: Implemented using DependencyGraphService
    */
   @GrpcMethod('RulesEngine', 'InvalidateCache')
   async invalidateCache(request: InvalidateCacheRequest): Promise<InvalidateCacheResponse> {
     this.logger.debug(`InvalidateCache called for campaign ${request.campaignId}`);
 
-    // Stub implementation - will be implemented in Stage 5
-    return {
-      invalidatedCount: 0,
-      message: 'Cache invalidation not yet implemented (stub)',
-    };
+    try {
+      this.graphService.invalidateGraph(request.campaignId, request.branchId || 'main');
+
+      return {
+        invalidatedCount: 1,
+        message: `Successfully invalidated cache for campaign ${request.campaignId}, branch ${request.branchId || 'main'}`,
+      };
+    } catch (error) {
+      this.logger.error('InvalidateCache failed', {
+        campaignId: request.campaignId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      return {
+        invalidatedCount: 0,
+        message: `Cache invalidation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
   }
 }
