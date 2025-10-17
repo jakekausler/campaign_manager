@@ -36,12 +36,14 @@ model User {
   deletedAt DateTime?
 
   // Relations
-  versions            Version[]
-  audits              Audit[]
-  ownedCampaigns      Campaign[]
-  campaignMemberships CampaignMembership[]
-  refreshTokens       RefreshToken[]
-  apiKeys             ApiKey[]
+  versions                Version[]
+  audits                  Audit[]
+  ownedCampaigns          Campaign[]
+  campaignMemberships     CampaignMembership[]
+  refreshTokens           RefreshToken[]
+  apiKeys                 ApiKey[]
+  createdFieldConditions  FieldCondition[] @relation("FieldConditionCreator")
+  updatedFieldConditions  FieldCondition[] @relation("FieldConditionUpdater")
 
   @@index([email])
   @@index([deletedAt])
@@ -545,6 +547,33 @@ model Dependency {
   @@unique([sourceId, targetType, targetId])
   @@index([sourceId])
   @@index([targetType, targetId])
+}
+
+// Field Condition - Binds JSONLogic expressions to entity fields for computed values
+model FieldCondition {
+  id          String    @id @default(cuid())
+  entityType  String // Type of entity this condition applies to (e.g., "Settlement", "Structure")
+  entityId    String? // Specific entity instance (nullable for type-level conditions)
+  field       String // The field name this condition computes (e.g., "is_trade_hub", "is_operational")
+  expression  Json // JSONLogic expression for evaluation
+  description String? // Human-readable explanation of what this condition does
+  isActive    Boolean   @default(true) // Enable/disable this condition
+  priority    Int       @default(0) // Execution order when multiple conditions apply to same field
+  version     Int       @default(1) // For optimistic locking
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdBy   String
+  creator     User      @relation("FieldConditionCreator", fields: [createdBy], references: [id])
+  updatedBy   String?
+  updater     User?     @relation("FieldConditionUpdater", fields: [updatedBy], references: [id])
+
+  @@index([entityType, entityId, field])
+  @@index([entityType, field])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@index([createdBy])
+  @@index([updatedBy])
 }
 
 model Link {
