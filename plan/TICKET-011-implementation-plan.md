@@ -42,27 +42,28 @@ Implement a safe JSONLogic-based expression parser with custom domain operators 
 
 **Tasks**:
 
-- [ ] Define `CustomOperator` interface/type
-- [ ] Create `OperatorRegistry` class for managing custom operators
-- [ ] Implement operator registration and injection mechanism
-- [ ] Create `packages/api/src/rules/operators/` directory
-- [ ] Implement `inside` operator (point in region spatial query)
-- [ ] Implement `distanceFrom` operator (distance calculation)
-- [ ] Create mock spatial service for testing
-- [ ] Write unit tests for operator registry
-- [ ] Write unit tests for spatial operators
-- [ ] Verify all tests pass
-- [ ] Run type-check and lint
-- [ ] Commit changes
+- [x] Define `CustomOperator` interface/type
+- [x] Create `OperatorRegistry` class for managing custom operators
+- [x] Implement operator registration and injection mechanism
+- [x] Create `packages/api/src/rules/operators/` directory
+- [x] Implement `inside` operator (point in region spatial query)
+- [x] Implement `distanceFrom` operator (distance calculation)
+- [x] Create mock spatial service for testing
+- [x] Write unit tests for operator registry (15 tests)
+- [x] Write unit tests for spatial operators (18 tests)
+- [x] Create RulesModule for dependency injection
+- [x] Verify all tests pass (651 passing)
+- [x] Run type-check and lint
+- [x] Commit changes (9ad4ae4)
 
 **Success Criteria**:
 
-- Custom operators can be registered and used in expressions
-- `inside` operator correctly evaluates point-in-region queries
-- `distanceFrom` operator correctly calculates distances
-- Operators are type-safe and well-tested
+- ✅ Custom operators can be registered and used in expressions
+- ✅ `inside` operator correctly evaluates point-in-region queries
+- ✅ `distanceFrom` operator correctly calculates distances
+- ✅ Operators are type-safe and well-tested
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: 9ad4ae4)
 
 ---
 

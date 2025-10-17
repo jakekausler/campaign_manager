@@ -42,6 +42,55 @@ Implementation plan created in TICKET-011-implementation-plan.md with 5 stages.
 
 **Next Stage**: Stage 2 - Custom Operator Framework & Spatial Operators
 
+### Stage 2: Custom Operator Framework & Spatial Operators ✅ COMPLETE
+
+**Commit**: 9ad4ae4
+
+**Completed**:
+
+- Added CustomOperator and CustomOperatorFunction types to expression.types.ts
+- Created OperatorRegistry class with full CRUD operations for custom operators:
+  - register(): Add operators with duplicate prevention
+  - get/has/getAll(): Query registered operators
+  - unregister/clear(): Remove operators
+  - getOperatorMap(): Get JSONLogic-compatible operator map (for json-logic-js integration)
+- Integrated OperatorRegistry into ExpressionParserService via dependency injection
+  - Constructor injection of OperatorRegistry
+  - Dynamic operator registration before each evaluation using add_operation()
+- Implemented spatial operators with factory pattern:
+  - createInsideOperator(): Point-in-region spatial queries
+  - createDistanceFromOperator(): Distance calculations
+  - Both use ISpatialService interface for abstraction
+  - Type validation and safe defaults (false/null on invalid input)
+- Created MockSpatialService for testing:
+  - Simple bounding box logic for point-in-region
+  - Euclidean distance calculation
+  - Test data management (addLocation, addRegion, clear)
+- Created RulesModule for proper NestJS dependency injection:
+  - Registered ExpressionParserService and OperatorRegistry as singleton providers
+  - Exported both services for use in other modules
+  - Encapsulates Rules Engine subsystem
+- Comprehensive test coverage:
+  - OperatorRegistry: 15 tests (all registration/retrieval/removal scenarios)
+  - Spatial Operators: 18 tests (edge cases, invalid inputs, type guards)
+  - ExpressionParserService: 4 new integration tests (custom operator usage)
+  - RulesModule: 6 tests (dependency injection and exports)
+  - Total: 43 new tests, all passing
+
+**Test Results**: All 651 tests passing (43 new)
+**Type-check**: ✅ Pass
+**Lint**: ✅ Pass (0 errors)
+
+**Architecture Decisions**:
+
+- Factory pattern for operator creation enables dependency injection of services
+- Interface-based ISpatialService ready for future PostGIS implementation (TICKET-012+)
+- Registry pattern allows dynamic operator management at runtime
+- Module exports enable future integration with Rules Engine (Stage 3+)
+- Singleton scope for services ensures consistent state across application
+
+**Next Stage**: Stage 3 - Temporal Operators & Expression Validation
+
 ## Description
 
 Implement a safe JSONLogic-based expression parser with custom domain operators for evaluating conditional rules.
