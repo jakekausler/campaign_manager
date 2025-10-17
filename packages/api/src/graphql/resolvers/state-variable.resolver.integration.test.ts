@@ -5,6 +5,7 @@
 
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import type {
   Campaign,
   Settlement,
@@ -43,6 +44,7 @@ describe.skip('StateVariableResolver Integration Tests', () => {
   let dbUser: User;
   let testCampaign: Campaign;
   let testWorld: { id: string; name: string };
+  let testKingdom: { id: string; name: string };
   let testSettlement: Settlement;
   let testVariable: PrismaStateVariable;
 
@@ -111,12 +113,30 @@ describe.skip('StateVariableResolver Integration Tests', () => {
       },
     });
 
+    // Create test kingdom for settlement
+    testKingdom = await prisma.kingdom.create({
+      data: {
+        name: 'Test Kingdom',
+        campaignId: testCampaign.id,
+        level: 1,
+      },
+    });
+
+    // Create test location for settlement (Settlement requires locationId)
+    const testLocation = await prisma.location.create({
+      data: {
+        worldId: testWorld.id,
+        type: 'point',
+      },
+    });
+
     // Create test settlement for settlement-scoped variables
     testSettlement = await prisma.settlement.create({
       data: {
-        campaignId: testCampaign.id,
+        kingdomId: testKingdom.id,
+        locationId: testLocation.id,
         name: 'Test Settlement',
-        population: 5000,
+        level: 1,
       },
     });
 
@@ -141,10 +161,18 @@ describe.skip('StateVariableResolver Integration Tests', () => {
     // 1. Delete state variables
     await prisma.stateVariable.deleteMany({ where: { createdBy: testUser.id } });
 
-    // 2. Delete settlements
-    await prisma.settlement.deleteMany({ where: { campaignId: testCampaign.id } });
+    // 2. Delete settlements (via kingdom relationship)
+    await prisma.settlement.deleteMany({
+      where: { kingdom: { campaignId: testCampaign.id } },
+    });
 
-    // 3. Delete versions for branches in this campaign
+    // 3. Delete kingdoms
+    await prisma.kingdom.deleteMany({ where: { campaignId: testCampaign.id } });
+
+    // 4. Delete locations in test world
+    await prisma.location.deleteMany({ where: { worldId: testWorld.id } });
+
+    // 5. Delete versions for branches in this campaign
     const branches = await prisma.branch.findMany({
       where: { campaignId: testCampaign.id },
       select: { id: true },
@@ -154,19 +182,19 @@ describe.skip('StateVariableResolver Integration Tests', () => {
       await prisma.version.deleteMany({ where: { branchId: { in: branchIds } } });
     }
 
-    // 4. Delete branches
+    // 6. Delete branches
     await prisma.branch.deleteMany({ where: { campaignId: testCampaign.id } });
 
-    // 5. Delete campaign
+    // 7. Delete campaign
     await prisma.campaign.deleteMany({ where: { id: testCampaign.id } });
 
-    // 6. Delete audit records
+    // 8. Delete audit records
     await prisma.audit.deleteMany({ where: { userId: testUser.id } });
 
-    // 7. Delete world
+    // 9. Delete world
     await prisma.world.deleteMany({ where: { id: testWorld.id } });
 
-    // 8. Delete user last
+    // 10. Delete user last
     await prisma.user.deleteMany({ where: { id: testUser.id } });
 
     await prisma.$disconnect();
@@ -364,7 +392,7 @@ describe.skip('StateVariableResolver Integration Tests', () => {
           scope: 'settlement',
           scopeId: testSettlement.id,
           key: 'prosperity_level',
-          value: null,
+          value: Prisma.JsonNull,
           type: 'derived',
           formula: {
             if: [

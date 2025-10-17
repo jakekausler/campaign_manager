@@ -22,6 +22,7 @@ import { VariableScope, VariableType } from '../types/state-variable.type';
 import { AuditService } from './audit.service';
 import { StateVariableService } from './state-variable.service';
 import { VariableEvaluationService } from './variable-evaluation.service';
+import { VersionService } from './version.service';
 
 describe('StateVariableService', () => {
   let service: StateVariableService;
@@ -109,6 +110,15 @@ describe('StateVariableService', () => {
           useValue: {
             validateFormula: jest.fn(),
             evaluateWithTrace: jest.fn(),
+          },
+        },
+        {
+          provide: VersionService,
+          useValue: {
+            createVersion: jest.fn(),
+            resolveVersion: jest.fn(),
+            decompressVersion: jest.fn(),
+            findVersionHistory: jest.fn(),
           },
         },
       ],
@@ -899,7 +909,16 @@ describe('StateVariableService', () => {
 
       const result = await service.evaluateVariable('var-456', { population: 6000 }, mockUser);
 
-      expect(result).toEqual(evaluationResult);
+      expect(result).toEqual({
+        variableId: 'var-456',
+        key: 'prosperity_level',
+        scope: VariableScope.SETTLEMENT,
+        scopeId: 'settlement-123',
+        success: true,
+        value: 'thriving',
+        error: null,
+        trace: [],
+      });
       expect(evaluationService.evaluateWithTrace).toHaveBeenCalled();
     });
 
