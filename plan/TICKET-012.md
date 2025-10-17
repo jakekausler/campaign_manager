@@ -5,6 +5,7 @@
 - [ ] Completed
 - **Commits**:
   - Stage 1: 4377bae (Database Schema)
+  - Stage 2: 765af11 (GraphQL Type Definitions)
 
 ## Description
 

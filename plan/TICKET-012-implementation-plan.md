@@ -53,7 +53,8 @@ Implement a Condition system that binds JSONLogic expressions to entity fields f
 
 ### Stage 2: GraphQL Type Definitions
 
-**Status**: [ ] Complete
+**Status**: [x] Complete
+**Commit**: 765af11
 
 **Goal**: Define GraphQL types, inputs, and operations for Conditions
 
