@@ -44,6 +44,7 @@ describe('CampaignService', () => {
     ownerId: 'user-1',
     settings: {},
     isActive: true,
+    currentWorldTime: new Date('4707-03-15T12:00:00Z'),
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -182,6 +183,15 @@ describe('CampaignService', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should return campaign with currentWorldTime field', async () => {
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+
+      const result = await service.findById('campaign-1', mockUser);
+
+      expect(result).toHaveProperty('currentWorldTime');
+      expect(result?.currentWorldTime).toEqual(new Date('4707-03-15T12:00:00Z'));
+    });
   });
 
   describe('findAll', () => {
@@ -214,6 +224,72 @@ describe('CampaignService', () => {
           name: 'asc',
         },
       });
+    });
+
+    it('should return campaigns with currentWorldTime field', async () => {
+      const campaigns = [
+        mockCampaign,
+        { ...mockCampaign, id: 'campaign-2', name: 'Another Campaign', currentWorldTime: null },
+      ];
+      (prisma.campaign.findMany as jest.Mock).mockResolvedValue(campaigns);
+
+      const result = await service.findAll(mockUser);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toHaveProperty('currentWorldTime');
+      expect(result[0].currentWorldTime).toEqual(new Date('4707-03-15T12:00:00Z'));
+      expect(result[1]).toHaveProperty('currentWorldTime');
+      expect(result[1].currentWorldTime).toBeNull();
+    });
+  });
+
+  describe('findByWorldId', () => {
+    it('should return campaigns for a specific world', async () => {
+      const campaigns = [
+        mockCampaign,
+        { ...mockCampaign, id: 'campaign-2', name: 'Another Campaign' },
+      ];
+      (prisma.campaign.findMany as jest.Mock).mockResolvedValue(campaigns);
+
+      const result = await service.findByWorldId('world-1', mockUser);
+
+      expect(result).toEqual(campaigns);
+      expect(prisma.campaign.findMany).toHaveBeenCalledWith({
+        where: {
+          worldId: 'world-1',
+          deletedAt: null,
+          archivedAt: null,
+          OR: [
+            { ownerId: mockUser.id },
+            {
+              memberships: {
+                some: {
+                  userId: mockUser.id,
+                },
+              },
+            },
+          ],
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      });
+    });
+
+    it('should return campaigns with currentWorldTime field', async () => {
+      const campaigns = [
+        mockCampaign,
+        { ...mockCampaign, id: 'campaign-2', currentWorldTime: null },
+      ];
+      (prisma.campaign.findMany as jest.Mock).mockResolvedValue(campaigns);
+
+      const result = await service.findByWorldId('world-1', mockUser);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toHaveProperty('currentWorldTime');
+      expect(result[0].currentWorldTime).toEqual(new Date('4707-03-15T12:00:00Z'));
+      expect(result[1]).toHaveProperty('currentWorldTime');
+      expect(result[1].currentWorldTime).toBeNull();
     });
   });
 
