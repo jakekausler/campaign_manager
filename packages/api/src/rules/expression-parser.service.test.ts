@@ -4,6 +4,7 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ExpressionCache } from './cache/expression-cache';
 import { ExpressionParserService } from './expression-parser.service';
 import { OperatorRegistry } from './operator-registry';
 import type { Expression, EvaluationContext } from './types/expression.types';
@@ -11,19 +12,22 @@ import type { Expression, EvaluationContext } from './types/expression.types';
 describe('ExpressionParserService', () => {
   let service: ExpressionParserService;
   let registry: OperatorRegistry;
+  let cache: ExpressionCache;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ExpressionParserService, OperatorRegistry],
+      providers: [ExpressionParserService, OperatorRegistry, ExpressionCache],
     }).compile();
 
     service = module.get<ExpressionParserService>(ExpressionParserService);
     registry = module.get<OperatorRegistry>(OperatorRegistry);
+    cache = module.get<ExpressionCache>(ExpressionCache);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
     registry.clear(); // Clean up registered operators between tests
+    cache.clear(); // Clean up cache between tests
   });
 
   describe('parse', () => {
@@ -435,6 +439,173 @@ describe('ExpressionParserService', () => {
 
         expect(result.success).toBe(true);
         expect(result.value).toBe(3);
+      });
+    });
+  });
+
+  describe('expression caching', () => {
+    describe('parse with cache', () => {
+      it('should cache expression on first parse', () => {
+        const expr: Expression = { '==': [{ var: 'x' }, 10] };
+
+        // First parse - should cache
+        service.parse(expr);
+
+        const cacheKey = cache.generateKey(expr);
+        const cached = cache.get(cacheKey);
+
+        expect(cached).toEqual(expr);
+      });
+
+      it('should return cached expression on subsequent parses', () => {
+        const expr: Expression = { '==': [{ var: 'x' }, 10] };
+
+        // First parse
+        const result1 = service.parse(expr);
+        // Second parse - should hit cache
+        const result2 = service.parse(expr);
+
+        expect(result1).toEqual(expr);
+        expect(result2).toEqual(expr);
+
+        // Verify cache hit rate
+        const stats = cache.getStats();
+        expect(stats.hits).toBeGreaterThan(0);
+      });
+
+      it('should not cache when useCache is false', () => {
+        const expr: Expression = { '==': [{ var: 'x' }, 10] };
+
+        service.parse(expr, { useCache: false });
+
+        const cacheKey = cache.generateKey(expr);
+        const cached = cache.get(cacheKey);
+
+        expect(cached).toBeUndefined();
+      });
+
+      it('should cache by default', () => {
+        const expr: Expression = { '==': [{ var: 'x' }, 10] };
+
+        // Parse without options - should cache by default
+        service.parse(expr);
+
+        const cacheKey = cache.generateKey(expr);
+        const cached = cache.get(cacheKey);
+
+        expect(cached).toEqual(expr);
+      });
+
+      it('should handle complex expressions in cache', () => {
+        const expr: Expression = {
+          and: [
+            { '==': [{ var: 'status' }, 'active'] },
+            { '>': [{ var: 'level' }, 5] },
+            {
+              or: [{ in: [{ var: 'type' }, ['warrior', 'mage']] }, { '<': [{ var: 'age' }, 30] }],
+            },
+          ],
+        };
+
+        service.parse(expr);
+
+        const cacheKey = cache.generateKey(expr);
+        const cached = cache.get(cacheKey);
+
+        expect(cached).toEqual(expr);
+      });
+    });
+
+    describe('cache statistics', () => {
+      it('should track cache hits and misses', () => {
+        const expr1: Expression = { '==': [{ var: 'x' }, 10] };
+        const expr2: Expression = { '==': [{ var: 'y' }, 20] };
+
+        // Parse expr1 twice (1 miss, 1 hit)
+        service.parse(expr1);
+        service.parse(expr1);
+
+        // Parse expr2 once (1 miss)
+        service.parse(expr2);
+
+        const stats = cache.getStats();
+        expect(stats.size).toBe(2);
+        expect(stats.hits).toBe(1);
+        expect(stats.misses).toBe(2);
+        expect(stats.hitRate).toBeCloseTo(0.333, 3);
+      });
+
+      it('should provide cache statistics via getStats', () => {
+        const expr: Expression = { '==': [{ var: 'x' }, 10] };
+
+        service.parse(expr);
+
+        const stats = cache.getStats();
+        expect(stats.size).toBe(1);
+        expect(stats.maxSize).toBe(100); // Default max size
+        expect(stats.keys.length).toBe(1);
+      });
+    });
+
+    describe('cache LRU behavior', () => {
+      it('should respect LRU eviction in small cache', () => {
+        // Create service with small cache
+        const smallCache = ExpressionCache.create({ maxSize: 2 });
+        const smallService = new ExpressionParserService(registry, smallCache);
+
+        const expr1: Expression = { '==': [{ var: 'a' }, 1] };
+        const expr2: Expression = { '==': [{ var: 'b' }, 2] };
+        const expr3: Expression = { '==': [{ var: 'c' }, 3] };
+
+        // Fill cache to capacity
+        smallService.parse(expr1);
+        smallService.parse(expr2);
+
+        // Add third expression - should evict expr1
+        smallService.parse(expr3);
+
+        const key1 = smallCache.generateKey(expr1);
+        const key2 = smallCache.generateKey(expr2);
+        const key3 = smallCache.generateKey(expr3);
+
+        expect(smallCache.get(key1)).toBeUndefined();
+        expect(smallCache.get(key2)).toEqual(expr2);
+        expect(smallCache.get(key3)).toEqual(expr3);
+      });
+    });
+
+    describe('cache integration with evaluation', () => {
+      it('should evaluate cached expressions correctly', () => {
+        const expr: Expression = { '==': [{ var: 'name' }, 'Alice'] };
+
+        // Parse and cache
+        service.parse(expr);
+
+        // Evaluate using cached expression
+        const result = service.evaluate(expr, { name: 'Alice' });
+
+        expect(result.success).toBe(true);
+        expect(result.value).toBe(true);
+      });
+
+      it('should handle repeated parse-evaluate cycles', () => {
+        const expr: Expression = { '>': [{ var: 'age' }, 18] };
+
+        for (let i = 0; i < 5; i++) {
+          // Parse (cached after first)
+          const parsed = service.parse(expr);
+
+          // Evaluate
+          const result = service.evaluate(parsed, { age: 20 + i });
+
+          expect(result.success).toBe(true);
+          expect(result.value).toBe(true);
+        }
+
+        // Verify cache hit rate
+        const stats = cache.getStats();
+        expect(stats.hits).toBe(4); // 4 cache hits (first is miss)
+        expect(stats.misses).toBe(1); // 1 cache miss (first parse)
       });
     });
   });

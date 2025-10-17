@@ -6,34 +6,58 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import * as jsonLogic from 'json-logic-js';
 
+import { ExpressionCache } from './cache/expression-cache';
 import { OperatorRegistry } from './operator-registry';
-import type { Expression, EvaluationContext, EvaluationResult } from './types/expression.types';
+import type {
+  EvaluateOptions,
+  Expression,
+  EvaluationContext,
+  EvaluationResult,
+} from './types/expression.types';
 
 @Injectable()
 export class ExpressionParserService {
   private readonly logger = new Logger(ExpressionParserService.name);
 
-  constructor(private readonly operatorRegistry: OperatorRegistry) {}
+  constructor(
+    private readonly operatorRegistry: OperatorRegistry,
+    private readonly expressionCache: ExpressionCache
+  ) {}
 
   /**
-   * Parse a JSONLogic expression
+   * Parse a JSONLogic expression with optional caching
    *
    * For now, this is a simple pass-through since JSONLogic expressions
-   * are already in the correct format. In future stages, we'll add
-   * validation and optimization here.
+   * are already in the correct format. Caching avoids regenerating
+   * cache keys for frequently used expressions.
    *
    * @param expression - The JSONLogic expression to parse
+   * @param options - Parse options (including cache control)
    * @returns The parsed expression
    * @throws BadRequestException if expression is null or undefined
    */
-  parse(expression: Expression): Expression {
+  parse(expression: Expression, options: EvaluateOptions = {}): Expression {
     // Basic validation to prevent null/undefined expressions
     if (expression === null || expression === undefined) {
       throw new BadRequestException('Expression cannot be null or undefined');
     }
 
-    // For now, just return the expression as-is
-    // Future enhancements in Stage 3 will add comprehensive validation
+    // Use cache if enabled (default: true for backward compatibility)
+    const useCache = options.useCache !== false;
+
+    if (useCache) {
+      const cacheKey = this.expressionCache.generateKey(expression);
+      const cached = this.expressionCache.get(cacheKey);
+
+      if (cached !== undefined) {
+        return cached;
+      }
+
+      // Not in cache - cache it for next time
+      this.expressionCache.set(cacheKey, expression);
+    }
+
+    // Return the expression as-is
     return expression;
   }
 
