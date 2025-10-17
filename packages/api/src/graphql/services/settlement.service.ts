@@ -108,6 +108,58 @@ export class SettlementService {
   }
 
   /**
+   * Find settlements by multiple kingdom IDs (batch operation to avoid N+1 queries)
+   * @param kingdomIds Array of kingdom IDs to fetch settlements for
+   * @param user Authenticated user (must have access to the campaign)
+   * @returns Array of settlements across all specified kingdoms
+   */
+  async findByKingdoms(kingdomIds: string[], user: AuthenticatedUser): Promise<PrismaSettlement[]> {
+    if (kingdomIds.length === 0) {
+      return [];
+    }
+
+    // Verify user has access to at least one of these kingdoms
+    // (they all belong to the same campaign in our use case from CampaignContextService)
+    const accessibleKingdoms = await this.prisma.kingdom.findMany({
+      where: {
+        id: { in: kingdomIds },
+        deletedAt: null,
+        campaign: {
+          deletedAt: null,
+          OR: [
+            { ownerId: user.id },
+            {
+              memberships: {
+                some: {
+                  userId: user.id,
+                },
+              },
+            },
+          ],
+        },
+      },
+      select: { id: true },
+    });
+
+    const accessibleKingdomIds = accessibleKingdoms.map((k) => k.id);
+
+    if (accessibleKingdomIds.length === 0) {
+      return [];
+    }
+
+    // Fetch all settlements for accessible kingdoms in a single query
+    return this.prisma.settlement.findMany({
+      where: {
+        kingdomId: { in: accessibleKingdomIds },
+        deletedAt: null,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+  }
+
+  /**
    * Find settlement by location ID
    * Returns the settlement at a specific location (if any)
    */

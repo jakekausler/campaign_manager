@@ -5,8 +5,11 @@
  */
 
 import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import type { Party, Kingdom, Settlement, Structure } from '@prisma/client';
+import type Redis from 'ioredis';
 
 import { PrismaService } from '../../database/prisma.service';
+import { REDIS_CACHE } from '../cache/redis-cache.provider';
 import type { AuthenticatedUser } from '../context/graphql-context';
 
 import { KingdomService } from './kingdom.service';
@@ -76,14 +79,13 @@ export type EntityType = 'party' | 'kingdom' | 'settlement' | 'structure';
 
 @Injectable()
 export class CampaignContextService {
-  // Simple in-memory cache
-  // In production, this should use Redis with TTL
-  private contextCache: Map<string, CampaignContext> = new Map();
-  private cacheTTL = 60000; // 60 seconds
-  private cacheTimestamps: Map<string, number> = new Map();
+  // Redis cache for campaign context (supports multiple API instances)
+  private readonly cacheTTL: number;
 
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(REDIS_CACHE)
+    private readonly redis: Redis,
     @Inject(forwardRef(() => PartyService))
     private readonly partyService: PartyService,
     @Inject(forwardRef(() => KingdomService))
@@ -92,7 +94,11 @@ export class CampaignContextService {
     private readonly settlementService: SettlementService,
     @Inject(forwardRef(() => StructureService))
     private readonly structureService: StructureService
-  ) {}
+  ) {
+    // TTL in seconds (default 60 seconds, configurable via env, max 1 hour)
+    const ttl = parseInt(process.env.CAMPAIGN_CONTEXT_CACHE_TTL || '60', 10);
+    this.cacheTTL = isNaN(ttl) || ttl <= 0 ? 60 : Math.min(ttl, 3600);
+  }
 
   /**
    * Get complete campaign context for rules engine
@@ -101,7 +107,7 @@ export class CampaignContextService {
    */
   async getCampaignContext(campaignId: string, user: AuthenticatedUser): Promise<CampaignContext> {
     // Check cache first
-    const cached = this.getCachedContext(campaignId);
+    const cached = await this.getCachedContext(campaignId);
     if (cached) {
       return cached;
     }
@@ -134,26 +140,13 @@ export class CampaignContextService {
     // Fetch all kingdoms for this campaign
     const kingdoms = await this.kingdomService.findByCampaign(campaignId, user);
 
-    // Fetch all settlements across all kingdoms
-    const settlements = [];
-    for (const kingdom of kingdoms) {
-      const kingdomSettlements = await this.settlementService.findByKingdom(kingdom.id, user);
-      if (Array.isArray(kingdomSettlements)) {
-        settlements.push(...kingdomSettlements);
-      }
-    }
+    // Fetch all settlements across all kingdoms in a single batch query
+    const kingdomIds = kingdoms.map((k) => k.id);
+    const settlements = await this.settlementService.findByKingdoms(kingdomIds, user);
 
-    // Fetch all structures across all settlements
-    const structures = [];
-    for (const settlement of settlements) {
-      const settlementStructures = await this.structureService.findBySettlement(
-        settlement.id,
-        user
-      );
-      if (Array.isArray(settlementStructures)) {
-        structures.push(...settlementStructures);
-      }
-    }
+    // Fetch all structures across all settlements in a single batch query
+    const settlementIds = settlements.map((s) => s.id);
+    const structures = await this.structureService.findBySettlements(settlementIds, user);
 
     // Build context
     const context: CampaignContext = {
@@ -164,8 +157,11 @@ export class CampaignContextService {
       structures: structures.map((s) => this.mapStructureToContext(s)),
     };
 
-    // Cache the result
-    this.cacheContext(campaignId, context);
+    // Monitor context size and warn if too large
+    this.monitorContextSize(context);
+
+    // Cache the result (fire and forget - don't await to avoid blocking response)
+    void this.cacheContext(campaignId, context);
 
     return context;
   }
@@ -175,8 +171,8 @@ export class CampaignContextService {
    * Called when any entity in the campaign changes
    */
   async invalidateContext(campaignId: string): Promise<void> {
-    this.contextCache.delete(campaignId);
-    this.cacheTimestamps.delete(campaignId);
+    const cacheKey = this.getCacheKey(campaignId);
+    await this.redis.del(cacheKey);
   }
 
   /**
@@ -196,7 +192,7 @@ export class CampaignContextService {
   /**
    * Map Party entity to context format
    */
-  private mapPartyToContext(party: any): PartyContext {
+  private mapPartyToContext(party: Party): PartyContext {
     return {
       id: party.id,
       name: party.name,
@@ -209,7 +205,7 @@ export class CampaignContextService {
   /**
    * Map Kingdom entity to context format
    */
-  private mapKingdomToContext(kingdom: any): KingdomContext {
+  private mapKingdomToContext(kingdom: Kingdom): KingdomContext {
     return {
       id: kingdom.id,
       name: kingdom.name,
@@ -221,7 +217,7 @@ export class CampaignContextService {
   /**
    * Map Settlement entity to context format
    */
-  private mapSettlementToContext(settlement: any): SettlementContext {
+  private mapSettlementToContext(settlement: Settlement): SettlementContext {
     return {
       id: settlement.id,
       name: settlement.name,
@@ -234,7 +230,7 @@ export class CampaignContextService {
   /**
    * Map Structure entity to context format
    */
-  private mapStructureToContext(structure: any): StructureContext {
+  private mapStructureToContext(structure: Structure): StructureContext {
     return {
       id: structure.id,
       name: structure.name,
@@ -246,27 +242,126 @@ export class CampaignContextService {
   }
 
   /**
-   * Get cached context if available and not expired
+   * Get cached context from Redis if available and not expired
    */
-  private getCachedContext(campaignId: string): CampaignContext | null {
-    const cached = this.contextCache.get(campaignId);
-    const timestamp = this.cacheTimestamps.get(campaignId);
+  private async getCachedContext(campaignId: string): Promise<CampaignContext | null> {
+    try {
+      const cacheKey = this.getCacheKey(campaignId);
+      const cached = await this.redis.get(cacheKey);
 
-    if (cached && timestamp && Date.now() - timestamp < this.cacheTTL) {
-      return cached;
+      if (cached) {
+        const parsed = JSON.parse(cached);
+
+        // Validate that parsed data matches CampaignContext structure
+        if (this.isValidCampaignContext(parsed)) {
+          return parsed as CampaignContext;
+        } else {
+          console.error('Invalid cache data structure, refetching from DB');
+          return null;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      // Log error but don't fail - just return null to refetch from DB
+      console.error('Redis cache get error:', error);
+      return null;
     }
-
-    // Cache expired, remove it
-    this.contextCache.delete(campaignId);
-    this.cacheTimestamps.delete(campaignId);
-    return null;
   }
 
   /**
-   * Cache context with timestamp
+   * Cache context in Redis with TTL
    */
-  private cacheContext(campaignId: string, context: CampaignContext): void {
-    this.contextCache.set(campaignId, context);
-    this.cacheTimestamps.set(campaignId, Date.now());
+  private async cacheContext(campaignId: string, context: CampaignContext): Promise<void> {
+    try {
+      const serialized = JSON.stringify(context);
+
+      // Check payload size to prevent memory issues
+      const sizeInMB = Buffer.byteLength(serialized) / (1024 * 1024);
+      const maxSizeMB = 10; // 10MB threshold
+
+      if (sizeInMB > maxSizeMB) {
+        console.warn(
+          `Context too large to cache (${sizeInMB.toFixed(2)}MB exceeds ${maxSizeMB}MB limit) for campaign ${campaignId}, skipping cache`
+        );
+        return;
+      }
+
+      const cacheKey = this.getCacheKey(campaignId);
+      await this.redis.setex(cacheKey, this.cacheTTL, serialized);
+    } catch (error) {
+      // Log error but don't fail - caching is optional
+      console.error('Redis cache set error:', error);
+    }
+  }
+
+  /**
+   * Monitor context size and log warnings if it's too large
+   */
+  private monitorContextSize(context: CampaignContext): void {
+    const totalEntities =
+      context.parties.length +
+      context.kingdoms.length +
+      context.settlements.length +
+      context.structures.length;
+
+    // Warning threshold for large campaigns (configurable via env, min 100, max 10000)
+    const threshold = parseInt(process.env.CONTEXT_SIZE_WARNING_THRESHOLD || '1000', 10);
+    const warningThreshold =
+      isNaN(threshold) || threshold < 100 ? 1000 : Math.min(threshold, 10000);
+
+    if (totalEntities > warningThreshold) {
+      console.warn(
+        `Campaign context is large (${totalEntities} total entities): ` +
+          `${context.parties.length} parties, ` +
+          `${context.kingdoms.length} kingdoms, ` +
+          `${context.settlements.length} settlements, ` +
+          `${context.structures.length} structures. ` +
+          `Campaign ID: ${context.campaignId}. ` +
+          `Consider pagination or chunking for very large campaigns.`
+      );
+    }
+
+    // Log metrics for monitoring (can be ingested by monitoring systems)
+    if (process.env.NODE_ENV === 'production') {
+      console.log(
+        JSON.stringify({
+          type: 'campaign_context_metrics',
+          campaignId: context.campaignId,
+          totalEntities,
+          parties: context.parties.length,
+          kingdoms: context.kingdoms.length,
+          settlements: context.settlements.length,
+          structures: context.structures.length,
+          timestamp: new Date().toISOString(),
+        })
+      );
+    }
+  }
+
+  /**
+   * Validate that parsed cache data matches CampaignContext structure
+   */
+  private isValidCampaignContext(data: unknown): data is CampaignContext {
+    if (typeof data !== 'object' || data === null) {
+      return false;
+    }
+
+    const context = data as Record<string, unknown>;
+
+    return (
+      typeof context.campaignId === 'string' &&
+      Array.isArray(context.parties) &&
+      Array.isArray(context.kingdoms) &&
+      Array.isArray(context.settlements) &&
+      Array.isArray(context.structures)
+    );
+  }
+
+  /**
+   * Generate Redis cache key for campaign context
+   */
+  private getCacheKey(campaignId: string): string {
+    return `campaign:context:${campaignId}`;
   }
 }

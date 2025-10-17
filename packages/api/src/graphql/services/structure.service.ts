@@ -187,6 +187,64 @@ export class StructureService {
   }
 
   /**
+   * Find structures by multiple settlement IDs (batch operation to avoid N+1 queries)
+   * Returns a flat array of all structures across all settlements
+   * @param settlementIds Array of settlement IDs to fetch structures for
+   * @param user Authenticated user (must have access to the campaign)
+   * @returns Flat array of all structures across all specified settlements
+   */
+  async findBySettlements(
+    settlementIds: string[],
+    user: AuthenticatedUser
+  ): Promise<PrismaStructure[]> {
+    if (settlementIds.length === 0) {
+      return [];
+    }
+
+    // Verify user has access to the settlements
+    const accessibleSettlements = await this.prisma.settlement.findMany({
+      where: {
+        id: { in: settlementIds },
+        deletedAt: null,
+        kingdom: {
+          deletedAt: null,
+          campaign: {
+            deletedAt: null,
+            OR: [
+              { ownerId: user.id },
+              {
+                memberships: {
+                  some: {
+                    userId: user.id,
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    const accessibleSettlementIds = accessibleSettlements.map((s) => s.id);
+
+    if (accessibleSettlementIds.length === 0) {
+      return [];
+    }
+
+    // Fetch all structures for accessible settlements in a single query
+    return this.prisma.structure.findMany({
+      where: {
+        settlementId: { in: accessibleSettlementIds },
+        deletedAt: null,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+  }
+
+  /**
    * Create a new structure
    * Only owner or GM can create structures
    */

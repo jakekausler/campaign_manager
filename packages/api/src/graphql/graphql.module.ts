@@ -17,6 +17,7 @@ import { SpatialService } from '../common/services/spatial.service';
 import { TileCacheService } from '../common/services/tile-cache.service';
 import { DatabaseModule } from '../database/database.module';
 
+import { createRedisCache, REDIS_CACHE } from './cache/redis-cache.provider';
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
 import { StructureDataLoader } from './dataloaders/structure.dataloader';
 import { createRedisPubSub, REDIS_PUBSUB } from './pubsub/redis-pubsub.provider';
@@ -141,6 +142,11 @@ import { WorldService } from './services/world.service';
     {
       provide: REDIS_PUBSUB,
       useFactory: createRedisPubSub,
+    },
+    // Redis Cache for caching
+    {
+      provide: REDIS_CACHE,
+      useFactory: createRedisCache,
     },
     // Services
     AuditService,

@@ -6,6 +6,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../../database/prisma.service';
+import { REDIS_CACHE } from '../cache/redis-cache.provider';
 import type { AuthenticatedUser } from '../context/graphql-context';
 
 import { CampaignContextService } from './campaign-context.service';
@@ -17,6 +18,7 @@ import { StructureService } from './structure.service';
 describe('CampaignContextService', () => {
   let service: CampaignContextService;
   let prisma: PrismaService;
+  let redis: any;
   let partyService: jest.Mocked<PartyService>;
   let kingdomService: jest.Mocked<KingdomService>;
   let settlementService: jest.Mocked<SettlementService>;
@@ -43,6 +45,14 @@ describe('CampaignContextService', () => {
           },
         },
         {
+          provide: REDIS_CACHE,
+          useValue: {
+            get: jest.fn(),
+            setex: jest.fn(),
+            del: jest.fn(),
+          },
+        },
+        {
           provide: PartyService,
           useValue: {
             findByCampaign: jest.fn(),
@@ -57,13 +67,13 @@ describe('CampaignContextService', () => {
         {
           provide: SettlementService,
           useValue: {
-            findByKingdom: jest.fn(),
+            findByKingdoms: jest.fn(),
           },
         },
         {
           provide: StructureService,
           useValue: {
-            findBySettlement: jest.fn(),
+            findBySettlements: jest.fn(),
           },
         },
       ],
@@ -71,6 +81,7 @@ describe('CampaignContextService', () => {
 
     service = module.get<CampaignContextService>(CampaignContextService);
     prisma = module.get<PrismaService>(PrismaService);
+    redis = module.get(REDIS_CACHE);
     partyService = module.get(PartyService) as jest.Mocked<PartyService>;
     kingdomService = module.get(KingdomService) as jest.Mocked<KingdomService>;
     settlementService = module.get(SettlementService) as jest.Mocked<SettlementService>;
@@ -78,6 +89,12 @@ describe('CampaignContextService', () => {
   });
 
   describe('getCampaignContext', () => {
+    beforeEach(() => {
+      // Reset Redis mock before each test
+      redis.get.mockResolvedValue(null);
+      redis.setex.mockResolvedValue('OK');
+    });
+
     it('should return empty context for campaign with no entities', async () => {
       // Arrange
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue({
@@ -87,6 +104,8 @@ describe('CampaignContextService', () => {
       });
       partyService.findByCampaign.mockResolvedValue([]);
       kingdomService.findByCampaign.mockResolvedValue([]);
+      settlementService.findByKingdoms.mockResolvedValue([]);
+      structureService.findBySettlements.mockResolvedValue([]);
 
       // Act
       const context = await service.getCampaignContext(mockCampaignId, mockUser);
@@ -132,6 +151,8 @@ describe('CampaignContextService', () => {
 
       partyService.findByCampaign.mockResolvedValue(mockParties as any);
       kingdomService.findByCampaign.mockResolvedValue([]);
+      settlementService.findByKingdoms.mockResolvedValue([]);
+      structureService.findBySettlements.mockResolvedValue([]);
 
       // Act
       const context = await service.getCampaignContext(mockCampaignId, mockUser);
@@ -173,6 +194,8 @@ describe('CampaignContextService', () => {
 
       partyService.findByCampaign.mockResolvedValue([]);
       kingdomService.findByCampaign.mockResolvedValue(mockKingdoms as any);
+      settlementService.findByKingdoms.mockResolvedValue([]);
+      structureService.findBySettlements.mockResolvedValue([]);
 
       // Act
       const context = await service.getCampaignContext(mockCampaignId, mockUser);
@@ -231,8 +254,8 @@ describe('CampaignContextService', () => {
 
       partyService.findByCampaign.mockResolvedValue([]);
       kingdomService.findByCampaign.mockResolvedValue(mockKingdoms as any);
-      settlementService.findByKingdom.mockResolvedValue(mockSettlements as any);
-      structureService.findBySettlement.mockResolvedValue(mockStructures as any);
+      settlementService.findByKingdoms.mockResolvedValue(mockSettlements as any);
+      structureService.findBySettlements.mockResolvedValue(mockStructures as any);
 
       // Act
       const context = await service.getCampaignContext(mockCampaignId, mockUser);
@@ -278,6 +301,8 @@ describe('CampaignContextService', () => {
 
       partyService.findByCampaign.mockResolvedValue(mockParties as any);
       kingdomService.findByCampaign.mockResolvedValue([]);
+      settlementService.findByKingdoms.mockResolvedValue([]);
+      structureService.findBySettlements.mockResolvedValue([]);
 
       // Act
       const context = await service.getCampaignContext(mockCampaignId, mockUser);
@@ -375,6 +400,115 @@ describe('CampaignContextService', () => {
       await expect(
         service.invalidateContextForEntity('structure', 'structure-1', mockCampaignId)
       ).resolves.not.toThrow();
+    });
+  });
+
+  describe('Redis Cache Behavior', () => {
+    it('should return cached context on second call without querying database', async () => {
+      // Arrange
+      const mockContext = {
+        campaignId: mockCampaignId,
+        parties: [],
+        kingdoms: [],
+        settlements: [],
+        structures: [],
+      };
+
+      // First call - cache miss
+      redis.get.mockResolvedValueOnce(null);
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue({
+        id: mockCampaignId,
+        ownerId: mockUser.id,
+      });
+      partyService.findByCampaign.mockResolvedValue([]);
+      kingdomService.findByCampaign.mockResolvedValue([]);
+      settlementService.findByKingdoms.mockResolvedValue([]);
+      structureService.findBySettlements.mockResolvedValue([]);
+
+      // Second call - cache hit
+      redis.get.mockResolvedValueOnce(JSON.stringify(mockContext));
+
+      // Act
+      const firstCall = await service.getCampaignContext(mockCampaignId, mockUser);
+      const secondCall = await service.getCampaignContext(mockCampaignId, mockUser);
+
+      // Assert
+      expect(firstCall).toEqual(mockContext);
+      expect(secondCall).toEqual(mockContext);
+      expect(prisma.campaign.findFirst).toHaveBeenCalledTimes(1); // Only called once
+      expect(redis.get).toHaveBeenCalledTimes(2);
+      expect(redis.setex).toHaveBeenCalledTimes(1);
+    });
+
+    it('should cache context with correct key and TTL', async () => {
+      // Arrange
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue({
+        id: mockCampaignId,
+        ownerId: mockUser.id,
+      });
+      partyService.findByCampaign.mockResolvedValue([]);
+      kingdomService.findByCampaign.mockResolvedValue([]);
+      settlementService.findByKingdoms.mockResolvedValue([]);
+      structureService.findBySettlements.mockResolvedValue([]);
+
+      // Act
+      await service.getCampaignContext(mockCampaignId, mockUser);
+
+      // Assert
+      expect(redis.setex).toHaveBeenCalledWith(
+        `campaign:context:${mockCampaignId}`,
+        60, // default TTL
+        expect.any(String)
+      );
+    });
+
+    it('should invalidate cache on invalidateContext call', async () => {
+      // Act
+      await service.invalidateContext(mockCampaignId);
+
+      // Assert
+      expect(redis.del).toHaveBeenCalledWith(`campaign:context:${mockCampaignId}`);
+    });
+
+    it('should handle Redis get error gracefully and fetch from DB', async () => {
+      // Arrange
+      redis.get.mockRejectedValue(new Error('Redis connection error'));
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue({
+        id: mockCampaignId,
+        ownerId: mockUser.id,
+      });
+      partyService.findByCampaign.mockResolvedValue([]);
+      kingdomService.findByCampaign.mockResolvedValue([]);
+      settlementService.findByKingdoms.mockResolvedValue([]);
+      structureService.findBySettlements.mockResolvedValue([]);
+
+      // Act
+      const context = await service.getCampaignContext(mockCampaignId, mockUser);
+
+      // Assert
+      expect(context).toBeDefined();
+      expect(context.campaignId).toBe(mockCampaignId);
+      expect(prisma.campaign.findFirst).toHaveBeenCalled();
+    });
+
+    it('should handle Redis setex error gracefully and continue', async () => {
+      // Arrange
+      redis.setex.mockRejectedValue(new Error('Redis connection error'));
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue({
+        id: mockCampaignId,
+        ownerId: mockUser.id,
+      });
+      partyService.findByCampaign.mockResolvedValue([]);
+      kingdomService.findByCampaign.mockResolvedValue([]);
+      settlementService.findByKingdoms.mockResolvedValue([]);
+      structureService.findBySettlements.mockResolvedValue([]);
+
+      // Act
+      const context = await service.getCampaignContext(mockCampaignId, mockUser);
+
+      // Assert
+      expect(context).toBeDefined();
+      expect(context.campaignId).toBe(mockCampaignId);
     });
   });
 });
