@@ -16,6 +16,7 @@ import { fieldExtensionsEstimator, getComplexity, simpleEstimator } from 'graphq
 import { SpatialService } from '../common/services/spatial.service';
 import { TileCacheService } from '../common/services/tile-cache.service';
 import { DatabaseModule } from '../database/database.module';
+import { ExpressionParserService } from '../rules/expression-parser.service';
 
 import { createRedisCache, REDIS_CACHE } from './cache/redis-cache.provider';
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
@@ -32,6 +33,7 @@ import { LocationResolver } from './resolvers/location.resolver';
 import { PartyResolver } from './resolvers/party.resolver';
 import { SettlementResolver } from './resolvers/settlement.resolver';
 import { SpatialResolver } from './resolvers/spatial.resolver';
+import { StateVariableResolver } from './resolvers/state-variable.resolver';
 import { StructureResolver } from './resolvers/structure.resolver';
 import { VersionResolver } from './resolvers/version.resolver';
 import { WorldTimeResolver } from './resolvers/world-time.resolver';
@@ -52,7 +54,9 @@ import { LinkService } from './services/link.service';
 import { LocationService } from './services/location.service';
 import { PartyService } from './services/party.service';
 import { SettlementService } from './services/settlement.service';
+import { StateVariableService } from './services/state-variable.service';
 import { StructureService } from './services/structure.service';
+import { VariableEvaluationService } from './services/variable-evaluation.service';
 import { VariableSchemaService } from './services/variable-schema.service';
 import { VersionService } from './services/version.service';
 import { WorldTimeService } from './services/world-time.service';
@@ -170,6 +174,9 @@ import { WorldService } from './services/world.service';
     LevelHistoryService,
     VariableSchemaService,
     WorldTimeService,
+    ExpressionParserService,
+    VariableEvaluationService,
+    StateVariableService,
     // DataLoaders
     StructureDataLoader,
     // Resolvers
@@ -188,6 +195,7 @@ import { WorldService } from './services/world.service';
     LinkResolver,
     SpatialResolver,
     WorldTimeResolver,
+    StateVariableResolver,
     // Register custom scalars
     DateTimeScalar,
     JSONScalar,

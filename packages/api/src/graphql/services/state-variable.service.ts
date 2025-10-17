@@ -18,7 +18,7 @@ import type {
   StateVariableOrderByInput,
   StateVariableSortField,
 } from '../inputs/state-variable.input';
-import { VariableScope, VariableType } from '../types/state-variable.type';
+import { VariableScope, VariableType, type EvaluationStep } from '../types/state-variable.type';
 
 import { AuditService } from './audit.service';
 import { VariableEvaluationService } from './variable-evaluation.service';
@@ -340,9 +340,18 @@ export class StateVariableService {
    */
   async evaluateVariable(
     id: string,
-    context: Record<string, unknown>,
+    context: Record<string, unknown> | null | undefined,
     user: AuthenticatedUser
-  ): Promise<{ success: boolean; value: unknown; trace?: unknown[] }> {
+  ): Promise<{
+    variableId: string;
+    key: string;
+    scope: VariableScope;
+    scopeId: string | null;
+    success: boolean;
+    value: unknown;
+    error?: string | null;
+    trace?: EvaluationStep[] | null;
+  }> {
     // Fetch variable
     const variable = await this.findById(id, user);
     if (!variable) {
@@ -350,7 +359,19 @@ export class StateVariableService {
     }
 
     // Evaluate with trace
-    return this.evaluationService.evaluateWithTrace(variable, context);
+    const result = await this.evaluationService.evaluateWithTrace(variable, context ?? undefined);
+
+    // Return complete VariableEvaluationResult
+    return {
+      variableId: variable.id,
+      key: variable.key,
+      scope: variable.scope as VariableScope,
+      scopeId: variable.scopeId,
+      success: result.success,
+      value: result.value,
+      error: result.error ?? null,
+      trace: (result.trace as EvaluationStep[] | undefined) ?? null,
+    };
   }
 
   /**
