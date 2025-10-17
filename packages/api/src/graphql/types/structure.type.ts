@@ -45,4 +45,10 @@ export class Structure {
 
   @Field({ nullable: true })
   archivedAt?: Date | null;
+
+  @Field(() => GraphQLJSON, {
+    nullable: true,
+    description: 'Computed fields from evaluated conditions',
+  })
+  computedFields?: Record<string, unknown>;
 }
