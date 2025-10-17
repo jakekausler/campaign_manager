@@ -287,40 +287,40 @@ Build a dependency graph system that tracks relationships between conditions, va
 
 **Tasks**:
 
-- [ ] Create `DependencyGraphResolver` in `packages/api/src/graphql/resolvers/dependency-graph.resolver.ts`
-- [ ] Inject DependencyGraphService
-- [ ] Add JwtAuthGuard to all operations
-- [ ] Implement `query getDependencyGraph(campaignId: ID!, branchId: String = "main"): DependencyGraphResult!`
-- [ ] Implement `query getNodeDependencies(campaignId: ID!, branchId: String!, nodeId: ID!): [DependencyNode!]!`
-- [ ] Implement `query getNodeDependents(campaignId: ID!, branchId: String!, nodeId: ID!): [DependencyNode!]!`
-- [ ] Implement `query validateDependencyGraph(campaignId: ID!, branchId: String = "main"): CycleDetectionResult!`
-- [ ] Implement `query getEvaluationOrder(campaignId: ID!, branchId: String = "main"): [String!]!`
-- [ ] Implement `mutation invalidateDependencyGraph(campaignId: ID!, branchId: String = "main"): Boolean!` - requires owner/gm role
-- [ ] Add RolesGuard to mutation (owner/gm only)
-- [ ] Write integration tests (12+ test cases)
+- [x] Create `DependencyGraphResolver` in `packages/api/src/graphql/resolvers/dependency-graph.resolver.ts`
+- [x] Inject DependencyGraphService
+- [x] Add JwtAuthGuard to all operations
+- [x] Implement `query getDependencyGraph(campaignId: ID!, branchId: String = "main"): DependencyGraphResult!`
+- [x] Implement `query getNodeDependencies(campaignId: ID!, branchId: String!, nodeId: ID!): [DependencyNode!]!`
+- [x] Implement `query getNodeDependents(campaignId: ID!, branchId: String!, nodeId: ID!): [DependencyNode!]!`
+- [x] Implement `query validateDependencyGraph(campaignId: ID!, branchId: String = "main"): CycleDetectionResult!`
+- [x] Implement `query getEvaluationOrder(campaignId: ID!, branchId: String = "main"): [String!]!`
+- [x] Implement `mutation invalidateDependencyGraph(campaignId: ID!, branchId: String = "main"): Boolean!` - requires owner/gm role
+- [x] Add RolesGuard to mutation (owner/gm only)
+- [x] Write integration tests (12+ test cases)
 
 **Success Criteria**:
 
-- All GraphQL operations work correctly
-- Authorization enforced (authenticated for queries, owner/gm for mutations)
-- Integration tests pass
-- GraphQL schema validates
+- All GraphQL operations work correctly ✅
+- Authorization enforced (authenticated for queries, owner/gm for mutations) ✅
+- Integration tests pass ✅
+- GraphQL schema validates ✅
 
 **Tests**:
 
-- Get dependency graph for campaign
-- Get node dependencies
-- Get node dependents
-- Validate graph with no cycles
-- Validate graph with cycles
-- Get evaluation order
-- Invalidate cache (authorized)
-- Invalidate cache (unauthorized - fails)
-- Handle non-existent campaign
-- Handle non-existent node
-- Branch parameter defaults to "main"
+- Get dependency graph for campaign ✅
+- Get node dependencies ✅
+- Get node dependents ✅
+- Validate graph with no cycles ✅
+- Validate graph with cycles ✅
+- Get evaluation order ✅
+- Invalidate cache (authorized) ✅
+- Invalidate cache (unauthorized - fails) ✅
+- Handle non-existent campaign ✅
+- Handle non-existent node ✅
+- Branch parameter defaults to "main" ✅
 
-**Status**: Not Started
+**Status**: Completed (Commit: 7ad6abb)
 
 ---
 
