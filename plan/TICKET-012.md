@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] Completed
+- [x] Completed
 - **Commits**:
   - Stage 1: 4377bae (Database Schema)
   - Stage 2: 765af11 (GraphQL Type Definitions)
@@ -25,13 +25,13 @@ Implement the Condition system that binds JSONLogic expressions to entity fields
 
 ## Acceptance Criteria
 
-- [ ] Can create conditions with JSONLogic expressions
-- [ ] Conditions evaluate correctly with context
-- [ ] Computed fields reflect condition results
-- [ ] Can attach conditions to any entity field
-- [ ] Conditions can be attached to Settlement entities
-- [ ] Conditions can be attached to Structure entities
-- [ ] Evaluation trace shows why condition passed/failed
+- [x] Can create conditions with JSONLogic expressions
+- [x] Conditions evaluate correctly with context
+- [x] Computed fields reflect condition results
+- [x] Can attach conditions to any entity field
+- [x] Conditions can be attached to Settlement entities
+- [x] Conditions can be attached to Structure entities
+- [x] Evaluation trace shows why condition passed/failed
 
 ## Dependencies
 
