@@ -5,6 +5,7 @@
 - [ ] Completed
 - **Commits**:
   - Stage 1 (Database Schema & Migration): 3934e7c588bd5886d328721b2fd9244fa4c3e1da
+  - Stage 2 (GraphQL Types & Inputs): 2f5ee47f0ee8c3fae89c6f38e4fba7bb5f0a6b8d
 
 ## Implementation Progress
 
@@ -25,6 +26,38 @@
 - Index supports future time-travel queries and time-based filtering
 
 **Note:** Migration also dropped `Location_geom_gist_idx` (PostGIS spatial index), which appears to be from prior schema drift. May need restoration in future spatial optimization ticket.
+
+### Stage 2: GraphQL Types & Inputs ✅ Complete
+
+**What was implemented:**
+
+- Created `WorldTimeResult` GraphQL ObjectType in `packages/api/src/graphql/types/world-time.type.ts`
+  - Fields: campaignId (ID), previousWorldTime (Date, nullable), currentWorldTime (Date), affectedEntities (Int), message (String)
+  - All fields include descriptive comments for GraphQL schema documentation
+- Created `AdvanceWorldTimeInput` GraphQL InputType in `packages/api/src/graphql/inputs/world-time.input.ts`
+  - Fields: campaignId (ID, required), to (Date, required), branchId (ID, optional), invalidateCache (Boolean, optional, default true)
+  - Full validation using class-validator decorators (@IsUUID, @IsDate, @IsNotEmpty, @IsOptional, @IsBoolean)
+  - Uses class-transformer @Type(() => Date) for proper Date deserialization
+- Updated Campaign type in `packages/api/src/graphql/types/campaign.type.ts`
+  - Added currentWorldTime field (Date, nullable) with description
+
+**Technical decisions:**
+
+- Followed existing patterns from campaign.input.ts and version.input.ts for consistency
+- Used proper NestJS GraphQL decorators (@Field, @ObjectType, @InputType) throughout
+- Applied comprehensive input validation to prevent invalid data at GraphQL layer
+- Made branchId optional to default to main branch in service layer (Stage 3)
+- Included invalidateCache flag for fine-grained cache control
+- Positioned descriptions in Field decorator options for consistency with codebase
+- Made currentWorldTime nullable in Campaign type to match database schema
+
+**Code review:**
+
+- ✅ Approved by Code Reviewer subagent with no critical issues
+- ✅ All type-checking passes successfully
+- ✅ All linting passes (only pre-existing warnings in unrelated test files)
+- Suggestions for future enhancement: custom validation for time advancement logic, JSDoc comments
+- These suggestions will be considered in future iterations but are not blockers
 
 ## Description
 

@@ -73,23 +73,24 @@ model Campaign {
 **Goal**: Define GraphQL types for world time operations
 **Success Criteria**: Types compile, appear in generated schema
 **Tests**: TypeScript compilation passes
-**Status**: Not Started
+**Status**: ✅ Complete
+**Commit**: 2f5ee47f0ee8c3fae89c6f38e4fba7bb5f0a6b8d
 
 ### Tasks
 
-- [ ] Create `WorldTimeResult` type in `packages/api/src/graphql/types/world-time.type.ts`
+- [x] Create `WorldTimeResult` type in `packages/api/src/graphql/types/world-time.type.ts`
   - campaignId: ID
   - previousWorldTime: DateTime (nullable)
   - currentWorldTime: DateTime
   - affectedEntities: Int (count of entities with versions at this time)
   - message: String
-- [ ] Create `AdvanceWorldTimeInput` in `packages/api/src/graphql/inputs/world-time.input.ts`
+- [x] Create `AdvanceWorldTimeInput` in `packages/api/src/graphql/inputs/world-time.input.ts`
   - campaignId: ID!
   - to: DateTime!
   - branchId: ID (optional, defaults to main)
   - invalidateCache: Boolean (default true)
-- [ ] Update `Campaign` type to include currentWorldTime field
-- [ ] Export types from index files
+- [x] Update `Campaign` type to include currentWorldTime field
+- [x] Export types from index files (Not needed - direct imports used in this codebase)
 
 **Technical Details**:
 Follow existing patterns from `packages/api/src/graphql/types/campaign.type.ts` and input files.
