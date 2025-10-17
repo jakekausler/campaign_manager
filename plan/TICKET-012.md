@@ -9,6 +9,7 @@
   - Stage 3: ac69733 (Condition Evaluation Service)
   - Stage 4: a8c8961 (Condition Service CRUD Operations)
   - Stage 5: 649e679 (GraphQL Resolver)
+  - Stage 6: 039ddd6 (Entity Computed Fields Integration)
 
 ## Description
 
@@ -314,3 +315,62 @@ Made minor updates to ConditionService to support resolver usage:
 - Uses GraphQL types/inputs from Stage 2 (FieldCondition, EvaluationResult, CreateFieldConditionInput, UpdateFieldConditionInput, etc.)
 - Uses Prisma FieldCondition model from Stage 1
 - Ready for entity computed fields integration in Stage 6 (Settlement/Structure resolvers)
+
+### Stage 6: Entity Computed Fields Integration (Complete)
+
+**Service Implementation:**
+
+Added computed field resolution to Settlement and Structure services:
+
+- `SettlementService.getComputedFields(settlement, user)` - Fetches active conditions for the settlement, builds evaluation context from settlement data, evaluates each condition expression, and returns a map of field names to computed values.
+
+- `StructureService.getComputedFields(structure, user)` - Same pattern for structure entities with structure-specific context (includes type field).
+
+**Key Features:**
+
+- Priority-based evaluation: Higher priority wins when multiple conditions apply to same field
+- Graceful error handling: Returns empty object on failure, logs errors with NestJS Logger
+- Type-safe implementation: Uses Prisma types with proper imports
+- Proper dependency injection: ConditionEvaluationService injected in constructors
+- Authorization: Assumes caller has already verified campaign access
+
+**Resolver Implementation:**
+
+Added GraphQL field resolvers:
+
+- `SettlementResolver.computedFields` - Field resolver that calls service method and handles errors gracefully
+- `StructureResolver.computedFields` - Field resolver for structures with same error handling pattern
+
+**Known Limitations (Documented):**
+
+1. **N+1 Query Problem**: Current implementation queries conditions individually for each entity when resolving batches. Should be optimized with DataLoader pattern in future iteration.
+
+2. **Sequential Evaluation**: Conditions are evaluated sequentially in a loop. Could be parallelized with `Promise.all` for better performance.
+
+3. **No Type-Level Conditions**: Only supports instance-level conditions (entity ID specific). Does not query type-level conditions (entityId: null) that apply to all entities of that type.
+
+**Code Quality:**
+
+- Uses NestJS Logger instead of console.error for proper error logging
+- Comprehensive documentation with TODO comments for future optimizations
+- Follows existing service/resolver patterns from the codebase
+- Type-check and lint passing (no new errors)
+
+**Testing:**
+
+- Type-check: passing
+- Lint: passing (no new errors, only pre-existing warnings in test files)
+- Integration tests deferred due to existing circular dependency issues in test infrastructure
+
+**Future Improvements (Documented in Code):**
+
+- TODO: Implement DataLoader pattern for batch loading conditions
+- TODO: Parallelize condition evaluation with Promise.all
+- TODO: Support type-level conditions (entityId: null)
+
+**Files Modified:**
+
+- packages/api/src/graphql/services/settlement.service.ts
+- packages/api/src/graphql/resolvers/settlement.resolver.ts
+- packages/api/src/graphql/services/structure.service.ts
+- packages/api/src/graphql/resolvers/structure.resolver.ts

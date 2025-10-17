@@ -282,7 +282,8 @@ Implement a Condition system that binds JSONLogic expressions to entity fields f
 
 ### Stage 6: Entity Computed Fields Integration
 
-**Status**: [ ] Complete
+**Status**: [x] Complete
+**Commit**: 039ddd6
 
 **Goal**: Add computed field resolution to Settlement and Structure entities
 
