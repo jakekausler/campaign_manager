@@ -7,6 +7,7 @@
   - 924a965 - Implementation plan created
   - 3717b35 - Stage 1: Service package setup complete
   - 0ec4355 - Stage 2: gRPC service definition and server complete
+  - d1d8563 - Stage 3: Evaluation engine core complete
 
 ## Description
 
@@ -177,3 +178,110 @@ Implemented complete gRPC infrastructure with Protocol Buffer service definition
 - ✅ Proto file accessible at runtime via correct relative path
 
 **Next Stage**: Stage 3 - Evaluation Engine Core
+
+---
+
+### Stage 3: Evaluation Engine Core (Complete - d1d8563)
+
+Implemented the core condition evaluation logic for the rules engine worker, integrating the gRPC interface with actual JSONLogic evaluation capabilities:
+
+**New Service - EvaluationEngineService** (498 lines):
+
+- Core service for evaluating Field Condition expressions using JSONLogic
+- Single condition evaluation (`evaluateCondition`) with full lifecycle:
+  - Database lookup via Prisma
+  - Condition active status validation
+  - JSONLogic expression structure validation (max depth: 10 levels)
+  - Context building from entity data
+  - Expression evaluation using `json-logic-js`
+  - Variable extraction and resolution
+  - Detailed trace generation for debugging
+- Batch condition evaluation (`evaluateConditions`):
+  - Sequential evaluation of multiple conditions
+  - Returns map of condition IDs to results
+  - Note: Stage 4 will add dependency-based ordering
+- Private helper methods:
+  - `buildContext`: Formats entity data for JSONLogic variable access
+  - `validateExpression`: Validates structure and prevents excessive nesting (DoS protection)
+  - `validateNestedExpression`: Recursive depth validation
+  - `extractVariables`: Extracts all `{ "var": "..." }` references from expressions
+  - `resolveVariable`: Resolves dot-notation paths (e.g., "kingdom.population")
+  - `evaluateExpression`: Core JSONLogic evaluation with error handling
+- Lifecycle management with `onModuleDestroy` for Prisma cleanup
+- Comprehensive error handling with graceful degradation
+- Performance measurement (evaluation time tracking)
+
+**Controller Integration**:
+
+- Updated `RulesEngineController` to use `EvaluationEngineService` via dependency injection
+- Implemented real logic for `evaluateCondition` RPC:
+  - JSON context parsing with error handling
+  - Delegation to evaluation engine
+  - Returns full evaluation result with trace
+- Implemented real logic for `evaluateConditions` RPC:
+  - JSON context parsing
+  - Batch evaluation via engine
+  - Total time measurement
+  - Note added: dependency ordering in Stage 4
+- Added try-catch blocks for JSON.parse errors
+- Removed stub implementations
+
+**Module Registration**:
+
+- Registered `EvaluationEngineService` as provider in `AppModule`
+- Updated module documentation to reflect Stage 3 completion
+
+**Testing** (659 lines, 43 tests):
+
+- **EvaluationEngineService Tests** (27 tests):
+  - `evaluateCondition`: Success, not found, inactive, trace generation, complex expressions, missing variables, excessive depth, database errors, timing
+  - `evaluateConditions`: Multiple conditions, empty list, partial failures, traces
+  - Private methods: Validation, context building, variable extraction, variable resolution
+- **Controller Tests** (16 tests updated):
+  - Proper mocking of `EvaluationEngineService`
+  - Verification of service delegation
+  - JSON parsing error handling
+  - Trace inclusion verification
+- Type-safe private method testing via interface casting
+- All tests using mocked Prisma for database operations
+- Test-to-code ratio: 1.32:1 (excellent coverage)
+
+**Key Features**:
+
+- **Expression Validation**: Prevents null/undefined, requires valid object structure, enforces max depth (10 levels)
+- **Security**: Max depth validation prevents recursion DoS attacks
+- **Trace Generation**: Step-by-step debugging trace with input/output for each step
+- **Error Resilience**: Graceful handling of missing conditions, inactive conditions, invalid expressions, database failures
+- **Variable Support**: Handles simple variables and nested property paths
+- **Performance**: Tracks evaluation time per condition and batch operations
+
+**Performance Characteristics**:
+
+- Evaluation without I/O: <10ms per condition (meets success criteria)
+- Database query per condition (acknowledged N+1, will optimize in Stage 5 with caching)
+- Sequential batch evaluation (acknowledged, will optimize in Stage 4 with dependency graphs)
+
+**Validation**:
+
+- ✅ All 47 tests passing (43 service + controller, 4 interceptor)
+- ✅ TypeScript type-check passing with no errors
+- ✅ ESLint passing with no errors or warnings
+- ✅ Code review approved with minor suggestions for future stages
+- ✅ Test coverage: All public methods, all private methods, all error paths
+- ✅ Performance <10ms per evaluation (without I/O)
+
+**Code Quality Metrics**:
+
+- Implementation: 498 lines
+- Tests: 659 lines
+- Test-to-code ratio: 1.32:1
+- Test coverage: Comprehensive (all methods, all error paths, edge cases)
+
+**Known Limitations (To Be Addressed):**
+
+- Direct PrismaClient instantiation (should use DI, refactor in Stage 4+)
+- Sequential batch evaluation (Stage 4 will add dependency-based ordering)
+- N+1 database query pattern (Stage 5 will add caching)
+- No dependency graph integration yet (Stage 4)
+
+**Next Stage**: Stage 4 - Dependency Graph Integration
