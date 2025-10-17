@@ -110,6 +110,16 @@ export class WorldTimeService {
       await this.campaignContext.invalidateContext(campaignId);
     }
 
+    // TODO: When rules engine is implemented (TICKET-020+):
+    // Trigger rules recalculation on time advancement to ensure all computed
+    // properties and derived state are updated for the new world time:
+    // await this.rulesEngine.invalidate({ campaignId, worldTime: to, branchId });
+    // This will recalculate:
+    // - Conditional effects based on time
+    // - Time-based triggers
+    // - Scheduled events that should activate
+    // - Any derived properties that depend on world time
+
     // Build result message
     const message = previousWorldTime
       ? `World time advanced from ${previousWorldTime.toISOString()} to ${to.toISOString()}`
