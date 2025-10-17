@@ -15,7 +15,8 @@ Implement a Condition system that binds JSONLogic expressions to entity fields f
 
 ### Stage 1: Database Schema and Prisma Model
 
-**Status**: [ ] Complete
+**Status**: [x] Complete
+**Commit**: 4377bae
 
 **Goal**: Define the Condition model in Prisma schema and create migration
 

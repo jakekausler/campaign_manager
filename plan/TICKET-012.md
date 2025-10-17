@@ -4,6 +4,7 @@
 
 - [ ] Completed
 - **Commits**:
+  - Stage 1: 4377bae (Database Schema)
 
 ## Description
 
@@ -70,3 +71,29 @@ Implement the Condition system that binds JSONLogic expressions to entity fields
   }
 }
 ```
+
+## Implementation Notes
+
+### Stage 1: Database Schema and Prisma Model (Complete)
+
+**Model Design:**
+
+- Created `FieldCondition` model (named to avoid confusion with existing `Condition` model used for Encounter/Event conditions)
+- Supports both instance-level (specific entityId) and type-level (entityId = null) conditions
+- Uses JSONB for expression storage (efficient, supports future GIN indexing)
+- Priority field enables deterministic ordering when multiple conditions apply to same field
+- Full audit trail with createdBy/updatedBy relations to User model
+- Soft delete pattern with deletedAt
+- Optimistic locking with version field
+
+**Indexes:**
+
+- Composite index (entityType, entityId, field) for instance-level lookups
+- Composite index (entityType, field) for type-level lookups
+- Individual indexes on isActive, deletedAt, createdBy, updatedBy
+
+**Migration Notes:**
+
+- Migration includes recreation of PostGIS spatial index on Location.geom
+- This is necessary because Prisma cannot track indexes on Unsupported geometry types
+- Without recreation, the index would be dropped, severely degrading spatial query performance
