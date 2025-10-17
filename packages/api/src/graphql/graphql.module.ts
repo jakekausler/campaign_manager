@@ -34,6 +34,7 @@ import { SettlementResolver } from './resolvers/settlement.resolver';
 import { SpatialResolver } from './resolvers/spatial.resolver';
 import { StructureResolver } from './resolvers/structure.resolver';
 import { VersionResolver } from './resolvers/version.resolver';
+import { WorldTimeResolver } from './resolvers/world-time.resolver';
 import { WorldResolver } from './resolvers/world.resolver';
 import { DateTimeScalar } from './scalars/datetime.scalar';
 import { GeoJSONScalar } from './scalars/geojson.scalar';
@@ -54,6 +55,7 @@ import { SettlementService } from './services/settlement.service';
 import { StructureService } from './services/structure.service';
 import { VariableSchemaService } from './services/variable-schema.service';
 import { VersionService } from './services/version.service';
+import { WorldTimeService } from './services/world-time.service';
 import { WorldService } from './services/world.service';
 
 @Module({
@@ -167,6 +169,7 @@ import { WorldService } from './services/world.service';
     TileCacheService,
     LevelHistoryService,
     VariableSchemaService,
+    WorldTimeService,
     // DataLoaders
     StructureDataLoader,
     // Resolvers
@@ -184,6 +187,7 @@ import { WorldService } from './services/world.service';
     EventResolver,
     LinkResolver,
     SpatialResolver,
+    WorldTimeResolver,
     // Register custom scalars
     DateTimeScalar,
     JSONScalar,
