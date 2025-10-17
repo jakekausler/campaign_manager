@@ -21,13 +21,15 @@ import type { EvaluationResult } from '../types/field-condition.type';
 
 import { AuditService } from './audit.service';
 import { ConditionEvaluationService } from './condition-evaluation.service';
+import { DependencyGraphService } from './dependency-graph.service';
 
 @Injectable()
 export class ConditionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly evaluationService: ConditionEvaluationService
+    private readonly evaluationService: ConditionEvaluationService,
+    private readonly dependencyGraphService: DependencyGraphService
   ) {}
 
   /**
@@ -71,6 +73,12 @@ export class ConditionService {
       field: condition.field,
       priority: condition.priority,
     });
+
+    // Invalidate dependency graph cache for this condition's campaign
+    const campaignId = await this.getCampaignIdForCondition(condition);
+    if (campaignId) {
+      this.dependencyGraphService.invalidateGraph(campaignId);
+    }
 
     return condition;
   }
@@ -269,6 +277,12 @@ export class ConditionService {
     // Create audit entry
     await this.audit.log('field_condition', id, 'UPDATE', user.id, updateData);
 
+    // Invalidate dependency graph cache for this condition's campaign
+    const campaignId = await this.getCampaignIdForCondition(updated);
+    if (campaignId) {
+      this.dependencyGraphService.invalidateGraph(campaignId);
+    }
+
     return updated;
   }
 
@@ -292,6 +306,12 @@ export class ConditionService {
 
     // Create audit entry
     await this.audit.log('field_condition', id, 'DELETE', user.id, { deletedAt });
+
+    // Invalidate dependency graph cache for this condition's campaign
+    const campaignId = await this.getCampaignIdForCondition(deleted);
+    if (campaignId) {
+      this.dependencyGraphService.invalidateGraph(campaignId);
+    }
 
     return deleted;
   }
@@ -348,6 +368,65 @@ export class ConditionService {
    * Verify user has access to an entity
    * Checks entity exists and user has campaign access
    */
+  /**
+   * Get campaign ID for a condition (for dependency graph cache invalidation)
+   * Returns null for type-level conditions (entityId is null)
+   */
+  private async getCampaignIdForCondition(condition: PrismaFieldCondition): Promise<string | null> {
+    // Type-level conditions (no entityId) don't belong to a specific campaign
+    if (!condition.entityId) {
+      return null;
+    }
+
+    const entityTypeLower = condition.entityType.toLowerCase();
+    const entityId = condition.entityId;
+
+    switch (entityTypeLower) {
+      case 'settlement': {
+        const settlement = await this.prisma.settlement.findUnique({
+          where: { id: entityId },
+          select: { kingdom: { select: { campaignId: true } } },
+        });
+        return settlement?.kingdom.campaignId ?? null;
+      }
+
+      case 'structure': {
+        const structure = await this.prisma.structure.findUnique({
+          where: { id: entityId },
+          select: { settlement: { select: { kingdom: { select: { campaignId: true } } } } },
+        });
+        return structure?.settlement.kingdom.campaignId ?? null;
+      }
+
+      case 'kingdom': {
+        const kingdom = await this.prisma.kingdom.findUnique({
+          where: { id: entityId },
+          select: { campaignId: true },
+        });
+        return kingdom?.campaignId ?? null;
+      }
+
+      case 'party': {
+        const party = await this.prisma.party.findUnique({
+          where: { id: entityId },
+          select: { campaignId: true },
+        });
+        return party?.campaignId ?? null;
+      }
+
+      case 'character': {
+        const character = await this.prisma.character.findUnique({
+          where: { id: entityId },
+          select: { campaignId: true },
+        });
+        return character?.campaignId ?? null;
+      }
+
+      default:
+        return null;
+    }
+  }
+
   private async verifyEntityAccess(
     entityType: string,
     entityId: string,

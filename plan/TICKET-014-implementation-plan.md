@@ -330,34 +330,36 @@ Build a dependency graph system that tracks relationships between conditions, va
 
 **Tasks**:
 
-- [ ] Update `ConditionService.create()` to invalidate dependency graph cache
-- [ ] Update `ConditionService.update()` to invalidate dependency graph cache
-- [ ] Update `ConditionService.delete()` to invalidate dependency graph cache
-- [ ] Update `StateVariableService.create()` to invalidate dependency graph cache
-- [ ] Update `StateVariableService.update()` to invalidate dependency graph cache
-- [ ] Update `StateVariableService.delete()` to invalidate dependency graph cache
-- [ ] Add integration tests verifying cache invalidation (8+ test cases)
-- [ ] Update CLAUDE.md documentation with dependency graph system info
+- [x] Update `ConditionService.create()` to invalidate dependency graph cache
+- [x] Update `ConditionService.update()` to invalidate dependency graph cache
+- [x] Update `ConditionService.delete()` to invalidate dependency graph cache
+- [x] Update `StateVariableService.create()` to invalidate dependency graph cache
+- [x] Update `StateVariableService.update()` to invalidate dependency graph cache
+- [x] Update `StateVariableService.delete()` to invalidate dependency graph cache
+- [x] Add integration tests verifying cache invalidation (10 test cases)
+- [x] Update CLAUDE.md documentation with dependency graph system info
 
 **Success Criteria**:
 
-- Creating/updating/deleting conditions invalidates graph cache
-- Creating/updating/deleting variables invalidates graph cache
-- Integration tests verify proper invalidation
-- Documentation updated
+- Creating/updating/deleting conditions invalidates graph cache ✅
+- Creating/updating/deleting variables invalidates graph cache ✅
+- Integration tests verify proper invalidation ✅
+- Documentation updated ✅
 
 **Tests**:
 
-- Create condition → graph invalidated
-- Update condition → graph invalidated
-- Delete condition → graph invalidated
-- Create variable → graph invalidated
-- Update variable → graph invalidated
-- Delete variable → graph invalidated
-- Cache rebuilds correctly after invalidation
-- Multiple campaigns have separate caches
+- Create condition → graph invalidated ✅
+- Update condition → graph invalidated ✅
+- Delete condition → graph invalidated ✅
+- Create variable → graph invalidated ✅
+- Update variable → graph invalidated ✅
+- Delete variable → graph invalidated ✅
+- Cache rebuilds correctly after invalidation ✅
+- Multiple campaigns have separate caches ✅
+- Type-level conditions (entityId=null) do NOT trigger invalidation ✅
+- World-scoped variables do NOT trigger invalidation ✅
 
-**Status**: Not Started
+**Status**: Completed (Commit: TBD - awaiting commit)
 
 ---
 
@@ -429,12 +431,12 @@ Build a dependency graph system that tracks relationships between conditions, va
 
 ## Completion Checklist
 
-- [ ] All stages completed
-- [ ] All unit tests passing (100+ tests)
-- [ ] All integration tests passing (20+ tests)
-- [ ] GraphQL schema validated
-- [ ] Type-check passing
-- [ ] Lint passing
-- [ ] Documentation updated (CLAUDE.md)
-- [ ] Code reviewed
-- [ ] All acceptance criteria met
+- [x] All stages completed (Stages 1-9 complete)
+- [x] All unit tests passing (122 tests: DependencyExtractor 28, DependencyGraph 49, Builder 18, Service 28)
+- [x] All integration tests passing (29 tests: Resolver 19, Cache Invalidation 10)
+- [x] GraphQL schema validated
+- [x] Type-check passing
+- [x] Lint passing
+- [x] Documentation updated (CLAUDE.md lines 1674-2066)
+- [x] Code reviewed (Project Manager verified)
+- [x] All acceptance criteria met

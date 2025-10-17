@@ -21,6 +21,7 @@ import type {
 import { VariableScope, VariableType, type EvaluationStep } from '../types/state-variable.type';
 
 import { AuditService } from './audit.service';
+import { DependencyGraphService } from './dependency-graph.service';
 import { VariableEvaluationService } from './variable-evaluation.service';
 import { VersionService, type CreateVersionInput } from './version.service';
 
@@ -30,7 +31,8 @@ export class StateVariableService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly evaluationService: VariableEvaluationService,
-    private readonly versionService: VersionService
+    private readonly versionService: VersionService,
+    private readonly dependencyGraphService: DependencyGraphService
   ) {}
 
   /**
@@ -86,6 +88,19 @@ export class StateVariableService {
       key: variable.key,
       type: variable.type,
     });
+
+    // Invalidate dependency graph cache for this variable's campaign
+    if (variable.scope !== VariableScope.WORLD && variable.scopeId) {
+      try {
+        const campaignId = await this.getCampaignIdForScope(
+          variable.scope as VariableScope,
+          variable.scopeId
+        );
+        this.dependencyGraphService.invalidateGraph(campaignId);
+      } catch {
+        // If we can't get campaign ID (e.g., location scope), skip invalidation
+      }
+    }
 
     return variable;
   }
@@ -354,6 +369,19 @@ export class StateVariableService {
     // Create audit entry
     await this.audit.log('state_variable', id, 'UPDATE', user.id, updateData);
 
+    // Invalidate dependency graph cache for this variable's campaign
+    if (updated.scope !== VariableScope.WORLD && updated.scopeId) {
+      try {
+        const campaignId = await this.getCampaignIdForScope(
+          updated.scope as VariableScope,
+          updated.scopeId
+        );
+        this.dependencyGraphService.invalidateGraph(campaignId);
+      } catch {
+        // If we can't get campaign ID (e.g., location scope), skip invalidation
+      }
+    }
+
     return updated;
   }
 
@@ -377,6 +405,19 @@ export class StateVariableService {
 
     // Create audit entry
     await this.audit.log('state_variable', id, 'DELETE', user.id, { deletedAt });
+
+    // Invalidate dependency graph cache for this variable's campaign
+    if (deleted.scope !== VariableScope.WORLD && deleted.scopeId) {
+      try {
+        const campaignId = await this.getCampaignIdForScope(
+          deleted.scope as VariableScope,
+          deleted.scopeId
+        );
+        this.dependencyGraphService.invalidateGraph(campaignId);
+      } catch {
+        // If we can't get campaign ID (e.g., location scope), skip invalidation
+      }
+    }
 
     return deleted;
   }
