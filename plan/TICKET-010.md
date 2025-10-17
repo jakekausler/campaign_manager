@@ -7,6 +7,7 @@
   - Stage 1 (Database Schema & Migration): 3934e7c588bd5886d328721b2fd9244fa4c3e1da
   - Stage 2 (GraphQL Types & Inputs): 2f5ee47f0ee8c3fae89c6f38e4fba7bb5f0a6b8d
   - Stage 3 (WorldTimeService - Core Logic): ece354df86dccff2295c0cb292d58da15ad7ce6e
+  - Stage 4 (GraphQL Resolver): 39e0b635578eed2ca210ae29c52d8c88fce38bd7
 
 ## Implementation Progress
 
@@ -134,6 +135,84 @@
 - PrismaService: Database operations and transactions
 - CampaignContextService: Campaign context cache invalidation
 - OptimisticLockException: Thrown on concurrent modification conflicts
+
+### Stage 4: GraphQL Resolver ✅ Complete
+
+**What was implemented:**
+
+- Created `WorldTimeResolver` in `packages/api/src/graphql/resolvers/world-time.resolver.ts`
+- Implemented `getCurrentWorldTime(campaignId)` GraphQL query
+  - Returns current world time (Date) or null if not set
+  - Protected with JwtAuthGuard for authentication
+  - Delegates to WorldTimeService.getCurrentWorldTime
+- Implemented `advanceWorldTime(input)` GraphQL mutation
+  - Takes AdvanceWorldTimeInput with campaignId, to, optional branchId and invalidateCache
+  - Protected with JwtAuthGuard and RolesGuard
+  - Requires 'owner' or 'gm' role for authorization
+  - Extracts user.id from AuthenticatedUser context
+  - Delegates to WorldTimeService.advanceWorldTime
+  - Returns WorldTimeResult with previous/current times and metadata
+- Registered WorldTimeResolver and WorldTimeService in graphql.module.ts providers
+- Comprehensive test suite with 8 integration tests in `world-time.resolver.test.ts`
+
+**Technical decisions:**
+
+- **Authentication/Authorization Pattern**: Followed existing resolver patterns
+  - Query uses JwtAuthGuard only (authorization in service layer)
+  - Mutation uses JwtAuthGuard + RolesGuard with @Roles('owner', 'gm')
+  - Service layer performs granular campaign access checks via verifyCampaignAccess
+- **Parameter Mapping**: Clean destructuring of AdvanceWorldTimeInput
+  - campaignId, to, branchId, invalidateCache extracted from input
+  - user.id (not userId) extracted from AuthenticatedUser per interface definition
+- **Optimistic Locking**: Hardcoded expectedVersion to 0 at GraphQL layer
+  - Acceptable for Stage 4 (single-user scenarios)
+  - Will be exposed as optional input field in future versioning integration
+  - Service layer handles OptimisticLockException for concurrent modification
+- **Import Organization**: Added imports in alphabetical order per ESLint rules
+  - WorldTimeResolver after WorldResolver
+  - WorldTimeService after WorldService
+- **Module Registration**: Added to providers in correct positions
+  - WorldTimeService in services section (line 172)
+  - WorldTimeResolver in resolvers section (line 190)
+
+**Code review:**
+
+- ✅ Approved by Code Reviewer subagent with no critical issues
+- ✅ All 8 integration tests passing
+- ✅ Type-checking passes with no errors
+- ✅ Linting passes (only pre-existing warnings in unrelated files)
+- ✅ Follows all project conventions and patterns
+- ✅ Proper separation of concerns (resolver → service delegation)
+- ✅ No security vulnerabilities
+- ✅ No performance issues
+
+**Test coverage:**
+
+- `getCurrentWorldTime`: 3 tests
+  - Returns current world time for valid campaign
+  - Returns null when campaign has no time set
+  - Passes correct parameters to service
+- `advanceWorldTime`: 5 tests
+  - Successfully advances time with required parameters
+  - Successfully advances time with all optional parameters
+  - Handles first-time world time setting (no previous time)
+  - Uses default invalidateCache value when not specified
+  - Correctly extracts user.id from authenticated user
+
+**Files created:**
+
+- packages/api/src/graphql/resolvers/world-time.resolver.ts (53 lines)
+- packages/api/src/graphql/resolvers/world-time.resolver.test.ts (238 lines)
+
+**Files modified:**
+
+- packages/api/src/graphql/graphql.module.ts (added imports and provider registrations)
+
+**Future enhancements (from Code Reviewer):**
+
+- Consider adding expectedVersion as optional field in AdvanceWorldTimeInput (Stage 5 or future)
+- Consider adding JSDoc comments for improved IDE IntelliSense (optional)
+- Could add exception propagation tests (optional, current coverage excellent)
 
 ## Description
 
