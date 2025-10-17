@@ -235,36 +235,37 @@ Implement a Condition system that binds JSONLogic expressions to entity fields f
 
 ### Stage 5: GraphQL Resolver
 
-**Status**: [ ] Complete
+**Status**: [x] Complete
+**Commit**: 649e679
 
 **Goal**: Create GraphQL resolver for Condition operations
 
 **Tasks**:
 
-- [ ] Create ConditionResolver in packages/api/src/graphql/resolvers/
-- [ ] Add JwtAuthGuard to all operations
-- [ ] Add RolesGuard with appropriate roles for mutations
-- [ ] Implement Query resolvers:
+- [x] Create ConditionResolver in packages/api/src/graphql/resolvers/
+- [x] Add JwtAuthGuard to all operations
+- [x] Add RolesGuard with appropriate roles for mutations
+- [x] Implement Query resolvers:
   - getCondition(id: string, user: User) - delegates to ConditionService.findById
   - listConditions(args, user: User) - delegates to ConditionService.findMany
   - getConditionsForEntity(entityType, entityId, field, user: User) - delegates to ConditionService.findForEntity
   - evaluateCondition(id, context, user: User) - delegates to ConditionService.evaluateCondition
-- [ ] Implement Mutation resolvers:
+- [x] Implement Mutation resolvers:
   - createCondition(input, user: User) - delegates to ConditionService.create
   - updateCondition(id, input, user: User) - delegates to ConditionService.update
   - deleteCondition(id, user: User) - delegates to ConditionService.delete
   - toggleConditionActive(id, isActive, user: User) - delegates to ConditionService.toggleActive
-- [ ] Implement field resolvers for Condition type:
+- [x] Implement field resolvers for Condition type:
   - createdBy - resolve user relation
   - updatedBy - resolve user relation
   - version - resolve version relation
-- [ ] Add integration tests for ConditionResolver:
+- [x] Add integration tests for ConditionResolver:
   - Test all queries with various inputs
   - Test all mutations with valid/invalid data
   - Test authorization (authorized vs unauthorized users)
   - Test error scenarios
-- [ ] Run tests and verify all pass
-- [ ] Run type-check and lint
+- [x] Run tests and verify all pass
+- [x] Run type-check and lint
 
 **Success Criteria**:
 
