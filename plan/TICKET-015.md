@@ -6,6 +6,7 @@
 - **Commits**:
   - 924a965 - Implementation plan created
   - 3717b35 - Stage 1: Service package setup complete
+  - 0ec4355 - Stage 2: gRPC service definition and server complete
 
 ## Description
 
@@ -92,3 +93,87 @@ Created the foundational NestJS service structure for the Rules Engine Worker wi
 - ✅ Code review approved with no critical issues
 
 **Next Stage**: Stage 2 - gRPC Service Definition
+
+---
+
+### Stage 2: gRPC Service Definition (Complete - 0ec4355)
+
+Implemented complete gRPC infrastructure with Protocol Buffer service definition, NestJS gRPC server, and comprehensive test coverage:
+
+**Protocol Buffer Service**:
+
+- Created `proto/rules-engine.proto` with 5 RPC method definitions:
+  - `EvaluateCondition` - Single condition evaluation with trace support
+  - `EvaluateConditions` - Batch evaluation with dependency ordering option
+  - `GetEvaluationOrder` - Topological sort for conditions
+  - `ValidateDependencies` - Cycle detection in dependency graph
+  - `InvalidateCache` - Cache invalidation for campaign/branch
+- All message types properly defined with nullable fields and repeated fields
+- Future-proof design supporting tracing, performance metrics, and batch operations
+
+**TypeScript Type Generation**:
+
+- Created `src/generated/rules-engine.types.ts` with TypeScript interfaces matching proto definitions
+- Proper camelCase conversion from snake_case proto field names
+- Service interface (`IRulesEngineService`) for future implementation reference
+- All types properly exported for use in controller and future services
+
+**gRPC Server Configuration**:
+
+- Updated `src/main.ts` to create hybrid NestJS application with both gRPC and HTTP transports
+- gRPC server listening on port 50051 (configurable via `GRPC_PORT` env var)
+- HTTP server on port 3001 for health checks
+- Proper proto file loading with `@grpc/proto-loader` configuration
+
+**Controller Implementation**:
+
+- Created `src/controllers/rules-engine.controller.ts` with stub implementations for all 5 RPC methods
+- All methods decorated with `@GrpcMethod` for proper gRPC routing
+- Stub responses return success with placeholder data for integration testing
+- Clear documentation indicating Stage 3 will implement real evaluation logic
+
+**Logging and Error Handling**:
+
+- Implemented `src/interceptors/grpc-logging.interceptor.ts` for global request/response logging
+- Request ID generation for correlation across log messages
+- Performance timing logged for all requests
+- Proper error transformation to gRPC `RpcException` with status codes
+- Stack traces preserved in error details for debugging
+
+**Module Configuration**:
+
+- Updated `src/app.module.ts` to register controller and global interceptor
+- Interceptor registered via `APP_INTERCEPTOR` provider for all gRPC methods
+- Clean dependency injection structure ready for Stage 3 services
+
+**Testing**:
+
+- Created `src/controllers/rules-engine.controller.test.ts` with 12 unit tests:
+  - Single condition evaluation (stub)
+  - Batch evaluation with multiple conditions
+  - Empty condition list handling
+  - Evaluation order retrieval
+  - Dependency validation (no cycles)
+  - Cache invalidation
+- Created `src/interceptors/grpc-logging.interceptor.test.ts` with 4 unit tests:
+  - Successful request logging
+  - Error transformation to RpcException
+  - RpcException passthrough
+  - Request duration measurement
+- All 16 tests passing
+
+**Dependencies**:
+
+- Added `@nestjs/microservices@^10.4.20` for gRPC support
+- Aligned NestJS versions across all packages to v10.4.20 for compatibility
+
+**Validation**:
+
+- ✅ All unit tests passing (16 tests)
+- ✅ TypeScript type-check passing with no errors
+- ✅ ESLint passing (import ordering auto-fixed)
+- ✅ Code review approved with no critical issues
+- ✅ Comprehensive test coverage for all stub implementations
+- ✅ Proto file accessible at runtime via correct relative path
+
+**Next Stage**: Stage 3 - Evaluation Engine Core

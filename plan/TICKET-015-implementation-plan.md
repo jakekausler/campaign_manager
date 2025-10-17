@@ -62,25 +62,28 @@ Create a dedicated Node.js worker service for the rules engine that evaluates co
 
 **Tasks**:
 
-- [ ] Create `proto/rules-engine.proto` with service definitions
+- [x] Create `proto/rules-engine.proto` with service definitions
   - EvaluateCondition RPC
   - EvaluateConditions (batch) RPC
   - GetEvaluationOrder RPC
   - ValidateDependencies RPC
-- [ ] Generate TypeScript types from proto files
-- [ ] Implement gRPC server in NestJS
-- [ ] Create RulesEngineController with handler stubs
-- [ ] Add gRPC interceptor for logging and error handling
-- [ ] Write unit tests for gRPC controller
+  - InvalidateCache RPC (added)
+- [x] Generate TypeScript types from proto files
+- [x] Implement gRPC server in NestJS
+- [x] Create RulesEngineController with handler stubs
+- [x] Add gRPC interceptor for logging and error handling
+- [x] Write unit tests for gRPC controller
 
 **Success Criteria**:
 
-- gRPC server starts on configured port
-- Can receive and respond to gRPC calls
-- Proto definitions compile to TypeScript types
-- Error handling returns proper gRPC status codes
+- ✅ gRPC server starts on configured port
+- ✅ Can receive and respond to gRPC calls
+- ✅ Proto definitions compile to TypeScript types
+- ✅ Error handling returns proper gRPC status codes
 
-**Status**: Not Started
+**Status**: Complete
+
+**Commit**: 0ec4355 - feat(rules-engine): implement gRPC service definition and server (TICKET-015 Stage 2)
 
 ---
 
