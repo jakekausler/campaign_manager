@@ -2,13 +2,14 @@
 
 ## Status
 
-- [ ] Completed (Stage 5/7 complete)
+- [ ] Completed (Stage 6/7 complete)
 - **Commits**:
   - Stage 1: ec59dfb - Database Schema and Prisma Model
   - Stage 2: b6d254f - GraphQL Type Definitions
   - Stage 3: 889baaa - Variable Evaluation Service
   - Stage 4: ae28ed6 - State Variable Service (CRUD Operations)
   - Stage 5: 77ba8ea - GraphQL Resolver
+  - Stage 6: bf77940 - Variable Resolution for Conditions
 
 ## Description
 
@@ -407,3 +408,120 @@ Implement StateVariable system for storing and querying dynamic campaign state (
 
 - `packages/api/src/graphql/graphql.module.ts` - Registered resolver and services (8 lines changed)
 - `packages/api/src/graphql/services/state-variable.service.ts` - Updated evaluateVariable() return type (29 lines changed)
+
+---
+
+### Stage 6: Variable Resolution for Conditions (bf77940)
+
+**Completed:** 2025-10-17
+
+**Summary:** Integrated StateVariable system with Condition evaluation context, enabling FieldCondition expressions to reference StateVariable values via JSONLogic expressions.
+
+**Core Changes:**
+
+ConditionEvaluationService enhancements:
+
+- Added `buildContextWithVariables()` async method that:
+  - Accepts optional `includeVariables` parameter (default: false)
+  - Requires `scope` and `scopeId` parameters when includeVariables is true
+  - Fetches active StateVariables for the specified scope/scopeId
+  - Evaluates both stored and derived variables via VariableEvaluationService
+  - Merges variables into context under 'var' namespace (e.g., var.merchant_count)
+  - Gracefully handles errors (returns basic context if fetching fails)
+- Added private `fetchScopeVariables()` helper that:
+  - Queries StateVariable table with proper filtering (scope, scopeId, isActive, deletedAt)
+  - Evaluates each variable using VariableEvaluationService
+  - Handles evaluation failures gracefully (logs errors, continues with other variables)
+  - Returns key-value map for context merging
+- Injected PrismaService and VariableEvaluationService dependencies
+- Preserved existing `buildContext()` for backward compatibility
+
+Settlement/Structure Services:
+
+- Updated `getComputedFields()` to call `buildContextWithVariables()`
+- Passes `includeVariables=true`, scope type, and entity ID
+- Variables now accessible in condition expressions via `var.{key}` notation
+- No breaking changes to existing functionality
+
+**Features:**
+
+Variable Access in Conditions:
+
+- Conditions can reference StateVariable values: `{ ">=": [{ "var": "var.merchant_count" }, 10] }`
+- Supports both stored values and derived variable evaluation during context building
+- Mixed entity/variable references: `{ "and": [{ ">=": [{ "var": "settlement.population" }, 5000] }, { "==": [{ "var": "var.has_trade_route" }, true] }] }`
+- Graceful handling of missing variables (undefined treated as null/false by JSONLogic)
+
+Error Handling:
+
+- Database query failures return basic context without variables (no exceptions thrown)
+- Variable evaluation failures skip that variable and continue processing others
+- All errors logged with appropriate context without exposing sensitive data
+- Graceful degradation ensures computed fields functionality doesn't break
+
+**Testing:**
+
+Integration Tests (14 tests, all passing):
+
+- Context building with/without variables
+- Parameter validation (missing scope/scopeId warnings)
+- Variable fetching for settlement and structure scopes
+- Derived variable formula evaluation during context building
+- Empty variable results handling
+- Failed evaluations and database error recovery
+- Condition evaluation with variable references
+- Mixed entity and variable references in expressions
+
+Test Updates:
+
+- Added jest-mock-extended dependency for cleaner test mocking
+- Updated existing service tests to mock new dependencies
+- All 89 tests passing across affected services (condition-evaluation, settlement, structure, integration)
+
+**Performance Notes:**
+
+Known Limitations (acceptable for Stage 6):
+
+- N+1 query pattern in `getComputedFields` when called for multiple entities (documented in code comments)
+- Sequential variable evaluation (could be parallelized with Promise.all in future)
+- These are acceptable trade-offs for simplicity and can be optimized in future iterations
+
+**Security:**
+
+- Authorization delegated to calling services (Settlement/Structure already perform auth checks)
+- Parameterized queries via Prisma ORM prevent SQL injection
+- Graceful error handling prevents information leakage
+- No sensitive data exposed in logs (only error messages logged)
+
+**Code Review:**
+
+- Approved by code-reviewer subagent with no critical issues
+- Clean integration with existing systems
+- Follows project conventions and patterns
+- Excellent test coverage with comprehensive scenarios
+- Well-documented with JSDoc comments
+
+**Integration:**
+
+This stage completes the key integration between TICKET-012 (Condition System) and TICKET-013 (StateVariable System). Settlement and Structure entities can now have computed fields that depend on both entity properties and variable values, enabling powerful dynamic behavior like:
+
+- Trade hub status based on population AND merchant count variable
+- Structure profitability based on level AND daily revenue variable
+- Settlement prosperity based on population AND derived prosperity_level variable
+
+Related: TICKET-012 (Condition System), TICKET-013 Stages 1-5 (StateVariable CRUD)
+
+**Files Created:**
+
+- `packages/api/src/graphql/services/condition-variable-integration.test.ts` - Integration tests (636 lines, 14 tests)
+
+**Files Modified:**
+
+- `packages/api/src/graphql/services/condition-evaluation.service.ts` - Added buildContextWithVariables and fetchScopeVariables methods
+- `packages/api/src/graphql/services/settlement.service.ts` - Updated getComputedFields to use variable integration
+- `packages/api/src/graphql/services/structure.service.ts` - Updated getComputedFields to use variable integration
+- `packages/api/src/graphql/services/condition-evaluation.service.test.ts` - Added dependency mocks
+- `packages/api/src/graphql/services/settlement.service.test.ts` - Added ConditionEvaluationService mock
+- `packages/api/src/graphql/services/structure.service.test.ts` - Added ConditionEvaluationService mock
+- `packages/api/package.json` - Added jest-mock-extended dev dependency
+- `pnpm-lock.yaml` - Updated lock file

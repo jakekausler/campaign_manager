@@ -328,47 +328,73 @@ Implement a StateVariable system for storing and querying dynamic campaign state
 
 ---
 
-### Stage 6: Variable Resolution for Conditions
+### Stage 6: Variable Resolution for Conditions ✅
+
+**Status:** COMPLETE (Commit: bf77940)
 
 **Goal**: Integrate StateVariable system with Condition evaluation context
 
 **Tasks**:
 
-- [ ] Update `ConditionEvaluationService.buildContext()` method to:
+- [x] Update `ConditionEvaluationService.buildContext()` method to:
   - Accept optional `includeVariables` boolean parameter (default false)
   - If includeVariables is true, fetch variables for entity scope
   - Merge variable key-value pairs into context
   - Support derived variable evaluation during context building
-- [ ] Create helper method `fetchScopeVariables(scope, scopeId)`:
+- [x] Create helper method `fetchScopeVariables(scope, scopeId)`:
   - Query StateVariable for scope/scopeId
   - Evaluate derived variables
   - Return key-value map
-- [ ] Update Settlement/Structure computed field resolution:
+- [x] Update Settlement/Structure computed field resolution:
   - Pass includeVariables=true when building evaluation context
   - Variables are now accessible in condition expressions via `var.{key}` notation
-- [ ] Write integration tests:
+- [x] Write integration tests:
   - Condition evaluation with variable references
   - Settlement conditions using settlement variables
   - Structure conditions using structure variables
   - Derived variable usage in conditions
   - Variable changes affecting computed fields
-- [ ] Run tests via TypeScript Tester subagent
-- [ ] Verify type-check and lint pass
-- [ ] Run Code Reviewer subagent before commit
-- [ ] Address any critical issues from code review
-- [ ] Commit Stage 6
+- [x] Run tests via TypeScript Tester subagent
+- [x] Verify type-check and lint pass
+- [x] Run Code Reviewer subagent before commit
+- [x] Address any critical issues from code review
+- [x] Commit Stage 6
 
 **Success Criteria**:
 
-- [ ] Conditions can reference variables in expressions
-- [ ] Variables are properly resolved during evaluation
-- [ ] Derived variables work in condition context
-- [ ] Settlement/Structure computed fields can use variables
-- [ ] Test coverage demonstrates integration
+- [x] Conditions can reference variables in expressions
+- [x] Variables are properly resolved during evaluation
+- [x] Derived variables work in condition context
+- [x] Settlement/Structure computed fields can use variables
+- [x] Test coverage demonstrates integration
 
 **Tests**:
 
-- Integration tests for condition-variable integration
+- Integration tests (14 tests covering all condition-variable integration scenarios) ✅
+
+**Implementation Notes**:
+
+- **Context Building**: Created async `buildContextWithVariables()` method that optionally fetches and merges StateVariables
+- **Variable Fetching**: Private `fetchScopeVariables()` helper queries, evaluates, and returns key-value map of variables
+- **Entity Integration**: Updated Settlement/Structure services to use new context building method with includeVariables=true
+- **Variable Namespace**: Variables accessible in expressions via `var.{key}` notation (e.g., `{ "var": "var.merchant_count" }`)
+- **Error Handling**: Graceful degradation - failures return basic context without throwing exceptions
+- **Testing**: 14 comprehensive integration tests + updated existing tests for new dependencies (89 total tests passing)
+- **Code Review**: Approved with no critical issues - clean integration, excellent test coverage, proper security
+
+**Files Created**:
+
+- `packages/api/src/graphql/services/condition-variable-integration.test.ts` - Integration tests (636 lines, 14 tests)
+
+**Files Modified**:
+
+- `packages/api/src/graphql/services/condition-evaluation.service.ts` - Added buildContextWithVariables and fetchScopeVariables
+- `packages/api/src/graphql/services/settlement.service.ts` - Updated getComputedFields to use variable integration
+- `packages/api/src/graphql/services/structure.service.ts` - Updated getComputedFields to use variable integration
+- `packages/api/src/graphql/services/condition-evaluation.service.test.ts` - Added dependency mocks
+- `packages/api/src/graphql/services/settlement.service.test.ts` - Added ConditionEvaluationService mock
+- `packages/api/src/graphql/services/structure.service.test.ts` - Added ConditionEvaluationService mock
+- `packages/api/package.json` - Added jest-mock-extended dev dependency
 
 ---
 
