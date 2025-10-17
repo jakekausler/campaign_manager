@@ -401,19 +401,265 @@ Implement world time management system that tracks campaign-specific time, suppo
 - [ ] Calendar system supports custom definitions
 - [ ] Time travel queries work correctly
 
-## Technical Notes
+## GraphQL API Usage
 
-```typescript
-@Mutation(() => WorldTimeResult)
-async advanceWorldTime(
-  @Args('campaignId') campaignId: string,
-  @Args('to') to: DateTime,
-): Promise<WorldTimeResult> {
-  const result = await this.worldTimeService.advance(campaignId, to);
-  await this.rulesEngine.invalidate({ campaignId, worldTime: to });
-  return result;
+### Example Queries
+
+#### Get Current World Time
+
+```graphql
+query GetCurrentWorldTime {
+  getCurrentWorldTime(campaignId: "cm4qk08y3000008l69xj44fyj")
 }
 ```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "getCurrentWorldTime": "4707-03-15T12:00:00.000Z"
+  }
+}
+```
+
+If no world time is set for the campaign, returns `null`.
+
+### Example Mutations
+
+#### Advance World Time (Basic)
+
+```graphql
+mutation AdvanceWorldTime {
+  advanceWorldTime(input: { campaignId: "cm4qk08y3000008l69xj44fyj", to: "4707-04-01T08:00:00Z" }) {
+    campaignId
+    previousWorldTime
+    currentWorldTime
+    affectedEntities
+    message
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "advanceWorldTime": {
+      "campaignId": "cm4qk08y3000008l69xj44fyj",
+      "previousWorldTime": "4707-03-15T12:00:00.000Z",
+      "currentWorldTime": "4707-04-01T08:00:00.000Z",
+      "affectedEntities": 0,
+      "message": "World time advanced successfully from 4707-03-15T12:00:00.000Z to 4707-04-01T08:00:00.000Z"
+    }
+  }
+}
+```
+
+#### Advance World Time (With All Options)
+
+```graphql
+mutation AdvanceWorldTimeWithOptions {
+  advanceWorldTime(
+    input: {
+      campaignId: "cm4qk08y3000008l69xj44fyj"
+      to: "4707-04-15T18:30:00Z"
+      branchId: "main"
+      invalidateCache: true
+    }
+  ) {
+    campaignId
+    previousWorldTime
+    currentWorldTime
+    affectedEntities
+    message
+  }
+}
+```
+
+**Optional Parameters:**
+
+- `branchId` (ID): Defaults to "main" if not specified. Used for future branch-specific time management.
+- `invalidateCache` (Boolean): Defaults to `true`. Set to `false` to skip cache invalidation (useful for batch operations).
+
+### Input Validation
+
+The `AdvanceWorldTimeInput` validates:
+
+- `campaignId`: Must be a valid UUID
+- `to`: Must be a valid date/time
+- `to` must be greater than the current world time (cannot go backwards in time)
+- User must have 'owner' or 'gm' role for the campaign
+
+## Calendar System
+
+### Calendar JSON Structure
+
+Each World can define a custom calendar system stored as JSON. The calendar is used by the calendar utilities to parse and format world-specific dates.
+
+**Calendar Definition:**
+
+```typescript
+interface CalendarDefinition {
+  id: string; // Unique identifier (e.g., "absalom-reckoning")
+  name: string; // Display name (e.g., "Absalom Reckoning")
+  monthsPerYear: number; // Number of months in a year (e.g., 12)
+  daysPerMonth: number[]; // Days in each month (e.g., [31, 28, 31, 30, ...])
+  monthNames: string[]; // Names of months (e.g., ["Abadius", "Calistril", ...])
+  epoch: string; // Calendar epoch as ISO date (e.g., "2700-01-01T00:00:00Z")
+  notes?: string; // Optional description
+}
+```
+
+**Example - Absalom Reckoning (Golarion):**
+
+```json
+{
+  "id": "absalom-reckoning",
+  "name": "Absalom Reckoning",
+  "monthsPerYear": 12,
+  "daysPerMonth": [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+  "monthNames": [
+    "Abadius",
+    "Calistril",
+    "Pharast",
+    "Gozran",
+    "Desnus",
+    "Sarenith",
+    "Erastus",
+    "Arodus",
+    "Rova",
+    "Lamashan",
+    "Neth",
+    "Kuthona"
+  ],
+  "epoch": "2700-01-01T00:00:00Z",
+  "notes": "The most commonly used calendar on Golarion, dating from the founding of Absalom in 1 AR."
+}
+```
+
+### Calendar Utilities
+
+The system provides three utility functions for working with custom calendars:
+
+#### parseWorldDate(dateString, calendar?)
+
+Parses a date string using the provided calendar definition.
+
+**Supported Formats:**
+
+- ISO 8601: `"4707-03-15T12:00:00Z"` or `"4707-03-15"`
+- Custom Calendar: `"15 Pharast 4707"` or `"15 Pharast 4707 12:00:00"`
+
+**Examples:**
+
+```typescript
+// With custom calendar
+const date1 = parseWorldDate('15 Pharast 4707', absalomReckoning);
+// Returns: Date object for Pharast 15, 4707 AR
+
+// With ISO format
+const date2 = parseWorldDate('4707-03-15T12:00:00Z', absalomReckoning);
+// Returns: Date object for the ISO timestamp
+
+// Without calendar (falls back to ISO parsing)
+const date3 = parseWorldDate('2024-12-15T10:30:00Z');
+// Returns: Date object for the ISO timestamp
+```
+
+**Features:**
+
+- Case-insensitive month name matching
+- Validates day ranges per month (e.g., 1-28 for Calistril, 1-31 for Abadius)
+- Throws descriptive errors for invalid dates
+
+#### formatWorldDate(date, calendar?, includeTime?)
+
+Formats a Date object using the provided calendar definition.
+
+**Examples:**
+
+```typescript
+const date = new Date('4707-03-15T12:00:00Z');
+
+// With custom calendar (date only)
+const formatted1 = formatWorldDate(date, absalomReckoning);
+// Returns: "15 Pharast 4707"
+
+// With custom calendar (include time)
+const formatted2 = formatWorldDate(date, absalomReckoning, true);
+// Returns: "15 Pharast 4707 12:00:00"
+
+// Without calendar (falls back to ISO)
+const formatted3 = formatWorldDate(date);
+// Returns: "4707-03-15T12:00:00.000Z"
+```
+
+#### validateWorldDate(date, calendar?)
+
+Validates a Date object against calendar constraints.
+
+**Returns:** `{ isValid: boolean, error?: string }`
+
+**Examples:**
+
+```typescript
+const validDate = new Date('4707-03-15T12:00:00Z');
+const result1 = validateWorldDate(validDate, absalomReckoning);
+// Returns: { isValid: true }
+
+const beforeEpoch = new Date('2000-01-01T00:00:00Z');
+const result2 = validateWorldDate(beforeEpoch, absalomReckoning);
+// Returns: { isValid: false, error: "Date is before calendar epoch..." }
+```
+
+## Technical Notes
+
+### Service Architecture
+
+```typescript
+// WorldTimeService - Core Logic
+export class WorldTimeService {
+  async getCurrentWorldTime(campaignId: string, user: AuthenticatedUser): Promise<Date | null>;
+
+  async advanceWorldTime(
+    campaignId: string,
+    to: Date,
+    userId: string,
+    expectedVersion: number,
+    branchId?: string,
+    invalidateCache?: boolean
+  ): Promise<WorldTimeResult>;
+}
+
+// WorldTimeResolver - GraphQL API
+@Resolver()
+export class WorldTimeResolver {
+  @Query(() => Date, { nullable: true })
+  @UseGuards(JwtAuthGuard)
+  async getCurrentWorldTime(
+    @Args('campaignId', { type: () => ID }) campaignId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Date | null>;
+
+  @Mutation(() => WorldTimeResult)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async advanceWorldTime(
+    @Args('input') input: AdvanceWorldTimeInput,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<WorldTimeResult>;
+}
+```
+
+### Key Features
+
+1. **Transaction Safety**: Campaign update and audit log creation are wrapped in a Prisma transaction
+2. **Optimistic Locking**: Prevents race conditions via version checking (currently hardcoded to 0 at GraphQL layer)
+3. **Cache Invalidation**: Automatically invalidates campaign context cache on time advancement
+4. **Authorization**: Fine-grained access control via `verifyCampaignAccess` helper
+5. **Future Rules Engine Hook**: TODO comment marks where rules engine integration will be added in TICKET-020+
 
 ## Dependencies
 

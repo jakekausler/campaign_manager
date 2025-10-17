@@ -533,15 +533,49 @@ await this.campaignContext.invalidateCache(campaignId, branchId);
 **Goal**: Document world time system usage and update README
 **Success Criteria**: Developers can understand and use the world time system
 **Tests**: Documentation is clear and accurate
-**Status**: Not Started
+**Status**: ✅ Complete
+**Commit**: [will be added after commit]
 
 ### Tasks
 
-- [ ] Add GraphQL schema examples to ticket notes
-- [ ] Update CLAUDE.md with world time service information
-- [ ] Add example GraphQL queries/mutations to ticket
-- [ ] Document calendar system JSON structure
-- [ ] Update README.md if necessary
+- [x] Add GraphQL schema examples to ticket notes
+- [x] Update CLAUDE.md with world time service information
+- [x] Add example GraphQL queries/mutations to ticket
+- [x] Document calendar system JSON structure
+- [x] Update README.md if necessary
+
+### Implementation Notes
+
+**What was documented:**
+
+1. **TICKET-010.md Updates**:
+   - Added comprehensive GraphQL API Usage section with query and mutation examples
+   - Documented request/response formats for getCurrentWorldTime query
+   - Documented basic and advanced advanceWorldTime mutation examples
+   - Added Input Validation section explaining all validation rules
+   - Added Calendar System section with:
+     - Complete CalendarDefinition interface documentation
+     - Example Absalom Reckoning calendar JSON
+     - Detailed documentation of calendar utility functions (parseWorldDate, formatWorldDate, validateWorldDate)
+     - Examples for all three utility functions with different scenarios
+   - Updated Technical Notes section with service architecture and key features
+
+2. **CLAUDE.md Updates**:
+   - Added new "World Time System" section after Database Migrations
+   - Documented system overview and key features
+   - Documented WorldTimeService, WorldTimeResolver, and Calendar Utilities
+   - Added GraphQL API examples for queries and mutations
+   - Listed all integration points with other systems
+   - Documented database schema changes
+   - Added testing summary with test counts
+   - Listed all 7 stage commit hashes
+   - Documented common use cases and validation rules
+   - Listed future enhancements
+
+3. **README.md Assessment**:
+   - Determined that README (user-facing documentation) doesn't need major updates
+   - World Time System is a backend feature exposed through GraphQL API (already documented)
+   - Will add TICKET-010 to completed features list after Project Manager verification
 
 **Example Mutations**:
 
