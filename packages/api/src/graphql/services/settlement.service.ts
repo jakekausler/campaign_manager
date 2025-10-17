@@ -11,6 +11,7 @@ import {
   BadRequestException,
   Inject,
   forwardRef,
+  Logger,
 } from '@nestjs/common';
 import type { Settlement as PrismaSettlement, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
@@ -23,18 +24,22 @@ import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
 import { CampaignContextService } from './campaign-context.service';
+import { ConditionEvaluationService } from './condition-evaluation.service';
 import { LevelValidator } from './level-validator';
 import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
 export class SettlementService {
+  private readonly logger = new Logger(SettlementService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
     @Inject(forwardRef(() => CampaignContextService))
     private readonly campaignContext: CampaignContextService,
-    @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
+    @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub,
+    private readonly conditionEvaluation: ConditionEvaluationService
   ) {}
 
   /**
@@ -690,5 +695,99 @@ export class SettlementService {
     const payload = await this.versionService.decompressVersion(version);
 
     return payload as PrismaSettlement;
+  }
+
+  /**
+   * Get computed fields for a settlement by evaluating all active conditions
+   * Returns a map of field names to their computed values
+   *
+   * NOTE: Authorization is assumed to be performed by the caller (GraphQL resolver)
+   *
+   * TODO (Performance): Implement DataLoader pattern to avoid N+1 queries when
+   * resolving computed fields for multiple settlements in a batch.
+   *
+   * TODO (Performance): Evaluate conditions in parallel using Promise.all
+   * instead of sequential await in loop.
+   *
+   * TODO (Feature): Consider supporting type-level conditions (entityId: null)
+   * that apply to all settlements of this type.
+   */
+  async getComputedFields(
+    settlement: PrismaSettlement,
+    _user: AuthenticatedUser
+  ): Promise<Record<string, unknown>> {
+    try {
+      // Fetch all active conditions for this settlement
+      // NOTE: This creates an N+1 query problem when called for multiple settlements
+      // Should be optimized with DataLoader in future iteration
+      const conditions = await this.prisma.fieldCondition.findMany({
+        where: {
+          entityType: 'settlement',
+          entityId: settlement.id,
+          isActive: true,
+          deletedAt: null,
+        },
+        orderBy: {
+          priority: 'desc',
+        },
+      });
+
+      // If no conditions, return empty object
+      if (conditions.length === 0) {
+        return {};
+      }
+
+      // Build context from settlement data
+      const context = {
+        settlement: {
+          id: settlement.id,
+          name: settlement.name,
+          level: settlement.level,
+          kingdomId: settlement.kingdomId,
+          locationId: settlement.locationId,
+          variables: settlement.variables,
+          version: settlement.version,
+          createdAt: settlement.createdAt,
+          updatedAt: settlement.updatedAt,
+        },
+      };
+
+      // Evaluate each condition and build computed fields map
+      const computedFields: Record<string, unknown> = {};
+
+      /**
+       * Process conditions in priority order (DESC - highest first).
+       * For each field, only the first (highest priority) condition is evaluated.
+       * If multiple conditions have the same priority for a field, the first one
+       * encountered wins (database ordering is not guaranteed for equal priorities).
+       */
+      for (const condition of conditions) {
+        // Skip if we already have a value for this field (higher priority already processed)
+        if (condition.field in computedFields) {
+          continue;
+        }
+
+        // Evaluate the condition expression
+        // NOTE: Sequential evaluation - could be parallelized for better performance
+        const result = await this.conditionEvaluation.evaluateExpression(
+          condition.expression as Prisma.JsonValue,
+          context
+        );
+
+        // Only include successfully evaluated conditions
+        if (result.success) {
+          computedFields[condition.field] = result.value;
+        }
+      }
+
+      return computedFields;
+    } catch (error) {
+      // Log error but don't throw - gracefully return empty object
+      this.logger.error(
+        `Failed to compute fields for settlement ${settlement.id}`,
+        error instanceof Error ? error.stack : undefined
+      );
+      return {};
+    }
   }
 }

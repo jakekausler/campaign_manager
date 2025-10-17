@@ -3,8 +3,9 @@
  * GraphQL resolvers for Structure queries and mutations
  */
 
-import { UseGuards } from '@nestjs/common';
-import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Logger, UseGuards } from '@nestjs/common';
+import { Args, ID, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
+import type { Structure as PrismaStructure } from '@prisma/client';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -20,6 +21,8 @@ import { Variable, VariableSchemaType, VariableTypeEnum } from '../types/variabl
 
 @Resolver(() => Structure)
 export class StructureResolver {
+  private readonly logger = new Logger(StructureResolver.name);
+
   constructor(
     private readonly structureService: StructureService,
     private readonly variableSchemaService: VariableSchemaService
@@ -228,5 +231,28 @@ export class StructureResolver {
       defaultValue: schema.defaultValue,
       description: schema.description,
     }));
+  }
+
+  @ResolveField(() => Object, {
+    nullable: true,
+    description: 'Computed fields from evaluated conditions',
+  })
+  async computedFields(
+    @Parent() structure: Structure,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Record<string, unknown>> {
+    try {
+      return await this.structureService.getComputedFields(
+        structure as unknown as PrismaStructure,
+        user
+      );
+    } catch (error) {
+      // Return empty object on error (graceful degradation)
+      this.logger.error(
+        `Failed to resolve computed fields for structure ${structure.id}`,
+        error instanceof Error ? error.stack : undefined
+      );
+      return {};
+    }
   }
 }

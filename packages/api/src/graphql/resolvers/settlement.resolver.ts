@@ -3,7 +3,7 @@
  * GraphQL resolvers for Settlement queries and mutations
  */
 
-import { UseGuards } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
 import {
   Args,
   Context,
@@ -15,6 +15,7 @@ import {
   ResolveField,
   Resolver,
 } from '@nestjs/graphql';
+import type { Settlement as PrismaSettlement } from '@prisma/client';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -35,6 +36,8 @@ import { Variable, VariableSchemaType, VariableTypeEnum } from '../types/variabl
 
 @Resolver(() => Settlement)
 export class SettlementResolver {
+  private readonly logger = new Logger(SettlementResolver.name);
+
   constructor(
     private readonly settlementService: SettlementService,
     private readonly variableSchemaService: VariableSchemaService
@@ -253,5 +256,28 @@ export class SettlementResolver {
   ): Promise<Structure[]> {
     // Use DataLoader to batch and cache structure queries
     return context.dataloaders.structureLoader.load(settlement.id) as unknown as Structure[];
+  }
+
+  @ResolveField(() => Object, {
+    nullable: true,
+    description: 'Computed fields from evaluated conditions',
+  })
+  async computedFields(
+    @Parent() settlement: Settlement,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Record<string, unknown>> {
+    try {
+      return await this.settlementService.getComputedFields(
+        settlement as unknown as PrismaSettlement,
+        user
+      );
+    } catch (error) {
+      // Return empty object on error (graceful degradation)
+      this.logger.error(
+        `Failed to resolve computed fields for settlement ${settlement.id}`,
+        error instanceof Error ? error.stack : undefined
+      );
+      return {};
+    }
   }
 }
