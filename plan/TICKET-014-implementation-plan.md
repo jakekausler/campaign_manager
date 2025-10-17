@@ -200,9 +200,9 @@ Build a dependency graph system that tracks relationships between conditions, va
 
 **Tasks**:
 
-- [ ] Create `DependencyGraphBuilderService` in `packages/api/src/graphql/services/dependency-graph-builder.service.ts`
-- [ ] Inject PrismaService, DependencyExtractor
-- [ ] Implement `buildGraphForCampaign(campaignId: string, branchId: string): Promise<DependencyGraph>`
+- [x] Create `DependencyGraphBuilderService` in `packages/api/src/graphql/services/dependency-graph-builder.service.ts`
+- [x] Inject PrismaService, DependencyExtractor
+- [x] Implement `buildGraphForCampaign(campaignId: string, branchId: string): Promise<DependencyGraph>`
   - Query all active FieldConditions for campaign
   - Query all StateVariables for campaign/branch
   - Query all Effects for campaign (future - stub for now)
@@ -211,29 +211,29 @@ Build a dependency graph system that tracks relationships between conditions, va
   - Build nodes for all variables, conditions, effects
   - Build edges for all dependencies
   - Return populated DependencyGraph
-- [ ] Implement `updateGraphForCondition(graph: DependencyGraph, conditionId: string): Promise<void>` - incremental update
-- [ ] Implement `updateGraphForVariable(graph: DependencyGraph, variableId: string): Promise<void>` - incremental update
-- [ ] Implement `removeFromGraph(graph: DependencyGraph, nodeId: string): void` - remove node and edges
-- [ ] Write comprehensive unit tests with mocked Prisma (15+ test cases)
+- [x] Implement `updateGraphForCondition(graph: DependencyGraph, conditionId: string): Promise<void>` - incremental update
+- [x] Implement `updateGraphForVariable(graph: DependencyGraph, variableId: string): Promise<void>` - incremental update
+- [x] Implement `removeFromGraph(graph: DependencyGraph, nodeId: string): void` - remove node and edges
+- [x] Write comprehensive unit tests with mocked Prisma (18 test cases)
 
 **Success Criteria**:
 
-- Can build complete graph from database state
-- Supports incremental updates for individual entities
-- Handles missing/deleted entities gracefully
-- All unit tests pass with mocked dependencies
+- Can build complete graph from database state ✅
+- Supports incremental updates for individual entities ✅
+- Handles missing/deleted entities gracefully ✅
+- All unit tests pass with mocked dependencies ✅
 
 **Tests**:
 
-- Build graph with conditions and variables
-- Build graph with no conditions (only variables)
-- Incremental add condition
-- Incremental remove condition
-- Incremental update condition (remove old edges, add new edges)
-- Handle condition referencing non-existent variable
-- Handle deleted entities during build
+- Build graph with conditions and variables ✅
+- Build graph with no conditions (only variables) ✅
+- Incremental add condition ✅
+- Incremental remove condition ✅
+- Incremental update condition (remove old edges, add new edges) ✅
+- Handle condition referencing non-existent variable ✅
+- Handle deleted entities during build ✅
 
-**Status**: Not Started
+**Status**: Completed (Commit: d76ecf7)
 
 ---
 
