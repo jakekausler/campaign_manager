@@ -135,28 +135,30 @@ Implement a safe JSONLogic-based expression parser with custom domain operators 
 
 **Tasks**:
 
-- [ ] Create `ExpressionCache` class in `cache/expression-cache.ts`
-- [ ] Implement LRU (Least Recently Used) cache for parsed expressions
-- [ ] Create cache key generation from expression JSON
-- [ ] Add cache invalidation mechanism
-- [ ] Add cache hit/miss metrics hooks
-- [ ] Configure cache size limits
-- [ ] Write cache behavior tests
-- [ ] Write performance tests (cache hit speedup)
-- [ ] Add cache statistics/monitoring
-- [ ] Verify all tests pass
-- [ ] Run type-check and lint
-- [ ] Commit changes
+- [x] Create `ExpressionCache` class in `cache/expression-cache.ts`
+- [x] Implement LRU (Least Recently Used) cache for parsed expressions
+- [x] Create cache key generation from expression JSON
+- [x] Add cache invalidation mechanism
+- [x] Add cache hit/miss metrics hooks
+- [x] Configure cache size limits
+- [x] Write cache behavior tests (27 tests)
+- [x] Write performance tests (6 tests validating cache hit speedup)
+- [x] Add cache statistics/monitoring
+- [x] Integrate cache into ExpressionParserService
+- [x] Write integration tests (10 tests)
+- [x] Verify all tests pass (185 total)
+- [x] Run type-check and lint
+- [x] Commit changes (4c665cd)
 
 **Success Criteria**:
 
-- Parsed expressions are cached to avoid re-parsing
-- Cache correctly evicts least recently used entries
-- Cache key generation is deterministic
-- Cache provides measurable performance improvement
-- Cache statistics available for monitoring
+- ✅ Parsed expressions are cached to avoid re-parsing
+- ✅ Cache correctly evicts least recently used entries
+- ✅ Cache key generation is deterministic
+- ✅ Cache provides measurable performance improvement (8-15x speedup)
+- ✅ Cache statistics available for monitoring
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: 4c665cd)
 
 ---
 

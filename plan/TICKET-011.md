@@ -2,13 +2,14 @@
 
 ## Status
 
-- [ ] Completed
+- [x] Completed
 - **Commits**:
   - 48cb512 - Implementation plan created
   - ea4f328 - Stage 1 complete (Core JSONLogic Integration & Setup)
   - 9ad4ae4 - Stage 2 complete (Custom Operator Framework & Spatial Operators)
   - 21fa7a8 - Stage 3 complete (Temporal Operators & Expression Validation)
   - e4eeeb7 - Stage 4 complete (Sandbox Execution & Security)
+  - 4c665cd - Stage 5 complete (Expression Caching & Performance Optimization)
 
 ## Implementation Notes
 
@@ -228,7 +229,58 @@ Implementation plan created in TICKET-011-implementation-plan.md with 5 stages.
    - Graceful degradation on errors
    - Safe defaults with customization options
 
-**Next Stage**: Stage 5 - Expression Caching & Performance Optimization
+**Next Stage**: All stages complete! Ticket ready to be marked complete.
+
+### Stage 5: Expression Caching & Performance Optimization ✅ COMPLETE
+
+**Commit**: 4c665cd
+
+**Completed**:
+
+- Created ExpressionCache class with LRU (Least Recently Used) eviction policy
+- Implemented cache using Map-based approach with O(1) operations
+- Features:
+  - Deterministic cache key generation using JSON.stringify
+  - Configurable max size (default: 100 expressions)
+  - Automatic LRU eviction when cache is full
+  - Cache statistics tracking (hits, misses, hit rate)
+  - Invalidation and clearing capabilities
+  - Static factory method for testing (resolves NestJS DI constraint)
+- Integrated cache into ExpressionParserService:
+  - Cache-by-default behavior (opt-out via `useCache: false`)
+  - Transparent caching in parse() method
+  - Backward compatible with existing code
+- Comprehensive test coverage:
+  - 27 unit tests for cache behavior (LRU eviction, key generation, invalidation)
+  - 6 performance tests validating 8-15x speedup for cache hits
+  - 10 integration tests for parser service with caching
+  - Total: 185 tests passing across all Rules Engine components
+- Architecture decisions:
+  - Custom LRU implementation using Map insertion order (ES6 guarantee)
+  - Parameterless constructor for NestJS dependency injection
+  - Factory method pattern (ExpressionCache.create()) for test configuration
+  - JSON serialization for deterministic, readable cache keys
+
+**Performance Results** (from tests):
+
+- Cache hits: 8-15x faster than key generation
+- Real-world usage: >60% hit rate with hot expressions
+- O(1) performance maintained across all cache fill levels
+- Memory bounded by maxSize with automatic eviction
+
+**Test Results**: All 185 tests passing (43 new tests added in Stage 5)
+**Type-check**: ✅ Pass
+**Lint**: ✅ Pass (0 errors, 82 pre-existing warnings)
+
+**Code Review**: Approved with no blocking issues by Code Reviewer subagent
+
+- Excellent test coverage and performance validation
+- Clean architecture with proper separation of concerns
+- Strong TypeScript typing and documentation
+- Proper error handling and edge case management
+- NestJS DI compatibility maintained
+
+**Next Stage**: None - All stages complete!
 
 ## Description
 
@@ -244,11 +296,11 @@ Implement a safe JSONLogic-based expression parser with custom domain operators 
 
 ## Acceptance Criteria
 
-- [ ] Can parse and evaluate JSONLogic expressions
-- [ ] Custom operators work (inside, distanceFrom, daysSince, etc.)
-- [ ] Validation catches malformed expressions
-- [ ] Expressions execute safely (no code injection)
-- [ ] Expression AST is cached for performance
+- [x] Can parse and evaluate JSONLogic expressions
+- [x] Custom operators work (inside, distanceFrom, daysSince, etc.)
+- [x] Validation catches malformed expressions
+- [x] Expressions execute safely (no code injection)
+- [x] Expression AST is cached for performance
 
 ## Technical Notes
 
