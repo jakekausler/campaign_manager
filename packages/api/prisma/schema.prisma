@@ -36,14 +36,16 @@ model User {
   deletedAt DateTime?
 
   // Relations
-  versions                Version[]
-  audits                  Audit[]
-  ownedCampaigns          Campaign[]
-  campaignMemberships     CampaignMembership[]
-  refreshTokens           RefreshToken[]
-  apiKeys                 ApiKey[]
-  createdFieldConditions  FieldCondition[] @relation("FieldConditionCreator")
-  updatedFieldConditions  FieldCondition[] @relation("FieldConditionUpdater")
+  versions               Version[]
+  audits                 Audit[]
+  ownedCampaigns         Campaign[]
+  campaignMemberships    CampaignMembership[]
+  refreshTokens          RefreshToken[]
+  apiKeys                ApiKey[]
+  createdFieldConditions FieldCondition[]     @relation("FieldConditionCreator")
+  updatedFieldConditions FieldCondition[]     @relation("FieldConditionUpdater")
+  createdStateVariables  StateVariable[]      @relation("StateVariableCreator")
+  updatedStateVariables  StateVariable[]      @relation("StateVariableUpdater")
 
   @@index([email])
   @@index([deletedAt])
@@ -463,31 +465,41 @@ model Event {
 // =================================================================
 
 model StateVariable {
-  id         String    @id @default(cuid())
-  name       String
-  type       String // "number", "string", "boolean", "json"
-  value      Json
-  entityType String // "party", "kingdom", "settlement", "structure", "character", "global"
-  entityId   String? // Nullable for global variables
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
+  id          String    @id @default(cuid())
+  scope       String // Enum: world/campaign/party/kingdom/settlement/structure/character/location/event/encounter
+  scopeId     String? // Nullable for world-level variables
+  key         String // Variable name within scope
+  value       Json? // Nullable for derived variables
+  type        String // Enum: string/integer/float/boolean/json/derived
+  formula     Json? // JSONLogic expression for derived variables
+  description String?
+  isActive    Boolean   @default(true)
+  version     Int       @default(1) // For optimistic locking
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdBy   String
+  creator     User      @relation("StateVariableCreator", fields: [createdBy], references: [id])
+  updatedBy   String?
+  updater     User?     @relation("StateVariableUpdater", fields: [updatedBy], references: [id])
 
-  // Polymorphic relations (entityType determines which is used)
-  // Note: These are defined but ignored field feature - app code must respect entityType
-  party      Party?      @relation(fields: [entityId], references: [id], map: "StateVariable_party_fkey")
-  kingdom    Kingdom?    @relation(fields: [entityId], references: [id], map: "StateVariable_kingdom_fkey")
-  settlement Settlement? @relation(fields: [entityId], references: [id], map: "StateVariable_settlement_fkey")
-  structure  Structure?  @relation(fields: [entityId], references: [id], map: "StateVariable_structure_fkey")
-  character  Character?  @relation(fields: [entityId], references: [id], map: "StateVariable_character_fkey")
+  // Polymorphic relations (scope determines which is used)
+  // Note: These are defined but ignored field feature - app code must respect scope type
+  party      Party?      @relation(fields: [scopeId], references: [id], map: "StateVariable_party_fkey")
+  kingdom    Kingdom?    @relation(fields: [scopeId], references: [id], map: "StateVariable_kingdom_fkey")
+  settlement Settlement? @relation(fields: [scopeId], references: [id], map: "StateVariable_settlement_fkey")
+  structure  Structure?  @relation(fields: [scopeId], references: [id], map: "StateVariable_structure_fkey")
+  character  Character?  @relation(fields: [scopeId], references: [id], map: "StateVariable_character_fkey")
 
   // Relations
   dependencies Dependency[]
 
-  @@unique([name, entityType, entityId])
-  @@index([entityType, entityId])
+  @@unique([scope, scopeId, key, deletedAt])
+  @@index([scope, scopeId, key])
+  @@index([isActive])
   @@index([deletedAt])
-  @@index([name])
+  @@index([createdBy])
+  @@index([updatedBy])
 }
 
 model Condition {
