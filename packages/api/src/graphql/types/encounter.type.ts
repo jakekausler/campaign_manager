@@ -6,6 +6,8 @@
 import { ObjectType, Field, ID, Int } from '@nestjs/graphql';
 import { GraphQLJSON } from 'graphql-type-json';
 
+import { EffectExecutionSummary } from './effect.type';
+
 @ObjectType()
 export class Encounter {
   @Field(() => ID)
@@ -46,4 +48,28 @@ export class Encounter {
 
   @Field({ nullable: true })
   archivedAt?: Date;
+}
+
+/**
+ * EncounterResolutionResult - Result of resolving an encounter with effect execution
+ */
+@ObjectType()
+export class EncounterResolutionResult {
+  @Field(() => Encounter, { description: 'The resolved encounter' })
+  encounter!: Encounter;
+
+  @Field(() => EffectExecutionSummary, {
+    description: 'Summary of PRE effects executed before resolution',
+  })
+  pre!: EffectExecutionSummary;
+
+  @Field(() => EffectExecutionSummary, {
+    description: 'Summary of ON_RESOLVE effects executed during resolution',
+  })
+  onResolve!: EffectExecutionSummary;
+
+  @Field(() => EffectExecutionSummary, {
+    description: 'Summary of POST effects executed after resolution',
+  })
+  post!: EffectExecutionSummary;
 }

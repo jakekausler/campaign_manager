@@ -125,7 +125,7 @@ export class EffectExecutionService {
       }
 
       // Delegate to internal execution method
-      return await this.executeEffectInternal(effect, entity, user, dryRun);
+      return await this.executeEffectInternal(effect, entity, user, dryRun, false);
     } catch (error) {
       this.logger.error(`Error executing effect ${effectId}:`, error);
       throw error;
@@ -140,13 +140,15 @@ export class EffectExecutionService {
    * @param entity - Entity context
    * @param user - User context
    * @param dryRun - Preview mode flag
+   * @param skipEntityUpdate - If true, create execution record but don't update entity (for resolve/complete workflows)
    * @returns Execution result
    */
   private async executeEffectInternal(
     effect: Effect,
     entity: unknown,
     user: UserContext,
-    dryRun: boolean
+    dryRun: boolean,
+    skipEntityUpdate = false
   ): Promise<EffectExecutionResult> {
     const effectId = effect.id;
 
@@ -194,13 +196,15 @@ export class EffectExecutionService {
 
     // Persist changes and create audit record in transaction
     const execution = await this.prisma.$transaction(async (tx) => {
-      // Update entity with patched data
-      await this.updateEntity(
-        effect.entityType as EntityType,
-        effect.entityId,
-        patchResult.patchedEntity as PatchableEntity,
-        tx
-      );
+      // Update entity with patched data (unless skipEntityUpdate is true)
+      if (!skipEntityUpdate) {
+        await this.updateEntity(
+          effect.entityType as EntityType,
+          effect.entityId,
+          patchResult.patchedEntity as PatchableEntity,
+          tx
+        );
+      }
 
       // Create audit record
       return await tx.effectExecution.create({
@@ -241,13 +245,15 @@ export class EffectExecutionService {
    * @param entityId - ID of entity
    * @param timing - Timing phase (PRE, ON_RESOLVE, POST)
    * @param user - User context for authorization and audit
+   * @param skipEntityUpdate - If true, create execution records but don't update entity (for resolve/complete workflows)
    * @returns Summary of execution results
    */
   async executeEffectsForEntity(
     entityType: EntityType,
     entityId: string,
     timing: string,
-    user: UserContext
+    user: UserContext,
+    skipEntityUpdate = false
   ): Promise<EffectExecutionSummary> {
     this.logger.log(`Executing ${timing} effects for ${entityType}:${entityId}`);
 
@@ -296,7 +302,13 @@ export class EffectExecutionService {
           throw new ForbiddenException(`Effect ${effect.id} is not active`);
         }
 
-        const result = await this.executeEffectInternal(effect, entity, user, false);
+        const result = await this.executeEffectInternal(
+          effect,
+          entity,
+          user,
+          false,
+          skipEntityUpdate
+        );
         results.push(result);
 
         if (result.success) {

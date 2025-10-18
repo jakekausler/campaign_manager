@@ -20,6 +20,11 @@ import type { CreateEventInput, UpdateEventData } from '../inputs/event.input';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
+import {
+  EffectExecutionService,
+  type EffectExecutionSummary,
+  type UserContext,
+} from './effect-execution.service';
 import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
@@ -28,6 +33,7 @@ export class EventService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
+    private readonly effectExecution: EffectExecutionService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
@@ -368,6 +374,114 @@ export class EventService {
     if (location.worldId !== campaign?.worldId) {
       throw new Error('Location must belong to the same world as the campaign');
     }
+  }
+
+  /**
+   * Complete an event with 3-phase effect execution
+   *
+   * This method executes the complete event completion workflow:
+   * 1. Execute PRE effects (before completion)
+   * 2. Mark event as completed (isCompleted = true, occurredAt = now)
+   * 3. Execute ON_RESOLVE effects (during completion)
+   * 4. Execute POST effects (after completion)
+   *
+   * Failed effects are logged but don't prevent completion.
+   *
+   * @param id - Event ID
+   * @param user - User context for authorization and audit
+   * @returns Summary of all effect executions across all phases
+   */
+  async complete(
+    id: string,
+    user: AuthenticatedUser
+  ): Promise<{
+    event: PrismaEvent;
+    effectSummary: {
+      pre: EffectExecutionSummary;
+      onResolve: EffectExecutionSummary;
+      post: EffectExecutionSummary;
+    };
+  }> {
+    // Verify event exists and user has access
+    const event = await this.findById(id, user);
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${id} not found`);
+    }
+
+    // Check if already completed
+    if (event.isCompleted) {
+      throw new BadRequestException(`Event with ID ${id} is already completed`);
+    }
+
+    // Convert AuthenticatedUser to UserContext for effect execution
+    const userContext: UserContext = {
+      id: user.id,
+      email: user.email,
+    };
+
+    // Phase 1: Execute PRE effects (skip entity update - event not completed yet)
+    const preResults = await this.effectExecution.executeEffectsForEntity(
+      'EVENT',
+      id,
+      'PRE',
+      userContext,
+      true // skipEntityUpdate
+    );
+
+    // Phase 2: Mark event as completed
+    const occurredAt = new Date();
+    const completed = await this.prisma.event.update({
+      where: { id },
+      data: {
+        isCompleted: true,
+        occurredAt,
+        version: event.version + 1,
+      },
+    });
+
+    // Create audit entry for completion
+    await this.audit.log('event', id, 'UPDATE', user.id, {
+      isCompleted: true,
+      occurredAt,
+    });
+
+    // Publish entityModified event
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'event',
+        version: completed.version,
+        modifiedBy: user.id,
+        modifiedAt: completed.updatedAt,
+      },
+    });
+
+    // Phase 3: Execute ON_RESOLVE effects (skip entity update - only create execution records)
+    const onResolveResults = await this.effectExecution.executeEffectsForEntity(
+      'EVENT',
+      id,
+      'ON_RESOLVE',
+      userContext,
+      true // skipEntityUpdate
+    );
+
+    // Phase 4: Execute POST effects (skip entity update - only create execution records)
+    const postResults = await this.effectExecution.executeEffectsForEntity(
+      'EVENT',
+      id,
+      'POST',
+      userContext,
+      true // skipEntityUpdate
+    );
+
+    return {
+      event: completed,
+      effectSummary: {
+        pre: preResults,
+        onResolve: onResolveResults,
+        post: postResults,
+      },
+    };
   }
 
   /**

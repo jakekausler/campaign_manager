@@ -20,6 +20,11 @@ import type { CreateEncounterInput, UpdateEncounterData } from '../inputs/encoun
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
 import { AuditService } from './audit.service';
+import {
+  EffectExecutionService,
+  type EffectExecutionSummary,
+  type UserContext,
+} from './effect-execution.service';
 import { VersionService, type CreateVersionInput } from './version.service';
 
 @Injectable()
@@ -28,6 +33,7 @@ export class EncounterService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
+    private readonly effectExecution: EffectExecutionService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
@@ -361,6 +367,114 @@ export class EncounterService {
     if (location.worldId !== campaign?.worldId) {
       throw new Error('Location must belong to the same world as the campaign');
     }
+  }
+
+  /**
+   * Resolve an encounter with 3-phase effect execution
+   *
+   * This method executes the complete encounter resolution workflow:
+   * 1. Execute PRE effects (before resolution)
+   * 2. Mark encounter as resolved (isResolved = true, resolvedAt = now)
+   * 3. Execute ON_RESOLVE effects (during resolution)
+   * 4. Execute POST effects (after resolution)
+   *
+   * Failed effects are logged but don't prevent resolution.
+   *
+   * @param id - Encounter ID
+   * @param user - User context for authorization and audit
+   * @returns Summary of all effect executions across all phases
+   */
+  async resolve(
+    id: string,
+    user: AuthenticatedUser
+  ): Promise<{
+    encounter: PrismaEncounter;
+    effectSummary: {
+      pre: EffectExecutionSummary;
+      onResolve: EffectExecutionSummary;
+      post: EffectExecutionSummary;
+    };
+  }> {
+    // Verify encounter exists and user has access
+    const encounter = await this.findById(id, user);
+    if (!encounter) {
+      throw new NotFoundException(`Encounter with ID ${id} not found`);
+    }
+
+    // Check if already resolved
+    if (encounter.isResolved) {
+      throw new BadRequestException(`Encounter with ID ${id} is already resolved`);
+    }
+
+    // Convert AuthenticatedUser to UserContext for effect execution
+    const userContext: UserContext = {
+      id: user.id,
+      email: user.email,
+    };
+
+    // Phase 1: Execute PRE effects (skip entity update - encounter not resolved yet)
+    const preResults = await this.effectExecution.executeEffectsForEntity(
+      'ENCOUNTER',
+      id,
+      'PRE',
+      userContext,
+      true // skipEntityUpdate
+    );
+
+    // Phase 2: Mark encounter as resolved
+    const resolvedAt = new Date();
+    const resolved = await this.prisma.encounter.update({
+      where: { id },
+      data: {
+        isResolved: true,
+        resolvedAt,
+        version: encounter.version + 1,
+      },
+    });
+
+    // Create audit entry for resolution
+    await this.audit.log('encounter', id, 'UPDATE', user.id, {
+      isResolved: true,
+      resolvedAt,
+    });
+
+    // Publish entityModified event
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'encounter',
+        version: resolved.version,
+        modifiedBy: user.id,
+        modifiedAt: resolved.updatedAt,
+      },
+    });
+
+    // Phase 3: Execute ON_RESOLVE effects (skip entity update - only create execution records)
+    const onResolveResults = await this.effectExecution.executeEffectsForEntity(
+      'ENCOUNTER',
+      id,
+      'ON_RESOLVE',
+      userContext,
+      true // skipEntityUpdate
+    );
+
+    // Phase 4: Execute POST effects (skip entity update - only create execution records)
+    const postResults = await this.effectExecution.executeEffectsForEntity(
+      'ENCOUNTER',
+      id,
+      'POST',
+      userContext,
+      true // skipEntityUpdate
+    );
+
+    return {
+      encounter: resolved,
+      effectSummary: {
+        pre: preResults,
+        onResolve: onResolveResults,
+        post: postResults,
+      },
+    };
   }
 
   /**

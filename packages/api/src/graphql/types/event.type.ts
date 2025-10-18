@@ -6,6 +6,8 @@
 import { ObjectType, Field, ID } from '@nestjs/graphql';
 import { GraphQLJSON } from 'graphql-type-json';
 
+import { EffectExecutionSummary } from './effect.type';
+
 @ObjectType()
 export class Event {
   @Field(() => ID)
@@ -49,4 +51,28 @@ export class Event {
 
   @Field({ nullable: true })
   archivedAt?: Date;
+}
+
+/**
+ * EventCompletionResult - Result of completing an event with effect execution
+ */
+@ObjectType()
+export class EventCompletionResult {
+  @Field(() => Event, { description: 'The completed event' })
+  event!: Event;
+
+  @Field(() => EffectExecutionSummary, {
+    description: 'Summary of PRE effects executed before completion',
+  })
+  pre!: EffectExecutionSummary;
+
+  @Field(() => EffectExecutionSummary, {
+    description: 'Summary of ON_RESOLVE effects executed during completion',
+  })
+  onResolve!: EffectExecutionSummary;
+
+  @Field(() => EffectExecutionSummary, {
+    description: 'Summary of POST effects executed after completion',
+  })
+  post!: EffectExecutionSummary;
 }

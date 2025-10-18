@@ -13,7 +13,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type { CreateEventInput, UpdateEventInput } from '../inputs/event.input';
 import { EventService } from '../services/event.service';
-import { Event } from '../types/event.type';
+import { Event, EventCompletionResult } from '../types/event.type';
 
 @Resolver(() => Event)
 export class EventResolver {
@@ -103,5 +103,23 @@ export class EventResolver {
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Event> {
     return this.eventService.restore(id, user) as Promise<Event>;
+  }
+
+  @Mutation(() => EventCompletionResult, {
+    description: 'Complete an event with 3-phase effect execution (PRE, ON_RESOLVE, POST)',
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async completeEvent(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<EventCompletionResult> {
+    const result = await this.eventService.complete(id, user);
+    return {
+      event: result.event as Event,
+      pre: result.effectSummary.pre,
+      onResolve: result.effectSummary.onResolve,
+      post: result.effectSummary.post,
+    };
   }
 }

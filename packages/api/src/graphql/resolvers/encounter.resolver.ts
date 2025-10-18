@@ -13,7 +13,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type { CreateEncounterInput, UpdateEncounterInput } from '../inputs/encounter.input';
 import { EncounterService } from '../services/encounter.service';
-import { Encounter } from '../types/encounter.type';
+import { Encounter, EncounterResolutionResult } from '../types/encounter.type';
 
 @Resolver(() => Encounter)
 export class EncounterResolver {
@@ -103,5 +103,23 @@ export class EncounterResolver {
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Encounter> {
     return this.encounterService.restore(id, user) as Promise<Encounter>;
+  }
+
+  @Mutation(() => EncounterResolutionResult, {
+    description: 'Resolve an encounter with 3-phase effect execution (PRE, ON_RESOLVE, POST)',
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async resolveEncounter(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<EncounterResolutionResult> {
+    const result = await this.encounterService.resolve(id, user);
+    return {
+      encounter: result.encounter as Encounter,
+      pre: result.effectSummary.pre,
+      onResolve: result.effectSummary.onResolve,
+      post: result.effectSummary.post,
+    };
   }
 }
