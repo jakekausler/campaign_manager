@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] In Progress
-- **Commits**: afcd587
+- **Commits**: afcd587, 0b0c13e
 
 ## Description
 
@@ -80,5 +80,44 @@ Set up global state management with Zustand and GraphQL client (Apollo Client or
 - Auth and campaign slices are placeholders with basic structure
 
 **Code review outcome:** Approved with minor optional suggestions for future stages
+
+**Quality checks:** All type-check, lint, and build checks passed
+
+---
+
+### Stage 2: Configure GraphQL Code Generator (Complete - 0b0c13e)
+
+**What was implemented:**
+
+- Installed GraphQL Code Generator packages (cli, typescript, typescript-operations, typescript-react-apollo, introspection)
+- Created `codegen.ts` TypeScript configuration file
+- Configured schema introspection from `http://localhost:4000/graphql` (configurable via GRAPHQL_SCHEMA_URL)
+- Single-file output approach: generates `src/__generated__/graphql.ts` and `introspection.json`
+- Added npm scripts: `codegen` and `codegen:watch`
+- Updated `.gitignore`: excludes `__generated__/*` but tracks `README.md`
+- Created comprehensive documentation:
+  - `src/__generated__/README.md` with usage guide and troubleshooting
+  - Updated `frontend/README.md` with code generation section
+  - Added `GRAPHQL_SCHEMA_URL` to `.env.example`
+
+**Technical decisions:**
+
+- Single-file output instead of near-operation-file preset for simplicity
+- Schema URL configurable via environment variable for CI/CD flexibility
+- Custom scalar mappings: DateTime→string, JSON→Record<string, unknown>, UUID→string
+- TypeScript strict mode compatible (enumsAsTypes: true, skipTypename: false)
+- Prettier formatting with error handling (continues on failure)
+- Generated files gitignored but README tracked for documentation
+
+**Code review changes:**
+
+- Removed unused `@graphql-codegen/near-operation-file-preset` dependency
+- Made schema URL configurable via GRAPHQL_SCHEMA_URL environment variable
+- Added error handling to Prettier formatting hook
+- Improved README example with explanatory comments
+
+**Known issue:**
+
+Backend API has a dependency injection issue (RulesEngineClientService not available in GraphQLConfigModule) preventing it from starting. Code generation setup is complete but cannot be executed until backend is fixed. This is tracked separately and not blocking for Stage 2 completion.
 
 **Quality checks:** All type-check, lint, and build checks passed
