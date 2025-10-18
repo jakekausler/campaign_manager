@@ -216,6 +216,9 @@ export class EffectPatchService {
       }
 
       // Apply the patch
+      // Parameters: (document, patch, validate=true, mutateDocument=false)
+      // - validate: Perform additional validation during application
+      // - mutateDocument: false ensures immutability (returns new document)
       const patchResult = jsonpatch.applyPatch(entityClone, patch, true, false);
 
       // Check if patch application succeeded
@@ -310,6 +313,10 @@ export class EffectPatchService {
 
   /**
    * Deep equality check for two values
+   * Compares by value recursively for objects and arrays
+   *
+   * Note: This implementation handles basic cases. For complex scenarios involving
+   * Date objects, RegExp, Maps, Sets, etc., consider using a library like lodash.isEqual.
    *
    * @param a - First value
    * @param b - Second value
@@ -321,6 +328,11 @@ export class EffectPatchService {
     if (a === null || b === null) return false;
     if (a === undefined || b === undefined) return false;
     if (typeof a !== typeof b) return false;
+
+    // Handle Date objects
+    if (a instanceof Date && b instanceof Date) {
+      return a.getTime() === b.getTime();
+    }
 
     // Handle arrays
     if (Array.isArray(a) && Array.isArray(b)) {
@@ -344,14 +356,17 @@ export class EffectPatchService {
   }
 
   /**
-   * Creates a deep clone of an object
+   * Creates a deep clone of an object using the native structuredClone API
+   *
+   * This preserves Date objects, handles circular references, and is more performant
+   * than JSON.parse(JSON.stringify()).
+   *
+   * Note: structuredClone is available in Node.js 17+ and modern browsers.
    *
    * @param obj - Object to clone
    * @returns Deep cloned object
    */
   private deepClone<T>(obj: T): T {
-    // Use JSON serialization for deep cloning
-    // This is safe for our use case as entities are JSON-serializable
-    return JSON.parse(JSON.stringify(obj));
+    return structuredClone(obj);
   }
 }
