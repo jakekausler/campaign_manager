@@ -25,6 +25,7 @@ import { createRedisPubSub, REDIS_PUBSUB } from './pubsub/redis-pubsub.provider'
 import { CampaignResolver } from './resolvers/campaign.resolver';
 import { CharacterResolver } from './resolvers/character.resolver';
 import { DependencyGraphResolver } from './resolvers/dependency-graph.resolver';
+import { EffectResolver } from './resolvers/effect.resolver';
 import { EncounterResolver } from './resolvers/encounter.resolver';
 import { EventResolver } from './resolvers/event.resolver';
 import { FieldConditionResolver } from './resolvers/field-condition.resolver';
@@ -52,6 +53,9 @@ import { ConditionEvaluationService } from './services/condition-evaluation.serv
 import { ConditionService } from './services/condition.service';
 import { DependencyGraphBuilderService } from './services/dependency-graph-builder.service';
 import { DependencyGraphService } from './services/dependency-graph.service';
+import { EffectExecutionService } from './services/effect-execution.service';
+import { EffectPatchService } from './services/effect-patch.service';
+import { EffectService } from './services/effect.service';
 import { EncounterService } from './services/encounter.service';
 import { EventService } from './services/event.service';
 import { KingdomService } from './services/kingdom.service';
@@ -189,6 +193,9 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     DependencyExtractor,
     DependencyGraphBuilderService,
     DependencyGraphService,
+    EffectPatchService,
+    EffectExecutionService,
+    EffectService,
     // DataLoaders
     StructureDataLoader,
     // Resolvers
@@ -210,7 +217,8 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     StateVariableResolver,
     FieldConditionResolver,
     DependencyGraphResolver,
-    // Register custom scalars
+    EffectResolver,
+    // Register custom scalars,
     DateTimeScalar,
     JSONScalar,
     GeoJSONScalar,
