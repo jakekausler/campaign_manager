@@ -152,24 +152,30 @@ Create a dedicated Node.js worker service for the rules engine that evaluates co
 
 **Tasks**:
 
-- [ ] Create CacheService using node-cache
-- [ ] Define cache key strategy (campaign:branch:nodeId)
-- [ ] Implement cache get/set/invalidate operations
-- [ ] Add TTL configuration (environment variable)
-- [ ] Integrate cache with evaluation engine
-- [ ] Implement cache warming on graph build
-- [ ] Add cache statistics endpoint
-- [ ] Write unit tests for cache service
-- [ ] Write integration tests for cache invalidation scenarios
+- [x] Create CacheService using node-cache
+- [x] Define cache key strategy (campaign:branch:nodeId)
+- [x] Implement cache get/set/invalidate operations
+- [x] Add TTL configuration (environment variable)
+- [x] Integrate cache with evaluation engine
+- [x] Add cache statistics endpoint (gRPC GetCacheStats)
+- [x] Write unit tests for cache service
+- [x] Write integration tests for cache invalidation scenarios
+- [x] Address critical security issues (resource exhaustion, information disclosure)
 
 **Success Criteria**:
 
-- Cached evaluations return in <5ms
-- Cache invalidates correctly on state changes
-- Cache respects TTL configuration
-- Cache hit/miss metrics available
+- ✅ Cached evaluations return in <5ms
+- ✅ Cache invalidates correctly on state changes
+- ✅ Cache respects TTL configuration
+- ✅ Cache hit/miss metrics available
 
-**Status**: Not Started
+**Status**: Complete
+
+**Commit**: f69cdd9 - feat(rules-engine): implement Stage 5 caching layer (TICKET-015)
+
+**Notes**:
+
+Cache warming was considered but deferred as lower-priority optimization. On-demand caching with 5-minute TTL is sufficient for MVP.
 
 ---
 
