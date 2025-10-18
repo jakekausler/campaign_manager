@@ -30,5 +30,5 @@ export {
   GET_STRUCTURE_CONDITIONS,
 } from './structures';
 
-// Mutation hooks will be added in Stage 8
-// export { ... } from './mutations';
+// Mutation hooks (Stage 8)
+export * from '../mutations';
