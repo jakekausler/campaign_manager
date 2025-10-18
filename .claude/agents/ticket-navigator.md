@@ -1,7 +1,7 @@
 ---
 name: ticket-navigator
 description: Finds next incomplete ticket and stage from project plan.
-color: magenta
+color: pink
 ---
 
 # Ticket Navigator Subagent

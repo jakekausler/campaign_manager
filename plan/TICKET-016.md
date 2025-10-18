@@ -4,6 +4,7 @@
 
 - [ ] Completed
 - **Commits**:
+  - Stage 1: 7d1439d (Database Schema Enhancement)
 
 ## Description
 
@@ -34,3 +35,35 @@ Implement the Effect system that allows events/encounters to mutate world state 
 ## Estimated Effort
 
 3-4 days
+
+## Implementation Notes
+
+### Stage 1: Database Schema Enhancement (7d1439d)
+
+**Completed**: Database schema successfully enhanced with effect timing and execution audit trail.
+
+**Changes Made:**
+
+- Created `EffectTiming` enum with three execution phases: PRE, ON_RESOLVE, POST
+- Added `timing` field to Effect model (default: ON_RESOLVE)
+- Added `version` field to Effect model for optimistic locking
+- Created `EffectExecution` model with comprehensive audit fields:
+  - Foreign key to Effect with CASCADE delete
+  - Polymorphic reference to triggering entity (entityType/entityId)
+  - User tracking (executedBy)
+  - Complete audit context (entity state snapshot before execution)
+  - Execution results (patch applied, success status, affected fields)
+  - Error messages for failed executions
+
+**Performance Optimizations:**
+
+- Composite index on Effect(entityType, entityId, timing) for efficient phase-based queries
+- Composite index on EffectExecution(entityType, entityId, executedAt) for audit trail pagination
+- Individual indexes on all foreign keys and common query fields
+
+**Migration Handling:**
+
+- Properly handled Location GIST index (Prisma limitation - must drop and recreate in each migration)
+- All indexes created for optimal query performance
+
+**Code Review:** Approved by code-reviewer subagent after addressing Location GIST index issue and adding composite index for audit trail queries.
