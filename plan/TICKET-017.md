@@ -6,6 +6,7 @@
 - **Commits**:
   - 5ce2b6f - Stage 1: Initialize Vite + React + TypeScript
   - 0d8b80c - Stage 2: Configure Tailwind CSS + Radix UI
+  - b0fbd94 - Stage 3: Configure ESLint and Prettier
 
 ## Description
 
@@ -158,3 +159,52 @@ Example Implementation:
 ✅ Card components layout properly with responsive grid
 
 **Next Steps**: Stage 3 will configure ESLint and Prettier for the frontend package.
+
+---
+
+### Stage 3: Configure ESLint and Prettier (Completed)
+
+**Changes Made**:
+
+ESLint Configuration:
+
+- Added `eslint-plugin-jsx-a11y@^6.10.2` for automated accessibility checks
+- Enhanced `.eslintrc.json` with:
+  - `plugin:jsx-a11y/recommended` ruleset for comprehensive accessibility validation
+  - `react/prop-types: off` (using TypeScript for type checking instead)
+  - `react-hooks/rules-of-hooks: error` (enforce React Hooks rules)
+  - `react-hooks/exhaustive-deps: warn` (warn on missing effect dependencies)
+  - `jsx-a11y/anchor-is-valid` configured for React Router Link component
+- Maintains inheritance from root ESLint config for monorepo consistency
+
+Prettier Configuration:
+
+- Added `format` script: `prettier --write "src/**/*.{ts,tsx,css}"`
+- Added `format:check` script: `prettier --check "src/**/*.{ts,tsx,css}"`
+- Uses root `.prettierrc.json` configuration (semi, single quotes, 100 char width, etc.)
+- Scripts alphabetically ordered in package.json for consistency
+
+Bug Fixes:
+
+- Fixed `CardTitle` component in `src/components/ui/card.tsx`:
+  - Changed `React.forwardRef` generic type from `HTMLParagraphElement` to `HTMLHeadingElement`
+  - Explicitly destructured and rendered `children` prop within `<h3>` element
+  - Resolves `jsx-a11y/heading-has-content` accessibility error
+
+**Technical Decisions**:
+
+- Used `jsx-a11y/recommended` preset for industry-standard accessibility validation
+- Kept `prop-types` rule disabled since TypeScript provides superior type safety
+- Set `exhaustive-deps` to "warn" instead of "error" to allow flexibility for experienced developers
+- Configured `jsx-a11y/anchor-is-valid` to recognize React Router's `Link` component with `to` prop
+- Target only relevant file extensions (ts, tsx, css) in format scripts for optimal performance
+
+**Success Verification**:
+✅ TypeScript compiles without errors
+✅ ESLint passes with all accessibility checks enabled (0 errors, 0 warnings)
+✅ Prettier formatting is consistent across all source files
+✅ All quality scripts work correctly (lint, format, format:check, type-check)
+✅ Pre-commit hooks successfully validate code quality
+✅ CardTitle component properly handles children for screen readers
+
+**Next Steps**: Stage 4 will create the organized folder structure for components, pages, hooks, utils, and services.
