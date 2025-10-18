@@ -48,7 +48,7 @@ Gateway API → Rules Engine + Scheduler → PostgreSQL/PostGIS + Redis + MinIO 
 - [x] [TICKET-013](TICKET-013.md) - State Variable System ✓
 - [x] [TICKET-014](TICKET-014.md) - Dependency Graph Builder ✓
 - [x] [TICKET-015](TICKET-015.md) - Rules Engine Service Worker ✓
-- [ ] [TICKET-016](TICKET-016.md) - Effect System Implementation
+- [x] [TICKET-016](TICKET-016.md) - Effect System Implementation
 
 ### Frontend Core (Milestone 2-3: Weeks 3-6)
 

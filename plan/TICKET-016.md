@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] Completed
+- [x] Completed
 - **Commits**:
   - Stage 1: 7d1439d (Database Schema Enhancement)
   - Stage 2: e125476 (GraphQL Type Definitions)
@@ -29,12 +29,12 @@ Implement the Effect system that allows events/encounters to mutate world state 
 
 ## Acceptance Criteria
 
-- [ ] Can create effects on events/encounters
-- [ ] Effects execute at correct timing
-- [ ] Patch JSON correctly updates target entities
-- [ ] Effect execution creates audit trail
-- [ ] Effects can trigger other effects
-- [ ] Circular effect dependencies detected
+- [x] Can create effects on events/encounters
+- [x] Effects execute at correct timing
+- [x] Patch JSON correctly updates target entities
+- [x] Effect execution creates audit trail
+- [x] Effects can trigger other effects
+- [x] Circular effect dependencies detected
 
 ## Dependencies
 
