@@ -29,11 +29,16 @@ A full-stack campaign management tool for tabletop RPGs that unifies map, flowch
 
 ### Frontend
 
-- **React** - UI framework
-- **TypeScript** - Type-safe development
-- **Vite** - Build tool and dev server
-- **MapLibre** - Map rendering
-- **React Flow** - Flowchart visualization
+- **React 18** - UI framework with concurrent features
+- **TypeScript** - Type-safe development with strict mode
+- **Vite 5** - Lightning-fast build tool and dev server with HMR
+- **Tailwind CSS 3** - Utility-first CSS framework with JIT compilation
+- **Radix UI** - Accessible, unstyled component primitives (Dialog, Slot, Label)
+- **shadcn/ui** - Beautiful, customizable component library built on Radix UI
+- **React Router 7** - Client-side routing with lazy loading and code splitting
+- **Apollo Client 4** - GraphQL client with caching, subscriptions, and error handling
+- **MapLibre** - Map rendering (planned)
+- **React Flow** - Flowchart visualization (planned)
 
 ### DevOps
 
@@ -110,9 +115,9 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 5. Access the application:
 
-- **Frontend**: http://localhost:5173 (dev) or http://localhost:8080 (prod)
-- **API/GraphQL**: http://localhost:3000
-- **GraphQL Playground**: http://localhost:3000/graphql (dev only)
+- **Frontend**: http://localhost:3000 (dev) or http://localhost:8080 (prod)
+- **API/GraphQL**: http://localhost:4000
+- **GraphQL Playground**: http://localhost:4000/graphql (dev only)
 - **MinIO Console**: http://localhost:9001
 
 6. Stop all services:
@@ -162,6 +167,57 @@ Run a specific package:
 pnpm --filter @campaign/api dev
 pnpm --filter @campaign/frontend dev
 ```
+
+### Frontend Setup
+
+The frontend requires environment variables to be configured before running:
+
+1. Copy the environment template:
+
+```bash
+cp packages/frontend/.env.example packages/frontend/.env
+```
+
+2. Update environment variables in `packages/frontend/.env`:
+
+```bash
+# API Configuration (proxied in development)
+VITE_API_URL=/graphql
+VITE_API_WS_URL=ws://localhost:3000/graphql
+
+# Application Configuration
+VITE_APP_NAME=Campaign Manager
+VITE_ENVIRONMENT=development
+
+# Feature Flags
+VITE_ENABLE_DEBUG=true
+VITE_ENABLE_MOCK_AUTH=true
+```
+
+3. Start the frontend dev server:
+
+```bash
+pnpm --filter @campaign/frontend dev
+```
+
+The frontend will be available at http://localhost:3000 with:
+
+- Hot module replacement (HMR) for instant updates
+- Vite proxy forwarding `/graphql` to backend on port 4000
+- Mock authentication for development (login with any email/password)
+- Route-based code splitting for optimal performance
+
+For production builds, update environment variables to use absolute HTTPS URLs:
+
+```bash
+VITE_API_URL=https://api.yourdomain.com/graphql
+VITE_API_WS_URL=wss://api.yourdomain.com/graphql
+VITE_ENVIRONMENT=production
+VITE_ENABLE_DEBUG=false
+VITE_ENABLE_MOCK_AUTH=false
+```
+
+See `packages/frontend/README.md` for detailed frontend documentation.
 
 ### Building
 
@@ -303,13 +359,13 @@ GitHub Actions workflow runs on every push and pull request:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                       Frontend (React)                      │
-│                    http://localhost:5173                     │
+│                    http://localhost:3000                     │
 └────────────────────────┬────────────────────────────────────┘
                          │ GraphQL / WebSocket
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                   API Server (NestJS)                       │
-│                    http://localhost:3000                     │
+│                    http://localhost:4000                     │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │ • GraphQL API • Authentication • Business Logic     │   │
 │  │ • Versioning  • Audit Logging  • Real-time Events   │   │
@@ -367,9 +423,9 @@ GitHub Actions workflow runs on every push and pull request:
 
 | Service      | Port(s)        | Description                      |
 | ------------ | -------------- | -------------------------------- |
-| frontend     | 5173 (dev)     | React + Vite development server  |
+| frontend     | 3000 (dev)     | React + Vite development server  |
 |              | 8080 (prod)    | Nginx serving production build   |
-| api          | 3000           | NestJS GraphQL API + WebSocket   |
+| api          | 4000           | NestJS GraphQL API + WebSocket   |
 |              | 9229 (dev)     | Node.js debugger                 |
 | rules-engine | 3001           | HTTP health checks               |
 |              | 50051          | gRPC evaluation server           |
@@ -443,6 +499,7 @@ This project is currently in active development. See the `plan/` directory for d
 - [x] TICKET-014: Dependency Graph System
 - [x] TICKET-015: Rules Engine Service Worker
 - [x] TICKET-016: Effect System Implementation
+- [x] TICKET-017: Frontend Project Setup (React + Vite)
 
 **Party & Kingdom Management (TICKET-009)**
 
@@ -522,5 +579,31 @@ The Effect System enables dynamic game mechanics like:
 - Complex multi-field updates with single atomic operation
 
 See `docs/features/effect-system.md` for detailed documentation including examples, security model, and integration details.
+
+**Frontend Setup (TICKET-017)**
+
+The React frontend is built with modern tooling for optimal developer experience and performance:
+
+- **Vite 5**: Lightning-fast HMR and optimized production builds with code splitting
+- **React 18 + TypeScript**: Type-safe component development with strict mode enabled
+- **Tailwind CSS 3**: Utility-first styling with JIT compilation and HSL color system
+- **Radix UI + shadcn/ui**: Accessible component primitives (Button, Card, Dialog) with beautiful styling
+- **React Router 7**: Client-side routing with lazy loading and protected routes
+- **Apollo Client 4**: GraphQL integration with caching, subscriptions, and authentication
+- **Environment Configuration**: Validated env vars with separate dev/prod configurations
+- **Development Proxy**: Vite proxy forwards `/graphql` requests to backend, eliminating CORS issues
+- **Organized Structure**: Clean folder organization (components, pages, hooks, utils, services, types)
+- **Code Quality**: ESLint with jsx-a11y for accessibility, Prettier formatting, pre-commit hooks
+
+Key Features:
+
+- Hot module replacement for instant feedback during development
+- Route-based code splitting reduces initial bundle size (<150KB gzipped)
+- Mock authentication for development with localStorage tokens
+- Type-safe GraphQL operations with Apollo Client
+- Responsive design with Tailwind CSS utilities
+- Accessible components following WAI-ARIA patterns
+
+See `packages/frontend/README.md` for detailed frontend documentation and development guide.
 
 See `plan/EPIC.md` for the complete project roadmap and upcoming features.

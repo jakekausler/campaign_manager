@@ -839,6 +839,277 @@ The project uses Prisma for database schema management and migrations.
 
 **IMPORTANT**: For all Prisma/database errors, use the Prisma Database Debugger subagent.
 
+## Frontend Development
+
+The React frontend (`packages/frontend/`) is a modern single-page application built with Vite, TypeScript, and Tailwind CSS.
+
+### Tech Stack
+
+- **React 18** - UI library with concurrent features
+- **TypeScript** - Strict mode enabled for type safety
+- **Vite 5** - Build tool with fast HMR and optimized production builds
+- **Tailwind CSS 3** - Utility-first CSS with JIT compilation
+- **Radix UI** - Accessible component primitives (Dialog, Slot, Label)
+- **shadcn/ui** - Pre-built components built on Radix UI
+- **React Router 7** - Client-side routing with lazy loading
+- **Apollo Client 4** - GraphQL client with caching and subscriptions
+
+### Project Structure
+
+```
+packages/frontend/
+├── src/
+│   ├── components/       # React components
+│   │   ├── ui/          # shadcn/ui primitives (Button, Card, Dialog)
+│   │   ├── features/    # Business logic components
+│   │   └── layout/      # Layout components (MainLayout, AuthLayout)
+│   ├── pages/           # Route components (HomePage, DashboardPage, etc.)
+│   ├── router/          # React Router configuration and ProtectedRoute
+│   ├── hooks/           # Custom React hooks
+│   ├── utils/           # Pure utility functions
+│   ├── services/        # API clients (GraphQL, REST)
+│   │   └── api/         # GraphQL client configuration
+│   ├── types/           # TypeScript type definitions
+│   ├── lib/             # Third-party library configurations
+│   └── config/          # Environment configuration with validation
+├── .env.example         # Environment variable template
+├── vite.config.ts       # Vite configuration with proxy
+├── tailwind.config.js   # Tailwind CSS configuration
+└── tsconfig.json        # TypeScript configuration
+```
+
+### Development Workflow
+
+**Running the Dev Server:**
+
+```bash
+# From project root (NEVER cd into packages/frontend)
+pnpm --filter @campaign/frontend dev
+```
+
+The dev server runs on http://localhost:3000 with:
+
+- Hot module replacement (HMR) for instant updates
+- Vite proxy forwarding `/graphql` to backend on port 4000
+- Mock authentication for development
+
+**Environment Variables:**
+
+Frontend uses Vite's environment system (variables must start with `VITE_`):
+
+```bash
+# Copy template
+cp packages/frontend/.env.example packages/frontend/.env
+
+# Edit environment variables
+# Development uses relative URLs (proxied by Vite)
+VITE_API_URL=/graphql
+VITE_API_WS_URL=ws://localhost:3000/graphql
+
+# Production uses absolute HTTPS URLs
+VITE_API_URL=https://api.yourdomain.com/graphql
+VITE_API_WS_URL=wss://api.yourdomain.com/graphql
+```
+
+**Important**: Environment variables are validated at startup. Missing required variables will fail fast with helpful error messages.
+
+### Key Features
+
+**Routing:**
+
+- React Router 7 with `createBrowserRouter` for type-safe routing
+- Lazy loading for all pages with `React.lazy()` and `Suspense`
+- Protected routes with `ProtectedRoute` wrapper
+- Nested layouts (`MainLayout` for public pages, `AuthLayout` for auth pages)
+
+**Authentication:**
+
+- Mock authentication for development using localStorage
+- `ProtectedRoute` component redirects to login when unauthenticated
+- Preserves intended destination for post-login redirect
+- JWT token stored in localStorage (mock implementation)
+
+**GraphQL Integration:**
+
+- Apollo Client 4 with comprehensive error handling
+- HTTP link for queries/mutations, WebSocket link for subscriptions
+- Automatic Bearer token injection via auth link
+- Smart retry logic (stops on auth failures, retries on transient errors)
+- Cache-first fetch policy for optimal performance
+
+**Development Proxy:**
+
+- Vite proxy eliminates CORS issues in development
+- `/graphql` proxied to `http://localhost:4000`
+- WebSocket proxying enabled for GraphQL subscriptions
+- Production uses absolute URLs (no proxy)
+
+**Code Splitting:**
+
+- Route-based code splitting via lazy loading
+- Vendor chunk separation (React, React Router, Radix UI)
+- Each page is a separate chunk (<3KB per page)
+- Main bundle: ~150KB gzipped
+
+**Styling:**
+
+- Tailwind CSS with JIT compilation
+- HSL color system for easy theme customization
+- Dark mode support (class strategy, not yet implemented)
+- Custom animations via `tailwindcss-animate`
+
+**Accessibility:**
+
+- Radix UI primitives follow WAI-ARIA patterns
+- ESLint plugin `jsx-a11y` for automated checks
+- Proper ARIA attributes on all interactive elements
+- Keyboard navigation support
+
+### Common Tasks
+
+**Adding a New Page:**
+
+1. Create page component in `src/pages/`:
+
+```typescript
+// src/pages/NewPage.tsx
+export default function NewPage() {
+  return <div>New Page</div>;
+}
+```
+
+2. Add route to `src/router/index.tsx`:
+
+```typescript
+const NewPage = lazy(() => import('@/pages/NewPage'));
+
+// In router config:
+{
+  path: 'new',
+  element: (
+    <LazyPage>
+      <NewPage />
+    </LazyPage>
+  ),
+}
+```
+
+3. Export from `src/pages/index.ts`
+
+**Adding a New Component:**
+
+1. Create in appropriate directory:
+   - `src/components/ui/` - Reusable primitives
+   - `src/components/features/` - Business logic components
+   - `src/components/layout/` - Layout components
+
+2. Export from `index.ts` in that directory
+
+**Adding GraphQL Operations:**
+
+1. Define operation in component:
+
+```typescript
+import { gql, useQuery } from '@apollo/client';
+
+const GET_CAMPAIGNS = gql`
+  query GetCampaigns {
+    campaigns {
+      id
+      name
+    }
+  }
+`;
+
+const { data, loading, error } = useQuery(GET_CAMPAIGNS);
+```
+
+2. Apollo Client handles caching, errors, and retries automatically
+
+**Adding Environment Variables:**
+
+1. Add to `packages/frontend/.env.example` with documentation
+2. Add TypeScript types to `src/types/env.d.ts`
+3. Add validation to `src/config/env.ts`
+4. Access via `env` object (never use `import.meta.env` directly)
+
+### Testing
+
+**IMPORTANT**: Use the TypeScript Tester subagent to run and debug tests.
+
+```bash
+# Commands below are for reference only - use TypeScript Tester subagent
+
+# Run all frontend tests
+pnpm --filter @campaign/frontend test
+
+# Run tests in watch mode
+pnpm --filter @campaign/frontend test:watch
+
+# Run tests with coverage
+pnpm --filter @campaign/frontend test -- --coverage
+```
+
+Frontend uses Vitest (Vite-native test runner) instead of Jest.
+
+### Troubleshooting
+
+**Dev server won't start:**
+
+- Check that port 3000 is available
+- Verify `.env` file exists with required variables
+- Run `pnpm install` from project root
+
+**GraphQL requests fail:**
+
+- Verify backend API is running on port 4000
+- Check proxy configuration in `vite.config.ts`
+- Verify `VITE_API_URL` environment variable
+
+**Type errors:**
+
+- Run `pnpm --filter @campaign/frontend type-check`
+- Use TypeScript Fixer subagent to resolve errors
+
+**Build fails:**
+
+- Run `pnpm --filter @campaign/frontend build`
+- Check for missing environment variables
+- Verify all imports are correct
+
+### Best Practices
+
+1. **Never use `cd`** - Always run commands from project root with `pnpm --filter`
+2. **Use path aliases** - Import with `@/components` instead of relative paths
+3. **Lazy load pages** - Always use `React.lazy()` for route components
+4. **Validate props** - Use TypeScript interfaces for all component props
+5. **Accessible components** - Follow ARIA patterns, use semantic HTML
+6. **Environment config** - Never use `import.meta.env` directly, use `env` object
+7. **GraphQL errors** - Always handle `loading` and `error` states
+8. **Mock auth warnings** - Prominent comments warn about insecurity
+
+### Documentation
+
+- **Frontend README**: `packages/frontend/README.md` - Comprehensive setup guide
+- **Component docs**: README files in each `src/` subdirectory
+- **Router docs**: `src/router/README.md` - Routing patterns
+- **Config docs**: `src/config/README.md` - Environment variables
+
+### Implementation
+
+Frontend setup completed in **TICKET-017** with the following stages:
+
+1. **Stage 1**: Initialize Vite + React + TypeScript
+2. **Stage 2**: Configure Tailwind CSS + Radix UI
+3. **Stage 3**: Configure ESLint and Prettier
+4. **Stage 4**: Create Folder Structure
+5. **Stage 5**: Set Up Routing with React Router
+6. **Stage 6**: Configure Environment Variables
+7. **Stage 7**: Add Development Proxy and GraphQL Client
+8. **Stage 8**: Testing and Documentation
+
+See `plan/TICKET-017.md` for detailed implementation notes and commit hashes.
+
 ## World Time System
 
 Campaign-specific time tracking with custom calendars. See [detailed documentation](docs/features/world-time-system.md).
