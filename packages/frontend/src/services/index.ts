@@ -6,8 +6,9 @@
  */
 
 // Export services here as they are created
-// Example:
-// export { graphqlClient } from './api/graphql-client';
+export { graphqlClient } from './api/graphql-client';
+
+// Example future exports:
 // export { campaignService } from './api/campaigns';
 // export { kingdomService } from './api/kingdoms';
 // export { authService } from './api/auth';

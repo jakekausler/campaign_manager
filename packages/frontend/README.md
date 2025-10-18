@@ -82,8 +82,12 @@ All environment variables must be prefixed with `VITE_` to be exposed to the cli
 
 #### Required Variables
 
-- `VITE_API_URL` - GraphQL API endpoint (default: http://localhost:4000/graphql)
-- `VITE_API_WS_URL` - WebSocket endpoint for subscriptions (default: ws://localhost:4000/graphql)
+- `VITE_API_URL` - GraphQL API endpoint
+  - Development: `/graphql` (proxied to backend)
+  - Production: `https://api.example.com/graphql`
+- `VITE_API_WS_URL` - WebSocket endpoint for subscriptions
+  - Development: `ws://localhost:3000/graphql` (proxied to backend)
+  - Production: `wss://api.example.com/graphql`
 - `VITE_APP_NAME` - Application name displayed in UI
 - `VITE_ENVIRONMENT` - Current environment (development, staging, production)
 
@@ -109,6 +113,65 @@ if (env.features.debug) {
 ```
 
 See `src/config/README.md` for detailed documentation.
+
+## API Integration
+
+### Development Proxy
+
+In development, Vite automatically proxies API requests to the backend:
+
+- **GraphQL HTTP**: `http://localhost:3000/graphql` → `http://localhost:4000/graphql`
+- **GraphQL WebSocket**: `ws://localhost:3000/graphql` → `ws://localhost:4000/graphql`
+- **REST API** (if any): `http://localhost:3000/api` → `http://localhost:4000/api`
+
+**Benefits:**
+
+- No CORS issues in development
+- Single port for frontend and API
+- Matches production URL structure
+
+**Configuration** in `vite.config.ts`:
+
+```typescript
+server: {
+  proxy: {
+    '/graphql': {
+      target: 'http://localhost:4000',
+      ws: true, // Enable WebSocket proxying
+    },
+  },
+}
+```
+
+### GraphQL Client
+
+Apollo Client is configured in `src/services/api/graphql-client.ts`:
+
+```typescript
+import { graphqlClient } from '@/services';
+
+// Query example
+const { data } = await graphqlClient.query({
+  query: GET_CAMPAIGN,
+  variables: { id: '123' },
+});
+
+// Mutation example
+const { data } = await graphqlClient.mutate({
+  mutation: CREATE_CAMPAIGN,
+  variables: { input: { name: 'My Campaign' } },
+});
+```
+
+Features:
+
+- Automatic authentication headers (Bearer token)
+- Error handling and logging
+- WebSocket support for subscriptions
+- Optimistic UI updates
+- Cache normalization
+
+See `src/services/README.md` for API client documentation.
 
 ## Project Structure
 

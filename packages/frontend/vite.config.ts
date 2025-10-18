@@ -15,6 +15,21 @@ export default defineConfig({
     port: 3000,
     host: true,
     strictPort: false,
+    proxy: {
+      // Proxy GraphQL requests to backend API
+      '/graphql': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        ws: true, // Enable WebSocket proxying for GraphQL subscriptions
+      },
+      // Proxy API requests (if any REST endpoints exist)
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 
   build: {

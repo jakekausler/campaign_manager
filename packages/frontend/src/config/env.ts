@@ -61,6 +61,40 @@ function validateWebSocketUrl(url: string, environment: string): string {
   return url;
 }
 
+/**
+ * Validates API URL based on environment.
+ * In development, allows relative URLs (proxied by Vite).
+ * In production, enforces HTTPS protocol.
+ */
+function validateApiUrl(url: string, environment: string): string {
+  const isProd = environment === 'production';
+  const isRelative = url.startsWith('/');
+  const isSecure = url.startsWith('https://');
+  const isInsecure = url.startsWith('http://');
+
+  // In production, require HTTPS
+  if (isProd && !isSecure) {
+    throw new Error(
+      `Insecure or invalid API URL detected in production environment.\n` +
+        `URL: ${url}\n` +
+        `Production environments must use HTTPS protocol (https://).\n` +
+        `Please update VITE_API_URL to use https://`
+    );
+  }
+
+  // In development, allow relative URLs (proxied) or http/https
+  if (!isProd && !isRelative && !isSecure && !isInsecure) {
+    throw new Error(
+      `Invalid API URL: ${url}\n` +
+        `API URLs must be:\n` +
+        `  - Relative path (e.g., /graphql) for proxied development\n` +
+        `  - Full HTTP/HTTPS URL (e.g., http://localhost:4000/graphql or https://api.example.com/graphql)`
+    );
+  }
+
+  return url;
+}
+
 // Validate environment first (needed for WebSocket validation)
 const environment = requireEnv('VITE_ENVIRONMENT', import.meta.env.VITE_ENVIRONMENT);
 
@@ -71,7 +105,7 @@ const environment = requireEnv('VITE_ENVIRONMENT', import.meta.env.VITE_ENVIRONM
 export const env = Object.freeze({
   // API Configuration
   api: {
-    url: requireEnv('VITE_API_URL', import.meta.env.VITE_API_URL),
+    url: validateApiUrl(requireEnv('VITE_API_URL', import.meta.env.VITE_API_URL), environment),
     wsUrl: validateWebSocketUrl(
       requireEnv('VITE_API_WS_URL', import.meta.env.VITE_API_WS_URL),
       environment
