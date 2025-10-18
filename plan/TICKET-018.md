@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] In Progress
-- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3
+- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3, 8a7ed27
 
 ## Description
 
@@ -233,3 +233,70 @@ The auth state is now fully integrated with:
 - Unit tests for persistence and rehydration
 - Integration tests with Apollo Client
 - Tests for edge cases (expired tokens, invalid tokens, etc.)
+
+---
+
+### Stage 5: Create Campaign Context State (Complete - 8a7ed27)
+
+**What was implemented:**
+
+Campaign Slice Enhancements (`packages/frontend/src/stores/campaign-slice.ts`):
+
+- Enhanced Campaign interface with additional optional fields (description, createdAt, updatedAt)
+- Added comprehensive JSDoc documentation for all state fields and actions
+- Documented persistence strategy: only currentCampaignId persisted to localStorage
+- Documented that campaign, branchId, and asOfTime are ephemeral (not persisted)
+- Enhanced `setCurrentCampaign` to reset branch and time-travel context when switching campaigns
+- Added JSDoc with usage examples for all public actions
+- Added TODO note to replace placeholder Campaign type with generated GraphQL type once backend is fixed
+- Documented integration with GraphQL queries via Apollo Client context
+
+**Technical decisions:**
+
+- **Smart state transitions**: `setCurrentCampaign` resets branch/time-travel to prevent stale context bugs
+  - When switching campaigns, branch and asOfTime are cleared
+  - Prevents carrying over branch/time context from previous campaign
+- **Persistence strategy**: Only currentCampaignId persisted to localStorage
+  - Campaign object not persisted (refetched on reload for freshness)
+  - Branch ID and asOf time are ephemeral session state
+  - Reduces localStorage usage and prevents stale cached data
+- **Placeholder Campaign type**: Using placeholder type until backend is fixed
+  - Backend has RulesEngineClientService dependency injection issue
+  - Once resolved, will replace with generated GraphQL Campaign type
+  - TODO comment documents the replacement strategy
+- **Comprehensive documentation**: JSDoc added for all state and actions
+  - Usage examples for each action
+  - Integration notes for GraphQL and localStorage
+  - Clear documentation of side effects and persistence behavior
+
+**Code review outcome:**
+
+Approved with optional suggestions:
+
+- Consider whether resetting branch/time-travel context is always desired (decided: yes, prevents bugs)
+- Add TODO for replacing placeholder Campaign type (done)
+- Consider `description?: string | null` for GraphQL nullable conventions (noted for future)
+- All suggestions addressed or documented for future consideration
+
+**Quality checks:** All type-check, lint, and build checks passed
+
+**Integration notes:**
+
+The campaign context state is now fully integrated with:
+
+1. **Zustand Store**: Combines auth + campaign slices with devtools + persist middleware
+2. **localStorage**: Only currentCampaignId automatically persisted and restored on app reload
+3. **GraphQL Integration Ready**: State can be passed to Apollo Client context for queries
+4. **Hooks Available** (from Stage 1):
+   - `useCampaignStore()`: Access all campaign state and actions
+   - `useCurrentCampaignId()`: Access campaign ID only (fine-grained reactivity)
+   - `useCurrentBranchId()`: Access branch ID only
+   - `useAsOfTime()`: Access time-travel timestamp only
+
+**Future work (deferred to Stage 9):**
+
+- Unit tests for campaign slice actions
+- Unit tests for state transitions (especially setCurrentCampaign reset behavior)
+- Unit tests for persistence (currentCampaignId only)
+- Integration tests with GraphQL queries using campaign context
+- Replace placeholder Campaign type with generated GraphQL type once backend is running
