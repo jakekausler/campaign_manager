@@ -8,6 +8,7 @@
   - 0d8b80c - Stage 2: Configure Tailwind CSS + Radix UI
   - b0fbd94 - Stage 3: Configure ESLint and Prettier
   - fc7991e - Stage 4: Create Folder Structure
+  - 36047d5 - Stage 5: Set Up Routing with React Router
 
 ## Description
 
@@ -273,3 +274,139 @@ Barrel Exports (8 index.ts files):
 ✅ Structure aligns with React and TypeScript best practices
 
 **Next Steps**: Stage 5 will set up routing with React Router v6 for client-side navigation.
+
+---
+
+### Stage 5: Set Up Routing with React Router (Completed)
+
+**Changes Made**:
+
+Router Configuration:
+
+- Created `src/router/index.tsx` with React Router v6 configuration
+  - Used createBrowserRouter API for type-safe routing
+  - Implemented lazy loading for all pages with React.lazy() and Suspense
+  - Created PageLoader component with role="status" and aria-label for accessibility
+  - LazyPage wrapper component for consistent Suspense fallback
+- Created `src/router/ProtectedRoute.tsx` for authentication guards
+  - Checks authentication status before rendering protected routes
+  - Redirects to login with preserved destination for post-login redirect
+  - Comprehensive JWT validation TODO comments for production security
+  - Mock authentication using localStorage with crypto.randomUUID()
+- Created `src/router/README.md` documenting routing patterns and guidelines
+
+Page Components:
+
+- Created `src/pages/HomePage.tsx` - Landing page with feature overview
+  - Displays three feature cards (Dynamic World, Condition System, Events)
+  - "Get Started" CTA button linking to login
+- Created `src/pages/LoginPage.tsx` - Authentication page
+  - Email and password input fields with focus-visible styling
+  - Mock login flow with 1-second delay and crypto.randomUUID() token
+  - Preserves intended destination from ProtectedRoute redirect
+  - Form accessibility with proper labels and ARIA attributes
+- Created `src/pages/DashboardPage.tsx` - Protected main hub
+  - Displays placeholder cards for campaigns, activity, and quick actions
+  - "Getting Started" section with implementation roadmap
+  - Logout button that clears token and redirects to login
+- Created `src/pages/NotFoundPage.tsx` - 404 error page
+  - Large 404 text with helpful message
+  - Navigation buttons to home and dashboard
+- Updated `src/pages/index.ts` with barrel exports
+
+Layout Components:
+
+- Created `src/components/layout/MainLayout.tsx`
+  - Full navigation header with logo and nav links
+  - Conditional rendering based on authentication state
+  - Active link highlighting with location-based styling
+  - Footer with branding
+  - Outlet for nested route rendering
+- Created `src/components/layout/AuthLayout.tsx`
+  - Minimal header with just logo
+  - Centered content area for auth forms
+  - Simple footer with back-to-home link
+  - Outlet for nested route rendering
+- Updated `src/components/layout/index.ts` with barrel exports
+
+App Integration:
+
+- Simplified `src/App.tsx` to use RouterProvider
+  - Removed all example UI components
+  - Single-line RouterProvider component with imported router config
+
+**Dependencies:**
+
+- Added `react-router-dom@^7.1.3` (includes built-in TypeScript types)
+- Removed `@types/react-router-dom` after code review (incompatible with v7)
+
+**Route Structure:**
+
+```
+/ (MainLayout)
+├── / (HomePage)
+└── /dashboard (DashboardPage, protected)
+
+/auth (AuthLayout)
+├── /auth (redirects to /auth/login)
+└── /auth/login (LoginPage)
+
+* (NotFoundPage - catch-all)
+```
+
+**Code Splitting Verification:**
+
+Build output shows excellent code splitting:
+
+- `vendor-DwRht5Uu.js`: 140.91 KB (React, React Router, Radix UI)
+- `index-Blq5cfrh.js`: 147.55 KB (main bundle)
+- `NotFoundPage-BvyK-Xph.js`: 0.81 KB
+- `HomePage-HafeDMGt.js`: 1.61 KB
+- `LoginPage-akdT5sX2.js`: 1.82 KB
+- `DashboardPage-D76aI7Xr.js`: 2.42 KB
+
+Each page is a separate chunk loaded only when navigated to.
+
+**Technical Decisions:**
+
+- Used React Router v7's createBrowserRouter for type-safe routing and data loading features
+- Implemented lazy loading pattern with Suspense for optimal performance
+- Mock authentication uses crypto.randomUUID() instead of Date.now() for unpredictable tokens
+- Input focus styling uses focus-visible instead of focus for better keyboard UX
+- PageLoader includes proper ARIA attributes for screen reader accessibility
+- Comprehensive JWT validation TODOs prevent insecure production implementation
+- ProtectedRoute preserves intended destination for seamless post-login redirect
+- Nested routes under layout components for consistent page structure
+- Active link highlighting provides visual feedback for current location
+
+**Security Considerations:**
+
+- Mock auth includes prominent warnings about insecurity
+- Detailed JWT validation requirements documented in ProtectedRoute
+- Comments emphasize need to validate token signature, expiry, and claims
+- No sensitive operations in client-side auth logic (appropriate for demo)
+
+**Accessibility:**
+
+- PageLoader has role="status" and aria-label="Loading page"
+- Input fields use focus-visible for keyboard-only focus indicators
+- All forms have proper label associations
+- Semantic HTML with correct heading hierarchy
+- Interactive elements are keyboard accessible
+
+**Success Verification:**
+
+✅ Dev server starts successfully (tested with timeout)
+✅ TypeScript compiles without errors
+✅ ESLint passes with no warnings
+✅ Build produces separate chunks for each page
+✅ All routes navigate correctly
+✅ Protected routes redirect to login when unauthenticated
+✅ Post-login redirect preserves intended destination
+✅ 404 page handles invalid routes
+✅ Code splitting reduces initial bundle size
+✅ Code review approved after fixing all issues
+✅ Mock auth uses secure random UUID tokens
+✅ Accessibility attributes present on all interactive elements
+
+**Next Steps**: Stage 6 will configure environment variables for API URL and other settings.
