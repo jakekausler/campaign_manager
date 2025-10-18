@@ -241,23 +241,25 @@ Cache warming was considered but deferred as lower-priority optimization. On-dem
 
 **Tasks**:
 
-- [ ] Create HTTP health check endpoint (/health)
-- [ ] Add readiness probe (checks Prisma, Redis connections)
-- [ ] Add liveness probe (basic ping response)
-- [ ] Implement metrics collection (evaluation count, latency, cache hits)
-- [ ] Add structured logging with correlation IDs
-- [ ] Create Prometheus metrics endpoint (optional)
-- [ ] Add Docker health check configuration
-- [ ] Document monitoring setup in README
+- [x] Create HTTP health check endpoint (/health)
+- [x] Add readiness probe (checks Prisma, Redis connections)
+- [x] Add liveness probe (basic ping response)
+- [x] Implement metrics collection (evaluation count, latency, cache hits)
+- [x] Add structured logging with correlation IDs
+- [x] Create Prometheus metrics endpoint (optional)
+- [x] Add Docker health check configuration
+- [x] Document monitoring setup in README
 
 **Success Criteria**:
 
-- Health endpoint returns 200 when healthy
-- Readiness probe verifies dependencies
-- Logs include request IDs for tracing
-- Metrics show evaluation performance
+- ✅ Health endpoint returns 200 when healthy
+- ✅ Readiness probe verifies dependencies
+- ✅ Logs include request IDs for tracing
+- ✅ Metrics show evaluation performance
 
-**Status**: Not Started
+**Status**: Complete
+
+**Commit**: 0e18f0b - feat(rules-engine): implement Stage 8 health checks and monitoring (TICKET-015)
 
 ---
 

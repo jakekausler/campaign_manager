@@ -12,6 +12,7 @@
   - f69cdd9 - Stage 5: Caching layer complete
   - ea36e66 - Stage 6: Redis pub/sub invalidations complete
   - 26037f1 - Stage 7: API service integration complete
+  - 0e18f0b - Stage 8: Health checks and monitoring complete
 
 ## Description
 
