@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] In Progress
-- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3, 8a7ed27
+- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3, 8a7ed27, 8de2dfb, 7f45d98
 
 ## Description
 
@@ -300,3 +300,83 @@ The campaign context state is now fully integrated with:
 - Unit tests for persistence (currentCampaignId only)
 - Integration tests with GraphQL queries using campaign context
 - Replace placeholder Campaign type with generated GraphQL type once backend is running
+
+---
+
+### Stage 6: Create Settlement GraphQL Hooks (Complete - 8de2dfb)
+
+**What was implemented:**
+
+New Files:
+
+- `packages/frontend/src/services/api/hooks/settlements.ts`: GraphQL queries and custom hooks for Settlement data
+- `packages/frontend/src/services/api/hooks/index.ts`: Centralized exports for all GraphQL hooks
+
+GraphQL Queries:
+
+- `GET_SETTLEMENTS_BY_KINGDOM`: Lists all settlements in a kingdom with basic fields
+- `GET_SETTLEMENT_DETAILS`: Fetches single settlement with full details including computedFields
+- `GET_SETTLEMENT_STRUCTURES`: Fetches settlement with all its structures (uses DataLoader on backend)
+
+Custom Hooks:
+
+- `useSettlementsByKingdom(kingdomId, options?)`: List settlements with cache-and-network policy
+- `useSettlementDetails(settlementId, options?)`: Fetch settlement details with cache-first policy
+- `useStructuresBySettlement(settlementId, options?)`: Fetch structures with cache-and-network policy
+
+**Technical decisions:**
+
+- **Type Safety**: Uses `QueryHookOptions` from `@apollo/client/react` for proper Apollo Client v4 compatibility
+- **Placeholder Types**: Defined temporary Settlement/Structure types until code generation runs (backend dependency issue)
+- **Simplified API**: Hooks return simplified shapes with useMemo for performance (settlements, loading, error, refetch, networkStatus)
+- **Cache Policies**:
+  - List queries use cache-and-network (show cached immediately, fetch fresh data)
+  - Detail queries use cache-first (use cache by default, manual refetch available)
+  - Aligns with Stage 3 Apollo Client configuration (cache keyed by kingdomId/settlementId)
+- **Comprehensive Documentation**: All hooks have JSDoc with usage examples demonstrating loading states, error handling, and data access patterns
+- **Performance Optimization**: useMemo dependencies include result.data, result.loading, result.error, result.refetch, result.networkStatus
+
+**Code review outcome:**
+
+Initial code review suggested optimizing useMemo dependencies by excluding stable references (refetch, networkStatus). However, including all dependencies ensures React hooks exhaustive-deps lint rule compliance and has no performance impact since Apollo Client references are stable.
+
+**Quality checks:** All type-check, lint, and build checks passed
+
+**Known limitation:**
+
+Backend API has RulesEngineClientService dependency injection issue preventing live testing. Client implementation passes all static checks but cannot be tested with live backend until dependency issue is resolved.
+
+**Future work:**
+
+Once backend is fixed:
+
+- Run `pnpm --filter @campaign/frontend codegen` to generate TypeScript types from GraphQL schema
+- Replace placeholder Settlement/Structure types with generated types
+- Integration test hooks with live backend (verify caching, error handling, loading states)
+- Verify cache policies work as configured (kingdomId/settlementId cache keys)
+- Test DataLoader batching for structures field
+
+**Integration notes:**
+
+Settlement hooks are ready to be consumed by React components:
+
+1. **Hooks Available**: Exported from `@/services/api/hooks` for easy import
+2. **Apollo Client Ready**: Integrated with Stage 3 Apollo Client configuration
+3. **Cache Configured**: Cache policies match Stage 3 typePolicies setup
+4. **Auth Integrated**: Hooks automatically include auth token from Zustand store (via Stage 3 auth link)
+5. **Campaign Context Ready**: Can be enhanced to use campaign context from Zustand (Stage 5) for time-travel queries
+
+**Usage pattern:**
+
+```typescript
+import { useSettlementsByKingdom, useSettlementDetails } from '@/services/api/hooks';
+
+function SettlementsPage({ kingdomId }: { kingdomId: string }) {
+  const { settlements, loading, error, refetch } = useSettlementsByKingdom(kingdomId);
+
+  if (loading) return <Spinner />;
+  if (error) return <ErrorAlert message={error.message} />;
+
+  return <SettlementsList settlements={settlements} onRefresh={refetch} />;
+}
+```

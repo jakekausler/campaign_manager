@@ -321,7 +321,43 @@ Backend API has a dependency injection issue (RulesEngineClientService not avail
 - Test cache behavior
 - Test error handling
 
-**Status**: Not Started
+**Status**: Complete
+
+**Implementation Notes**:
+
+- Created `packages/frontend/src/services/api/hooks/settlements.ts` with GraphQL queries and custom hooks
+- Created `packages/frontend/src/services/api/hooks/index.ts` for centralized hook exports
+- Implemented three GraphQL queries:
+  - `GET_SETTLEMENTS_BY_KINGDOM`: Lists settlements by kingdom ID
+  - `GET_SETTLEMENT_DETAILS`: Fetches single settlement with computedFields
+  - `GET_SETTLEMENT_STRUCTURES`: Fetches settlement with structures array
+- Implemented three custom hooks:
+  - `useSettlementsByKingdom`: Lists settlements with cache-and-network policy
+  - `useSettlementDetails`: Fetches settlement details with cache-first policy
+  - `useStructuresBySettlement`: Fetches structures with cache-and-network policy
+- Used `QueryHookOptions` from `@apollo/client/react` for proper type safety
+- Simplified return shapes using useMemo for performance optimization
+- Comprehensive JSDoc documentation with usage examples for all hooks
+- Cache policies align with Stage 3 Apollo Client configuration
+- All static checks passed (type-check, lint, build)
+- Code review approved with suggested improvements implemented
+
+**Known Limitation**:
+
+Backend API RulesEngineClientService dependency injection issue prevents integration testing.
+Implementation passes all static checks but cannot be tested with live backend until
+dependency issue is resolved.
+
+**Future Work**:
+
+Once backend is fixed:
+
+- Run `pnpm --filter @campaign/frontend codegen` to generate TypeScript types
+- Replace placeholder types with generated GraphQL types
+- Integration test hooks with live backend
+- Verify cache policies work as expected
+
+**Commit**: 8de2dfb
 
 ---
 
@@ -478,7 +514,7 @@ Backend API has a dependency injection issue (RulesEngineClientService not avail
 - [x] Stage 3: GraphQL client
 - [x] Stage 4: Auth state
 - [x] Stage 5: Campaign state
-- [ ] Stage 6: Settlement hooks
+- [x] Stage 6: Settlement hooks
 - [ ] Stage 7: Structure hooks
 - [ ] Stage 8: Mutations
 - [ ] Stage 9: Testing and documentation
