@@ -6,6 +6,7 @@
 - **Commits**:
   - Stage 1: 7d1439d (Database Schema Enhancement)
   - Stage 2: e125476 (GraphQL Type Definitions)
+  - Stage 3: c88a40d (Effect Patch Application Service)
 
 ## Description
 
@@ -111,3 +112,56 @@ Implement the Effect system that allows events/encounters to mutate world state 
 3. Added payload validation documentation (max size, EffectPatchService validation)
 4. Clarified context loading behavior in ExecuteEffectInput
 5. Enhanced payload field documentation with RFC 6902 reference
+
+---
+
+### Stage 3: Effect Patch Application Service (c88a40d)
+
+**Completed**: Core patch application service successfully implemented with comprehensive security validation.
+
+**Changes Made:**
+
+- Created `EffectPatchService` in `effect-patch.service.ts`:
+  - `validatePatch()` - Validates JSON Patch format and enforces path whitelisting
+  - `applyPatch()` - Applies patches immutably using fast-json-patch library
+  - `generatePatchPreview()` - Generates before/after diffs with changed field detection
+
+- Security Features:
+  - Protected field whitelisting (id, createdAt, updatedAt, deletedAt, version)
+  - Entity-specific protection (Settlement: campaignId/kingdomId/locationId, Structure: settlementId, Kingdom: campaignId, etc.)
+  - Validates all RFC 6902 operations (add, remove, replace, copy, move, test)
+  - Rejects operations on protected fields before application
+
+- Performance Optimizations:
+  - Uses native `structuredClone()` for fast, safe deep cloning (handles Date objects, circular refs)
+  - Enhanced `deepEqual()` with Date object comparison support
+  - Early validation prevents unnecessary patch attempts
+
+- Created comprehensive test suite (`effect-patch.service.test.ts`):
+  - 51 unit tests covering all operations and edge cases
+  - Patch format validation (missing fields, invalid operations)
+  - Path whitelisting for Settlement, Structure, Kingdom entities
+  - Immutability verification (original entities unchanged)
+  - Nested path and array operation handling
+  - Error handling for validation and application failures
+  - Preview generation with accurate change detection
+
+**Key Design Decisions:**
+
+1. **Native structuredClone()**: Replaced `JSON.parse(JSON.stringify())` for better performance and proper Date/circular reference handling
+2. **Path Whitelisting**: Uses allowlist approach (secure by default) rather than blocklist
+3. **Immutable Operations**: All patch operations create new objects without modifying originals
+4. **Clear Error Messages**: Detailed validation errors with specific field paths for debugging
+
+**Code Review:** Approved by code-reviewer subagent after addressing:
+
+1. Replaced `JSON.parse(JSON.stringify())` with `structuredClone()` for better performance and Date support
+2. Enhanced `deepEqual()` to handle Date objects properly using `getTime()` comparison
+3. Added clarifying comments to `applyPatch()` method explaining boolean parameters (validate, mutateDocument)
+
+**Test Results:**
+
+- ✅ All 51 tests pass
+- ✅ Type-check passes with no errors
+- ✅ Lint passes with no new warnings
+- ✅ Test coverage > 90%

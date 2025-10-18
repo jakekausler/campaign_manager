@@ -128,26 +128,26 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ---
 
-### Stage 3: Effect Patch Application Service
+### Stage 3: Effect Patch Application Service ✅
 
 **Goal**: Implement core patch application logic using JSON Patch (RFC 6902)
 
 **Tasks:**
 
-- [ ] Create `packages/api/src/graphql/services/effect-patch.service.ts`
-- [ ] Implement `applyPatch(entity, patch)` using json-patch library:
+- [x] Create `packages/api/src/graphql/services/effect-patch.service.ts`
+- [x] Implement `applyPatch(entity, patch)` using json-patch library:
   - Validate patch operations (add, remove, replace, copy, move, test)
   - Apply patch to entity clone (immutable)
   - Return patched entity + validation errors
-- [ ] Implement `validatePatch(patch, entityType)` for security:
+- [x] Implement `validatePatch(patch, entityType)` for security:
   - Whitelist allowed paths per entity type
   - Reject dangerous operations (e.g., changing IDs, deletedAt)
   - Validate JSON Patch format
-- [ ] Implement `generatePatchPreview(entity, patch)`:
+- [x] Implement `generatePatchPreview(entity, patch)`:
   - Show before/after diff
   - Highlight changed fields
-- [ ] Add comprehensive error handling with descriptive messages
-- [ ] Write unit tests (30+ tests):
+- [x] Add comprehensive error handling with descriptive messages
+- [x] Write unit tests (51 tests):
   - Valid patch operations on all entity types
   - Invalid patches (malformed, unauthorized paths)
   - Edge cases (null values, nested paths, arrays)
@@ -155,11 +155,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 **Success Criteria:**
 
-- [ ] Service passes all unit tests
-- [ ] Patches correctly modify Settlement, Structure, Kingdom entities
-- [ ] Protected fields cannot be modified via patches
-- [ ] Clear error messages for validation failures
-- [ ] Immutable patch application (original entity unchanged)
+- [x] Service passes all unit tests
+- [x] Patches correctly modify Settlement, Structure, Kingdom entities
+- [x] Protected fields cannot be modified via patches
+- [x] Clear error messages for validation failures
+- [x] Immutable patch application (original entity unchanged)
 
 **Testing:**
 
