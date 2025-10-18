@@ -6,6 +6,8 @@
   "scripts": {
     "build": "tsc && vite build",
     "clean": "rm -rf dist",
+    "codegen": "graphql-codegen --config codegen.ts",
+    "codegen:watch": "graphql-codegen --config codegen.ts --watch",
     "dev": "vite",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
@@ -32,6 +34,11 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^6.0.0",
+    "@graphql-codegen/introspection": "^5.0.0",
+    "@graphql-codegen/typescript": "^5.0.2",
+    "@graphql-codegen/typescript-operations": "^5.0.2",
+    "@graphql-codegen/typescript-react-apollo": "^4.3.3",
     "@types/node": "^20.19.21",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",

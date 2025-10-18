@@ -31,3 +31,9 @@ dist-ssr
 .env.production
 .env.staging
 .env.*.local
+
+# GraphQL Code Generator
+# Generated files are excluded from git and regenerated on build
+# Exception: Keep the README for documentation
+__generated__
+!__generated__/README.md

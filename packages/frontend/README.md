@@ -173,6 +173,66 @@ Features:
 
 See `src/services/README.md` for API client documentation.
 
+### GraphQL Code Generation
+
+TypeScript types and React hooks are automatically generated from the backend GraphQL schema using GraphQL Code Generator.
+
+**Setup commands:**
+
+```bash
+# Generate types and hooks (requires backend running on port 4000)
+pnpm --filter @campaign/frontend codegen
+
+# Watch mode - auto-regenerate on schema changes
+pnpm --filter @campaign/frontend codegen:watch
+```
+
+**Prerequisites:**
+
+1. Backend API must be running: `pnpm --filter @campaign/api dev`
+2. Backend must be accessible at `http://localhost:4000/graphql`
+3. PostgreSQL database must be running
+
+**Generated files** (in `src/__generated__/`):
+
+- `graphql.ts` - All TypeScript types and React Apollo hooks
+- `introspection.json` - Schema introspection data for IDE tools
+
+**Usage example:**
+
+```typescript
+import { gql } from '@apollo/client';
+import { useGetCampaignsQuery } from '@/__generated__/graphql';
+
+// Define the query - GraphQL Code Generator uses the query name to generate hooks
+const GET_CAMPAIGNS = gql`
+  query GetCampaigns {
+    campaigns {
+      id
+      name
+    }
+  }
+`;
+
+function CampaignList() {
+  // The hook is automatically generated and linked to the query by name
+  const { data, loading, error } = useGetCampaignsQuery();
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  return (
+    <ul>
+      {data?.campaigns.map(c => <li key={c.id}>{c.name}</li>)}
+    </ul>
+  );
+}
+```
+
+**Configuration** in `codegen.ts` at package root.
+
+See `src/__generated__/README.md` for detailed documentation.
+
 ## Project Structure
 
 ```
