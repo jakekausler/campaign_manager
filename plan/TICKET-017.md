@@ -9,6 +9,7 @@
   - b0fbd94 - Stage 3: Configure ESLint and Prettier
   - fc7991e - Stage 4: Create Folder Structure
   - 36047d5 - Stage 5: Set Up Routing with React Router
+  - 479cf85 - Stage 6: Configure Environment Variables
 
 ## Description
 
@@ -410,3 +411,99 @@ Each page is a separate chunk loaded only when navigated to.
 ✅ Accessibility attributes present on all interactive elements
 
 **Next Steps**: Stage 6 will configure environment variables for API URL and other settings.
+
+---
+
+### Stage 6: Configure Environment Variables (Completed)
+
+**Changes Made**:
+
+Environment Files:
+
+- Created `.env.example` template with all required and optional variables
+  - API configuration (VITE_API_URL, VITE_API_WS_URL)
+  - Application configuration (VITE_APP_NAME, VITE_ENVIRONMENT)
+  - Feature flags (VITE_ENABLE_DEBUG, VITE_ENABLE_MOCK_AUTH)
+  - Optional configuration (VITE_ANALYTICS_ID, VITE_SENTRY_DSN)
+  - Comprehensive comments documenting each variable
+- Updated `.gitignore` to exclude all `.env` files except `.env.example`
+  - Explicitly ignores .env, .env.local, .env.development, .env.production, .env.staging
+  - Added comment clarifying only .env.example should be committed
+
+Type Definitions:
+
+- Created `src/types/env.d.ts` with TypeScript interface for environment variables
+  - Extends Vite's ImportMetaEnv with custom variables
+  - Documents VITE\_ prefix requirement for client-side exposure
+  - Includes built-in Vite variables (MODE, DEV, PROD, BASE_URL, SSR)
+  - Provides JSDoc comments for all variables
+
+Configuration Module:
+
+- Created `src/config/env.ts` with validated environment configuration
+  - `requireEnv()` validates required variables with helpful error messages
+  - `parseBoolean()` converts string flags to boolean values
+  - `validateWebSocketUrl()` enforces secure wss:// protocol in production
+  - Frozen configuration object (Object.freeze) prevents runtime modifications
+  - Debug logging with triple-guard: `env.features.debug && env.isDev && !env.isProd`
+  - Structured env object with nested configuration (api, app, features, analytics, monitoring)
+- Created `src/config/index.ts` barrel export for clean imports
+- Created `src/config/README.md` with comprehensive documentation
+  - Usage examples and patterns
+  - Guidelines for adding new environment variables
+  - Security warnings about client-side env vars being PUBLIC
+  - Environment file explanations
+  - Built-in Vite variable documentation
+
+Documentation:
+
+- Created comprehensive `packages/frontend/README.md`
+  - Tech stack overview
+  - Getting started instructions
+  - Development commands (from project root)
+  - Environment variable setup instructions
+  - Project structure documentation
+  - Code quality guidelines
+  - Troubleshooting section
+- Updated `src/main.tsx` to import config at startup for validation
+
+**Technical Decisions**:
+
+- Used VITE\_ prefix for all custom variables (Vite requirement for client exposure)
+- Implemented fail-fast validation at application startup
+- WebSocket protocol validation prevents insecure ws:// in production
+- Triple-guard on debug logging prevents any production console output
+- Frozen config object ensures immutability at runtime
+- Structured env object with nested properties for logical grouping
+- Only .env.example committed to repository (all others gitignored)
+- Documentation emphasizes that client-side env vars are PUBLIC
+- Clear error messages guide developers to fix configuration issues
+
+**Security Features**:
+
+- WebSocket protocol validation: enforces wss:// in production, rejects ws://
+- Production logging completely disabled with triple-check condition
+- No hardcoded secrets or sensitive values in committed files
+- All environment files (except .env.example) are gitignored
+- Documentation warns about client-side env vars being embedded in bundle
+- Clear guidance to never store secrets in client environment variables
+
+**Integration**:
+
+- Environment config imported and validated at startup in main.tsx
+- Application fails fast with helpful errors if required variables missing
+- Type-safe access via `env` object throughout application
+- Supports development, staging, and production environments
+- Debug logging shows configuration in development mode only
+
+**Success Verification**:
+✅ TypeScript compiles without errors
+✅ ESLint passes with no warnings
+✅ Build succeeds for production
+✅ Environment variables load and validate correctly
+✅ WebSocket protocol validation works (tested type-check)
+✅ Code review approved with all critical issues addressed
+✅ No sensitive files committed (verified in git status)
+✅ Documentation comprehensive and accurate
+
+**Next Steps**: Stage 7 will add development proxy for API to forward GraphQL requests to backend.
