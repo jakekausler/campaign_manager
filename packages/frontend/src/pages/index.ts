@@ -5,12 +5,11 @@
  * Import from this file to use pages in router configuration.
  */
 
-// Export page components here as they are created
-// Example:
-// export { Home } from './Home';
-// export { Login } from './Login';
-// export { Dashboard } from './Dashboard';
-// export { NotFound } from './NotFound';
-// export { CampaignList } from './campaigns/CampaignList';
-// export { CampaignDetail } from './campaigns/CampaignDetail';
-// export { CampaignCreate } from './campaigns/CampaignCreate';
+// Export page components
+// Note: Pages are typically lazy-loaded in the router, so direct exports
+// from this file may not be used. They're here for consistency and
+// potential non-routing use cases.
+export { default as HomePage } from './HomePage';
+export { default as LoginPage } from './LoginPage';
+export { default as DashboardPage } from './DashboardPage';
+export { default as NotFoundPage } from './NotFoundPage';
