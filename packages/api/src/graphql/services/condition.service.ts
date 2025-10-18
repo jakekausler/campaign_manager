@@ -4,8 +4,9 @@
  * Handles JSONLogic expression validation, entity authorization, and condition evaluation
  */
 
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import type { FieldCondition as PrismaFieldCondition, Prisma } from '@prisma/client';
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
@@ -17,6 +18,7 @@ import type {
   FieldConditionOrderByInput,
   FieldConditionSortField,
 } from '../inputs/field-condition.input';
+import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 import type { EvaluationResult } from '../types/field-condition.type';
 
 import { AuditService } from './audit.service';
@@ -29,7 +31,8 @@ export class ConditionService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly evaluationService: ConditionEvaluationService,
-    private readonly dependencyGraphService: DependencyGraphService
+    private readonly dependencyGraphService: DependencyGraphService,
+    @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
   /**
@@ -78,6 +81,13 @@ export class ConditionService {
     const campaignId = await this.getCampaignIdForCondition(condition);
     if (campaignId) {
       this.dependencyGraphService.invalidateGraph(campaignId);
+
+      // Publish Redis event for Rules Engine worker
+      await this.pubSub.publish('condition.created', {
+        conditionId: condition.id,
+        campaignId,
+        branchId: 'main',
+      });
     }
 
     return condition;
@@ -281,6 +291,13 @@ export class ConditionService {
     const campaignId = await this.getCampaignIdForCondition(updated);
     if (campaignId) {
       this.dependencyGraphService.invalidateGraph(campaignId);
+
+      // Publish Redis event for Rules Engine worker
+      await this.pubSub.publish('condition.updated', {
+        conditionId: updated.id,
+        campaignId,
+        branchId: 'main',
+      });
     }
 
     return updated;
@@ -311,6 +328,13 @@ export class ConditionService {
     const campaignId = await this.getCampaignIdForCondition(deleted);
     if (campaignId) {
       this.dependencyGraphService.invalidateGraph(campaignId);
+
+      // Publish Redis event for Rules Engine worker
+      await this.pubSub.publish('condition.deleted', {
+        conditionId: deleted.id,
+        campaignId,
+        branchId: 'main',
+      });
     }
 
     return deleted;

@@ -5,6 +5,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { GraphQLConfigModule } from './graphql/graphql.module';
+import { RulesEngineClientService } from './grpc/rules-engine-client.service';
 
 @Module({
   imports: [
@@ -29,6 +30,9 @@ import { GraphQLConfigModule } from './graphql/graphql.module';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    // Rules Engine gRPC client
+    RulesEngineClientService,
   ],
+  exports: [RulesEngineClientService],
 })
 export class AppModule {}

@@ -4,9 +4,10 @@
  * Handles variable scoping, formula validation, and authorization
  */
 
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import type { StateVariable as PrismaStateVariable } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
@@ -18,6 +19,7 @@ import type {
   StateVariableOrderByInput,
   StateVariableSortField,
 } from '../inputs/state-variable.input';
+import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 import { VariableScope, VariableType, type EvaluationStep } from '../types/state-variable.type';
 
 import { AuditService } from './audit.service';
@@ -32,7 +34,8 @@ export class StateVariableService {
     private readonly audit: AuditService,
     private readonly evaluationService: VariableEvaluationService,
     private readonly versionService: VersionService,
-    private readonly dependencyGraphService: DependencyGraphService
+    private readonly dependencyGraphService: DependencyGraphService,
+    @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
   /**
@@ -97,6 +100,13 @@ export class StateVariableService {
           variable.scopeId
         );
         this.dependencyGraphService.invalidateGraph(campaignId);
+
+        // Publish Redis event for Rules Engine worker
+        await this.pubSub.publish('variable.created', {
+          variableId: variable.id,
+          campaignId,
+          branchId: 'main',
+        });
       } catch {
         // If we can't get campaign ID (e.g., location scope), skip invalidation
       }
@@ -377,6 +387,13 @@ export class StateVariableService {
           updated.scopeId
         );
         this.dependencyGraphService.invalidateGraph(campaignId);
+
+        // Publish Redis event for Rules Engine worker
+        await this.pubSub.publish('variable.updated', {
+          variableId: updated.id,
+          campaignId,
+          branchId: 'main',
+        });
       } catch {
         // If we can't get campaign ID (e.g., location scope), skip invalidation
       }
@@ -414,6 +431,13 @@ export class StateVariableService {
           deleted.scopeId
         );
         this.dependencyGraphService.invalidateGraph(campaignId);
+
+        // Publish Redis event for Rules Engine worker
+        await this.pubSub.publish('variable.deleted', {
+          variableId: deleted.id,
+          campaignId,
+          branchId: 'main',
+        });
       } catch {
         // If we can't get campaign ID (e.g., location scope), skip invalidation
       }

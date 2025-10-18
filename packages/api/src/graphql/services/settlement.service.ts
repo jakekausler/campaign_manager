@@ -17,6 +17,7 @@ import type { Settlement as PrismaSettlement, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 import { PrismaService } from '../../database/prisma.service';
+import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
 import type { CreateSettlementInput, UpdateSettlementData } from '../inputs/settlement.input';
@@ -39,7 +40,8 @@ export class SettlementService {
     @Inject(forwardRef(() => CampaignContextService))
     private readonly campaignContext: CampaignContextService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub,
-    private readonly conditionEvaluation: ConditionEvaluationService
+    private readonly conditionEvaluation: ConditionEvaluationService,
+    private readonly rulesEngineClient: RulesEngineClientService
   ) {}
 
   /**
@@ -736,6 +738,83 @@ export class SettlementService {
       if (conditions.length === 0) {
         return {};
       }
+
+      // Get campaign ID for Rules Engine worker request
+      const settlementWithKingdom = await this.prisma.settlement.findUnique({
+        where: { id: settlement.id },
+        include: { kingdom: true },
+      });
+
+      const campaignId = settlementWithKingdom?.kingdom.campaignId;
+
+      // Try to use Rules Engine worker if available
+      if (campaignId) {
+        try {
+          const isAvailable = await this.rulesEngineClient.isAvailable();
+
+          if (isAvailable) {
+            // Build context from settlement data with StateVariable integration
+            const entityData = {
+              settlement: {
+                id: settlement.id,
+                name: settlement.name,
+                level: settlement.level,
+                kingdomId: settlement.kingdomId,
+                locationId: settlement.locationId,
+                variables: settlement.variables,
+                version: settlement.version,
+                createdAt: settlement.createdAt,
+                updatedAt: settlement.updatedAt,
+              },
+            };
+
+            const context = await this.conditionEvaluation.buildContextWithVariables(entityData, {
+              includeVariables: true,
+              scope: 'settlement',
+              scopeId: settlement.id,
+            });
+
+            // Evaluate conditions via worker
+            const conditionIds = conditions.map((c) => c.id);
+            const response = await this.rulesEngineClient.evaluateConditions({
+              conditionIds,
+              campaignId,
+              branchId: 'main', // TODO: Support branch parameter
+              contextJson: JSON.stringify(context),
+              includeTrace: false,
+              useDependencyOrder: true,
+            });
+
+            // Build computed fields map from worker results
+            const computedFields: Record<string, unknown> = {};
+            for (const condition of conditions) {
+              if (condition.field in computedFields) {
+                continue; // Higher priority already processed
+              }
+
+              const result = response.results[condition.id];
+              if (result && result.success && result.valueJson) {
+                const value = JSON.parse(result.valueJson);
+                computedFields[condition.field] = value;
+              }
+            }
+
+            this.logger.debug(
+              `Evaluated ${conditions.length} conditions for settlement ${settlement.id} via Rules Engine worker`
+            );
+            return computedFields;
+          }
+        } catch (error) {
+          // Log worker error and fall through to local evaluation
+          this.logger.warn(
+            `Rules Engine worker unavailable for settlement ${settlement.id}, falling back to local evaluation`,
+            error instanceof Error ? error.message : undefined
+          );
+        }
+      }
+
+      // Fallback: Local evaluation
+      this.logger.debug(`Using local evaluation for settlement ${settlement.id} computed fields`);
 
       // Build context from settlement data with StateVariable integration
       const entityData = {
