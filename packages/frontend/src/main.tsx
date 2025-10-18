@@ -6,14 +6,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-function App() {
-  return (
-    <div>
-      <h1>Campaign Management Tool</h1>
-      <p>Frontend application placeholder</p>
-    </div>
-  );
-}
+import App from './App';
 
 const root = document.getElementById('root');
 if (root) {
