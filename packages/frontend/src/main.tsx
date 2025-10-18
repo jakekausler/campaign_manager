@@ -6,6 +6,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+// Load and validate environment configuration at startup
+import '@/config/env';
+
 import './index.css';
 import App from './App';
 
