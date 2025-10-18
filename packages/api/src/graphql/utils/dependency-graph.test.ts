@@ -75,7 +75,7 @@ describe('DependencyGraph', () => {
       graph.removeNode('node1');
 
       expect(graph.hasNode('node1')).toBe(false);
-      expect(graph.getNode('node1')).toBeNull();
+      expect(graph.getNode('node1')).toBeUndefined();
     });
 
     it('should remove all outgoing edges when node is removed', () => {

@@ -21,6 +21,10 @@ describe('DependencyGraphBuilderService', () => {
       findMany: jest.Mock;
       findUnique: jest.Mock;
     };
+    effect: {
+      findMany: jest.Mock;
+      findUnique: jest.Mock;
+    };
   };
 
   beforeEach(async () => {
@@ -30,6 +34,10 @@ describe('DependencyGraphBuilderService', () => {
         findUnique: jest.fn(),
       },
       stateVariable: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+      },
+      effect: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
       },
@@ -63,6 +71,7 @@ describe('DependencyGraphBuilderService', () => {
     it('should build empty graph when no conditions or variables exist', async () => {
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -110,6 +119,7 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue(variables as any);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -151,6 +161,7 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
       prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -225,6 +236,7 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
       prisma.stateVariable.findMany.mockResolvedValue(variables as any);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -259,6 +271,7 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
       prisma.stateVariable.findMany.mockResolvedValue([]); // No variables
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -289,6 +302,7 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue(variables as any);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -317,10 +331,285 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
       prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
       expect(graph.getNodeCount()).toBe(1);
+    });
+
+    it('should add effect nodes for all active patch-type effects', async () => {
+      const effects = [
+        {
+          id: 'effect-1',
+          name: 'Add treasury gold',
+          description: 'Adds gold to treasury',
+          effectType: 'patch',
+          payload: [{ op: 'add', path: '/treasury', value: 1000 }],
+          entityType: 'encounter',
+          entityId: 'encounter-1',
+          timing: 'ON_RESOLVE',
+          priority: 100,
+          isActive: true,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          encounter: {
+            campaignId: 'campaign-1',
+          },
+          event: null,
+        },
+        {
+          id: 'effect-2',
+          name: 'Modify resources',
+          description: 'Updates resource values',
+          effectType: 'patch',
+          payload: [
+            { op: 'replace', path: '/resources/gold', value: 500 },
+            { op: 'add', path: '/resources/silver', value: 200 },
+          ],
+          entityType: 'event',
+          entityId: 'event-1',
+          timing: 'POST',
+          priority: 200,
+          isActive: true,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          encounter: null,
+          event: {
+            campaignId: 'campaign-1',
+          },
+        },
+      ];
+
+      prisma.fieldCondition.findMany.mockResolvedValue([]);
+      prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue(effects as any);
+
+      const graph = await service.buildGraphForCampaign('campaign-1', 'main');
+
+      expect(graph.getNodeCount()).toBe(2); // 2 effects
+      expect(graph.getEdgeCount()).toBe(0); // No edges because no variables
+
+      const node1 = graph.getNode('EFFECT:effect-1');
+      expect(node1).toBeDefined();
+      expect(node1?.type).toBe(DependencyNodeType.EFFECT);
+      expect(node1?.entityId).toBe('effect-1');
+      expect(node1?.label).toBe('Add treasury gold');
+      expect(node1?.metadata?.effectType).toBe('patch');
+      expect(node1?.metadata?.timing).toBe('ON_RESOLVE');
+      expect(node1?.metadata?.priority).toBe(100);
+
+      const node2 = graph.getNode('EFFECT:effect-2');
+      expect(node2).toBeDefined();
+      expect(node2?.type).toBe(DependencyNodeType.EFFECT);
+      expect(node2?.entityId).toBe('effect-2');
+      expect(node2?.label).toBe('Modify resources');
+    });
+
+    it('should create WRITES edges from effects to variables', async () => {
+      const variables = [
+        {
+          id: 'var-1',
+          scope: 'kingdom',
+          scopeId: 'kingdom-1',
+          key: 'treasury',
+          value: 1000,
+          type: 'integer',
+          formula: null,
+          description: null,
+          isActive: true,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          createdBy: 'user-1',
+          updatedBy: null,
+        },
+        {
+          id: 'var-2',
+          scope: 'kingdom',
+          scopeId: 'kingdom-1',
+          key: 'resources',
+          value: { gold: 100, silver: 50 },
+          type: 'object',
+          formula: null,
+          description: null,
+          isActive: true,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          createdBy: 'user-1',
+          updatedBy: null,
+        },
+      ];
+
+      const effects = [
+        {
+          id: 'effect-1',
+          name: 'Modify kingdom',
+          description: 'Updates kingdom state',
+          effectType: 'patch',
+          payload: [
+            { op: 'add', path: '/treasury', value: 1000 },
+            { op: 'replace', path: '/resources/gold', value: 500 },
+          ],
+          entityType: 'encounter',
+          entityId: 'encounter-1',
+          timing: 'ON_RESOLVE',
+          priority: 100,
+          isActive: true,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          encounter: {
+            campaignId: 'campaign-1',
+          },
+          event: null,
+        },
+      ];
+
+      prisma.fieldCondition.findMany.mockResolvedValue([]);
+      prisma.stateVariable.findMany.mockResolvedValue(variables as any);
+      prisma.effect.findMany.mockResolvedValue(effects as any);
+
+      const graph = await service.buildGraphForCampaign('campaign-1', 'main');
+
+      expect(graph.getNodeCount()).toBe(3); // 2 variables + 1 effect
+      expect(graph.getEdgeCount()).toBe(2); // effect writes 2 variables
+
+      const edges = graph.getOutgoingEdges('EFFECT:effect-1');
+      expect(edges).toHaveLength(2);
+      expect(edges[0].type).toBe(DependencyEdgeType.WRITES);
+      expect(edges[1].type).toBe(DependencyEdgeType.WRITES);
+    });
+
+    it('should filter out non-patch effect types', async () => {
+      const effects = [
+        {
+          id: 'effect-1',
+          name: 'Trigger event',
+          description: 'Triggers another event',
+          effectType: 'trigger_event',
+          payload: { eventId: 'event-2' },
+          entityType: 'encounter',
+          entityId: 'encounter-1',
+          timing: 'ON_RESOLVE',
+          priority: 100,
+          isActive: true,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          encounter: {
+            campaignId: 'campaign-1',
+          },
+          event: null,
+        },
+      ];
+
+      prisma.fieldCondition.findMany.mockResolvedValue([]);
+      prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue(effects as any);
+
+      const graph = await service.buildGraphForCampaign('campaign-1', 'main');
+
+      expect(graph.getNodeCount()).toBe(0); // Non-patch effects are filtered in query
+      expect(graph.getEdgeCount()).toBe(0);
+    });
+
+    it('should filter out effects from other campaigns', async () => {
+      const effects = [
+        {
+          id: 'effect-1',
+          name: 'Add treasury gold',
+          description: 'Adds gold to treasury',
+          effectType: 'patch',
+          payload: [{ op: 'add', path: '/treasury', value: 1000 }],
+          entityType: 'encounter',
+          entityId: 'encounter-1',
+          timing: 'ON_RESOLVE',
+          priority: 100,
+          isActive: true,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          encounter: {
+            campaignId: 'campaign-2', // Different campaign
+          },
+          event: null,
+        },
+        {
+          id: 'effect-2',
+          name: 'Modify resources',
+          description: 'Updates resource values',
+          effectType: 'patch',
+          payload: [{ op: 'replace', path: '/resources', value: {} }],
+          entityType: 'event',
+          entityId: 'event-1',
+          timing: 'POST',
+          priority: 200,
+          isActive: true,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          encounter: null,
+          event: {
+            campaignId: 'campaign-1', // Correct campaign
+          },
+        },
+      ];
+
+      prisma.fieldCondition.findMany.mockResolvedValue([]);
+      prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue(effects as any);
+
+      const graph = await service.buildGraphForCampaign('campaign-1', 'main');
+
+      expect(graph.getNodeCount()).toBe(1); // Only effect-2
+      expect(graph.getNode('EFFECT:effect-1')).toBeUndefined(); // From different campaign
+      expect(graph.getNode('EFFECT:effect-2')).toBeDefined();
+    });
+
+    it('should handle effects referencing non-existent variables gracefully', async () => {
+      const effects = [
+        {
+          id: 'effect-1',
+          name: 'Add treasury gold',
+          description: 'Adds gold to treasury',
+          effectType: 'patch',
+          payload: [{ op: 'add', path: '/treasury', value: 1000 }],
+          entityType: 'encounter',
+          entityId: 'encounter-1',
+          timing: 'ON_RESOLVE',
+          priority: 100,
+          isActive: true,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          encounter: {
+            campaignId: 'campaign-1',
+          },
+          event: null,
+        },
+      ];
+
+      prisma.fieldCondition.findMany.mockResolvedValue([]);
+      prisma.stateVariable.findMany.mockResolvedValue([]); // No variables
+      prisma.effect.findMany.mockResolvedValue(effects as any);
+
+      const graph = await service.buildGraphForCampaign('campaign-1', 'main');
+
+      expect(graph.getNodeCount()).toBe(1); // Just the effect
+      expect(graph.getEdgeCount()).toBe(0); // No edges because variable doesn't exist
     });
 
     it('should handle database errors gracefully', async () => {
@@ -374,6 +663,7 @@ describe('DependencyGraphBuilderService', () => {
           updatedBy: null,
         },
       ] as any);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
@@ -449,6 +739,7 @@ describe('DependencyGraphBuilderService', () => {
           updatedBy: null,
         },
       ] as any);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getEdgeCount()).toBe(1); // Initially reads only 'population'
@@ -482,6 +773,7 @@ describe('DependencyGraphBuilderService', () => {
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([condition as any]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
@@ -515,6 +807,7 @@ describe('DependencyGraphBuilderService', () => {
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([condition as any]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
@@ -555,6 +848,7 @@ describe('DependencyGraphBuilderService', () => {
       // Build empty graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(0);
@@ -597,6 +891,7 @@ describe('DependencyGraphBuilderService', () => {
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([initialVariable as any]);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
@@ -632,6 +927,7 @@ describe('DependencyGraphBuilderService', () => {
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([variable as any]);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
@@ -665,6 +961,7 @@ describe('DependencyGraphBuilderService', () => {
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([variable as any]);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
@@ -675,6 +972,255 @@ describe('DependencyGraphBuilderService', () => {
         isActive: false,
       } as any);
       await service.updateGraphForVariable(graph, 'var-1');
+
+      expect(graph.getNodeCount()).toBe(0);
+    });
+  });
+
+  describe('updateGraphForEffect', () => {
+    it('should update effect node when effect changes', async () => {
+      const effect = {
+        id: 'effect-1',
+        name: 'Original effect',
+        description: 'Original description',
+        effectType: 'patch',
+        payload: [{ op: 'add', path: '/treasury', value: 1000 }],
+        entityType: 'encounter',
+        entityId: 'encounter-1',
+        timing: 'ON_RESOLVE',
+        priority: 100,
+        isActive: true,
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        encounter: {
+          campaignId: 'campaign-1',
+        },
+        event: null,
+      };
+
+      // Build initial graph
+      prisma.fieldCondition.findMany.mockResolvedValue([]);
+      prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue([effect as any]);
+
+      const graph = await service.buildGraphForCampaign('campaign-1', 'main');
+      expect(graph.getNodeCount()).toBe(1);
+
+      // Update effect with new payload
+      const updatedEffect = {
+        ...effect,
+        name: 'Updated effect',
+        payload: [{ op: 'replace', path: '/resources', value: {} }],
+        version: 2,
+      };
+
+      prisma.effect.findUnique.mockResolvedValue(updatedEffect as any);
+      await service.updateGraphForEffect(graph, 'effect-1');
+
+      const node = graph.getNode('EFFECT:effect-1');
+      expect(node).toBeDefined();
+      expect(node?.label).toBe('Updated effect'); // Updated name
+    });
+
+    it('should update effect edges when payload changes', async () => {
+      const variable1 = {
+        id: 'var-1',
+        scope: 'kingdom',
+        scopeId: 'kingdom-1',
+        key: 'treasury',
+        value: 1000,
+        type: 'integer',
+        formula: null,
+        description: null,
+        isActive: true,
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        createdBy: 'user-1',
+        updatedBy: null,
+      };
+
+      const variable2 = {
+        id: 'var-2',
+        scope: 'kingdom',
+        scopeId: 'kingdom-1',
+        key: 'resources',
+        value: {},
+        type: 'object',
+        formula: null,
+        description: null,
+        isActive: true,
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        createdBy: 'user-1',
+        updatedBy: null,
+      };
+
+      const effect = {
+        id: 'effect-1',
+        name: 'Test effect',
+        description: null,
+        effectType: 'patch',
+        payload: [{ op: 'add', path: '/treasury', value: 1000 }],
+        entityType: 'encounter',
+        entityId: 'encounter-1',
+        timing: 'ON_RESOLVE',
+        priority: 100,
+        isActive: true,
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        encounter: {
+          campaignId: 'campaign-1',
+        },
+        event: null,
+      };
+
+      // Build initial graph
+      prisma.fieldCondition.findMany.mockResolvedValue([]);
+      prisma.stateVariable.findMany.mockResolvedValue([variable1, variable2] as any);
+      prisma.effect.findMany.mockResolvedValue([effect as any]);
+
+      const graph = await service.buildGraphForCampaign('campaign-1', 'main');
+      expect(graph.getEdgeCount()).toBe(1); // effect writes treasury
+
+      // Update effect to write different variable
+      const updatedEffect = {
+        ...effect,
+        payload: [{ op: 'replace', path: '/resources', value: {} }],
+        version: 2,
+      };
+
+      prisma.effect.findUnique.mockResolvedValue(updatedEffect as any);
+      await service.updateGraphForEffect(graph, 'effect-1');
+
+      // Should still have 1 edge, but to different variable
+      expect(graph.getEdgeCount()).toBe(1);
+      const edges = graph.getOutgoingEdges('EFFECT:effect-1');
+      expect(edges).toHaveLength(1);
+      expect(edges[0].toId).toBe('VARIABLE:var-2'); // Now writes to resources
+    });
+
+    it('should remove effect node when effect is deleted', async () => {
+      const effect = {
+        id: 'effect-1',
+        name: 'Test effect',
+        description: null,
+        effectType: 'patch',
+        payload: [{ op: 'add', path: '/treasury', value: 1000 }],
+        entityType: 'encounter',
+        entityId: 'encounter-1',
+        timing: 'ON_RESOLVE',
+        priority: 100,
+        isActive: true,
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        encounter: {
+          campaignId: 'campaign-1',
+        },
+        event: null,
+      };
+
+      // Build initial graph
+      prisma.fieldCondition.findMany.mockResolvedValue([]);
+      prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue([effect as any]);
+
+      const graph = await service.buildGraphForCampaign('campaign-1', 'main');
+      expect(graph.getNodeCount()).toBe(1);
+
+      // Simulate deletion
+      prisma.effect.findUnique.mockResolvedValue(null);
+      await service.updateGraphForEffect(graph, 'effect-1');
+
+      expect(graph.getNodeCount()).toBe(0);
+    });
+
+    it('should remove effect node when effect becomes inactive', async () => {
+      const effect = {
+        id: 'effect-1',
+        name: 'Test effect',
+        description: null,
+        effectType: 'patch',
+        payload: [{ op: 'add', path: '/treasury', value: 1000 }],
+        entityType: 'encounter',
+        entityId: 'encounter-1',
+        timing: 'ON_RESOLVE',
+        priority: 100,
+        isActive: true,
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        encounter: {
+          campaignId: 'campaign-1',
+        },
+        event: null,
+      };
+
+      // Build initial graph
+      prisma.fieldCondition.findMany.mockResolvedValue([]);
+      prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue([effect as any]);
+
+      const graph = await service.buildGraphForCampaign('campaign-1', 'main');
+      expect(graph.getNodeCount()).toBe(1);
+
+      // Deactivate effect
+      prisma.effect.findUnique.mockResolvedValue({
+        ...effect,
+        isActive: false,
+      } as any);
+      await service.updateGraphForEffect(graph, 'effect-1');
+
+      expect(graph.getNodeCount()).toBe(0);
+    });
+
+    it('should remove effect node when effect changes to non-patch type', async () => {
+      const effect = {
+        id: 'effect-1',
+        name: 'Test effect',
+        description: null,
+        effectType: 'patch',
+        payload: [{ op: 'add', path: '/treasury', value: 1000 }],
+        entityType: 'encounter',
+        entityId: 'encounter-1',
+        timing: 'ON_RESOLVE',
+        priority: 100,
+        isActive: true,
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        encounter: {
+          campaignId: 'campaign-1',
+        },
+        event: null,
+      };
+
+      // Build initial graph
+      prisma.fieldCondition.findMany.mockResolvedValue([]);
+      prisma.stateVariable.findMany.mockResolvedValue([]);
+      prisma.effect.findMany.mockResolvedValue([effect as any]);
+
+      const graph = await service.buildGraphForCampaign('campaign-1', 'main');
+      expect(graph.getNodeCount()).toBe(1);
+
+      // Change effect type
+      prisma.effect.findUnique.mockResolvedValue({
+        ...effect,
+        effectType: 'trigger_event',
+        payload: { eventId: 'event-2' },
+      } as any);
+      await service.updateGraphForEffect(graph, 'effect-1');
 
       expect(graph.getNodeCount()).toBe(0);
     });
@@ -723,6 +1269,7 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
       prisma.stateVariable.findMany.mockResolvedValue(variables as any);
+      prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(2);

@@ -151,12 +151,143 @@ describe('DependencyExtractor', () => {
   });
 
   describe('extractWrites', () => {
-    it('should return empty set for now (placeholder)', () => {
-      const effect = { target: 'kingdom.treasury', operation: 'add', value: 100 };
+    it('should extract write from replace operation', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [{ op: 'replace', path: '/treasury', value: 1000 }],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['treasury']));
+    });
+
+    it('should extract write from add operation', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [{ op: 'add', path: '/resources/gold', value: 500 }],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['resources']));
+    });
+
+    it('should extract write from remove operation', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [{ op: 'remove', path: '/obsolete_field' }],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['obsolete_field']));
+    });
+
+    it('should extract write from copy operation', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [{ op: 'copy', from: '/source', path: '/destination' }],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['destination']));
+    });
+
+    it('should extract write from move operation', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [{ op: 'move', from: '/old_location', path: '/new_location' }],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['new_location']));
+    });
+
+    it('should not extract writes from test operation', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [{ op: 'test', path: '/value', value: 100 }],
+      };
       const writes = extractor.extractWrites(effect);
 
       expect(writes).toEqual(new Set());
-      expect(writes.size).toBe(0);
+    });
+
+    it('should extract multiple writes from multiple operations', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [
+          { op: 'replace', path: '/treasury', value: 1000 },
+          { op: 'add', path: '/resources/gold', value: 500 },
+          { op: 'remove', path: '/obsolete_field' },
+        ],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['treasury', 'resources', 'obsolete_field']));
+    });
+
+    it('should deduplicate writes to the same base variable', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [
+          { op: 'replace', path: '/resources/gold', value: 100 },
+          { op: 'replace', path: '/resources/silver', value: 200 },
+          { op: 'add', path: '/resources/copper', value: 300 },
+        ],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['resources']));
+      expect(writes.size).toBe(1);
+    });
+
+    it('should extract only base variable from nested path', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [{ op: 'replace', path: '/kingdom/resources/treasury/gold', value: 1000 }],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['kingdom']));
+    });
+
+    it('should handle array index in path', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [{ op: 'replace', path: '/items/0/quantity', value: 10 }],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['items']));
+    });
+
+    it('should return empty set for non-patch effect type', () => {
+      const effect = {
+        effectType: 'trigger_event',
+        payload: { eventId: '123' },
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set());
+    });
+
+    it('should return empty set for effect with no payload', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: null,
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set());
+    });
+
+    it('should return empty set for effect with non-array payload', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: { op: 'replace', path: '/value', value: 100 },
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set());
     });
 
     it('should handle null effect', () => {
@@ -169,6 +300,63 @@ describe('DependencyExtractor', () => {
       const writes = extractor.extractWrites(undefined);
 
       expect(writes).toEqual(new Set());
+    });
+
+    it('should handle empty payload array', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set());
+    });
+
+    it('should skip invalid operations in payload', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [
+          null,
+          { op: 'replace', path: '/valid', value: 100 },
+          undefined,
+          'invalid',
+          { op: 'add', path: '/another_valid', value: 200 },
+        ],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['valid', 'another_valid']));
+    });
+
+    it('should handle operations with missing or invalid paths', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [
+          { op: 'replace', path: null, value: 100 },
+          { op: 'add', path: '', value: 200 },
+          { op: 'remove', path: '/valid' },
+        ],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['valid']));
+    });
+
+    it('should handle complex mixed operations', () => {
+      const effect = {
+        effectType: 'patch',
+        payload: [
+          { op: 'test', path: '/value', value: 100 }, // Should not be extracted
+          { op: 'replace', path: '/treasury', value: 1000 },
+          { op: 'add', path: '/resources/gold', value: 500 },
+          { op: 'copy', from: '/backup', path: '/current' },
+          { op: 'move', from: '/old', path: '/new' },
+          { op: 'remove', path: '/deprecated' },
+        ],
+      };
+      const writes = extractor.extractWrites(effect);
+
+      expect(writes).toEqual(new Set(['treasury', 'resources', 'current', 'new', 'deprecated']));
     });
   });
 

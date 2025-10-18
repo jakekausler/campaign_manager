@@ -5,6 +5,8 @@
  * variables each condition or effect depends on.
  */
 
+import type { Operation } from 'fast-json-patch';
+
 import type { Expression } from '../../rules/types/expression.types';
 
 /**
@@ -38,29 +40,82 @@ export class DependencyExtractor {
 
   /**
    * Extract all variable names that are WRITTEN by an effect definition
-   * Effects typically have a target variable and optional conditions
+   * Effects use JSON Patch (RFC 6902) format stored in the payload field
    *
-   * For now, this is a placeholder that returns empty set since we don't have
-   * the Effect model yet (TICKET-016). This method will be implemented when
-   * effects are added.
+   * This method parses the JSON Patch operations to identify which variables
+   * (or entity fields) are being written to. It extracts the base variable name
+   * from the patch path.
    *
-   * @param effect - The effect definition to analyze
+   * @param effect - The effect definition with payload containing JSON Patch operations
    * @returns Set of variable names that are written by this effect
+   *
+   * @example
+   * Effect with patch-type payload:
+   * {
+   *   effectType: "patch",
+   *   payload: [
+   *     { op: "replace", path: "/treasury", value: 1000 },
+   *     { op: "add", path: "/resources/gold", value: 500 }
+   *   ]
+   * }
+   * Returns: Set(["treasury", "resources"])
    */
   extractWrites(effect: unknown): Set<string> {
     const writes = new Set<string>();
 
-    // Placeholder implementation for future Effect system
-    // When TICKET-016 is implemented, this will parse effect definitions
-    // to extract target variables
-
+    // Validate input
     if (!effect || typeof effect !== 'object') {
       return writes;
     }
 
-    // Future implementation will extract writes from effect structure
-    // For example, if effect has { target: "kingdom.treasury", operation: "add", ... }
-    // This would return Set(["kingdom.treasury"])
+    const effectObj = effect as Record<string, unknown>;
+
+    // Check if this is a patch-type effect
+    // For patch-type effects, the payload contains JSON Patch operations
+    if (effectObj.effectType !== 'patch') {
+      // Non-patch effects don't write to variables (or we don't support them yet)
+      return writes;
+    }
+
+    const payload = effectObj.payload;
+    if (!payload || !Array.isArray(payload)) {
+      // Invalid or missing payload
+      return writes;
+    }
+
+    // Parse each patch operation
+    for (const operation of payload) {
+      if (!operation || typeof operation !== 'object') {
+        continue;
+      }
+
+      const op = operation as Operation;
+
+      // Extract the target path from operations that write data
+      // add, replace, copy, and move operations write to the target path
+      // remove also modifies the target (by removing it)
+      // test doesn't write, so we skip it
+      if (op.op === 'add' || op.op === 'replace' || op.op === 'remove') {
+        const targetPath = op.path;
+        if (typeof targetPath === 'string') {
+          const varName = this.extractBaseVariableFromPath(targetPath);
+          if (varName) {
+            writes.add(varName);
+          }
+        }
+      }
+
+      // For copy and move operations, the target path is written to
+      if (op.op === 'copy' || op.op === 'move') {
+        const targetPath = (op as any).path; // All operations have a path
+        if (typeof targetPath === 'string') {
+          const varName = this.extractBaseVariableFromPath(targetPath);
+          if (varName) {
+            writes.add(varName);
+          }
+        }
+      }
+    }
 
     return writes;
   }
@@ -147,6 +202,37 @@ export class DependencyExtractor {
 
     // Split on dot and take the first segment
     const parts = accessor.split('.');
+    return parts[0] || '';
+  }
+
+  /**
+   * Extract the base variable name from a JSON Pointer path (RFC 6901)
+   * JSON Pointer paths use / as separator and start with /
+   *
+   * Examples:
+   * - "/treasury" → "treasury"
+   * - "/resources/gold" → "resources"
+   * - "/items/0/name" → "items"
+   * - "" → ""
+   *
+   * @param path - The JSON Pointer path string
+   * @returns The base variable name
+   * @private
+   */
+  private extractBaseVariableFromPath(path: string): string {
+    if (!path) {
+      return '';
+    }
+
+    // Remove leading slash
+    const trimmed = path.startsWith('/') ? path.substring(1) : path;
+
+    if (!trimmed) {
+      return '';
+    }
+
+    // Split on slash and take the first segment
+    const parts = trimmed.split('/');
     return parts[0] || '';
   }
 

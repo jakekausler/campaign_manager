@@ -136,10 +136,10 @@ export class DependencyGraph {
    * Get a node by its ID
    *
    * @param nodeId - The node ID to look up
-   * @returns The node, or null if not found
+   * @returns The node, or undefined if not found
    */
-  getNode(nodeId: string): DependencyNode | null {
-    return this.nodes.get(nodeId) || null;
+  getNode(nodeId: string): DependencyNode | undefined {
+    return this.nodes.get(nodeId);
   }
 
   /**
