@@ -10,6 +10,7 @@
   - fc7991e - Stage 4: Create Folder Structure
   - 36047d5 - Stage 5: Set Up Routing with React Router
   - 479cf85 - Stage 6: Configure Environment Variables
+  - 4867727 - Stage 7: Add Development Proxy and GraphQL Client
 
 ## Description
 
@@ -507,3 +508,117 @@ Documentation:
 ✅ Documentation comprehensive and accurate
 
 **Next Steps**: Stage 7 will add development proxy for API to forward GraphQL requests to backend.
+
+---
+
+### Stage 7: Add Development Proxy for API (Completed)
+
+**Changes Made**:
+
+Proxy Configuration (vite.config.ts):
+
+- Configured Vite proxy for /graphql endpoint targeting http://localhost:4000
+  - Enabled WebSocket proxying with ws: true for GraphQL subscriptions
+  - changeOrigin: true for proper host header handling
+  - secure: false to allow self-signed certificates in development
+- Configured Vite proxy for /api endpoint (future REST APIs)
+- Removed console.log debug logging to prevent production leaks
+- Clean, minimal proxy configuration without custom callbacks
+
+GraphQL Client (src/services/api/graphql-client.ts):
+
+- Created Apollo Client v4 setup with comprehensive error handling
+  - HTTP link for queries and mutations using env.api.url
+  - WebSocket link for subscriptions using env.api.wsUrl (with graphql-ws)
+  - Error link for GraphQL, protocol, and network error logging
+  - Auth link for automatic Bearer token injection
+  - Split link routing subscriptions to WebSocket, queries/mutations to HTTP
+- Implemented AUTH_TOKEN_KEY constant for centralized token management
+  - Used in both authLink and wsLink connectionParams
+  - Prevents hardcoded string duplication and enables easy key rotation
+- Smart WebSocket retry logic:
+  - Retries on transient errors (CloseEvent codes 1000-3999)
+  - Stops retrying on auth failures (codes 4000+)
+  - Prevents infinite loops on permanent errors
+- Cache-first fetch policy for optimal performance
+  - watchQuery uses cache-and-network (serves cache while fetching fresh data)
+  - Regular query uses cache-first (serves from cache if available)
+  - Comments explain when to override to network-only
+- Empty typePolicies object ready for future cache customization
+
+Environment Configuration Updates:
+
+- Updated .env.example with proxy-aware URLs
+  - VITE_API_URL=/graphql (proxied in development)
+  - VITE_API_WS_URL=ws://localhost:3000/graphql (proxied via Vite)
+  - Updated comments explaining development vs production URLs
+- Added validateApiUrl() function in src/config/env.ts
+  - Allows relative URLs in development (e.g., /graphql)
+  - Enforces HTTPS in production
+  - Clear error messages for invalid configurations
+- Applied validation to env.api.url in frozen config object
+
+Documentation:
+
+- Added "API Integration" section to README.md
+  - Documented proxy configuration with benefits
+  - Explained proxy URL mappings for HTTP and WebSocket
+  - Included GraphQL client usage examples (query and mutation)
+  - Listed Apollo Client features (auth, errors, subscriptions, caching)
+- Updated "Environment Variables" section with proxy-aware URLs
+  - Showed different values for development vs production
+  - Explained proxy behavior in comments
+
+Dependencies Added:
+
+- @apollo/client@^3.11.10 - GraphQL client with React integration
+- graphql@^16.10.0 - GraphQL query language specification
+- graphql-ws@^5.16.0 - WebSocket client for GraphQL subscriptions
+
+**Technical Decisions**:
+
+- Used Vite's built-in proxy instead of CORS configuration for cleaner development setup
+- Relative API URLs in development (/graphql) match production URL structure
+- WebSocket proxy configured on same port as dev server for simpler configuration
+- Apollo Client v4 with modern error handling API (CombinedGraphQLErrors, ErrorLink)
+- Centralized AUTH_TOKEN_KEY constant prevents hardcoded string duplication
+- Smart retry logic prevents infinite loops on authentication failures
+- cache-first fetch policy balances performance with data freshness
+- Removed all console.log statements from proxy config to prevent production leaks
+
+**Security Features**:
+
+- HTTPS enforcement in production via validateApiUrl()
+- wss:// enforcement for WebSocket in production (existing validation)
+- No hardcoded secrets or credentials in committed files
+- Smart WebSocket retry stops on auth errors (4xxx codes)
+- Bearer token auto-injection via auth link
+- Centralized AUTH_TOKEN_KEY constant for easy key rotation
+
+**Performance Benefits**:
+
+- No CORS preflight requests in development (proxy eliminates CORS)
+- Apollo cache reduces unnecessary network requests
+- cache-first policy serves from cache when possible
+- Code splitting: Apollo Client in vendor bundle (~141KB gzipped)
+- WebSocket connection reuse for all subscriptions
+
+**Integration**:
+
+- GraphQL client exported from src/services/index.ts
+- Environment config validates API URLs at startup
+- Proxy automatically routes /graphql and /api requests to backend
+- WebSocket subscriptions automatically use ws:// proxy
+- Ready for future service modules (campaigns, auth, etc.)
+
+**Success Verification**:
+✅ Dev server starts successfully on port 3000
+✅ Proxy configuration loads without errors
+✅ TypeScript compiles without errors
+✅ ESLint passes with no warnings
+✅ Build succeeds for production
+✅ Environment variable validation works correctly
+✅ All critical code review issues addressed
+✅ No console.log in production builds
+
+**Next Steps**: Stage 8 will verify all acceptance criteria and complete final documentation.
