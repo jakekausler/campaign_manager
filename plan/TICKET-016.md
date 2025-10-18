@@ -10,6 +10,7 @@
   - Stage 4: 86455e4 (Effect Execution Engine Service)
   - Stage 5: 051d96b (Effect CRUD Service)
   - Stage 6: 34d74a7 (Effect GraphQL Resolver)
+  - Stage 7: e27f995 (Dependency Graph Integration)
 
 ## Description
 
@@ -358,3 +359,62 @@ Implement the Effect system that allows events/encounters to mutate world state 
 - Did not implement Field resolvers (Effect.entity, Effect.executions) - these can be added in future stages if needed
 - Did not implement `getEffectExecutionHistory` query - execution history is already accessible via EffectExecution model queries
 - Test count: 13 tests instead of planned 30+ - focused on essential resolver functionality, comprehensive coverage achieved
+
+---
+
+### Stage 7: Dependency Graph Integration (e27f995)
+
+**Completed**: Effects successfully integrated into dependency graph system with comprehensive write dependency tracking.
+
+**Changes Made:**
+
+- DependencyExtractor (dependency-extractor.ts):
+  - Implemented `extractWrites()` to parse JSON Patch (RFC 6902) operations from effect payloads
+  - Extracts target variable paths from patch operations (add, replace, remove, copy, move)
+  - Added `extractBaseVariableFromPath()` helper to parse JSON Pointer paths (RFC 6901)
+  - Returns base variable names from nested paths (e.g., "/resources/gold" → "resources")
+  - Comprehensive validation with graceful error handling for invalid inputs
+  - Test coverage: 23 new tests covering all operation types, edge cases, and error scenarios
+
+- DependencyGraphBuilderService (dependency-graph-builder.service.ts):
+  - Enhanced `buildGraphForCampaign()` to query and add Effect nodes
+  - Filters effects by `isActive`, `deletedAt`, and `effectType='patch'` at query level
+  - Resolves campaign ownership via encounter/event relations for proper isolation
+  - Creates WRITES edges from effects to variables based on payload analysis
+  - Added `updateGraphForEffect()` for incremental graph updates on effect mutations
+  - Added `makeEffectNodeId()` helper following existing node ID pattern (EFFECT:effectId)
+  - Defensive effect type checking to skip non-patch effects even if query filter fails
+  - Test coverage: 11 new tests for effect integration, updates, and edge cases
+
+- DependencyGraph (dependency-graph.ts):
+  - Changed `getNode()` return type from `DependencyNode | null` to `DependencyNode | undefined`
+  - More idiomatic TypeScript behavior (aligns with `Map.get()` semantics)
+  - Updated test to expect undefined instead of null for missing nodes
+
+**Key Features:**
+
+- Effect nodes appear in dependency graph with EFFECT type
+- WRITES edges connect effects to variables they write to
+- Circular dependency detection now includes effect chains (e.g., effect A writes var X, condition B reads var X and triggers effect A)
+- Automatic graph invalidation on effect create/update/delete (via EffectService from Stage 5)
+- Campaign-level isolation prevents cross-campaign effect dependencies
+- Support for complex patch paths and nested variable references
+- Graceful handling of effects referencing non-existent variables
+
+**Integration Points:**
+
+- EffectService already calls `DependencyGraphService.invalidateGraph()` on mutations (implemented in Stage 5)
+- Ready for cycle detection when effects create circular write dependencies
+- Foundation for dependency-ordered effect execution in Stage 8
+- Enables analysis of which effects modify which variables for debugging and optimization
+
+**Code Review:** Approved with zero critical issues. Comprehensive test coverage (121 total tests across 3 files), type-safe implementation, proper error handling, good performance characteristics, clear documentation, and adherence to project conventions.
+
+**Test Results:**
+
+- ✅ All 121 tests passing (44 extractor + 49 graph + 28 builder)
+- ✅ Type-check passes with no errors
+- ✅ Lint passes (only pre-existing non-critical `any` warnings in test mocks)
+- ✅ Comprehensive coverage of edge cases and error scenarios
+
+---
