@@ -22,8 +22,13 @@ export {
   GET_SETTLEMENT_STRUCTURES,
 } from './settlements';
 
-// Structure hooks will be added in Stage 7
-// export { ... } from './structures';
+// Structure hooks
+export {
+  useStructureDetails,
+  useStructureConditions,
+  GET_STRUCTURE_DETAILS,
+  GET_STRUCTURE_CONDITIONS,
+} from './structures';
 
 // Mutation hooks will be added in Stage 8
 // export { ... } from './mutations';
