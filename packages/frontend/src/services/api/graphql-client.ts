@@ -6,12 +6,7 @@ import { getMainDefinition } from '@apollo/client/utilities';
 import { createClient } from 'graphql-ws';
 
 import { env } from '@/config';
-
-/**
- * Authentication token key in localStorage
- * Centralized constant to prevent typos and enable easy key rotation
- */
-const AUTH_TOKEN_KEY = 'auth_token';
+import { useStore } from '@/stores';
 
 /**
  * GraphQL HTTP link for queries and mutations
@@ -24,6 +19,9 @@ const httpLink = new HttpLink({
 
 /**
  * GraphQL WebSocket link for subscriptions
+ *
+ * NOTE: connectionParams is a function called when establishing connections,
+ * so getState() returns fresh token value. Verify with login flow testing.
  */
 const wsLink =
   typeof window !== 'undefined'
@@ -31,8 +29,8 @@ const wsLink =
         createClient({
           url: env.api.wsUrl,
           connectionParams: () => {
-            // Add authentication token to WebSocket connection
-            const token = localStorage.getItem(AUTH_TOKEN_KEY);
+            // Add authentication token to WebSocket connection from Zustand store (fresh)
+            const token = useStore.getState().token;
             return token
               ? {
                   authorization: `Bearer ${token}`,
@@ -88,11 +86,15 @@ const errorLink = new ErrorLink(({ error, operation }) => {
 
 /**
  * Authentication link
- * Adds authentication token to all requests
+ * Adds authentication token to all requests from Zustand store
+ *
+ * NOTE: useStore.getState() is called on each operation, ensuring fresh token
+ * is used after login/logout/refresh. This is safe because getState() fetches
+ * current state, not a closure over initial state.
  */
 const authLink = new ApolloLink((operation, forward) => {
-  // Get the authentication token from local storage
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  // Get the authentication token from Zustand store (fresh on each request)
+  const token = useStore.getState().token;
 
   // Add the authorization header to the request
   operation.setContext(({ headers = {} }) => ({
@@ -130,17 +132,56 @@ export const graphqlClient = new ApolloClient({
   link: from([errorLink, authLink, splitLink]),
   cache: new InMemoryCache({
     typePolicies: {
-      // Add type policies for cache normalization
-      // Example:
-      // Query: {
-      //   fields: {
-      //     campaigns: {
-      //       merge(existing, incoming) {
-      //         return incoming;
-      //       },
-      //     },
-      //   },
-      // },
+      Query: {
+        fields: {
+          // Settlement queries: cache by kingdom ID
+          // NOTE: keyArgs must match GraphQL query parameter names exactly
+          settlementsByKingdom: {
+            // Key by kingdom ID to separate caches
+            keyArgs: ['kingdomId'],
+            // Merge strategy: replace existing with incoming
+            merge(_existing, incoming) {
+              return incoming;
+            },
+          },
+          // Structure queries: cache by settlement ID
+          // NOTE: keyArgs must match GraphQL query parameter names exactly
+          structuresBySettlement: {
+            // Key by settlement ID to separate caches
+            keyArgs: ['settlementId'],
+            // Merge strategy: replace existing with incoming
+            merge(_existing, incoming) {
+              return incoming;
+            },
+          },
+        },
+      },
+      // Settlement type: normalize by ID
+      Settlement: {
+        keyFields: ['id'],
+        fields: {
+          // Structures field: merge incoming structures
+          structures: {
+            merge(_existing = [], incoming) {
+              return incoming;
+            },
+          },
+          // Computed fields: disable caching (always fetch fresh)
+          computedFields: {
+            merge: false,
+          },
+        },
+      },
+      // Structure type: normalize by ID
+      Structure: {
+        keyFields: ['id'],
+        fields: {
+          // Computed fields: disable caching (always fetch fresh)
+          computedFields: {
+            merge: false,
+          },
+        },
+      },
     },
   }),
   // Apollo Client v4 automatically connects to dev tools in development mode
