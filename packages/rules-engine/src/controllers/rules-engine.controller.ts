@@ -2,11 +2,13 @@ import { Controller, Logger } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 
 import {
+  CacheStatsResponse,
   EvaluateConditionRequest,
   EvaluateConditionsRequest,
   EvaluateConditionsResponse,
   EvaluationOrderResponse,
   EvaluationResult,
+  GetCacheStatsRequest,
   GetEvaluationOrderRequest,
   InvalidateCacheRequest,
   InvalidateCacheResponse,
@@ -260,6 +262,74 @@ export class RulesEngineController {
       return {
         invalidatedCount: 0,
         message: `Cache invalidation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Get cache statistics for monitoring
+   * Stage 5: Implemented to expose cache performance metrics
+   *
+   * Security: Requires campaignId to prevent information disclosure.
+   * Without campaign scoping, a user could see cache keys from all campaigns.
+   */
+  @GrpcMethod('RulesEngine', 'GetCacheStats')
+  async getCacheStats(request: GetCacheStatsRequest): Promise<CacheStatsResponse> {
+    this.logger.debug('GetCacheStats called', { campaignId: request.campaignId });
+
+    try {
+      const stats = this.cacheService.getStats();
+
+      let sampleKeys: string[] = [];
+
+      // Security: Require campaignId to prevent information disclosure
+      // Without this, users could see cache keys from campaigns they don't have access to
+      if (!request.campaignId) {
+        this.logger.warn('GetCacheStats called without campaignId - returning global stats only');
+        return {
+          hits: stats.hits,
+          misses: stats.misses,
+          keys: stats.keys,
+          ksize: stats.ksize,
+          vsize: stats.vsize,
+          hitRate: stats.hitRate,
+          sampleKeys: [], // No sample keys without campaign scope for security
+        };
+      }
+
+      // TODO: Add campaign access verification here when auth is implemented in Stage 7
+      // await this.verifyUserHasCampaignAccess(userId, request.campaignId);
+
+      // Get sample keys filtered by campaign/branch
+      sampleKeys = this.cacheService.keysByPrefix(request.campaignId, request.branchId);
+
+      // Limit sample to first 10 keys to avoid large responses
+      const MAX_SAMPLE_KEYS = 10;
+      sampleKeys = sampleKeys.slice(0, MAX_SAMPLE_KEYS);
+
+      return {
+        hits: stats.hits,
+        misses: stats.misses,
+        keys: stats.keys,
+        ksize: stats.ksize,
+        vsize: stats.vsize,
+        hitRate: stats.hitRate,
+        sampleKeys,
+      };
+    } catch (error) {
+      this.logger.error('GetCacheStats failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      // Return zero stats on error
+      return {
+        hits: 0,
+        misses: 0,
+        keys: 0,
+        ksize: 0,
+        vsize: 0,
+        hitRate: 0,
+        sampleKeys: [],
       };
     }
   }

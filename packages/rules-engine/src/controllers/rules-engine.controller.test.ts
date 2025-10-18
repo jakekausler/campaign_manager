@@ -4,6 +4,7 @@ import {
   EvaluateConditionRequest,
   EvaluateConditionsRequest,
   EvaluationResult,
+  GetCacheStatsRequest,
   GetEvaluationOrderRequest,
   InvalidateCacheRequest,
   ValidateDependenciesRequest,
@@ -329,6 +330,123 @@ describe('RulesEngineController', () => {
 
       expect(result).toBeDefined();
       expect(result.invalidatedCount).toBe(0);
+    });
+  });
+
+  describe('getCacheStats', () => {
+    let cacheService: jest.Mocked<CacheService>;
+
+    beforeEach(() => {
+      cacheService = controller['cacheService'] as jest.Mocked<CacheService>;
+    });
+
+    it('should return cache statistics with sample keys when campaignId provided', async () => {
+      const request: GetCacheStatsRequest = {
+        campaignId: 'campaign-456',
+        branchId: 'main',
+      };
+
+      const mockStats = {
+        hits: 100,
+        misses: 20,
+        keys: 50,
+        ksize: 1000,
+        vsize: 5000,
+        hitRate: 0.83,
+      };
+
+      const mockSampleKeys = [
+        'campaign:campaign-456:branch:main:node:CONDITION:cond-1',
+        'campaign:campaign-456:branch:main:node:CONDITION:cond-2',
+      ];
+
+      cacheService.getStats.mockReturnValue(mockStats);
+      cacheService.keysByPrefix.mockReturnValue(mockSampleKeys);
+
+      const result = await controller.getCacheStats(request);
+
+      expect(result).toBeDefined();
+      expect(result.hits).toBe(100);
+      expect(result.misses).toBe(20);
+      expect(result.keys).toBe(50);
+      expect(result.hitRate).toBe(0.83);
+      expect(result.sampleKeys).toEqual(mockSampleKeys);
+      expect(cacheService.keysByPrefix).toHaveBeenCalledWith('campaign-456', 'main');
+    });
+
+    it('should return stats without sample keys when campaignId not provided (security)', async () => {
+      const request: GetCacheStatsRequest = {
+        campaignId: '',
+        branchId: '',
+      };
+
+      const mockStats = {
+        hits: 100,
+        misses: 20,
+        keys: 50,
+        ksize: 1000,
+        vsize: 5000,
+        hitRate: 0.83,
+      };
+
+      cacheService.getStats.mockReturnValue(mockStats);
+
+      const result = await controller.getCacheStats(request);
+
+      expect(result).toBeDefined();
+      expect(result.hits).toBe(100);
+      expect(result.misses).toBe(20);
+      expect(result.sampleKeys).toEqual([]); // Security: no sample keys without campaign scope
+      expect(cacheService.keysByPrefix).not.toHaveBeenCalled();
+      expect(cacheService.keys).not.toHaveBeenCalled();
+    });
+
+    it('should limit sample keys to 10 entries', async () => {
+      const request: GetCacheStatsRequest = {
+        campaignId: 'campaign-456',
+        branchId: 'main',
+      };
+
+      const mockStats = {
+        hits: 100,
+        misses: 20,
+        keys: 50,
+        ksize: 1000,
+        vsize: 5000,
+        hitRate: 0.83,
+      };
+
+      // Create 20 sample keys
+      const mockSampleKeys = Array.from({ length: 20 }, (_, i) => `key-${i}`);
+
+      cacheService.getStats.mockReturnValue(mockStats);
+      cacheService.keysByPrefix.mockReturnValue(mockSampleKeys);
+
+      const result = await controller.getCacheStats(request);
+
+      expect(result).toBeDefined();
+      expect(result.sampleKeys).toHaveLength(10); // Limited to MAX_SAMPLE_KEYS
+      expect(result.sampleKeys).toEqual(mockSampleKeys.slice(0, 10));
+    });
+
+    it('should handle errors gracefully', async () => {
+      const request: GetCacheStatsRequest = {
+        campaignId: 'campaign-456',
+        branchId: 'main',
+      };
+
+      cacheService.getStats.mockImplementation(() => {
+        throw new Error('Cache service error');
+      });
+
+      const result = await controller.getCacheStats(request);
+
+      expect(result).toBeDefined();
+      expect(result.hits).toBe(0);
+      expect(result.misses).toBe(0);
+      expect(result.keys).toBe(0);
+      expect(result.hitRate).toBe(0);
+      expect(result.sampleKeys).toEqual([]);
     });
   });
 });

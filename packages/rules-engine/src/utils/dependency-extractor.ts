@@ -8,6 +8,12 @@
  */
 
 /**
+ * Type alias for JSONLogic expressions
+ * JSONLogic expressions can be deeply nested structures with various types
+ */
+export type JSONLogicExpression = unknown;
+
+/**
  * DependencyExtractor - Extracts variable reads and writes from expressions
  */
 export class DependencyExtractor {
@@ -22,7 +28,7 @@ export class DependencyExtractor {
    * extractReads({ "and": [{ ">": [{ "var": "x" }, 5] }, { "var": "y" }] })
    * // Returns: Set(["x", "y"])
    */
-  extractReads(expression: any): Set<string> {
+  extractReads(expression: JSONLogicExpression): Set<string> {
     const reads = new Set<string>();
 
     // Validate input
@@ -157,7 +163,7 @@ export class DependencyExtractor {
    * @param variableName - The variable name to look for
    * @returns True if the expression reads this variable
    */
-  readsVariable(expression: any, variableName: string): boolean {
+  readsVariable(expression: JSONLogicExpression, variableName: string): boolean {
     const reads = this.extractReads(expression);
     return reads.has(variableName);
   }
@@ -168,7 +174,7 @@ export class DependencyExtractor {
    * @param expressions - Array of expressions to analyze
    * @returns Set of all unique variable names read by any expression
    */
-  extractReadsFromMultiple(expressions: any[]): Set<string> {
+  extractReadsFromMultiple(expressions: JSONLogicExpression[]): Set<string> {
     const allReads = new Set<string>();
 
     for (const expression of expressions) {

@@ -16,7 +16,7 @@ import {
   DependencyNodeType,
   DependencyEdgeType,
 } from '../types/dependency-graph.types';
-import { DependencyExtractor } from '../utils/dependency-extractor';
+import { DependencyExtractor, JSONLogicExpression } from '../utils/dependency-extractor';
 import { DependencyGraph } from '../utils/dependency-graph';
 
 /**
@@ -82,6 +82,7 @@ export class DependencyGraphBuilderService implements OnModuleDestroy {
 
       // Query all active Effects (future - TICKET-016)
       // For now, we'll leave this as a stub
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const effects: any[] = [];
 
       // Step 1: Add all variable nodes
@@ -119,7 +120,9 @@ export class DependencyGraphBuilderService implements OnModuleDestroy {
         graph.addNode(conditionNode);
 
         // Extract variable reads from condition expression
-        const reads = this.dependencyExtractor.extractReads(condition.expression as any);
+        const reads = this.dependencyExtractor.extractReads(
+          condition.expression as JSONLogicExpression
+        );
         this.logger.debug(
           `Condition ${condition.id} reads variables: ${Array.from(reads).join(', ')}`
         );
@@ -224,7 +227,9 @@ export class DependencyGraphBuilderService implements OnModuleDestroy {
       graph.addNode(conditionNode);
 
       // Extract new reads and add edges
-      const reads = this.dependencyExtractor.extractReads(condition.expression as any);
+      const reads = this.dependencyExtractor.extractReads(
+        condition.expression as JSONLogicExpression
+      );
 
       for (const varName of reads) {
         const varNode = this.findVariableNodeByKey(graph, varName);

@@ -18,6 +18,9 @@ service RulesEngine {
 
   // Invalidate cache for specific campaign/branch
   rpc InvalidateCache(InvalidateCacheRequest) returns (InvalidateCacheResponse);
+
+  // Get cache statistics for monitoring
+  rpc GetCacheStats(GetCacheStatsRequest) returns (CacheStatsResponse);
 }
 
 // Request to evaluate a single condition
@@ -101,4 +104,21 @@ message InvalidateCacheRequest {
 message InvalidateCacheResponse {
   int32 invalidated_count = 1;       // Number of cache entries invalidated
   string message = 2;                // Confirmation message
+}
+
+// Request to get cache statistics
+message GetCacheStatsRequest {
+  string campaign_id = 1;            // Campaign context (required for sample keys, optional for global stats)
+  string branch_id = 2;              // Optional: filter stats by branch (defaults to all branches if empty)
+}
+
+// Response with cache statistics
+message CacheStatsResponse {
+  int64 hits = 1;                    // Total cache hits
+  int64 misses = 2;                  // Total cache misses
+  int64 keys = 3;                    // Total number of cached keys
+  int64 ksize = 4;                   // Approximate memory for keys (bytes)
+  int64 vsize = 5;                   // Approximate memory for values (bytes)
+  double hit_rate = 6;               // Hit rate (hits / (hits + misses))
+  repeated string sample_keys = 7;   // Sample cache keys (for debugging)
 }

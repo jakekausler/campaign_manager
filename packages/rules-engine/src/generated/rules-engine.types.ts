@@ -109,6 +109,27 @@ export interface InvalidateCacheResponse {
 }
 
 /**
+ * Request to get cache statistics
+ */
+export interface GetCacheStatsRequest {
+  campaignId: string;
+  branchId: string;
+}
+
+/**
+ * Response with cache statistics
+ */
+export interface CacheStatsResponse {
+  hits: number;
+  misses: number;
+  keys: number;
+  ksize: number;
+  vsize: number;
+  hitRate: number;
+  sampleKeys: string[];
+}
+
+/**
  * Rules Engine Service Interface
  * Defines the contract for the gRPC service
  */
@@ -118,4 +139,5 @@ export interface IRulesEngineService {
   getEvaluationOrder(request: GetEvaluationOrderRequest): Promise<EvaluationOrderResponse>;
   validateDependencies(request: ValidateDependenciesRequest): Promise<ValidationResult>;
   invalidateCache(request: InvalidateCacheRequest): Promise<InvalidateCacheResponse>;
+  getCacheStats(request: GetCacheStatsRequest): Promise<CacheStatsResponse>;
 }

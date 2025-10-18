@@ -73,6 +73,8 @@ export class CacheService implements OnModuleDestroy {
   private readonly logger = new Logger(CacheService.name);
   private readonly cache: NodeCache;
   private readonly config: CacheConfig;
+  private lastWarningTime: number = 0;
+  private readonly WARNING_THROTTLE_MS = 60000; // Warn at most once per minute
 
   constructor() {
     // Load and validate configuration from environment variables with defaults
@@ -111,12 +113,17 @@ export class CacheService implements OnModuleDestroy {
     });
 
     // Log when cache is full (should trigger monitoring alert)
+    // Throttled to prevent resource exhaustion attacks
     this.cache.on('set', () => {
-      const stats = this.cache.getStats();
-      if (stats.keys >= this.config.maxKeys * 0.9) {
-        this.logger.warn(
-          `Cache is ${Math.round((stats.keys / this.config.maxKeys) * 100)}% full (${stats.keys}/${this.config.maxKeys} keys)`
-        );
+      const now = Date.now();
+      if (now - this.lastWarningTime > this.WARNING_THROTTLE_MS) {
+        const stats = this.cache.getStats();
+        if (stats.keys >= this.config.maxKeys * 0.9) {
+          this.logger.warn(
+            `Cache is ${Math.round((stats.keys / this.config.maxKeys) * 100)}% full (${stats.keys}/${this.config.maxKeys} keys)`
+          );
+          this.lastWarningTime = now;
+        }
       }
     });
 
