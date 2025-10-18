@@ -7,6 +7,7 @@
   - Stage 1: 7d1439d (Database Schema Enhancement)
   - Stage 2: e125476 (GraphQL Type Definitions)
   - Stage 3: c88a40d (Effect Patch Application Service)
+  - Stage 4: 86455e4 (Effect Execution Engine Service)
 
 ## Description
 
@@ -165,3 +166,66 @@ Implement the Effect system that allows events/encounters to mutate world state 
 - ✅ Type-check passes with no errors
 - ✅ Lint passes with no new warnings
 - ✅ Test coverage > 90%
+
+---
+
+### Stage 4: Effect Execution Engine Service (86455e4)
+
+**Completed**: Core orchestration service successfully implemented with comprehensive test coverage.
+
+**Changes Made:**
+
+- Created `EffectExecutionService` in `effect-execution.service.ts`:
+  - `executeEffect()` - Single effect execution with full audit trail
+    - Loads effect and validates it's active (throws ForbiddenException if inactive)
+    - Loads or uses provided entity context (throws NotFoundException if missing)
+    - Applies JSON Patch using EffectPatchService
+    - Persists changes and creates audit record in transaction
+    - Supports dry-run mode for preview without side effects
+  - `executeEffectsForEntity()` - Multi-effect execution at timing phase
+    - Queries active effects for entity + timing phase
+    - Sorts by priority (ascending) for deterministic execution
+    - Executes sequentially to maintain correct order
+    - Failed effects logged but don't block subsequent effects
+    - Returns summary with total/succeeded/failed counts
+  - `executeEffectsWithDependencies()` - NOT YET IMPLEMENTED
+    - Throws NotImplementedException until Stage 7
+    - Requires dependency graph integration for effect-level tracking
+    - Clear error message directs users to use executeEffectsForEntity()
+
+- Service Architecture:
+  - Type-safe entity loading (Encounter/Event with proper type guards)
+  - Immutable patch application via EffectPatchService
+  - Transaction semantics for atomicity (entity update + audit record)
+  - Proper error handling with descriptive messages
+  - Comprehensive logging for debugging
+
+- Key Design Decisions:
+  1. **Sequential Execution**: Effects execute sequentially in priority order to ensure correctness and prevent race conditions
+  2. **Transaction Boundaries**: Each effect execution is atomic (entity update + audit record in single transaction)
+  3. **Error Isolation**: Failed effects don't block subsequent effects (logged and continue)
+  4. **Type Safety**: Used `Prisma.TransactionClient` instead of `any` for transaction parameter
+  5. **Future-Proofing**: Stub method for dependency-ordered execution (Stage 7)
+
+- Created comprehensive test suite (`effect-execution.service.test.ts`):
+  - 17 unit tests covering all execution scenarios
+  - Single effect execution (success/failure/dry-run/inactive/missing)
+  - Multi-effect execution with priority ordering
+  - Entity type handling (Encounter/Event)
+  - Transaction semantics and error handling
+  - NotImplementedException for dependency-ordered execution
+
+**Code Review:** Approved after addressing critical issues:
+
+1. ✅ Fixed transaction client type from `any` to `Prisma.TransactionClient`
+2. ✅ Changed `executeEffectsWithDependencies` to throw clear NotImplementedException
+3. ✅ Removed DependencyGraphService dependency (not needed until Stage 7)
+4. ✅ Added comprehensive documentation explaining future implementation needs
+
+**Test Results:**
+
+- ✅ All 17 tests pass (effect-execution.service.test.ts)
+- ✅ All 51 tests pass (effect-patch.service.test.ts)
+- ✅ Type-check passes with no errors
+- ✅ Lint passes (only non-critical `@typescript-eslint/no-explicit-any` warnings in test mocks)
+- ✅ Test coverage comprehensive
