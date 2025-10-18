@@ -8,6 +8,7 @@
   - Stage 2: e125476 (GraphQL Type Definitions)
   - Stage 3: c88a40d (Effect Patch Application Service)
   - Stage 4: 86455e4 (Effect Execution Engine Service)
+  - Stage 5: 051d96b (Effect CRUD Service)
 
 ## Description
 
@@ -229,3 +230,69 @@ Implement the Effect system that allows events/encounters to mutate world state 
 - ✅ Type-check passes with no errors
 - ✅ Lint passes (only non-critical `@typescript-eslint/no-explicit-any` warnings in test mocks)
 - ✅ Test coverage comprehensive
+
+---
+
+### Stage 5: Effect CRUD Service (051d96b)
+
+**Completed**: Complete service layer successfully implemented with comprehensive CRUD operations and authorization.
+
+**Changes Made:**
+
+- Created `EffectService` in `effect.service.ts`:
+  - `create()` - Create effect with campaign authorization and payload validation
+  - `findById()` - Get effect with access verification
+  - `findMany()` - Paginated queries with JOIN-based campaign access filtering
+  - `findForEntity()` - Get effects for entity at specific timing phase
+  - `update()` - Update with optimistic locking (version field)
+  - `delete()` - Soft delete (set deletedAt)
+  - `toggleActive()` - Enable/disable effects
+
+- Campaign Authorization:
+  - Resolves campaignId from encounter/event relations
+  - Verifies user has campaign access (owner or member)
+  - Supports both encounter and event entity types
+  - Throws NotFoundException for missing entities or access denied
+
+- Payload Validation:
+  - Validates JSON Patch format using EffectPatchService
+  - Safe type casting with explanation comments (GraphQL generic types → specific validation types)
+  - Rejects malformed patches before database writes
+
+- Performance Optimizations:
+  - **N+1 Query Fix**: `findMany()` uses JOIN-based campaign access filtering in initial Prisma query
+  - Single database query instead of N separate authorization checks
+  - Composite indexes on Effect(entityType, entityId, timing) for efficient queries
+
+- Dependency Graph Integration:
+  - Invalidates cache on create/update/delete via `DependencyGraphService.invalidateGraph()`
+  - Resolves campaignId from entity relations for cache invalidation
+  - Publishes Redis events for Rules Engine worker
+
+- Created comprehensive test suite (`effect.service.test.ts`):
+  - 30 unit tests covering all CRUD operations
+  - Authorization scenarios (success/forbidden/not found)
+  - Optimistic locking with version mismatch
+  - Payload validation (valid/invalid patches)
+  - Campaign access filtering with JOIN queries
+  - Date range filtering and sorting
+  - Soft delete behavior
+  - Entity type handling (encounter/event)
+
+**Key Design Decisions:**
+
+1. **JOIN-Based Authorization**: Campaign access filtering built into initial Prisma query using OR clauses for encounter/event relations (eliminates N+1 query problem)
+2. **Optimistic Locking**: Uses version field to prevent race conditions (same pattern as ConditionService)
+3. **Safe Type Casting**: GraphQL accepts generic `Record<string, unknown>` for payload, but EffectPatchService validates specific types (`Operation[]`) - casts documented with explanation comments
+4. **Audit Trail**: All mutations logged via AuditService for compliance
+5. **Soft Deletes**: Preserves effect execution history by setting deletedAt instead of hard delete
+
+**Code Review:** Initially flagged critical N+1 query issue in `findMany()` where authorization checks happened in a loop after query. Refactored to include campaign access filtering in the initial Prisma query using JOINs. Second review approved after fix.
+
+**Test Results:**
+
+- ✅ All 30 tests pass (effect.service.test.ts)
+- ✅ Type-check passes with no errors
+- ✅ Lint passes with zero new warnings (no `any` types used)
+- ✅ Test coverage > 90%
+- ✅ Performance: Single query for findMany (no N+1 issues)

@@ -261,14 +261,14 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ---
 
-### Stage 5: Effect CRUD Service
+### Stage 5: Effect CRUD Service ✅
 
 **Goal**: Implement effect CRUD operations with authorization and validation
 
 **Tasks:**
 
-- [ ] Create `packages/api/src/graphql/services/effect.service.ts`
-- [ ] Implement CRUD operations:
+- [x] Create `packages/api/src/graphql/services/effect.service.ts`
+- [x] Implement CRUD operations:
   - `create(input, user)` - Create effect with campaign authorization
   - `findById(id, user)` - Get effect with access verification
   - `findMany(where, orderBy, skip, take, user)` - Paginated queries
@@ -276,17 +276,17 @@ Co-Authored-By: Claude <noreply@anthropic.com>
   - `update(id, input, user)` - Update with optimistic locking
   - `delete(id, user)` - Soft delete (set deletedAt)
   - `toggleActive(id, isActive, user)` - Enable/disable
-- [ ] Implement campaign authorization:
+- [x] Implement campaign authorization:
   - Resolve campaignId from entity (encounter/event → campaign)
   - Verify user has campaign access
   - Mutations require 'owner' or 'gm' role
-- [ ] Implement payload validation:
+- [x] Implement payload validation:
   - Validate JSON Patch format for patch-type effects
   - Validate effect-specific payload schemas
-- [ ] Integrate with DependencyGraphService:
+- [x] Integrate with DependencyGraphService:
   - Invalidate cache on create/update/delete
   - Extract write dependencies from patches
-- [ ] Write unit tests (45+ tests):
+- [x] Write unit tests (30 tests):
   - CRUD operations (all paths)
   - Authorization scenarios (success/failure)
   - Optimistic locking
@@ -296,12 +296,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 **Success Criteria:**
 
-- [ ] Service passes all unit tests
-- [ ] Campaign authorization works for all operations
-- [ ] Optimistic locking prevents race conditions
-- [ ] Dependency graph cache invalidates correctly
-- [ ] Payload validation catches malformed effects
-- [ ] Soft deletes preserve audit trail
+- [x] Service passes all unit tests
+- [x] Campaign authorization works for all operations
+- [x] Optimistic locking prevents race conditions
+- [x] Dependency graph cache invalidates correctly
+- [x] Payload validation catches malformed effects
+- [x] Soft deletes preserve audit trail
 
 **Testing:**
 
