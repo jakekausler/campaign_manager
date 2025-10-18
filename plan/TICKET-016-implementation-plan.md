@@ -72,33 +72,36 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ---
 
-### Stage 2: GraphQL Type Definitions
+### Stage 2: GraphQL Type Definitions ✅
 
 **Goal**: Define GraphQL types for Effect operations and execution results
 
 **Tasks:**
 
-- [ ] Create `packages/api/src/graphql/types/effect.type.ts`:
-  - EffectType (enum: pre | post | onResolve)
-  - EffectEntityType (enum: encounter | event)
-  - EffectPayloadType (enum for effect types)
+- [x] Create `packages/api/src/graphql/types/effect.type.ts`:
+  - EffectTiming (enum: PRE | ON_RESOLVE | POST)
+  - EffectEntityType (enum: ENCOUNTER | EVENT)
   - EffectObjectType (matches Prisma model + relations)
   - EffectExecutionObjectType
   - EffectExecutionResultType (success, patchApplied, error, executionId)
-- [ ] Create input types in `packages/api/src/graphql/inputs/effect.input.ts`:
+  - EffectExecutionSummary (total, succeeded, failed, results, executionOrder)
+- [x] Create input types in `packages/api/src/graphql/inputs/effect.input.ts`:
   - CreateEffectInput (name, description, effectType, payload, entityType, entityId, timing, priority)
   - UpdateEffectInput (partial fields + expectedVersion)
-  - ExecuteEffectInput (effectId, context, dryRun?)
+  - ExecuteEffectInput (effectId, context, dryRun)
+  - ExecuteEffectsForEntityInput (entityType, entityId, timing, dryRun)
   - EffectWhereInput (filtering for queries)
   - EffectOrderByInput (sorting)
-- [ ] Register types in GraphQL module
+  - EffectExecutionWhereInput (filtering execution history)
+  - EffectExecutionOrderByInput (sorting execution history)
+- [x] Register types in GraphQL module (automatic via code-first approach)
 
 **Success Criteria:**
 
-- [ ] All GraphQL types compile without errors
-- [ ] Types match Prisma models exactly
-- [ ] Input validation decorators present (class-validator)
-- [ ] Enums properly defined and exported
+- [x] All GraphQL types compile without errors
+- [x] Types match Prisma models exactly
+- [x] Input validation decorators present (class-validator)
+- [x] Enums properly defined and exported
 
 **Testing:**
 

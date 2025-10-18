@@ -5,6 +5,7 @@
 - [ ] Completed
 - **Commits**:
   - Stage 1: 7d1439d (Database Schema Enhancement)
+  - Stage 2: e125476 (GraphQL Type Definitions)
 
 ## Description
 
@@ -67,3 +68,46 @@ Implement the Effect system that allows events/encounters to mutate world state 
 - All indexes created for optimal query performance
 
 **Code Review:** Approved by code-reviewer subagent after addressing Location GIST index issue and adding composite index for audit trail queries.
+
+---
+
+### Stage 2: GraphQL Type Definitions (e125476)
+
+**Completed**: GraphQL type system successfully created for effect operations and execution results.
+
+**Changes Made:**
+
+- Created comprehensive type definitions in `effect.type.ts`:
+  - `EffectTiming` enum (PRE, ON_RESOLVE, POST) with detailed descriptions
+  - `EffectEntityType` enum (ENCOUNTER, EVENT)
+  - `Effect` object type matching Prisma model with all fields
+  - `EffectExecution` object type for audit trail
+  - `EffectExecutionResult` type for individual execution outcomes
+  - `EffectExecutionSummary` type for bulk execution results
+
+- Created comprehensive input types in `effect.input.ts`:
+  - `CreateEffectInput` with full validation (@MaxLength, @IsEnum, @IsString)
+  - `UpdateEffectInput` with optimistic locking via expectedVersion
+  - `ExecuteEffectInput` with dry-run support and optional context
+  - `ExecuteEffectsForEntityInput` for bulk execution by timing phase
+  - `EffectWhereInput` and `EffectOrderByInput` for flexible querying
+  - `EffectExecutionWhereInput` and `EffectExecutionOrderByInput` for execution history
+
+**Key Features:**
+
+- Comprehensive validation decorators (class-validator)
+- CUID-compatible ID validation (@IsString instead of @IsUUID)
+- RFC 6902 JSON Patch documentation on payload fields
+- Max 100KB payload size documented
+- Context auto-loading when omitted in ExecuteEffectInput
+- Optimistic locking support via version field
+- Soft delete support via deletedAt
+- Priority-based execution ordering
+
+**Code Review:** Approved by code-reviewer subagent after addressing:
+
+1. Added @MaxLength(500) to description fields
+2. Fixed UUID validation to use @IsString for CUID compatibility
+3. Added payload validation documentation (max size, EffectPatchService validation)
+4. Clarified context loading behavior in ExecuteEffectInput
+5. Enhanced payload field documentation with RFC 6902 reference
