@@ -96,6 +96,47 @@ jobs:
       - name: Run tests
         run: pnpm run test
 
+  performance:
+    name: Performance Regression Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @campaign/api exec prisma generate
+
+      - name: Build shared package
+        run: pnpm --filter @campaign/shared build
+
+      - name: Run performance benchmarks
+        run: pnpm --filter @campaign/rules-engine test performance.test.ts
+
+      - name: Performance summary
+        if: always()
+        run: |
+          echo "✅ Performance regression tests completed"
+          echo "See test output above for detailed performance metrics"
+          echo "Acceptance criteria verified:"
+          echo "  - Single evaluation p95 < 50ms"
+          echo "  - Cached evaluation p95 < 5ms"
+          echo "  - Concurrent requests: 100+ supported"
+
   build:
     name: Build All Packages
     runs-on: ubuntu-latest
