@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] In Progress
-- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3, 8a7ed27, 8de2dfb, 7f45d98, c2a265d
+- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3, 8a7ed27, 8de2dfb, 7f45d98, c2a265d, f8cd55e
 
 ## Description
 
@@ -483,5 +483,153 @@ function StructureConditionsPanel({ structureId }: { structureId: string }) {
   if (error) return <ErrorAlert message={error.message} />;
 
   return <pre>{JSON.stringify(computedFields, null, 2)}</pre>;
+}
+```
+
+---
+
+### Stage 8: Implement Mutation Helpers and Optimistic Updates (Complete - f8cd55e)
+
+**What was implemented:**
+
+Created comprehensive GraphQL mutation hooks for Settlement and Structure entities with proper cache management strategies.
+
+**Files Created:**
+
+- `packages/frontend/src/services/api/mutations/settlements.ts`: 5 mutation hooks (create, update, delete, archive, restore)
+- `packages/frontend/src/services/api/mutations/structures.ts`: 5 mutation hooks (create, update, delete, archive, restore)
+- `packages/frontend/src/services/api/mutations/index.ts`: Centralized exports for all mutations
+
+**Mutation Hooks (10 total):**
+
+Settlement Mutations:
+
+- `useCreateSettlement`: Creates settlement with refetchQueries for cache update
+- `useUpdateSettlement`: Updates settlement (Apollo auto-updates normalized cache)
+- `useDeleteSettlement`: Soft deletes with cache eviction and refetch
+- `useArchiveSettlement`: Archives settlement (updates deletedAt in cache)
+- `useRestoreSettlement`: Restores settlement (clears deletedAt in cache)
+
+Structure Mutations:
+
+- `useCreateStructure`: Creates structure with refetchQueries + Settlement.structures field update
+- `useUpdateStructure`: Updates structure (Apollo auto-updates normalized cache)
+- `useDeleteStructure`: Soft deletes with proper cleanup (reads settlementId first, removes from Settlement.structures, evicts)
+- `useArchiveStructure`: Archives structure (updates deletedAt in cache)
+- `useRestoreStructure`: Restores structure (clears deletedAt in cache)
+
+**Technical decisions:**
+
+Cache Management Strategy:
+
+- **Create mutations**: Use `refetchQueries` to reliably update list queries
+  - Avoids fragile string parsing of Apollo internal field names
+  - Simple and robust approach
+- **Update mutations**: Rely on Apollo Client's automatic cache normalization
+  - No manual cache updates needed (Apollo handles it)
+- **Delete mutations**: Three-step cleanup process
+  - Read entity to get parent IDs (e.g., settlementId for structures)
+  - Remove from parent's reference fields (e.g., Settlement.structures)
+  - Evict entity and run garbage collection
+  - Add refetchQueries for safety
+- **Archive/Restore mutations**: Modify fields in normalized cache
+  - Updates `deletedAt` and `version` fields directly
+  - No eviction needed (entity still exists, just archived)
+
+Code Quality Features:
+
+- Comprehensive JSDoc documentation with usage examples for all hooks
+- TypeScript strict mode compatibility with proper type parameters
+- useMemo optimization for return values
+- Consistent error handling patterns across all mutations
+- Support for user-provided update callbacks via options parameter
+- Proper context passing to user update functions
+
+**Code review outcome:**
+
+Initial review identified 5 critical issues, all addressed:
+
+1. ✅ Removed fragile string parsing (replaced with refetchQueries)
+2. ✅ Fixed context parameter in user update callbacks
+3. ✅ Removed optimistic responses with invalid placeholder data
+4. ✅ Fixed incomplete cache cleanup in deleteStructure
+5. ✅ Added cache updates for archive/restore mutations
+
+Final review: **APPROVED**
+
+**Quality checks:** All type-check and lint checks passed
+
+**Integration notes:**
+
+Mutation hooks ready to be consumed by React components:
+
+1. **Hooks Available**: Exported from `@/services/api/hooks` for easy import (re-exported from mutations)
+2. **Apollo Client Ready**: Integrated with Stage 3 Apollo Client configuration
+3. **Cache Configured**: Cache strategies align with typePolicies from Stage 3
+4. **Auth Integrated**: Hooks automatically include auth token from Zustand store (via Stage 3 auth link)
+5. **Type Safe**: All hooks properly typed with placeholder types (to be replaced with generated types)
+
+**Known limitation:**
+
+Backend RulesEngineClientService dependency injection issue prevents integration testing. Implementation passes all static checks but cannot be tested with live backend until dependency issue is resolved.
+
+**Future work:**
+
+Once backend is fixed:
+
+- Integration test all mutation hooks with live backend
+- Verify cache update strategies work correctly
+- Test archive/restore field updates
+- Test delete cleanup (especially Structure removal from Settlement.structures)
+- Replace placeholder types with generated GraphQL types
+
+**Usage pattern:**
+
+```typescript
+import { useCreateSettlement, useUpdateSettlement, useDeleteSettlement } from '@/services/api/hooks';
+
+function SettlementManager({ kingdomId }: { kingdomId: string }) {
+  const { createSettlement, loading: creating } = useCreateSettlement();
+  const { updateSettlement, loading: updating } = useUpdateSettlement();
+  const { deleteSettlement, loading: deleting } = useDeleteSettlement();
+
+  const handleCreate = async (data: { name: string; locationId: string }) => {
+    try {
+      const settlement = await createSettlement({
+        kingdomId,
+        locationId: data.locationId,
+        name: data.name,
+        level: 1,
+      });
+      console.log('Created:', settlement);
+    } catch (err) {
+      console.error('Failed to create:', err);
+    }
+  };
+
+  const handleUpdate = async (id: string, data: { name: string }) => {
+    try {
+      const updated = await updateSettlement(id, data);
+      console.log('Updated:', updated);
+    } catch (err) {
+      console.error('Failed to update:', err);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure?')) return;
+    try {
+      await deleteSettlement(id);
+    } catch (err) {
+      console.error('Failed to delete:', err);
+    }
+  };
+
+  return (
+    <div>
+      <CreateSettlementForm onSubmit={handleCreate} disabled={creating} />
+      {/* ... other components ... */}
+    </div>
+  );
 }
 ```
