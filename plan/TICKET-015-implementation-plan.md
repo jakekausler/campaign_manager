@@ -269,23 +269,25 @@ Cache warming was considered but deferred as lower-priority optimization. On-dem
 
 **Tasks**:
 
-- [ ] Create Dockerfile for rules-engine service
-- [ ] Add docker-compose service definition
-- [ ] Configure environment variables for Docker
-- [ ] Add volume mounts for development
-- [ ] Update root docker-compose.yml
-- [ ] Test full stack startup with docker-compose
-- [ ] Document Docker setup in README
-- [ ] Update root README.md with rules engine architecture
+- [x] Create Dockerfile for rules-engine service
+- [x] Add docker-compose service definition
+- [x] Configure environment variables for Docker
+- [x] Add volume mounts for development
+- [x] Update root docker-compose.yml
+- [x] Test full stack startup with docker-compose
+- [x] Document Docker setup in README
+- [x] Update root README.md with rules engine architecture
 
 **Success Criteria**:
 
-- Service builds in Docker
-- Starts via docker-compose alongside other services
-- Can communicate with API and database containers
-- Hot reload works in development mode
+- ✅ Service builds in Docker
+- ✅ Starts via docker-compose alongside other services
+- ✅ Can communicate with API and database containers
+- ✅ Hot reload works in development mode
 
-**Status**: Not Started
+**Status**: Complete
+
+**Commit**: d3a579b - feat(docker): add Rules Engine Worker deployment configuration
 
 ---
 

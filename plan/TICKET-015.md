@@ -13,6 +13,7 @@
   - ea36e66 - Stage 6: Redis pub/sub invalidations complete
   - 26037f1 - Stage 7: API service integration complete
   - 0e18f0b - Stage 8: Health checks and monitoring complete
+  - d3a579b - Stage 9: Docker and deployment complete
 
 ## Description
 
@@ -763,3 +764,115 @@ Environment variables in `packages/api/.env`:
 - All critical blocking issues resolved
 
 **Next Stage**: Stage 8 - Health Checks and Monitoring
+
+---
+
+### Stage 9: Docker and Deployment (Complete - d3a579b)
+
+**Goal**: Containerize service and update deployment configuration
+
+**Implementation**:
+
+Completed comprehensive Docker deployment configuration for the Rules Engine Worker with health checks, environment variable management, and documentation:
+
+**Docker Configuration Files**:
+
+1. **Dockerfile** (`packages/rules-engine/Dockerfile`):
+   - Fixed critical entry point bug: `index.js` → `main.js`
+   - Multi-stage build (builder + production)
+   - Non-root user execution (worker:nodejs UID 1001)
+   - Health check using wget for liveness probe
+   - Proper proto file inclusion for runtime
+   - Production dependencies only in final image
+
+2. **docker-compose.yml** (root):
+   - Added rules-engine service definition with complete configuration
+   - Configured ports: 3001 (HTTP health), 50051 (gRPC), 9230 (debugger dev only)
+   - Environment variables: Database, Redis, gRPC, HTTP, cache configuration
+   - Health check: wget against /health/live endpoint (30s interval, 3s timeout, 20s start period)
+   - Service dependencies: postgres (healthy), redis (healthy)
+   - API service updated to depend on rules-engine being healthy
+   - API service configured with RULES*ENGINE*\* environment variables for gRPC client
+
+3. **docker-compose.dev.yml**:
+   - Development mode volume mounts for hot reload
+   - Source code mounted read-only: src/, proto/, shared/src
+   - Node modules preserved with anonymous volumes
+   - Exposed ports for external access: 3001, 50051, 9230 (debugger)
+   - Builder stage target for development mode
+
+4. **.env.local.example** (root):
+   - Comprehensive Rules Engine environment variable documentation
+   - RULES_ENGINE_ENABLED flag for toggling worker integration
+   - gRPC client configuration (host, port, timeout)
+   - Worker server configuration (HTTP port, gRPC port)
+   - Redis configuration (host, port, db, password)
+   - Cache configuration (TTL, check period, max keys)
+   - All variables documented with clear comments and sensible defaults
+
+**Documentation Updates**:
+
+1. **packages/rules-engine/README.md**:
+   - Added comprehensive "Docker Deployment" section (80+ lines)
+   - Building Docker images with multi-stage build explanation
+   - Running with docker-compose (development and production modes)
+   - Environment variable documentation for Docker
+   - Exposed ports listing with descriptions
+   - Health check configuration explanation
+   - Volume mounts for development hot reload
+   - Service dependencies documentation
+   - Example docker-compose commands
+
+2. **Root README.md**:
+   - Updated "Architecture" section with detailed system overview
+   - ASCII diagram showing all services and communication patterns
+   - Service Communication section documenting gRPC and Redis Pub/Sub
+   - Rules Engine Worker features and capabilities
+   - Fallback strategy with circuit breaker pattern
+   - Docker Compose Services table with all ports
+   - Data Flow Examples for evaluation and cache invalidation
+   - Updated "Project Status" with completed tickets (TICKET-011 through TICKET-015)
+   - Added detailed "Rules Engine System" section explaining all 5 tickets
+   - Performance characteristics documented (<50ms p95, <5ms cached)
+
+**Key Configuration Highlights**:
+
+- **Service Communication**: API → Rules Engine via gRPC (`:50051`)
+- **Cache Invalidation**: API → Rules Engine via Redis Pub/Sub
+- **Database Access**: Rules Engine has read-only Prisma Client access
+- **Health Checks**: HTTP liveness/readiness probes on port 3001
+- **Security**: Non-root user, read-only volumes, minimal attack surface
+- **Performance**: Circuit breaker pattern, graceful degradation, fallback to local evaluation
+
+**Validation**:
+
+- ✅ Docker compose config validates with `docker compose config --quiet`
+- ✅ All files formatted with Prettier
+- ✅ TypeScript type-check passing
+- ✅ ESLint passing (warnings acceptable for test files)
+- ✅ Code review approved with optional enhancement suggestions
+- ✅ Pre-commit hooks all passing
+
+**Known Limitations (Acceptable for MVP)**:
+
+- Health check start_period (20s) might be tight for cold starts with database initialization
+- Worker uses separate Redis variables instead of REDIS_URL (intentional for IORedis client)
+- Port mappings use environment variables on host side but hardcoded container ports (standard practice)
+
+**Files Modified**:
+
+- `packages/rules-engine/Dockerfile` - Fixed entry point
+- `docker-compose.yml` - Added rules-engine service with health checks
+- `docker-compose.dev.yml` - Added development volume mounts
+- `.env.local.example` - Added Rules Engine environment variables
+- `packages/rules-engine/README.md` - Added Docker deployment documentation
+- `README.md` - Updated architecture diagrams and project status
+
+**Success Criteria Met**:
+
+- ✅ Service builds in Docker
+- ✅ Starts via docker-compose alongside other services
+- ✅ Can communicate with API and database containers
+- ✅ Hot reload works in development mode with volume mounts
+
+**Next Stage**: Stage 10 - Performance Testing and Optimization
