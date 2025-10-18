@@ -289,7 +289,7 @@ The Rules Engine Worker has been extensively benchmarked to verify it meets perf
 
 - **p50**: 0.61ms
 - **p95**: 0.75ms
-- **Observation**: Complex expressions are actually **faster** due to fewer database lookups in tests
+- **Note**: Complex expressions show similar performance due to mocked database access in tests. Production performance will depend on actual database query complexity and caching effectiveness.
 
 ### Cache Performance
 
