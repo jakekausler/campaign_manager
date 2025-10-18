@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] In Progress
-- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3, 8a7ed27, 8de2dfb, 7f45d98
+- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3, 8a7ed27, 8de2dfb, 7f45d98, c2a265d
 
 ## Description
 
@@ -378,5 +378,110 @@ function SettlementsPage({ kingdomId }: { kingdomId: string }) {
   if (error) return <ErrorAlert message={error.message} />;
 
   return <SettlementsList settlements={settlements} onRefresh={refetch} />;
+}
+```
+
+---
+
+### Stage 7: Create Structure GraphQL Hooks (Complete - c2a265d)
+
+**What was implemented:**
+
+New File: `packages/frontend/src/services/api/hooks/structures.ts`
+
+- Two GraphQL queries for Structure operations:
+  - `GET_STRUCTURE_DETAILS`: Fetches single structure with full details including computedFields
+  - `GET_STRUCTURE_CONDITIONS`: Fetches structure with computedFields only (optimized query)
+- Two custom hooks wrapping Apollo Client queries:
+  - `useStructureDetails`: Cache-first policy for performance with manual refetch
+  - `useStructureConditions`: Cache-and-network for fresh computed field data
+- Placeholder TypeScript types (to be replaced with generated types)
+- Comprehensive JSDoc documentation with usage examples
+
+Updated: `packages/frontend/src/services/api/hooks/index.ts`
+
+- Added exports for new Structure hooks and queries
+
+**Technical decisions:**
+
+- **Avoided duplication**: Did NOT create `useStructuresBySettlement` hook
+  - This hook already exists in `settlements.ts` (queries structures via settlement)
+  - Prevents naming conflicts and redundant functionality
+  - Consumers can use `useStructuresBySettlement` from settlements module
+- **Cache policies optimized for use case**:
+  - Details use cache-first (reduces network requests, manual refetch available)
+  - Conditions use cache-and-network (ensures computed field freshness)
+- **Return shape consistency**: Matches Settlement hooks patterns for familiar API
+- **useStructureConditions convenience**: Returns both `structure` and `computedFields`
+  - Slightly redundant (computedFields is in structure object)
+  - Improves DX for consumers who only care about computed fields
+- **useMemo optimization**: Prevents unnecessary re-renders with proper dependency tracking
+- **Pattern consistency**: Follows exact same structure as Settlement hooks from Stage 6
+
+**Code review outcome:**
+
+Approved with no critical issues. Two optional suggestions noted:
+
+1. Documentation comment about "always fetched fresh" could be clarified (cache-and-network shows cached immediately)
+2. `computedFields` in return value is redundant but improves developer experience
+
+Both suggestions deferred as they provide value and have no functional impact.
+
+**Quality checks:** All type-check and lint checks passed
+
+**Integration notes:**
+
+Structure hooks ready to be consumed by React components:
+
+1. **Hooks Available**: Exported from `@/services/api/hooks` for easy import
+2. **Apollo Client Ready**: Integrated with Stage 3 Apollo Client configuration
+3. **Cache Configured**: Cache policies align with Stage 3 typePolicies setup
+4. **Auth Integrated**: Hooks automatically include auth token from Zustand store
+5. **Campaign Context Ready**: Can be enhanced to use campaign context for time-travel queries
+6. **No Naming Conflicts**: Avoided duplicating useStructuresBySettlement from settlements module
+
+**Known limitation:**
+
+Backend RulesEngineClientService dependency injection issue prevents integration testing. Implementation passes all static checks but cannot be tested with live backend until dependency issue is resolved.
+
+**Future work:**
+
+Once backend is fixed:
+
+- Run `pnpm --filter @campaign/frontend codegen` to generate TypeScript types
+- Replace placeholder Structure types with generated GraphQL types
+- Integration test hooks with live backend
+- Verify cache policies work as configured (cache-first for details, cache-and-network for conditions)
+- Consider implementing optional documentation improvements from code review
+
+**Usage pattern:**
+
+```typescript
+import { useStructureDetails, useStructureConditions } from '@/services/api/hooks';
+
+function StructureDetailsPage({ structureId }: { structureId: string }) {
+  const { structure, loading, error, refetch } = useStructureDetails(structureId);
+
+  if (loading) return <Spinner />;
+  if (error) return <ErrorAlert message={error.message} />;
+  if (!structure) return <NotFound />;
+
+  return (
+    <div>
+      <h1>{structure.name}</h1>
+      <p>Type: {structure.typeId}</p>
+      <p>Position: ({structure.x}, {structure.y})</p>
+      <button onClick={() => refetch()}>Refresh</button>
+    </div>
+  );
+}
+
+function StructureConditionsPanel({ structureId }: { structureId: string }) {
+  const { computedFields, loading, error } = useStructureConditions(structureId);
+
+  if (loading) return <Spinner />;
+  if (error) return <ErrorAlert message={error.message} />;
+
+  return <pre>{JSON.stringify(computedFields, null, 2)}</pre>;
 }
 ```
