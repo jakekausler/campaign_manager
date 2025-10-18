@@ -7,6 +7,7 @@ import { CacheService } from './services/cache.service';
 import { DependencyGraphBuilderService } from './services/dependency-graph-builder.service';
 import { DependencyGraphService } from './services/dependency-graph.service';
 import { EvaluationEngineService } from './services/evaluation-engine.service';
+import { RedisService } from './services/redis.service';
 
 /**
  * Root module for the Rules Engine Worker Service
@@ -16,7 +17,7 @@ import { EvaluationEngineService } from './services/evaluation-engine.service';
  * - Maintaining dependency graphs per campaign/branch (Stage 4: implemented)
  * - Performing incremental recomputation on state changes (Stage 4: implemented)
  * - Caching evaluation results (Stage 5: implemented)
- * - Communicating via gRPC and Redis pub/sub (Stage 6: planned)
+ * - Receiving invalidation events via Redis pub/sub (Stage 6: implemented)
  */
 @Module({
   imports: [],
@@ -25,6 +26,7 @@ import { EvaluationEngineService } from './services/evaluation-engine.service';
     DependencyGraphBuilderService,
     DependencyGraphService,
     EvaluationEngineService,
+    RedisService,
     {
       provide: APP_INTERCEPTOR,
       useClass: GrpcLoggingInterceptor,
