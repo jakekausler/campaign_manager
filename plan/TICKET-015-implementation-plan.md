@@ -185,23 +185,25 @@ Cache warming was considered but deferred as lower-priority optimization. On-dem
 
 **Tasks**:
 
-- [ ] Create RedisService with ioredis client
-- [ ] Subscribe to invalidation channels (condition._, variable._)
-- [ ] Implement message handlers for each event type
-- [ ] Trigger cache invalidation on messages
-- [ ] Trigger dependency graph rebuild on structure changes
-- [ ] Add connection retry logic and error handling
-- [ ] Write unit tests for Redis service (mock Redis)
-- [ ] Write integration tests with actual Redis instance
+- [x] Create RedisService with ioredis client
+- [x] Subscribe to invalidation channels (condition._, variable._)
+- [x] Implement message handlers for each event type
+- [x] Trigger cache invalidation on messages
+- [x] Trigger dependency graph rebuild on structure changes
+- [x] Add connection retry logic and error handling
+- [x] Write unit tests for Redis service (mock Redis)
+- [x] Write integration tests with actual Redis instance
 
 **Success Criteria**:
 
-- Receives invalidation messages from API service
-- Invalidates cache and graphs correctly
-- Handles Redis connection failures gracefully
-- Reconnects automatically on disconnect
+- ✅ Receives invalidation messages from API service
+- ✅ Invalidates cache and graphs correctly
+- ✅ Handles Redis connection failures gracefully
+- ✅ Reconnects automatically on disconnect
 
-**Status**: Not Started
+**Status**: Complete
+
+**Commit**: ea36e66 - feat(rules-engine): implement Stage 6 Redis pub/sub invalidations (TICKET-015)
 
 ---
 
