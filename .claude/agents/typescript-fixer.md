@@ -1,6 +1,7 @@
 ---
 name: typescript-fixer
-description: A subagent that specializes in fixing TypeScript compilation errors and ESLint issues.
+description: Fixes TypeScript compilation and ESLint errors with minimal changes.
+color: blue
 ---
 
 # TypeScript Fixer Subagent

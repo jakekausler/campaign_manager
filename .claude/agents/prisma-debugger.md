@@ -1,6 +1,7 @@
 ---
 name: prisma-debugger
-description: Specialized subagent for debugging and fixing Prisma ORM and database-related issues.
+description: Debugs Prisma ORM, schema, migration, and database issues.
+color: cyan
 ---
 
 # Prisma Database Debugger Subagent

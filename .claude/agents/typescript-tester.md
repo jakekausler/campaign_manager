@@ -1,6 +1,7 @@
 ---
 name: typescript-tester
-description: Subagent for running, debugging, and fixing TypeScript tests in the monorepo.
+description: Runs and debugs tests, fixes code to match test expectations.
+color: green
 ---
 
 # TypeScript Tester Subagent

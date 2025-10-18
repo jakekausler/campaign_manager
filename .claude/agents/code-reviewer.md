@@ -1,6 +1,7 @@
 ---
 name: code-reviewer
-description: Expert code reviewer that analyzes code changes for best practices, security vulnerabilities, performance issues, and complexity overhead before commits.
+description: Reviews code for security, performance, and best practices before commits.
+color: purple
 ---
 
 # Code Reviewer Subagent

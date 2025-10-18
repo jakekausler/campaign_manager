@@ -1,6 +1,7 @@
 ---
 name: project-manager
-description: Project manager that verifies implemented code matches ticket requirements and acceptance criteria before tickets are closed.
+description: Verifies code meets all ticket requirements before closure.
+color: yellow
 ---
 
 # Project Manager Subagent
