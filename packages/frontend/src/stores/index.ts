@@ -48,6 +48,9 @@ export const useStore = create<RootStore>()(
         }),
         // Restore isAuthenticated when hydrating from localStorage
         // This ensures the auth state is fully restored on app reload
+        // NOTE: Direct state mutation is expected behavior for onRehydrateStorage callback
+        // NOTE: This does not validate the token - validation happens on first GraphQL request
+        //       If token is expired/invalid, Apollo Client error link should handle logout
         onRehydrateStorage: () => (state) => {
           if (state?.token) {
             state.isAuthenticated = true;

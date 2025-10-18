@@ -158,8 +158,11 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set) => ({
    * Sets or clears the authentication token.
    *
    * Lower-level method for token management. Automatically updates
-   * isAuthenticated based on token presence. Prefer using login/logout
-   * for most use cases.
+   * isAuthenticated based on token presence. When clearing the token
+   * (setting to null), also clears the user profile for consistency.
+   *
+   * Prefer using login/logout for most use cases as they provide
+   * clearer semantics and handle all related state properly.
    *
    * @param token - JWT token or null to clear
    */
@@ -167,5 +170,7 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set) => ({
     set({
       token,
       isAuthenticated: !!token,
+      // Clear user when explicitly removing token to prevent inconsistent state
+      ...(token === null && { user: null }),
     }),
 });
