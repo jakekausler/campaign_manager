@@ -72,4 +72,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:${HTTP_PORT:-3001}/health/live || exit 1
 
 # Start the worker
-CMD ["node", "packages/rules-engine/dist/index.js"]
+CMD ["node", "packages/rules-engine/dist/main.js"]

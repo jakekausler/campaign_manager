@@ -297,31 +297,114 @@ GitHub Actions workflow runs on every push and pull request:
 
 ## Architecture
 
+### System Overview
+
 ```
-┌─────────────┐
-│   Frontend  │
-│  (React +   │
-│    Vite)    │
-└──────┬──────┘
-       │
-       ├── GraphQL
-       │
-┌──────▼──────┐     ┌──────────────┐
-│  API Server │────▶│ PostgreSQL + │
-│  (NestJS)   │     │   PostGIS    │
-└──────┬──────┘     └──────────────┘
-       │
-       ├── Redis
-       │
-┌──────▼──────────┬──────────────┐
-│  Rules Engine   │  Scheduler   │
-│   Worker        │   Worker     │
-└─────────────────┴──────────────┘
-       │
-┌──────▼──────┐
-│    MinIO    │
-│  (Storage)  │
-└─────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                       Frontend (React)                      │
+│                    http://localhost:5173                     │
+└────────────────────────┬────────────────────────────────────┘
+                         │ GraphQL / WebSocket
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   API Server (NestJS)                       │
+│                    http://localhost:3000                     │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ • GraphQL API • Authentication • Business Logic     │   │
+│  │ • Versioning  • Audit Logging  • Real-time Events   │   │
+│  └─────────────────────────────────────────────────────┘   │
+└───┬─────────────────┬─────────────────┬─────────────────┬───┘
+    │                 │                 │                 │
+    │ PostgreSQL      │ Redis Pub/Sub   │ gRPC (eval)    │ MinIO
+    ▼                 ▼                 ▼                 ▼
+┌───────────┐   ┌──────────┐   ┌────────────────┐   ┌──────────┐
+│PostgreSQL │   │  Redis   │   │ Rules Engine   │   │  MinIO   │
+│+ PostGIS  │   │          │   │    Worker      │   │ (S3 API) │
+│           │   │          │   │ :50051 (gRPC)  │   │          │
+│:5432      │   │:6379     │   │ :3001 (HTTP)   │   │:9000     │
+└───────────┘   └────┬─────┘   └────────┬───────┘   └──────────┘
+                     │                  │
+                     │ Redis Pub/Sub    │ PostgreSQL (read-only)
+                     ▼                  ▼
+            ┌──────────────────────────────────┐
+            │     Scheduler Worker (Future)    │
+            │         :3002 (HTTP)             │
+            └──────────────────────────────────┘
+```
+
+### Service Communication
+
+**API Server → Rules Engine Worker**:
+
+- **gRPC** (`:50051`) - Synchronous evaluation requests
+  - `EvaluateCondition` - Single condition evaluation with trace support
+  - `EvaluateConditions` - Batch evaluation with dependency ordering
+  - `GetEvaluationOrder` - Topological sort for safe evaluation order
+  - `ValidateDependencies` - Cycle detection in dependency graph
+  - `InvalidateCache` - Manual cache invalidation
+  - `GetCacheStats` - Performance metrics
+- **Redis Pub/Sub** - Asynchronous invalidation notifications
+  - API publishes: `condition.created`, `condition.updated`, `condition.deleted`
+  - API publishes: `variable.created`, `variable.updated`, `variable.deleted`
+  - Worker subscribes and invalidates cache/dependency graphs accordingly
+
+**Rules Engine Worker**:
+
+- **Evaluates Conditions**: JSONLogic expressions for dynamic content availability
+- **Dependency Graphs**: Tracks relationships between conditions and variables per campaign/branch
+- **Caching**: In-memory result caching with TTL (default 300s)
+- **Incremental Recomputation**: Only recalculates affected nodes on state changes
+- **Health Checks**: HTTP endpoint (`:3001/health/*`) for liveness and readiness probes
+
+**Fallback Strategy**:
+
+- API service includes circuit breaker pattern (5 failures → open for 30s)
+- Falls back to local `ConditionEvaluationService` if worker unavailable
+- Graceful degradation ensures system availability even if worker is down
+
+### Docker Compose Services
+
+| Service      | Port(s)        | Description                      |
+| ------------ | -------------- | -------------------------------- |
+| frontend     | 5173 (dev)     | React + Vite development server  |
+|              | 8080 (prod)    | Nginx serving production build   |
+| api          | 3000           | NestJS GraphQL API + WebSocket   |
+|              | 9229 (dev)     | Node.js debugger                 |
+| rules-engine | 3001           | HTTP health checks               |
+|              | 50051          | gRPC evaluation server           |
+|              | 9230 (dev)     | Node.js debugger                 |
+| postgres     | 5432           | PostgreSQL 16 + PostGIS 3.4      |
+| redis        | 6379           | Redis 7 (caching + pub/sub)      |
+| minio        | 9000           | S3-compatible object storage     |
+|              | 9001           | MinIO web console                |
+| scheduler    | 3002 (planned) | Event scheduling worker (future) |
+
+### Data Flow Examples
+
+**1. Computed Field Evaluation**:
+
+```
+GraphQL Query → API Service → Rules Engine Worker (gRPC)
+                              ├─ Check cache (hit: <5ms)
+                              └─ Evaluate (miss: <50ms)
+                                 ├─ Build dependency graph
+                                 ├─ Topological sort
+                                 ├─ Evaluate in order
+                                 └─ Cache results
+```
+
+**2. Cache Invalidation Flow**:
+
+```
+GraphQL Mutation → API Service
+                   ├─ Update database
+                   ├─ Publish to Redis
+                   └─ Return response
+
+Redis Pub/Sub → Rules Engine Worker
+                 ├─ Receive invalidation event
+                 ├─ Invalidate cache entries
+                 └─ Rebuild dependency graph (if needed)
 ```
 
 ## Contributing
@@ -353,6 +436,11 @@ This project is currently in active development. See the `plan/` directory for d
 - [x] TICKET-008: Versioning System
 - [x] TICKET-009: Party & Kingdom Management
 - [x] TICKET-010: World Time System
+- [x] TICKET-011: JSONLogic Expression Parser
+- [x] TICKET-012: Condition System
+- [x] TICKET-013: State Variable System
+- [x] TICKET-014: Dependency Graph System
+- [x] TICKET-015: Rules Engine Service Worker
 
 **Party & Kingdom Management (TICKET-009)**
 
@@ -372,5 +460,39 @@ This project is currently in active development. See the `plan/` directory for d
 - Integration with versioning system for time-travel queries
 - Transaction-safe time advancement with audit logging and optimistic locking
 - Rules engine integration hook for future recalculation (TICKET-015+)
+
+**Rules Engine System (TICKETS 011-015)**
+
+The Rules Engine provides a comprehensive system for dynamic content evaluation using JSONLogic expressions:
+
+- **JSONLogic Parser** (TICKET-011): Secure expression evaluation with depth validation and error handling
+- **Condition System** (TICKET-012): Bind JSONLogic expressions to entity fields for computed values
+  - Instance-level and type-level conditions with priority-based evaluation
+  - Full evaluation traces for debugging
+  - Integration with Settlement and Structure entities via `computedFields` resolver
+- **State Variable System** (TICKET-013): Campaign and world-scoped variables with versioning support
+  - Typed variables (string, number, boolean, enum) with validation
+  - Integration with bitemporal versioning for time-travel queries
+  - GraphQL API for variable CRUD operations
+- **Dependency Graph System** (TICKET-014): Track relationships between conditions and variables
+  - Cycle detection to prevent infinite loops
+  - Topological sorting for safe evaluation order
+  - Automatic cache invalidation on condition/variable changes
+- **Rules Engine Worker** (TICKET-015): Dedicated NestJS microservice for high-performance evaluation
+  - **gRPC Server** (`:50051`) for synchronous evaluation requests (<50ms p95 latency)
+  - **HTTP Health Checks** (`:3001`) for container orchestration
+  - **Redis Pub/Sub** for asynchronous cache invalidation
+  - **In-Memory Caching** with TTL (default 300s, <5ms p95 for cached results)
+  - **Circuit Breaker** pattern in API service for graceful degradation
+  - **Docker Deployment** with health checks and hot reload support
+
+The Rules Engine enables dynamic game mechanics like:
+
+- Conditional structure availability based on entity state
+- Computed properties (e.g., "is_trade_hub" for settlements)
+- Event triggers based on complex conditions
+- Dynamic status indicators and validation rules
+
+See `packages/rules-engine/README.md` for detailed worker documentation and `CLAUDE.md` for system integration details.
 
 See `plan/EPIC.md` for the complete project roadmap and upcoming features.

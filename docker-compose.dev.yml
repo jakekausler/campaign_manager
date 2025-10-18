@@ -52,6 +52,7 @@ services:
     volumes:
       # Mount source code for hot reload
       - ./packages/rules-engine/src:/app/packages/rules-engine/src:ro
+      - ./packages/rules-engine/proto:/app/packages/rules-engine/proto:ro
       - ./packages/shared/src:/app/packages/shared/src:ro
       - ./packages/shared/dist:/app/packages/shared/dist:ro
       # Preserve node_modules
@@ -59,6 +60,8 @@ services:
       - /app/packages/rules-engine/node_modules
       - /app/packages/shared/node_modules
     ports:
+      - '3001:3001' # HTTP health check endpoint
+      - '50051:50051' # gRPC server
       - '9230:9229' # Node.js debugger
 
   # =================================================================

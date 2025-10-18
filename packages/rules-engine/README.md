@@ -108,6 +108,91 @@ pnpm --filter @campaign/rules-engine type-check
 pnpm --filter @campaign/rules-engine lint
 ```
 
+## Docker Deployment
+
+### Building the Docker Image
+
+The Rules Engine Worker includes a multi-stage Dockerfile for production deployment:
+
+```bash
+# From project root
+docker build -t campaign-rules-engine -f packages/rules-engine/Dockerfile .
+```
+
+The Dockerfile uses a multi-stage build:
+
+1. **Builder stage**: Installs dependencies and builds the TypeScript code
+2. **Production stage**: Creates a minimal image with only production dependencies and built artifacts
+
+### Running with Docker Compose
+
+The service is included in the root `docker-compose.yml` configuration:
+
+```bash
+# Start all services (development mode with hot reload)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# Start all services (production mode)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+# Start only the rules engine and its dependencies
+docker compose up postgres redis rules-engine
+```
+
+**Environment Variables for Docker**:
+
+The docker-compose configuration injects environment variables automatically. See `.env.local.example` in the project root for all available options.
+
+Key variables:
+
+- `DATABASE_URL` - Auto-configured to use the `postgres` container
+- `REDIS_HOST` - Set to `redis` container hostname
+- `REDIS_PORT` - Defaults to 6379
+- `HTTP_PORT` - Health check endpoint port (default: 3001)
+- `GRPC_PORT` - gRPC server port (default: 50051)
+- `CACHE_TTL_SECONDS` - Cache entry lifetime (default: 300)
+- `CACHE_MAX_KEYS` - Maximum cache entries (default: 10000)
+
+**Exposed Ports**:
+
+- `3001` - HTTP health check endpoint
+- `50051` - gRPC server for evaluation requests
+- `9230` - Node.js debugger (development mode only)
+
+**Health Checks**:
+
+The container includes a health check that monitors the HTTP liveness endpoint:
+
+```yaml
+healthcheck:
+  test:
+    ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3001/health/live']
+  interval: 30s
+  timeout: 3s
+  retries: 3
+  start_period: 20s
+```
+
+**Volume Mounts (Development)**:
+
+In development mode, source code is mounted for hot reload:
+
+```yaml
+volumes:
+  - ./packages/rules-engine/src:/app/packages/rules-engine/src:ro
+  - ./packages/rules-engine/proto:/app/packages/rules-engine/proto:ro
+  - ./packages/shared/src:/app/packages/shared/src:ro
+```
+
+**Dependencies**:
+
+The service depends on:
+
+- `postgres` - Database (read-only access)
+- `redis` - Pub/sub for cache invalidation
+
+The API service depends on `rules-engine` being healthy before starting.
+
 ## Project Structure
 
 ```

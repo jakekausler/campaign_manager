@@ -99,6 +99,11 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-campaign_user}:${POSTGRES_PASSWORD:-campaign_pass}@postgres:5432/${POSTGRES_DB:-campaign_db}
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
+      # Rules Engine Client Configuration
+      RULES_ENGINE_ENABLED: ${RULES_ENGINE_ENABLED:-true}
+      RULES_ENGINE_GRPC_HOST: rules-engine
+      RULES_ENGINE_GRPC_PORT: ${RULES_ENGINE_GRPC_PORT:-50051}
+      RULES_ENGINE_TIMEOUT_MS: ${RULES_ENGINE_TIMEOUT_MS:-5000}
     ports:
       - '3000:3000'
     networks:
@@ -110,6 +115,8 @@ services:
       redis:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      rules-engine:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -138,7 +145,19 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgres://${POSTGRES_USER:-campaign_user}:${POSTGRES_PASSWORD:-campaign_pass}@postgres:5432/${POSTGRES_DB:-campaign_db}
-      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: ${REDIS_DB:-0}
+      HTTP_PORT: ${RULES_ENGINE_HTTP_PORT:-3001}
+      GRPC_PORT: ${RULES_ENGINE_GRPC_PORT:-50051}
+      GRPC_HOST: 0.0.0.0
+      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-300}
+      CACHE_CHECK_PERIOD_SECONDS: ${CACHE_CHECK_PERIOD_SECONDS:-60}
+      CACHE_MAX_KEYS: ${CACHE_MAX_KEYS:-10000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - '${RULES_ENGINE_HTTP_PORT:-3001}:3001'
+      - '${RULES_ENGINE_GRPC_PORT:-50051}:50051'
     networks:
       - backend-network
     depends_on:
@@ -147,6 +166,20 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--no-verbose',
+          '--tries=1',
+          '--spider',
+          'http://localhost:3001/health/live',
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
 
   # =================================================================
   # Scheduler Worker
