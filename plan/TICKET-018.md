@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] In Progress
-- **Commits**: afcd587, 0b0c13e
+- **Commits**: afcd587, 0b0c13e, 276dd98
 
 ## Description
 
@@ -119,5 +119,58 @@ Set up global state management with Zustand and GraphQL client (Apollo Client or
 **Known issue:**
 
 Backend API has a dependency injection issue (RulesEngineClientService not available in GraphQLConfigModule) preventing it from starting. Code generation setup is complete but cannot be executed until backend is fixed. This is tracked separately and not blocking for Stage 2 completion.
+
+**Quality checks:** All type-check, lint, and build checks passed
+
+---
+
+### Stage 3: Set Up GraphQL Client (Apollo Client) (Complete - 276dd98)
+
+**What was implemented:**
+
+- Integrated Apollo Client with Zustand store for authentication
+- Configured comprehensive cache policies for Settlement and Structure types
+- Set up cache normalization with proper keyFields and merge strategies
+- Added JSDoc documentation explaining authentication and caching behavior
+
+**Technical decisions:**
+
+- **Zustand Integration**: Replaced direct localStorage access with `useStore.getState()`
+  - Auth link retrieves fresh token from Zustand on each request
+  - WebSocket connectionParams function gets fresh token on connection
+  - Documented that getState() ensures fresh state (not closure over initial state)
+- **Cache Policies**:
+  - Settlement queries cached by kingdomId with separate cache entries
+  - Structure queries cached by settlementId with separate cache entries
+  - Both types use keyFields: ['id'] for proper normalization
+  - Replace-all merge strategy chosen for simplicity (appropriate for current use case)
+- **Computed Fields**: Changed to `merge: false` to disable caching entirely
+  - Ensures dynamic computed fields are always fetched fresh from backend
+  - Prevents stale cached values for time-sensitive calculated data
+- **Removed Code**: Eliminated unnecessary read() functions that duplicated Apollo's default behavior
+- **Documentation**: Added comments warning that keyArgs must match GraphQL parameter names
+
+**Code review outcome:**
+
+Initial review requested improvements:
+
+- Remove unnecessary read() functions (done)
+- Change computedFields to merge: false (done)
+- Add documentation about keyArgs and authentication freshness (done)
+- All suggestions implemented successfully
+
+**Known limitation:**
+
+Backend API dependency injection issue prevents integration testing of actual GraphQL queries. Client configuration is complete and passes all static checks (type-check, lint, build) but cannot be verified with live backend until the RulesEngineClientService issue is resolved.
+
+**Future testing needed:**
+
+Once backend is fixed, verify:
+
+1. Login flow: token correctly sent on subsequent requests
+2. WebSocket auth: subscriptions include Bearer token after login
+3. Logout flow: requests no longer include token after logout
+4. Token refresh: new token used immediately after refresh
+5. Cache invalidation: settlements/structures cache correctly by IDs
 
 **Quality checks:** All type-check, lint, and build checks passed
