@@ -30,23 +30,23 @@ The Effect model already exists in the schema (`packages/api/prisma/schema.prism
 **Tasks:**
 
 - [x] Read existing Effect model in schema.prisma
-- [ ] Add `timing` enum field ("pre" | "post" | "onResolve") to Effect model
-- [ ] Create EffectExecution model for audit trail:
+- [x] Add `timing` enum field (PRE | ON_RESOLVE | POST) to Effect model
+- [x] Create EffectExecution model for audit trail:
   - id, effectId, entityType, entityId (polymorphic to Encounter/Event)
   - executedAt (timestamp), executedBy (user)
   - context (JSON - entity state before execution)
   - result (JSON - patch applied + success status)
   - error (nullable string)
-- [ ] Generate Prisma migration
-- [ ] Run migration in development database
-- [ ] Regenerate Prisma client
+- [x] Generate Prisma migration
+- [x] Run migration in development database
+- [x] Regenerate Prisma client
 
 **Success Criteria:**
 
-- [ ] Migration applies without errors
-- [ ] Effect model has timing field with proper enum constraint
-- [ ] EffectExecution model created with proper indexes
-- [ ] Prisma client regenerated with new types
+- [x] Migration applies without errors
+- [x] Effect model has timing field with proper enum constraint
+- [x] EffectExecution model created with proper indexes
+- [x] Prisma client regenerated with new types
 
 **Testing:**
 

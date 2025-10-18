@@ -499,7 +499,7 @@ model StateVariable {
   @@index([isActive])
   @@index([deletedAt])
   @@index([createdBy])
-  @@index([updatedBy])
+  // Note: updatedBy index created manually in migration with WHERE clause for sparse data
 }
 
 model Condition {
@@ -523,28 +523,59 @@ model Condition {
   @@index([isActive])
 }
 
+enum EffectTiming {
+  PRE // Execute before encounter/event resolution
+  ON_RESOLVE // Execute during encounter/event resolution
+  POST // Execute after encounter/event resolution
+}
+
 model Effect {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   name        String
   description String?
   effectType  String // "modify_variable", "trigger_event", "create_entity", etc.
   payload     Json // Effect-specific data
   entityType  String // "encounter", "event"
   entityId    String
-  priority    Int       @default(0) // Execution order
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  timing      EffectTiming @default(ON_RESOLVE) // When to execute this effect
+  priority    Int          @default(0) // Execution order within timing phase
+  isActive    Boolean      @default(true)
+  version     Int          @default(1) // For optimistic locking
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   deletedAt   DateTime?
 
   // Polymorphic relations (entityType determines which is used)
   encounter Encounter? @relation(fields: [entityId], references: [id], map: "Effect_encounter_fkey")
   event     Event?     @relation(fields: [entityId], references: [id], map: "Effect_event_fkey")
 
+  // Relations
+  executions EffectExecution[]
+
   @@index([entityType, entityId])
+  @@index([entityType, entityId, timing])
   @@index([deletedAt])
   @@index([isActive])
   @@index([priority])
+}
+
+model EffectExecution {
+  id         String   @id @default(cuid())
+  effectId   String
+  effect     Effect   @relation(fields: [effectId], references: [id], onDelete: Cascade)
+  entityType String // "encounter", "event" - polymorphic reference to entity that triggered execution
+  entityId   String
+  executedAt DateTime @default(now())
+  executedBy String // User ID who triggered the execution
+  context    Json // Entity state before execution (snapshot for audit trail)
+  result     Json // Patch applied + success status (e.g., { success: true, patchApplied: [...], affectedFields: [...] })
+  error      String? // Error message if execution failed
+
+  @@index([effectId])
+  @@index([entityType, entityId])
+  @@index([entityType, entityId, executedAt]) // Composite index for audit trail pagination
+  @@index([executedAt])
+  @@index([executedBy])
 }
 
 model Dependency {
