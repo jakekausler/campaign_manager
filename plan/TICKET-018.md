@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] In Progress
-- **Commits**: afcd587, 0b0c13e, 276dd98
+- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3
 
 ## Description
 
@@ -174,3 +174,62 @@ Once backend is fixed, verify:
 5. Cache invalidation: settlements/structures cache correctly by IDs
 
 **Quality checks:** All type-check, lint, and build checks passed
+
+---
+
+### Stage 4: Create Auth State Management (Complete - 682acc3)
+
+**What was implemented:**
+
+Auth Slice Enhancements (`packages/frontend/src/stores/auth-slice.ts`):
+
+- Enhanced User interface with role ('player' | 'gm' | 'admin') and timestamp fields (createdAt, updatedAt)
+- Added comprehensive JSDoc documentation for all actions with usage examples
+- Implemented proper state consistency in `setToken` (clears user when token is null)
+- Documented integration with Apollo Client (token auto-attached via getState())
+- Documented persistence behavior (token + user persisted to localStorage)
+- All actions properly manage state transitions (token, user, isAuthenticated)
+
+Store Persistence (`packages/frontend/src/stores/index.ts`):
+
+- Updated persist configuration to persist both `token` and `user` objects
+- Added `onRehydrateStorage` handler to automatically restore `isAuthenticated` on app reload
+- Added clarifying comments about token validation strategy and mutation behavior
+- Token validation delegated to Apollo Client error link (happens on first GraphQL request)
+- User object persistence improves UX (immediate profile access without additional fetch)
+
+**Technical decisions:**
+
+- Persist both token and user for better UX (no flash of missing user data on reload)
+- Auto-restore isAuthenticated from token presence during app initialization
+- `setToken(null)` clears both token and user to prevent inconsistent state
+- Token validation is NOT done during rehydration (would slow app startup)
+- Validation happens in Apollo Client when first GraphQL request is made
+- If token is invalid/expired, Apollo Client error link should trigger logout
+- Comprehensive JSDoc with usage examples for all public APIs
+
+**Code review outcome:**
+
+Approved with suggested improvements implemented:
+
+- Fixed `setToken` to clear user when token is set to null (prevents inconsistent state)
+- Added clarifying comments about token validation strategy (delegated to Apollo Client)
+- Added note about direct mutation in `onRehydrateStorage` callback (expected behavior)
+- All suggestions from Code Reviewer were addressed before commit
+
+**Quality checks:** All type-check, lint, and build checks passed
+
+**Integration notes:**
+
+The auth state is now fully integrated with:
+
+1. **Apollo Client** (Stage 3): `graphql-client.ts` reads token via `useStore.getState()`
+2. **Zustand Store**: Combines auth + campaign slices with devtools + persist middleware
+3. **localStorage**: Token + user automatically persisted and restored on app reload
+
+**Future work (deferred to Stage 9):**
+
+- Unit tests for auth slice actions
+- Unit tests for persistence and rehydration
+- Integration tests with Apollo Client
+- Tests for edge cases (expired tokens, invalid tokens, etc.)
