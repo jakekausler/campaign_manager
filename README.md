@@ -11,6 +11,7 @@ A full-stack campaign management tool for tabletop RPGs that unifies map, flowch
 - **Level History**: Track level changes across all entities with comprehensive audit trail
 - **Campaign Context**: Aggregate party, kingdom, settlement, and structure state for rules engine
 - **Rules Engine**: JSONLogic-based conditional system for dynamic content
+- **Effect System**: JSON Patch-based state mutations when events/encounters resolve with 3-phase execution
 - **Versioning**: Full history tracking and branching support
 - **Real-time Updates**: WebSocket-based synchronization
 - **Event Scheduling**: Cron-based automated event processing
@@ -441,6 +442,7 @@ This project is currently in active development. See the `plan/` directory for d
 - [x] TICKET-013: State Variable System
 - [x] TICKET-014: Dependency Graph System
 - [x] TICKET-015: Rules Engine Service Worker
+- [x] TICKET-016: Effect System Implementation
 
 **Party & Kingdom Management (TICKET-009)**
 
@@ -494,5 +496,31 @@ The Rules Engine enables dynamic game mechanics like:
 - Dynamic status indicators and validation rules
 
 See `packages/rules-engine/README.md` for detailed worker documentation and `CLAUDE.md` for system integration details.
+
+**Effect System (TICKET-016)**
+
+The Effect System allows events and encounters to mutate world state when they resolve using JSON Patch (RFC 6902) operations:
+
+- **3-Phase Execution**: Effects execute in PRE → ON_RESOLVE → POST timing phases for cascading mutations
+- **JSON Patch Operations**: Apply precise state changes using RFC 6902 operations (add, remove, replace, copy, move, test)
+- **Priority-Based Ordering**: Effects execute in deterministic priority order within each timing phase
+- **Security Validation**: Path whitelisting protects sensitive fields (id, timestamps, ownership) from modification
+- **Comprehensive Audit Trail**: All effect executions recorded in `EffectExecution` model with context and results
+- **Dependency Graph Integration**: Effect write dependencies tracked for circular dependency detection
+- **Dry-Run Mode**: Preview effect results without applying changes
+- **Encounter/Event Integration**:
+  - `EncounterService.resolve()` - Execute effects when resolving encounters
+  - `EventService.complete()` - Execute effects when completing events
+  - Both return comprehensive result summaries showing execution counts per phase
+- **GraphQL API**: Full CRUD operations, manual execution, and bulk execution via `EffectResolver`
+
+The Effect System enables dynamic game mechanics like:
+
+- Resource modifications when events complete (harvest seasons, raids, trade)
+- Status changes during encounter resolution (structure damage, character injuries)
+- Cascading effects across multiple entities
+- Complex multi-field updates with single atomic operation
+
+See `docs/features/effect-system.md` for detailed documentation including examples, security model, and integration details.
 
 See `plan/EPIC.md` for the complete project roadmap and upcoming features.

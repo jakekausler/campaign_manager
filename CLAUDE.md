@@ -900,6 +900,23 @@ Dedicated NestJS microservice for high-performance condition evaluation with cac
 
 ---
 
+## Effect System
+
+Events/encounters mutate world state when they resolve using JSON Patch operations. See [detailed documentation](docs/features/effect-system.md).
+
+**Quick Reference:**
+
+- Models: `Effect`, `EffectExecution` in `packages/api/prisma/schema.prisma`
+- Services: `EffectService`, `EffectExecutionService`, `EffectPatchService` in `packages/api/src/graphql/services/`
+- Resolver: `EffectResolver` in `packages/api/src/graphql/resolvers/`
+- GraphQL: `createEffect`, `executeEffect`, `listEffects`, `resolveEncounter` (mutation), `completeEvent` (mutation)
+- Key Features: 3-phase execution (PRE/ON_RESOLVE/POST), JSON Patch (RFC 6902), path whitelisting, priority-based ordering, audit trail via EffectExecution
+- Integration: `EncounterService.resolve()`, `EventService.complete()` with automatic effect execution, dependency graph tracking
+- Security: Protected fields (id, timestamps, ownership), campaign authorization, role-based mutations (owner/gm only)
+- Implementation: TICKET-016 (Commits: 7d1439d - c2e0b90)
+
+---
+
 ## Quick Reference Card
 
 ### Most Common Commands
