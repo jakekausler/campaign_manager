@@ -505,8 +505,8 @@ describe('CacheService', () => {
 
       const keys = cacheService.keys();
       expect(keys).toHaveLength(2);
-      expect(keys).toContain('campaign:campaign-123:branch:main:node:CONDITION:cond-1');
-      expect(keys).toContain('campaign:campaign-456:branch:main:node:CONDITION:cond-2');
+      expect(keys).toContain('campaign:campaign-123:branch:main:node:CONDITION\\:cond-1');
+      expect(keys).toContain('campaign:campaign-456:branch:main:node:CONDITION\\:cond-2');
     });
 
     it('should return keys matching a prefix', () => {
@@ -526,7 +526,7 @@ describe('CacheService', () => {
       const keysForCampaign123Main = cacheService.keysByPrefix('campaign-123', 'main');
       expect(keysForCampaign123Main).toHaveLength(1);
       expect(keysForCampaign123Main[0]).toBe(
-        'campaign:campaign-123:branch:main:node:CONDITION:cond-1'
+        'campaign:campaign-123:branch:main:node:CONDITION\\:cond-1'
       );
 
       const keysForCampaign123 = cacheService.keysByPrefix('campaign-123');

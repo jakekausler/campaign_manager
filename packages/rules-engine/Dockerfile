@@ -62,9 +62,14 @@ COPY --chown=worker:nodejs --from=builder /app/packages/shared/dist ./packages/s
 # Switch to non-root user
 USER worker
 
-# Health check (worker process check)
+# Health check using HTTP liveness endpoint
+# Checks if the service is alive and responding
+# Interval: Check every 30 seconds
+# Timeout: Wait 3 seconds for response
+# Start Period: Wait 20 seconds before first check (for initialization)
+# Retries: Mark unhealthy after 3 consecutive failures
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
-  CMD pgrep -f "node.*rules-engine" || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${HTTP_PORT:-3001}/health/live || exit 1
 
 # Start the worker
 CMD ["node", "packages/rules-engine/dist/index.js"]

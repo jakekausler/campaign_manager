@@ -213,23 +213,25 @@ Cache warming was considered but deferred as lower-priority optimization. On-dem
 
 **Tasks**:
 
-- [ ] Add gRPC client to API service (@grpc/grpc-js)
-- [ ] Create RulesEngineClient service in API package
-- [ ] Integrate with FieldConditionResolver for computed fields
-- [ ] Publish invalidation events to Redis on mutations
-- [ ] Add fallback to direct evaluation if worker unavailable
-- [ ] Add circuit breaker pattern for resilience
-- [ ] Write integration tests for API <-> Worker communication
-- [ ] Update CLAUDE.md with rules engine architecture
+- [x] Add gRPC client to API service (@grpc/grpc-js)
+- [x] Create RulesEngineClient service in API package
+- [x] Integrate with FieldConditionResolver for computed fields
+- [x] Publish invalidation events to Redis on mutations
+- [x] Add fallback to direct evaluation if worker unavailable
+- [x] Add circuit breaker pattern for resilience
+- [x] Write integration tests for API <-> Worker communication
+- [x] Update CLAUDE.md with rules engine architecture
 
 **Success Criteria**:
 
-- API service sends evaluation requests to worker
-- Computed fields use worker for evaluation
-- Publishes Redis events on condition/variable changes
-- Falls back gracefully if worker is down
+- ✅ API service sends evaluation requests to worker
+- ✅ Computed fields use worker for evaluation
+- ✅ Publishes Redis events on condition/variable changes
+- ✅ Falls back gracefully if worker is down
 
-**Status**: Not Started
+**Status**: Complete
+
+**Commit**: 26037f1 - feat(api): implement Stage 7 API service integration with Rules Engine worker (TICKET-015)
 
 ---
 

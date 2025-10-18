@@ -12,6 +12,7 @@ import {
 import { CacheService } from '../services/cache.service';
 import { DependencyGraphService } from '../services/dependency-graph.service';
 import { EvaluationEngineService } from '../services/evaluation-engine.service';
+import { MetricsService } from '../services/metrics.service';
 
 import { RulesEngineController } from './rules-engine.controller';
 
@@ -32,16 +33,24 @@ describe('RulesEngineController', () => {
       invalidateGraph: jest.fn(),
       getDependenciesOf: jest.fn(),
       getDependentsOf: jest.fn(),
-      validateNoCycles: jest.fn(),
-      getEvaluationOrder: jest.fn(),
+      validateNoCycles: jest.fn().mockResolvedValue({
+        hasCycles: false,
+        cycles: [],
+        cycleCount: 0,
+      }),
+      getEvaluationOrder: jest.fn().mockResolvedValue({
+        success: true,
+        order: [],
+        remainingNodes: [],
+      }),
     };
 
     // Create mock cache service
     const mockCacheService = {
       get: jest.fn(),
       set: jest.fn(),
-      invalidate: jest.fn(),
-      invalidateByPrefix: jest.fn(),
+      invalidate: jest.fn().mockReturnValue(0),
+      invalidateByPrefix: jest.fn().mockReturnValue(0),
       clear: jest.fn(),
       getStats: jest.fn(),
       getConfig: jest.fn(),
@@ -49,6 +58,16 @@ describe('RulesEngineController', () => {
       keys: jest.fn(),
       keysByPrefix: jest.fn(),
       onModuleDestroy: jest.fn(),
+    };
+
+    // Create mock metrics service
+    const mockMetricsService = {
+      recordEvaluationSuccess: jest.fn(),
+      recordEvaluationFailure: jest.fn(),
+      recordCacheHit: jest.fn(),
+      recordCacheMiss: jest.fn(),
+      getMetrics: jest.fn(),
+      resetMetrics: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -65,6 +84,10 @@ describe('RulesEngineController', () => {
         {
           provide: CacheService,
           useValue: mockCacheService,
+        },
+        {
+          provide: MetricsService,
+          useValue: mockMetricsService,
         },
       ],
     }).compile();
@@ -259,18 +282,32 @@ describe('RulesEngineController', () => {
   });
 
   describe('getEvaluationOrder', () => {
-    it('should return stub evaluation order', async () => {
+    let graphService: jest.Mocked<DependencyGraphService>;
+
+    beforeEach(() => {
+      graphService = controller['graphService'] as jest.Mocked<DependencyGraphService>;
+    });
+
+    it('should return evaluation order from graph service', async () => {
       const request: GetEvaluationOrderRequest = {
         campaignId: 'campaign-456',
         branchId: 'main',
         conditionIds: ['condition-1', 'condition-2'],
       };
 
+      // Mock graph service to return ordered nodes
+      graphService.getEvaluationOrder.mockResolvedValue({
+        success: true,
+        order: ['CONDITION:condition-2', 'CONDITION:condition-1', 'VARIABLE:var-1'],
+        remainingNodes: [],
+      });
+
       const result = await controller.getEvaluationOrder(request);
 
       expect(result).toBeDefined();
-      expect(result.nodeIds).toEqual(request.conditionIds);
+      expect(result.nodeIds).toEqual(['CONDITION:condition-2', 'CONDITION:condition-1']);
       expect(result.totalNodes).toBe(2);
+      expect(graphService.getEvaluationOrder).toHaveBeenCalledWith('campaign-456', 'main');
     });
 
     it('should handle empty condition list', async () => {
@@ -289,47 +326,103 @@ describe('RulesEngineController', () => {
   });
 
   describe('validateDependencies', () => {
-    it('should return stub validation result with no cycles', async () => {
+    let graphService: jest.Mocked<DependencyGraphService>;
+
+    beforeEach(() => {
+      graphService = controller['graphService'] as jest.Mocked<DependencyGraphService>;
+    });
+
+    it('should return validation result with no cycles', async () => {
       const request: ValidateDependenciesRequest = {
         campaignId: 'campaign-456',
         branchId: 'main',
       };
+
+      graphService.validateNoCycles.mockResolvedValue({
+        hasCycles: false,
+        cycles: [],
+        cycleCount: 0,
+      });
 
       const result = await controller.validateDependencies(request);
 
       expect(result).toBeDefined();
       expect(result.hasCycle).toBe(false);
       expect(result.cycles).toEqual([]);
-      expect(result.message).toContain('stub');
+      expect(result.message).toBe('No cycles detected in dependency graph');
+      expect(graphService.validateNoCycles).toHaveBeenCalledWith('campaign-456', 'main');
+    });
+
+    it('should return validation result with cycles detected', async () => {
+      const request: ValidateDependenciesRequest = {
+        campaignId: 'campaign-456',
+        branchId: 'main',
+      };
+
+      graphService.validateNoCycles.mockResolvedValue({
+        hasCycles: true,
+        cycles: [
+          { path: ['CONDITION:cond-1', 'VARIABLE:var-1', 'CONDITION:cond-1'] },
+          { path: ['CONDITION:cond-2', 'CONDITION:cond-3', 'CONDITION:cond-2'] },
+        ],
+        cycleCount: 2,
+      });
+
+      const result = await controller.validateDependencies(request);
+
+      expect(result).toBeDefined();
+      expect(result.hasCycle).toBe(true);
+      expect(result.cycles).toEqual([
+        'CONDITION:cond-1 -> VARIABLE:var-1 -> CONDITION:cond-1',
+        'CONDITION:cond-2 -> CONDITION:cond-3 -> CONDITION:cond-2',
+      ]);
+      expect(result.message).toBe('Detected 2 cycle(s) in dependency graph');
     });
   });
 
   describe('invalidateCache', () => {
-    it('should return stub invalidation response', async () => {
+    let cacheService: jest.Mocked<CacheService>;
+    let graphService: jest.Mocked<DependencyGraphService>;
+
+    beforeEach(() => {
+      cacheService = controller['cacheService'] as jest.Mocked<CacheService>;
+      graphService = controller['graphService'] as jest.Mocked<DependencyGraphService>;
+    });
+
+    it('should invalidate specific node IDs when provided', async () => {
       const request: InvalidateCacheRequest = {
         campaignId: 'campaign-456',
         branchId: 'main',
         nodeIds: ['node-1', 'node-2'],
       };
 
+      cacheService.invalidate.mockReturnValue(1); // Each call deletes 1 entry
+
       const result = await controller.invalidateCache(request);
 
       expect(result).toBeDefined();
-      expect(result.invalidatedCount).toBe(0);
-      expect(result.message).toContain('stub');
+      expect(result.invalidatedCount).toBe(3); // 1 (graph) + 1 (node-1) + 1 (node-2)
+      expect(result.message).toContain('Successfully invalidated 3 cache entries');
+      expect(graphService.invalidateGraph).toHaveBeenCalledWith('campaign-456', 'main');
+      expect(cacheService.invalidate).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle empty node list', async () => {
+    it('should invalidate all entries for campaign/branch when no node IDs provided', async () => {
       const request: InvalidateCacheRequest = {
         campaignId: 'campaign-456',
         branchId: 'main',
         nodeIds: [],
       };
 
+      cacheService.invalidateByPrefix.mockReturnValue(5); // 5 cache entries deleted
+
       const result = await controller.invalidateCache(request);
 
       expect(result).toBeDefined();
-      expect(result.invalidatedCount).toBe(0);
+      expect(result.invalidatedCount).toBe(6); // 1 (graph) + 5 (cache entries)
+      expect(result.message).toContain('Successfully invalidated 6 cache entries');
+      expect(graphService.invalidateGraph).toHaveBeenCalledWith('campaign-456', 'main');
+      expect(cacheService.invalidateByPrefix).toHaveBeenCalledWith('campaign-456', 'main');
     });
   });
 

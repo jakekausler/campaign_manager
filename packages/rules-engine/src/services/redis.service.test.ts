@@ -88,12 +88,20 @@ describe('RedisService', () => {
 
     it('should set isShuttingDown flag to prevent reconnection attempts', async () => {
       await redisService.onModuleInit();
-      await redisService.onModuleDestroy();
 
-      // Get the retryStrategy function
+      // Get the retryStrategy function before destroying
       const RedisMock = jest.mocked(IoRedis);
-      const redisConfig = RedisMock.mock.calls[0][0];
-      const retryStrategy = redisConfig.retryStrategy;
+      const constructorCalls = RedisMock.mock.calls;
+      expect(constructorCalls.length).toBeGreaterThan(0);
+
+      // @ts-expect-error - TypeScript doesn't know the mock was called with a config object
+      const redisConfig: any = constructorCalls[0][0];
+      expect(redisConfig).toBeDefined();
+      const retryStrategy = redisConfig.retryStrategy as (times: number) => number | null;
+      expect(retryStrategy).toBeDefined();
+
+      // Now destroy the service
+      await redisService.onModuleDestroy();
 
       // Call retry strategy and verify it returns null (no retry) after shutdown
       const result = retryStrategy(1);
@@ -415,22 +423,31 @@ describe('RedisService', () => {
       await redisService.onModuleInit();
 
       const RedisMock = jest.mocked(IoRedis);
-      const redisConfig = RedisMock.mock.calls[0][0];
-      const retryStrategy = redisConfig.retryStrategy;
+      // @ts-expect-error - TypeScript doesn't know the mock was called with a config object
+      const redisConfig: any = RedisMock.mock.calls[0][0];
+      expect(redisConfig).toBeDefined();
+      const retryStrategy = redisConfig.retryStrategy as (times: number) => number | null;
+      expect(retryStrategy).toBeDefined();
 
-      // Test retry delays
+      // Test retry delays (exponential backoff, max delay 10 seconds)
       expect(retryStrategy(1)).toBe(1000); // 1 second
       expect(retryStrategy(2)).toBe(2000); // 2 seconds
       expect(retryStrategy(5)).toBe(5000); // 5 seconds
-      expect(retryStrategy(15)).toBe(10000); // Max 10 seconds
+      expect(retryStrategy(10)).toBe(10000); // Attempt 10: last attempt, max delay (10s)
+      // Delay is capped at Math.min(times * 1000, 10000), so large values still return 10000
+      // But this only applies while times <= MAX_RECONNECT_ATTEMPTS (10)
+      // So attempt 15 would return null (exceeds max attempts)
     });
 
     it('should stop retrying after max attempts', async () => {
       await redisService.onModuleInit();
 
       const RedisMock = jest.mocked(IoRedis);
-      const redisConfig = RedisMock.mock.calls[0][0];
-      const retryStrategy = redisConfig.retryStrategy;
+      // @ts-expect-error - TypeScript doesn't know the mock was called with a config object
+      const redisConfig: any = RedisMock.mock.calls[0][0];
+      expect(redisConfig).toBeDefined();
+      const retryStrategy = redisConfig.retryStrategy as (times: number) => number | null;
+      expect(retryStrategy).toBeDefined();
 
       // Should return null after max attempts
       expect(retryStrategy(11)).toBeNull();

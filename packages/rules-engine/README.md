@@ -159,10 +159,94 @@ The API service will:
 3. Publish Redis events when conditions or variables change
 4. Fall back to direct evaluation if worker is unavailable
 
-## Health Checks
+## Health Checks and Monitoring
 
-- **Liveness Probe**: `GET /health` - Basic ping response
-- **Readiness Probe**: `GET /health` - Checks Prisma and Redis connections
+### Health Endpoints
+
+The service provides multiple health check endpoints for different use cases:
+
+- **Liveness Probe**: `GET /health/live`
+  - Returns 200 if the application is alive and running
+  - Used by container orchestrators to determine if the container should be restarted
+  - Response: `{ "status": "alive" }`
+
+- **Readiness Probe**: `GET /health/ready`
+  - Returns 200 if all dependencies are healthy, 503 if unhealthy
+  - Checks: Database, Redis, Cache, Dependency Graph
+  - Used by load balancers to determine if traffic should be routed to this instance
+  - Response includes detailed health status for each dependency
+
+- **Full Health Check**: `GET /health`
+  - Returns comprehensive health information
+  - Includes uptime, response times for each check, and detailed status
+  - Useful for monitoring dashboards and manual health checks
+
+- **Simple Ping**: `GET /ping`
+  - Basic connectivity check
+  - Response: `{ "message": "pong", "timestamp": "..." }`
+
+### Metrics Endpoint
+
+Performance metrics are available at `GET /metrics`:
+
+```json
+{
+  "evaluations": {
+    "total": 1234,
+    "successful": 1200,
+    "failed": 34,
+    "successRate": 0.972
+  },
+  "latency": {
+    "totalMs": 45678,
+    "averageMs": 37.02,
+    "minMs": 2,
+    "maxMs": 150,
+    "p50Ms": 32,
+    "p95Ms": 85,
+    "p99Ms": 120
+  },
+  "cache": {
+    "hits": 800,
+    "misses": 434,
+    "hitRate": 0.648
+  },
+  "timestamp": "2025-10-17T12:34:56.789Z",
+  "uptimeMs": 3600000
+}
+```
+
+**Metrics Tracked**:
+
+- **Evaluation Counts**: Total, successful, failed evaluations with success rate
+- **Latency Statistics**: Average, min, max, and percentiles (p50, p95, p99)
+- **Cache Performance**: Hit/miss counts and hit rate
+- **Uptime**: Service uptime in milliseconds
+
+### Docker Health Check
+
+The Dockerfile includes a HEALTHCHECK directive that uses the liveness endpoint:
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${HTTP_PORT:-3001}/health/live || exit 1
+```
+
+### Logging
+
+The service implements structured logging with correlation IDs for request tracing:
+
+- **Request Logging**: All gRPC requests are logged with unique request IDs
+- **Performance Timing**: Request duration is logged for all operations
+- **Error Tracking**: Errors include stack traces and correlation IDs for debugging
+- **Log Levels**: Configurable via `LOG_LEVEL` environment variable (debug, info, warn, error)
+
+Example log output:
+
+```
+[gRPC] [1697545696789-abc123] --> evaluateCondition
+[gRPC] [1697545696789-abc123] <-- evaluateCondition (45ms) [SUCCESS]
+```
 
 ## Development Status
 

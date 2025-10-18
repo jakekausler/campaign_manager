@@ -18,6 +18,7 @@ import {
 import { CacheService } from '../services/cache.service';
 import { DependencyGraphService } from '../services/dependency-graph.service';
 import { EvaluationEngineService } from '../services/evaluation-engine.service';
+import { MetricsService } from '../services/metrics.service';
 
 /**
  * gRPC Controller for Rules Engine Service
@@ -26,6 +27,7 @@ import { EvaluationEngineService } from '../services/evaluation-engine.service';
  * Stage 3: Implemented evaluation methods using EvaluationEngineService
  * Stage 4: Integrated DependencyGraphService for ordering and validation
  * Stage 5: Integrated CacheService for evaluation result caching
+ * Stage 8: Added MetricsService for performance monitoring
  */
 @Controller()
 export class RulesEngineController {
@@ -34,16 +36,20 @@ export class RulesEngineController {
   constructor(
     private readonly evaluationEngine: EvaluationEngineService,
     private readonly graphService: DependencyGraphService,
-    private readonly cacheService: CacheService
+    private readonly cacheService: CacheService,
+    private readonly metricsService: MetricsService
   ) {}
 
   /**
    * Evaluate a single condition with provided context
    * Stage 5: Now passes campaignId/branchId for caching support
+   * Stage 8: Added metrics tracking for monitoring
    */
   @GrpcMethod('RulesEngine', 'EvaluateCondition')
   async evaluateCondition(request: EvaluateConditionRequest): Promise<EvaluationResult> {
     this.logger.debug(`EvaluateCondition called for condition ${request.conditionId}`);
+
+    const startTime = Date.now();
 
     try {
       // Parse context from JSON string
@@ -58,8 +64,27 @@ export class RulesEngineController {
         request.includeTrace
       );
 
+      // Record metrics
+      if (result.success) {
+        this.metricsService.recordEvaluationSuccess(result.evaluationTimeMs);
+      } else {
+        this.metricsService.recordEvaluationFailure(result.evaluationTimeMs);
+      }
+
+      // Record cache hit/miss based on evaluation time
+      // (cached results typically take <5ms)
+      if (result.evaluationTimeMs < 5) {
+        this.metricsService.recordCacheHit();
+      } else {
+        this.metricsService.recordCacheMiss();
+      }
+
       return result;
     } catch (error) {
+      const duration = Date.now() - startTime;
+      this.metricsService.recordEvaluationFailure(duration);
+      this.metricsService.recordCacheMiss();
+
       this.logger.error('EvaluateCondition failed', {
         conditionId: request.conditionId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -70,7 +95,7 @@ export class RulesEngineController {
         valueJson: null,
         error: error instanceof Error ? error.message : 'Unknown error',
         trace: [],
-        evaluationTimeMs: 0,
+        evaluationTimeMs: duration,
       };
     }
   }

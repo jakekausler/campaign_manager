@@ -1,7 +1,9 @@
 import { Logger } from '@nestjs/common';
 import Redis from 'ioredis';
+import { mockDeep } from 'jest-mock-extended';
 
 import { CacheService } from './cache.service';
+import { DependencyGraphBuilderService } from './dependency-graph-builder.service';
 import { DependencyGraphService } from './dependency-graph.service';
 import { RedisService } from './redis.service';
 
@@ -43,12 +45,7 @@ describe.skip('Redis Pub/Sub Integration', () => {
     // Create real service instances
     cacheService = new CacheService();
     // Mock the graph builder service since we're only testing pub/sub
-    const mockGraphBuilder = {
-      buildGraphForCampaign: jest.fn().mockResolvedValue({
-        nodes: new Map(),
-        edges: new Map(),
-      }),
-    };
+    const mockGraphBuilder = mockDeep<DependencyGraphBuilderService>();
     dependencyGraphService = new DependencyGraphService(mockGraphBuilder);
 
     redisService = new RedisService(cacheService, dependencyGraphService);

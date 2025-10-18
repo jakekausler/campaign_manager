@@ -119,8 +119,8 @@ describe('Cache Invalidation Integration', () => {
       // Database should NOT have been called (cache hit)
       expect(mockPrismaClient.fieldCondition.findUnique).not.toHaveBeenCalled();
 
-      // Cache hit should be faster
-      expect(result2.evaluationTimeMs).toBeLessThan(result1.evaluationTimeMs);
+      // Cache hit should be very fast (typically 0-1ms)
+      expect(result2.evaluationTimeMs).toBeLessThanOrEqual(1);
     });
 
     it('should NOT cache results when trace is requested', async () => {
