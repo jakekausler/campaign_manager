@@ -124,49 +124,37 @@ The code reviewer evaluates:
 
 ## Output Format
 
-The code reviewer should provide feedback in this format:
+Provide focused, actionable feedback. Report ONLY issues that need addressing:
 
 ```markdown
-# Code Review Summary
+# Code Review
 
-## Overall Assessment
+**Status**: [APPROVED | CHANGES REQUIRED]
 
-[APPROVED | APPROVED WITH SUGGESTIONS | CHANGES REQUIRED]
+## Critical Issues (must fix before commit)
 
-## Critical Issues (Must Fix Before Commit)
+- [file:line] [Issue] → [Fix needed]
 
-- [file:line] Description of critical issue
-- [file:line] Another critical issue
+## Security/Performance Concerns
 
-## Security Concerns
+- [file:line] [Issue] → [Recommendation]
 
-- [file:line] Description of security issue
-- Suggested fix: [code example or explanation]
+## Suggestions (optional improvements)
 
-## Performance Issues
-
-- [file:line] Description of performance issue
-- Suggested improvement: [explanation]
-
-## Best Practice Violations
-
-- [file:line] Description of issue
-- Recommendation: [suggestion]
-
-## Suggestions for Improvement
-
-- [file:line] Optional improvement
-- Rationale: [explanation]
-
-## Positive Observations
-
-- Well-implemented [feature/pattern]
-- Good use of [technique]
+- [file:line] [Suggestion]
 
 ## Verdict
 
-[Detailed explanation of overall verdict and any blockers]
+[1-2 sentences: Ready to commit? What must be addressed?]
 ```
+
+**Guidelines for concise output**:
+
+- If APPROVED with no issues, simply state "APPROVED - No issues found"
+- Skip empty sections entirely - only report actual findings
+- Combine related issues when possible
+- Keep recommendations brief and actionable
+- No positive observations or praise
 
 ## Critical Rules
 
@@ -228,53 +216,39 @@ The base agent should follow this workflow:
 ### Example 1: Security Issue Found
 
 ```
-Code Reviewer Output:
+# Code Review
 
-# Code Review Summary
+**Status**: CHANGES REQUIRED
 
-## Overall Assessment
-CHANGES REQUIRED
-
-## Critical Issues (Must Fix Before Commit)
-- [packages/api/src/auth/auth.service.ts:45] Hardcoded JWT secret
-  - Move to environment variable: process.env.JWT_SECRET
-  - Add JWT_SECRET to .env.example
-
-- [packages/api/src/users/users.controller.ts:23] SQL injection vulnerability
-  - Use parameterized query instead of string concatenation
-  - Change: `SELECT * FROM users WHERE id = ${id}`
-  - To: Use Prisma query: `prisma.user.findUnique({ where: { id } })`
+## Critical Issues (must fix before commit)
+- [auth.service.ts:45] Hardcoded JWT secret → Move to process.env.JWT_SECRET, add to .env.example
+- [users.controller.ts:23] SQL injection risk → Replace string concatenation with Prisma query
 
 ## Verdict
-Cannot approve for commit due to security vulnerabilities. Must fix critical
-issues before proceeding.
+Cannot approve. Fix 2 critical security issues before committing.
 ```
 
-### Example 2: Approved with Suggestions
+### Example 2: Approved with No Issues
 
 ```
-Code Reviewer Output:
+# Code Review
 
-# Code Review Summary
+**Status**: APPROVED - No issues found
+```
 
-## Overall Assessment
-APPROVED WITH SUGGESTIONS
+### Example 3: Approved with Optional Suggestions
 
-## Suggestions for Improvement
-- [packages/api/src/users/users.service.ts:67] Consider adding pagination
-  - For better performance when user list grows
-  - Suggested params: { page: number, limit: number }
+```
+# Code Review
 
-- [packages/frontend/src/components/UserList.tsx:23] Add loading skeleton
-  - Improves perceived performance during data fetching
+**Status**: APPROVED
 
-## Positive Observations
-- Well-structured error handling in auth.service.ts
-- Good use of TypeScript discriminated unions for user roles
-- Comprehensive input validation
+## Suggestions (optional improvements)
+- [users.service.ts:67] Consider adding pagination for scalability
+- [UserList.tsx:23] Add loading skeleton for better UX
 
 ## Verdict
-Code is ready to commit. Suggestions are optional improvements for future consideration.
+Ready to commit. Suggestions can be deferred to future work.
 ```
 
 ## Notes

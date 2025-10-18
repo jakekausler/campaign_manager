@@ -372,12 +372,24 @@ const mockData = { id: '1', name: 'Alice' } as User;
 - Type-check passes: `pnpm run type-check`
 - Explanation provided for any test modifications
 
-## Reporting
+## Output Format
 
-After fixing tests, report:
+Provide concise reports focused on test results and fixes:
 
-1. **What tests were failing**: List specific test names
-2. **Why they were failing**: Explain the discrepancy between code and tests
-3. **What was fixed**: Describe changes made to implementation
-4. **Why the fix is correct**: Explain how it matches intended behavior
-5. **Any concerns**: Note if tests might need review or requirements clarification
+```
+Test Results: [PASS/FAIL] - [N] tests run in [package]
+
+Failed Tests (if any):
+- [test name]: [Brief reason]
+
+Fixes Applied:
+- [file:line]: [What was changed to fix test]
+
+Verification: ✓ All tests passing, ✓ No regressions
+```
+
+Include detailed explanations only when:
+
+- Test was modified (rare - explain why it was wrong)
+- Fix was non-obvious or requires follow-up
+- Test failure reveals requirement ambiguity

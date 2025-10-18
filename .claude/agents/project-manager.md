@@ -101,84 +101,49 @@ The project manager evaluates:
 
 ## Output Format
 
-The project manager should provide verification in this format:
+Report ONLY issues. If complete, keep it brief:
+
+### When Complete:
 
 ```markdown
-# Ticket Verification Report
+# Ticket Verification: TICKET-XXX
 
-## Ticket: TICKET-XXX - [Title]
+**Status**: COMPLETE - All requirements met
 
-## Overall Status
-
-[COMPLETE | INCOMPLETE | PARTIALLY COMPLETE]
-
-## Requirements Coverage Analysis
-
-### Scope of Work
-
-1. [✓/✗] Item 1 - [Status/Notes]
-2. [✓/✗] Item 2 - [Status/Notes]
-   ...
-
-### Acceptance Criteria
-
-1. [✓/✗] Criterion 1 - [Status/Notes]
-2. [✓/✗] Criterion 2 - [Status/Notes]
-   ...
-
-### Technical Notes
-
-[✓/✗] Technical requirement 1
-[✓/✗] Technical requirement 2
-...
-
-## Missing Items
-
-- [ ] Description of missing item 1
-- [ ] Description of missing item 2
-
-## Implementation Observations
-
-### What Was Implemented
-
-- Feature/component 1
-- Feature/component 2
-  ...
-
-### Files Created/Modified
-
-- path/to/file1 - [Purpose]
-- path/to/file2 - [Purpose]
-  ...
-
-### Tests
-
-[✓/✗] Unit tests present
-[✓/✗] Integration tests present
-[✓/✗] Tests pass
-
-### Documentation
-
-[✓/✗] README updated
-[✓/✗] CLAUDE.md updated
-[✓/✗] Ticket notes added
-
-## Blockers for Completion
-
-[List any items that must be addressed before marking ticket complete]
-
-## Optional Improvements
-
-[List nice-to-have items that could be deferred to future tickets]
-
-## Verdict
-
-[Detailed assessment of whether ticket is complete and ready to close]
-
-## Recommendation
-
-[APPROVE FOR CLOSURE | REQUIRES ADDITIONAL WORK]
+**Recommendation**: APPROVE FOR CLOSURE
 ```
+
+### When Incomplete:
+
+```markdown
+# Ticket Verification: TICKET-XXX
+
+**Status**: INCOMPLETE
+
+## Missing from Scope of Work
+
+- Item 2: [What's missing/wrong]
+- Item 5: [What's missing/wrong]
+
+## Missing from Acceptance Criteria
+
+- Criterion 3: [What's missing/wrong]
+
+## Missing Tests/Documentation
+
+- [What's missing]
+
+**Recommendation**: REQUIRES ADDITIONAL WORK
+
+[1 sentence summary of what needs to be done]
+```
+
+**Guidelines**:
+
+- Only list items with issues - skip completed items entirely
+- No checkmarks or elaboration if everything is complete
+- No "Implementation Observations" or "Optional Improvements"
+- Keep output minimal and actionable
 
 ## Critical Rules
 
@@ -211,78 +176,34 @@ The base agent should follow this workflow:
 ### Scenario 1: All Requirements Met
 
 ```
-Project Manager Output:
+# Ticket Verification: TICKET-002
 
-# Ticket Verification Report
+**Status**: COMPLETE - All requirements met
 
-## Ticket: TICKET-002 - Docker Compose Infrastructure
-
-## Overall Status
-COMPLETE
-
-## Requirements Coverage Analysis
-
-### Scope of Work
-1. [✓] Create docker-compose.yml with all services
-2. [✓] Create service-specific Dockerfiles
-3. [✓] Configure Docker networks
-4. [✓] Set up volumes for data persistence
-5. [✓] Create .env.example
-...
-
-### Acceptance Criteria
-1. [✓] docker-compose up starts all services successfully
-2. [✓] All services pass health checks
-...
-
-## Verdict
-All scope of work items are complete, all acceptance criteria are met,
-and all technical requirements are satisfied.
-
-## Recommendation
-APPROVE FOR CLOSURE
+**Recommendation**: APPROVE FOR CLOSURE
 ```
 
 ### Scenario 2: Missing Items Found
 
 ```
-Project Manager Output:
+# Ticket Verification: TICKET-005
 
-# Ticket Verification Report
+**Status**: INCOMPLETE
 
-## Ticket: TICKET-005 - Basic GraphQL API
+## Missing from Scope of Work
+- Item 3: Health check endpoint at /health not implemented
+- Item 5: Request logging middleware not added
 
-## Overall Status
-INCOMPLETE
+## Missing from Acceptance Criteria
+- Criterion 2: Health check endpoint doesn't return 200
+- Criterion 4: No request logging found
 
-## Requirements Coverage Analysis
+## Missing Tests/Documentation
+- Tests for health check endpoint
 
-### Scope of Work
-1. [✓] Create NestJS application structure
-2. [✓] Set up GraphQL module
-3. [✗] Implement health check endpoint - NOT FOUND
-4. [✓] Create example resolver
-5. [✗] Add request logging middleware - NOT FOUND
+**Recommendation**: REQUIRES ADDITIONAL WORK
 
-### Acceptance Criteria
-1. [✓] GraphQL playground accessible
-2. [✗] Health check endpoint returns 200 - MISSING
-3. [✓] Example query works
-4. [✗] Logs show incoming requests - NO LOGGING FOUND
-
-## Missing Items
-- [ ] Health check endpoint at /health
-- [ ] Request logging middleware with Morgan
-- [ ] Tests for health check endpoint
-
-## Verdict
-Core GraphQL functionality is implemented, but health check endpoint
-and request logging are missing per ticket requirements.
-
-## Recommendation
-REQUIRES ADDITIONAL WORK
-
-Address the 3 missing items before marking ticket complete.
+Implement health check endpoint and request logging middleware.
 ```
 
 ## What to Look For
@@ -330,43 +251,11 @@ Project Manager: [Reads plan/TICKET-004.md]
 
 Project Manager Output:
 
-# Ticket Verification Report
+# Ticket Verification: TICKET-004
 
-## Ticket: TICKET-004 - Authentication System
+**Status**: COMPLETE - All requirements met
 
-## Overall Status
-COMPLETE
-
-### Scope of Work
-1. [✓] JWT authentication strategy
-2. [✓] Login endpoint
-3. [✓] Register endpoint
-4. [✓] Password hashing with bcrypt
-5. [✓] Token validation middleware
-6. [✓] Refresh token mechanism
-
-### Acceptance Criteria
-1. [✓] Users can register
-2. [✓] Users can login
-3. [✓] JWT tokens are issued
-4. [✓] Protected routes require valid token
-5. [✓] Passwords are hashed
-6. [✓] Refresh tokens work
-
-### Tests
-[✓] Unit tests for auth service
-[✓] Integration tests for endpoints
-[✓] Tests pass
-
-### Documentation
-[✓] .env.example updated with JWT_SECRET
-[✓] README updated with auth endpoints
-[✓] Ticket notes document JWT strategy
-
-## Recommendation
-APPROVE FOR CLOSURE
-
-All requirements met, all tests pass, documentation complete.
+**Recommendation**: APPROVE FOR CLOSURE
 
 Base Agent: [Marks ticket as complete]
             [Updates EPIC.md]

@@ -445,13 +445,19 @@ DATABASE_URL="postgresql://user:password@host:5432/db?schema=public&connection_l
 - Type-check passes: `pnpm run type-check` succeeds
 - No runtime Prisma errors when running the application
 
-## Reporting
+## Output Format
 
-After fixing Prisma/database issues, report:
+Provide concise reports focused on the fix:
 
-1. **What the error was**: Specific error message and type
-2. **Root cause**: Why the error occurred
-3. **Fix applied**: Changes made to schema, migrations, or code
-4. **Migration steps**: If manual steps are needed (e.g., `migrate deploy`)
-5. **Verification**: Commands run to verify the fix
-6. **Side effects**: Any impacts on existing data or schema
+```
+Fixed [Error Type] in [package/file]:
+
+Issue: [Brief description of the problem]
+Fix: [What was changed]
+Migration: [Required steps, or "None required"]
+Verification: ✓ [Commands run to verify]
+
+[Include side effects/warnings only if relevant]
+```
+
+Skip lengthy explanations of Prisma concepts unless the fix requires understanding them.

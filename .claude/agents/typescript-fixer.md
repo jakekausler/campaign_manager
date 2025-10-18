@@ -62,6 +62,21 @@ The subagent will:
 5. Verify fixes by running type-check and lint
 6. Report what was fixed and why
 
+## Output Format
+
+Provide concise reports focused on actions taken:
+
+```
+Fixed [N] TypeScript/ESLint errors in [package/files]:
+
+1. [file:line] - [Brief issue] → [Brief fix]
+2. [file:line] - [Brief issue] → [Brief fix]
+
+Verification: ✓ type-check passed, ✓ lint passed
+```
+
+Skip lengthy explanations unless the fix is non-obvious or requires follow-up action.
+
 ## Constraints
 
 - Make minimal changes - only fix the specific errors

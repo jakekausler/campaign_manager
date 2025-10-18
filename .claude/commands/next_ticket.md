@@ -5,7 +5,14 @@ description: Read the next ticket and begin working on it.
 
 # Next Ticket and Scope of Work
 
-Use a generic subagent (NOT the base agent) to read plan/EPIC.md to understand the overall plan and find the next incomplete ticket. If the ticket has an implementation plan, determine the next incomplete stage in that plan as well using the same subagent.
+Use the ticket-navigator subagent to find the next incomplete ticket and stage. The subagent will provide concise output in this format:
+
+```
+Next Ticket: TICKET-XXX
+Title: [Brief ticket title]
+Implementation Plan: [EXISTS | DOES NOT EXIST]
+Next Stage: [Stage name/number | N/A]
+```
 
 Use the base agent to read that ticket from plan/ and begin working on it.
 
