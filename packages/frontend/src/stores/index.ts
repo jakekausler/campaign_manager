@@ -25,7 +25,8 @@ export type RootStore = AuthSlice & CampaignSlice;
  * 2. persist - Persist selected state to localStorage
  *
  * Persisted state:
- * - auth.token (for auto-login)
+ * - auth.token (for auto-login and attaching to GraphQL requests)
+ * - auth.user (for immediate profile access on app reload)
  * - campaign.currentCampaignId (for restoring context)
  */
 export const useStore = create<RootStore>()(
@@ -38,10 +39,20 @@ export const useStore = create<RootStore>()(
       {
         name: 'campaign-manager-storage', // localStorage key
         // Persist only necessary state (not entire store)
+        // Auth: token + user for auto-login and immediate profile access
+        // Campaign: currentCampaignId for restoring context
         partialize: (state) => ({
           token: state.token,
+          user: state.user,
           currentCampaignId: state.currentCampaignId,
         }),
+        // Restore isAuthenticated when hydrating from localStorage
+        // This ensures the auth state is fully restored on app reload
+        onRehydrateStorage: () => (state) => {
+          if (state?.token) {
+            state.isAuthenticated = true;
+          }
+        },
       }
     ),
     {
