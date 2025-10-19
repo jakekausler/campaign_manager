@@ -1,6 +1,9 @@
 import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
+import { useDependencyGraph } from '@/services/api/hooks';
+import { useCurrentCampaignId } from '@/stores';
+
 /**
  * FlowViewPage - Interactive dependency graph visualization
  *
@@ -11,6 +14,70 @@ import '@xyflow/react/dist/style.css';
  * Part of TICKET-021 implementation.
  */
 export default function FlowViewPage() {
+  // Get current campaign from store
+  const campaignId = useCurrentCampaignId();
+
+  // Fetch dependency graph for the current campaign
+  const { graph, loading, error } = useDependencyGraph(campaignId || '');
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg font-medium">Loading dependency graph...</div>
+          <div className="text-sm text-muted-foreground mt-2">
+            Building visualization of campaign relationships
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg font-medium text-destructive">
+            Failed to load dependency graph
+          </div>
+          <div className="text-sm text-muted-foreground mt-2">{error.message}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state if no campaign selected
+  if (!campaignId) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg font-medium">No campaign selected</div>
+          <div className="text-sm text-muted-foreground mt-2">
+            Please select a campaign to view its dependency graph
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state if no graph data
+  if (!graph || graph.nodes.length === 0) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg font-medium">No dependencies found</div>
+          <div className="text-sm text-muted-foreground mt-2">
+            This campaign doesn&apos;t have any conditions, effects, or variables yet
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // TODO: Transform graph data to React Flow format in Stage 3
+  // For now, display basic statistics
   return (
     <div className="h-screen w-full">
       <ReactFlow nodes={[]} edges={[]} fitView className="bg-background">
@@ -18,6 +85,21 @@ export default function FlowViewPage() {
         <Controls />
         <MiniMap />
       </ReactFlow>
+
+      {/* Temporary info panel showing graph stats */}
+      <div className="absolute top-4 right-4 bg-card border rounded-lg p-4 shadow-lg">
+        <h3 className="font-semibold mb-2">Dependency Graph Stats</h3>
+        <div className="text-sm space-y-1">
+          <div>Total Nodes: {graph.stats.nodeCount}</div>
+          <div>Total Edges: {graph.stats.edgeCount}</div>
+          <div className="pt-2 border-t mt-2">
+            <div>Variables: {graph.stats.variableCount}</div>
+            <div>Conditions: {graph.stats.conditionCount}</div>
+            <div>Effects: {graph.stats.effectCount}</div>
+            <div>Entities: {graph.stats.entityCount}</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

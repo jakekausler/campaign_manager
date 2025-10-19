@@ -45,5 +45,17 @@ export {
 // World Time hooks
 export { useCurrentWorldTime, GET_CURRENT_WORLD_TIME } from './world-time';
 
+// Dependency Graph hooks
+export {
+  useDependencyGraph,
+  GET_DEPENDENCY_GRAPH,
+  type DependencyNode,
+  type DependencyEdge,
+  type DependencyNodeType,
+  type DependencyEdgeType,
+  type DependencyGraphStats,
+  type DependencyGraphResult,
+} from './dependency-graph';
+
 // Mutation hooks (Stage 8)
 export * from '../mutations';

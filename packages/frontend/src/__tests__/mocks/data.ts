@@ -138,3 +138,167 @@ export const mockStructures = [
     },
   },
 ];
+
+/**
+ * Mock dependency graph data
+ *
+ * Realistic test data representing a dependency graph with variables,
+ * conditions, effects, and entities with various relationship types.
+ */
+export const mockDependencyGraph = {
+  nodes: [
+    {
+      id: 'VARIABLE:var-population',
+      type: 'VARIABLE' as const,
+      entityId: 'var-population',
+      label: 'settlement.population',
+      metadata: {
+        entityType: 'Settlement',
+        fieldName: 'population',
+      },
+    },
+    {
+      id: 'VARIABLE:var-defense',
+      type: 'VARIABLE' as const,
+      entityId: 'var-defense',
+      label: 'settlement.defense',
+      metadata: {
+        entityType: 'Settlement',
+        fieldName: 'defense',
+      },
+    },
+    {
+      id: 'CONDITION:cond-is-large',
+      type: 'CONDITION' as const,
+      entityId: 'cond-is-large',
+      label: 'Is Large Settlement',
+      metadata: {
+        expression: { '>': [{ var: 'settlement.population' }, 1000] },
+        priority: 10,
+      },
+    },
+    {
+      id: 'CONDITION:cond-is-fortified',
+      type: 'CONDITION' as const,
+      entityId: 'cond-is-fortified',
+      label: 'Is Fortified',
+      metadata: {
+        expression: { '>': [{ var: 'settlement.defense' }, 20] },
+        priority: 5,
+      },
+    },
+    {
+      id: 'EFFECT:effect-boost-population',
+      type: 'EFFECT' as const,
+      entityId: 'effect-boost-population',
+      label: 'Boost Population',
+      metadata: {
+        phase: 'ON_RESOLVE',
+        operations: [
+          {
+            op: 'add',
+            path: '/computedFields/population',
+            value: 100,
+          },
+        ],
+      },
+    },
+    {
+      id: 'EFFECT:effect-boost-defense',
+      type: 'EFFECT' as const,
+      entityId: 'effect-boost-defense',
+      label: 'Boost Defense',
+      metadata: {
+        phase: 'ON_RESOLVE',
+        operations: [
+          {
+            op: 'add',
+            path: '/computedFields/defense',
+            value: 5,
+          },
+        ],
+      },
+    },
+    {
+      id: 'ENTITY:settlement-1',
+      type: 'ENTITY' as const,
+      entityId: 'settlement-1',
+      label: 'Ironhold',
+      metadata: {
+        entityType: 'Settlement',
+        name: 'Ironhold',
+      },
+    },
+  ],
+  edges: [
+    {
+      fromId: 'CONDITION:cond-is-large',
+      toId: 'VARIABLE:var-population',
+      type: 'READS' as const,
+      metadata: {
+        fieldPath: 'settlement.population',
+      },
+    },
+    {
+      fromId: 'CONDITION:cond-is-fortified',
+      toId: 'VARIABLE:var-defense',
+      type: 'READS' as const,
+      metadata: {
+        fieldPath: 'settlement.defense',
+      },
+    },
+    {
+      fromId: 'EFFECT:effect-boost-population',
+      toId: 'VARIABLE:var-population',
+      type: 'WRITES' as const,
+      metadata: {
+        operation: 'add',
+        path: '/computedFields/population',
+      },
+    },
+    {
+      fromId: 'EFFECT:effect-boost-defense',
+      toId: 'VARIABLE:var-defense',
+      type: 'WRITES' as const,
+      metadata: {
+        operation: 'add',
+        path: '/computedFields/defense',
+      },
+    },
+    {
+      fromId: 'EFFECT:effect-boost-defense',
+      toId: 'CONDITION:cond-is-fortified',
+      type: 'DEPENDS_ON' as const,
+      metadata: {
+        description: 'Effect depends on condition evaluation',
+      },
+    },
+    {
+      fromId: 'ENTITY:settlement-1',
+      toId: 'VARIABLE:var-population',
+      type: 'DEPENDS_ON' as const,
+      metadata: {
+        description: 'Entity has variable field',
+      },
+    },
+    {
+      fromId: 'ENTITY:settlement-1',
+      toId: 'VARIABLE:var-defense',
+      type: 'DEPENDS_ON' as const,
+      metadata: {
+        description: 'Entity has variable field',
+      },
+    },
+  ],
+  stats: {
+    nodeCount: 7,
+    edgeCount: 7,
+    variableCount: 2,
+    conditionCount: 2,
+    effectCount: 2,
+    entityCount: 1,
+  },
+  campaignId: 'campaign-1',
+  branchId: 'main',
+  builtAt: '2024-01-01T00:00:00.000Z',
+};

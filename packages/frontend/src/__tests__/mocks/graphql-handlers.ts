@@ -7,7 +7,7 @@
 
 import { graphql, HttpResponse } from 'msw';
 
-import { mockSettlements, mockStructures } from './data';
+import { mockSettlements, mockStructures, mockDependencyGraph } from './data';
 
 export const graphqlHandlers = [
   // Settlement Queries
@@ -70,6 +70,33 @@ export const graphqlHandlers = [
     }
     return HttpResponse.json({
       data: { structure },
+    });
+  }),
+
+  // Dependency Graph Queries
+  graphql.query('GetDependencyGraph', ({ variables }) => {
+    const { campaignId, branchId = 'main' } = variables as {
+      campaignId: string;
+      branchId?: string;
+    };
+
+    // Return mock data for campaign-1, error for others
+    if (campaignId !== 'campaign-1') {
+      return HttpResponse.json({
+        errors: [{ message: 'Campaign not found' }],
+      });
+    }
+
+    // Return graph with updated branchId and timestamp
+    return HttpResponse.json({
+      data: {
+        getDependencyGraph: {
+          ...mockDependencyGraph,
+          campaignId,
+          branchId,
+          builtAt: new Date().toISOString(),
+        },
+      },
     });
   }),
 
