@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e, 9564ebd, 77c808e, da720bc, 0f0383a, 61c2d1e
+- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e, 9564ebd, 77c808e, da720bc, 0f0383a, 61c2d1e, 1d98d80
 
 ## Implementation Notes
 
@@ -545,7 +545,89 @@ All performance tests passing with excellent results:
 - ✅ TypeScript compilation successful
 - ✅ ESLint clean (pre-existing warnings in other packages unrelated to changes)
 
-**Next**: Stage 11 will add filtering and search functionality for the dependency graph.
+**Next**: Stage 12 will complete testing and documentation for the Flow View feature.
+
+### Stage 11: Add Filtering and Search (Commit: 1d98d80)
+
+Successfully implemented comprehensive filtering and search functionality for dependency graph visualization:
+
+**Implemented**:
+
+- Created graph-filters.ts utility module with pure functions
+  - createEmptyFilters(): Initialize default filter state
+  - hasActiveFilters(): Check if any filters are active
+  - detectCycles(): DFS-based cycle detection (O(V + E))
+  - filterNodes(): Filter by search, type, cycles, selection
+  - filterEdges(): Filter by type and visible nodes
+  - getNodeTypeCount() / getEdgeTypeCount(): Count by type
+- Created FilterPanel component (top-left positioned)
+  - Search input with case-insensitive label matching
+  - Multi-select checkboxes for node types (Variable, Condition, Effect, Entity)
+  - Multi-select checkboxes for edge types (Reads, Writes, Depends On)
+  - "Show cycles only" toggle with cycle detection
+  - "Show selected and connected only" toggle
+  - Clear all filters button (shown only when active)
+  - Real-time count display with color-coded indicators
+  - Positioned at z-10 layering
+- Integrated filtering into FlowViewPage
+  - Filter state management with useState
+  - useMemo optimization for filtered nodes/edges
+  - Node/edge type count calculation
+  - Filter handlers: handleFiltersChange, handleClearFilters
+  - Filtering applied before selection styling
+  - Filter panel rendered alongside existing controls
+- Comprehensive test coverage: 51 tests (32 utilities + 19 component)
+  - graph-filters.test.ts: Filter creation, cycle detection (simple/complex), node/edge filtering
+  - FilterPanel.test.tsx: Rendering, search, checkboxes, special filters, clear button, accessibility
+  - All 639 frontend tests passing with no regressions
+
+**Technical Decisions**:
+
+- Pure utility functions for testability and reusability
+- DFS chosen over BFS for cycle detection (standard algorithm)
+- useMemo prevents unnecessary recalculation when filters unchanged
+- Filtering applied to original nodes/edges before selection styling
+- Edge filtering requires both source and target nodes visible
+- Search is case-insensitive for better UX (toLowerCase comparison)
+- Native checkboxes for accessibility (Radix UI optional future enhancement)
+- Clear button hidden when no filters active (reduces visual clutter)
+
+**Cycle Detection Algorithm**:
+
+- Depth-first search with recursion stack tracking
+- O(V + E) time complexity for efficient large graph handling
+- Handles disconnected subgraphs correctly
+- Returns Set of node IDs that are part of any cycle
+- Gracefully handles empty graphs and graphs with no cycles
+- DFS visits each node once, checks each edge once
+
+**Filter Combinations**:
+
+- All filters can be combined for precise graph exploration
+- Search + node type: Find specific entities (e.g., "health" + VARIABLE)
+- Edge type + cycles: Identify write dependencies in circular logic
+- Selected + connected: Focus on neighborhood of selected nodes
+- Multiple filters applied sequentially for accurate results
+
+**Performance**:
+
+- Cycle detection is O(V + E), efficient for graphs up to 500+ nodes
+- Filter operations are O(n) where n = number of nodes/edges
+- useMemo ensures filtering only runs when filters or graph changes
+- No performance issues observed with test graphs (100-500 nodes)
+
+**Code Review**: Approved - production-quality implementation with optional
+suggestions for future optimization (memoizing cycle detection at page level)
+
+**Tests**:
+
+- ✅ 32 new tests for filter utilities (graph-filters.test.ts)
+- ✅ 19 new tests for FilterPanel component (FilterPanel.test.tsx)
+- ✅ 639 total frontend tests passing (no regressions)
+- ✅ TypeScript compilation successful
+- ✅ ESLint clean (frontend package)
+
+**Next**: Stage 12 will complete testing and documentation for the Flow View feature.
 
 ### Planning Phase Details
 
