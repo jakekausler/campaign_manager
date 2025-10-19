@@ -6,6 +6,7 @@ import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../../database/prisma.service';
+import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
@@ -124,6 +125,19 @@ describe('SettlementService', () => {
           provide: DependencyGraphService,
           useValue: {
             invalidateCache: jest.fn(),
+          },
+        },
+        {
+          provide: RulesEngineClientService,
+          useValue: {
+            isAvailable: jest.fn().mockResolvedValue(false),
+            evaluateCondition: jest.fn(),
+            evaluateConditions: jest.fn(),
+            getEvaluationOrder: jest.fn(),
+            validateDependencies: jest.fn(),
+            invalidateCache: jest.fn(),
+            getCacheStats: jest.fn(),
+            getCircuitState: jest.fn(),
           },
         },
       ],
