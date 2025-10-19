@@ -5,9 +5,9 @@
 **Progress Summary:**
 
 - **Initial State**: 189 failed tests, 1079 passed (10 test suites failed)
-- **After Stage 4**: 34 failed tests, 1256 passed (3 test suites failed)
-- **Tests Fixed**: 155 tests (82% reduction in failures)
-- **Improvement**: +177 passing tests
+- **After Stage 5**: 33 failed tests, 1264 passed (2 test suites failed)
+- **Tests Fixed**: 156 tests (82.5% reduction in failures)
+- **Improvement**: +185 passing tests
 
 **Completed Fixes:**
 
@@ -23,9 +23,11 @@
 10. ✅ Added missing REDIS_PUBSUB provider to dependency-graph cache invalidation tests (Stage 2)
 11. ✅ Added missing DependencyGraphService and REDIS_PUBSUB providers to state-variable-versioning integration tests (Stage 3)
 12. ✅ Implemented extractAffectedFields method and pre-populated mock entity data in effect-system E2E tests (Stage 4)
+13. ✅ Improved test data setup for spatial index integration tests to ensure PostgreSQL query planner uses GIST indexes (Stage 5)
 
 **Commits:**
 
+- `ffba479` - fix(api): fix spatial-indexes integration test failures (Stage 5)
 - `1bfc7c8` - fix(api): fix effect-system E2E tests by implementing extractAffectedFields and pre-populating mock data (Stage 4)
 - `fbd55f4` - fix(api): add missing test providers to state-variable-versioning integration tests (Stage 3)
 - `df95f3b` - fix(api): add missing REDIS_PUBSUB mock to dependency-graph cache invalidation tests (Stage 2)
@@ -37,11 +39,10 @@
 
 ## Remaining Test Failures
 
-**3 Test Suites Still Failing (34 tests total):**
+**2 Test Suites Still Failing (33 tests total):**
 
-1. `src/common/services/spatial-indexes.integration.test.ts` - Spatial index integration tests
-2. `src/graphql/services/settlement.service.test.ts` - Settlement service unit tests
-3. `src/graphql/services/structure.service.test.ts` - Structure service unit tests
+1. `src/graphql/services/settlement.service.test.ts` - Settlement service unit tests
+2. `src/graphql/services/structure.service.test.ts` - Structure service unit tests
 
 ---
 
@@ -246,56 +247,50 @@ Tests were failing because:
 
 ---
 
-## Stage 5: Integration Tests - Spatial Indexes (Low Priority)
+## Stage 5: Integration Tests - Spatial Indexes (Low Priority) ✅ COMPLETED
+
+**Status**: ✅ All 8 tests passing (commit: `ffba479`)
 
 **File:**
 
 - `packages/api/src/common/services/spatial-indexes.integration.test.ts`
 
-**Estimated Failures**: ~4 tests
+**Actual Failures**: 1 test (all now fixed)
 
-**Root Cause Analysis:**
-Spatial index tests likely fail due to:
+**Root Cause:**
+The test "should use GIST index for distance queries" was failing because the test setup had insufficient data volume (100 points) and very low-selectivity queries (distance threshold of 100,000 units). PostgreSQL's query planner correctly chose sequential scans over index lookups, but the test expected index usage.
 
-1. PostGIS extension not enabled in test database
-2. Spatial index creation not working in test environment
-3. Geometry data not properly formatted
+**Implementation Summary:**
 
-**Implementation Steps:**
+Improved test data setup to ensure PostgreSQL query planner consistently uses GIST spatial indexes:
 
-### 5.1 Verify PostGIS Setup
+1. **Increased test data volume** (line 75):
+   - Changed from 100 to 1,000 points spread across larger grid (100×10 instead of 10×10)
+   - Makes index usage genuinely beneficial for query planner
 
-- Ensure PostGIS extension is enabled in test database
-- Verify that spatial columns are properly created
-- Check that SRID is correctly configured
+2. **Added ANALYZE command** (line 102):
+   - Ensures PostgreSQL has up-to-date table statistics
+   - Enables informed decisions about index usage
 
-### 5.2 Fix Spatial Index Creation
+3. **Made distance query more selective** (lines 176-177):
+   - Reduced distance threshold from 100,000 to 5.0 units
+   - Changed query point from (5.0, 5.0) to (50.0, 5.0)
+   - Creates high selectivity that favors index usage
 
-- Verify that spatial indexes are created with correct parameters
-- Check that index creation SQL is compatible with test database
-- Ensure that geometry types are correctly specified
+**Test Results:**
 
-### 5.3 Test Spatial Queries
+✅ All 8 tests now pass (2.978s execution time):
 
-- Verify that ST_DWithin queries work correctly
-- Check that distance calculations are accurate
-- Ensure that spatial indexes are actually used (check query plans)
+- Database Schema (2 tests) - SRID field, GIST index existence
+- Spatial Index Performance (3 tests) - Index usage verification
+- Campaign SRID Field (3 tests) - SRID creation and updates
 
-**Verification:**
+**Quality Checks:**
 
-```bash
-# First verify PostGIS is available
-docker exec -it campaign_manager-postgres-1 psql -U campaign_user -d campaign_db -c "SELECT PostGIS_Version();"
-
-# Then run tests
-pnpm --filter @campaign/api test spatial-indexes.integration.test.ts -- --verbose
-```
-
-**Success Criteria:**
-
-- PostGIS extension properly configured
-- Spatial indexes created successfully
-- All spatial queries return correct results
+✅ Type-check: Passed
+✅ Lint: Passed (warnings only, no errors)
+✅ Code Review: Approved
+✅ PostGIS 3.4 verified in database
 
 ---
 
@@ -578,4 +573,4 @@ If you encounter issues not covered in this plan:
 4. Use `git log --oneline --grep="test"` to find test-related commits
 5. Ask for clarification on specific error messages
 
-**Last Updated**: 2025-10-18 (after commit 1bfc7c8 - Stage 4 complete)
+**Last Updated**: 2025-10-19 (after commit ffba479 - Stage 5 complete)
