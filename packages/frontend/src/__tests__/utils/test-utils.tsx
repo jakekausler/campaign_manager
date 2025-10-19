@@ -8,7 +8,7 @@
 
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
 import { ApolloProvider } from '@apollo/client/react';
-import { render, type RenderOptions } from '@testing-library/react';
+import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
 import { type ReactElement, type ReactNode } from 'react';
 
 /**
@@ -66,8 +66,8 @@ export function renderWithApollo(
   {
     client = createTestApolloClient(),
     ...renderOptions
-  }: RenderOptions & { client?: ApolloClient<unknown> } = {}
-) {
+  }: RenderOptions & { client?: ReturnType<typeof createTestApolloClient> } = {}
+): RenderResult & { client: ReturnType<typeof createTestApolloClient> } {
   function Wrapper({ children }: { children: ReactNode }) {
     return <ApolloProvider client={client}>{children}</ApolloProvider>;
   }

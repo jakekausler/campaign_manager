@@ -103,7 +103,7 @@ describe('Settlement Hooks Integration Tests', () => {
 
       // Refetch should work
       const refetchResult = await result.current.refetch();
-      expect(refetchResult.data.settlementsByKingdom).toHaveLength(2);
+      expect(refetchResult.data?.settlementsByKingdom).toHaveLength(2);
     });
 
     it('should provide network status', async () => {
@@ -183,7 +183,7 @@ describe('Settlement Hooks Integration Tests', () => {
       expect(result.current.refetch).toBeInstanceOf(Function);
 
       const refetchResult = await result.current.refetch();
-      expect(refetchResult.data.settlement?.id).toBe('settlement-1');
+      expect(refetchResult.data?.settlement?.id).toBe('settlement-1');
     });
   });
 
@@ -260,7 +260,7 @@ describe('Settlement Hooks Integration Tests', () => {
       expect(result.current.refetch).toBeInstanceOf(Function);
 
       const refetchResult = await result.current.refetch();
-      expect(refetchResult.data.settlement?.structures).toHaveLength(2);
+      expect(refetchResult.data?.settlement?.structures).toHaveLength(2);
     });
 
     it('should handle settlement not found', async () => {
