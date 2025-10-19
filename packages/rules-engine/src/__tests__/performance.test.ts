@@ -218,7 +218,7 @@ describe('Performance Test Suite', () => {
 
       // Mock database responses for all conditions
       for (const id of conditionIds) {
-        prisma.fieldCondition.findUnique.mockResolvedValueOnce({
+        prisma.fieldCondition.findUnique.mockResolvedValue({
           id,
           entityType: 'Settlement',
           entityId: null,
@@ -262,7 +262,7 @@ describe('Performance Test Suite', () => {
 
       // Mock database responses
       for (const id of conditionIds) {
-        prisma.fieldCondition.findUnique.mockResolvedValueOnce({
+        prisma.fieldCondition.findUnique.mockResolvedValue({
           id,
           entityType: 'Settlement',
           entityId: null,
