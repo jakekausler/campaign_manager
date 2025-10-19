@@ -468,6 +468,7 @@ export function Map({
           <DrawToolbar
             mode={drawState.mode}
             hasUnsavedChanges={drawState.hasUnsavedChanges}
+            currentFeature={drawState.currentFeature}
             onStartDrawPoint={drawActions.startDrawPoint}
             onStartDrawPolygon={drawActions.startDrawPolygon}
             onSave={async () => {

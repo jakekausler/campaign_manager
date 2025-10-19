@@ -1,4 +1,8 @@
-import type { DrawMode } from './useMapDraw';
+import { useMemo } from 'react';
+
+import { calculatePolygonArea, countPolygonVertices, formatArea } from '../../../utils/geometry';
+
+import type { DrawMode, DrawFeature } from './useMapDraw';
 
 /**
  * Props for DrawToolbar component
@@ -8,6 +12,8 @@ export interface DrawToolbarProps {
   mode: DrawMode;
   /** Whether there are unsaved changes */
   hasUnsavedChanges: boolean;
+  /** Current feature being drawn/edited (for showing stats) */
+  currentFeature?: DrawFeature | null;
   /** Callback to start drawing a point */
   onStartDrawPoint: () => void;
   /** Callback to start drawing a polygon */
@@ -41,12 +47,31 @@ export interface DrawToolbarProps {
 export function DrawToolbar({
   mode,
   hasUnsavedChanges,
+  currentFeature,
   onStartDrawPoint,
   onStartDrawPolygon,
   onSave,
   onCancel,
   isSaving = false,
 }: DrawToolbarProps) {
+  // Calculate polygon stats if we're drawing a polygon
+  // Use useMemo to avoid expensive recalculation on every render
+  const polygonStats = useMemo(() => {
+    const isPolygon =
+      currentFeature?.geometry.type === 'Polygon' &&
+      Array.isArray(currentFeature.geometry.coordinates);
+
+    if (!isPolygon || !currentFeature) {
+      return null;
+    }
+
+    return {
+      vertices: countPolygonVertices(
+        currentFeature.geometry.coordinates as number[][] | number[][][]
+      ),
+      area: calculatePolygonArea(currentFeature.geometry.coordinates as number[][] | number[][][]),
+    };
+  }, [currentFeature]);
   // In view mode, show create buttons
   if (mode === 'none') {
     return (
@@ -75,6 +100,17 @@ export function DrawToolbar({
   if (hasUnsavedChanges) {
     return (
       <div className="absolute top-4 left-32 flex gap-2">
+        {/* Show polygon stats if available */}
+        {polygonStats && (
+          <div className="bg-white bg-opacity-90 text-gray-700 font-medium py-2 px-4 rounded shadow-md flex items-center gap-4">
+            <span className="text-sm">
+              <span className="font-semibold">{polygonStats.vertices}</span> vertices
+            </span>
+            <span className="text-sm border-l border-gray-300 pl-4">
+              <span className="font-semibold">{formatArea(polygonStats.area)}</span> area
+            </span>
+          </div>
+        )}
         <button
           onClick={onSave}
           disabled={isSaving}
