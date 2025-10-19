@@ -232,20 +232,20 @@ This plan breaks down the implementation of an interactive map view with MapLibr
 
 **Tasks**:
 
-- [ ] Create LayerControls component
-- [ ] Add checkboxes/switches for each layer type (Location points, Location regions, Settlements, Structures)
-- [ ] Connect toggles to layer visibility state
-- [ ] Update map layer visibility when state changes
-- [ ] Style controls panel (position, appearance)
-- [ ] Optionally persist toggle state to localStorage
+- [x] Create LayerControls component
+- [x] Add checkboxes/switches for each layer type (Location points, Location regions, Settlements, Structures)
+- [x] Connect toggles to layer visibility state
+- [x] Update map layer visibility when state changes
+- [x] Style controls panel (position, appearance)
+- [ ] Optionally persist toggle state to localStorage (deferred - not required for MVP)
 
 **Tests**:
 
-- [ ] Layer toggles work correctly
-- [ ] Toggling updates map immediately
-- [ ] All layers can be toggled independently
+- [x] Layer toggles work correctly
+- [x] Toggling updates map immediately
+- [x] All layers can be toggled independently
 
-**Status**: Not Started
+**Status**: Completed (Commit: 330fad8)
 
 ---
 

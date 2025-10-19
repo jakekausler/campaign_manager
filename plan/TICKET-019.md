@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6), 4d6068b (Stage 7)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6), 4d6068b (Stage 7), 330fad8 (Stage 8)
 
 ## Description
 
@@ -663,3 +663,103 @@ Testing:
 - Follows project conventions (barrel exports, Tailwind styling, hook patterns)
 - No security vulnerabilities detected
 - Performance conscious (memoized callbacks, proper cleanup)
+
+### Stage 8: Layer Toggle Controls (Commit: 330fad8)
+
+**What was implemented:**
+
+LayerControls Component (`packages/frontend/src/components/features/map/LayerControls.tsx`):
+
+- Clean UI panel with checkboxes for toggling layer visibility
+- Four layer types: Location Points, Location Regions, Settlements, Structures
+- Color indicators matching layer colors (blue for locations, green for settlements, amber for structures)
+- Controlled component pattern: parent (Map) owns visibility state via useMapLayers hook
+- Positioned in top-right corner below navigation controls (absolute top-4 right-4 mt-20)
+- Proper semantic HTML with labels wrapping checkboxes for clickable area
+- Tailwind CSS styling consistent with existing map controls (white background, rounded, shadow)
+
+Map Component Integration (`packages/frontend/src/components/features/map/Map.tsx`):
+
+- Added useMapLayers hook call to access layerVisibility state and toggleLayerVisibility function
+- Integrated LayerControls component into render tree
+- Minimal changes: 3 new lines (import, hook call, component render)
+- Leverages existing layer visibility infrastructure from useMapLayers hook
+
+Component Architecture:
+
+- LAYER_CONFIGS constant: centralized configuration for layer labels, colors, descriptions
+- Uses Record<EntityType, ...> for exhaustive type checking (all entity types must be handled)
+- Props interface with JSDoc documentation
+- Single responsibility: component only renders UI, state managed by parent
+- DRY principle: maps over layer types instead of repetition
+
+Testing (`packages/frontend/src/components/features/map/LayerControls.test.tsx`):
+
+- 16 comprehensive unit tests covering all functionality:
+  - Rendering: component structure, title, all toggles, labels, custom className (5 tests)
+  - Checkbox State: all visible, all hidden, mixed visibility state (3 tests)
+  - Interaction: individual layer toggles, label clicks, multiple clicks (6 tests)
+  - Accessibility: ARIA labels, keyboard navigation with Tab and Space (2 tests)
+  - Visual Indicators: color circles match layer colors (1 test)
+- Uses @testing-library/react and @testing-library/user-event for realistic interactions
+- Proper mock cleanup in afterEach to prevent test pollution
+- All 257 frontend tests passing (16 new LayerControls tests)
+
+**Design decisions:**
+
+- Controlled component pattern:
+  - Parent Map component owns visibility state via useMapLayers hook
+  - LayerControls receives state and callback as props
+  - Separation of concerns: UI rendering vs. state management
+  - Enables future enhancements (e.g., sync visibility across multiple maps)
+
+- Positioning strategy:
+  - Top-right corner below navigation controls (mt-20 offset)
+  - Avoids overlap with Reset View button (top-left) and navigation (top-right)
+  - Uses absolute positioning for consistent placement
+  - Could be made draggable in future if needed
+
+- Color indicators:
+  - 3x3 rounded circles (rounded-full) with bg-\* Tailwind classes
+  - Match exact colors from LAYER_STYLES in useMapLayers (blue-500, green-500, amber-500)
+  - aria-hidden="true" since decorative (not interactive)
+  - Visual aid for users to quickly identify layer colors on map
+
+- Accessibility focus:
+  - Label wraps checkbox and text for full clickable area
+  - Each checkbox has aria-label="Toggle [Layer Name]"
+  - Native checkbox keyboard navigation (Tab to focus, Space to toggle)
+  - Focus ring with focus:ring-2 focus:ring-blue-500
+  - Hover feedback with group-hover:text-gray-900
+
+- TypeScript types:
+  - LayerControlsProps interface with JSDoc descriptions
+  - Proper type imports (import type for EntityType and LayerVisibility)
+  - Record<EntityType, ...> ensures all entity types have config
+  - No any types used anywhere
+
+- localStorage persistence deferred:
+  - Not required for MVP functionality
+  - Layer visibility resets to default (all visible) on page reload
+  - Could be added in future with useEffect + localStorage.setItem/getItem
+  - Would require additional tests for persistence behavior
+
+**Code quality:**
+
+- All TypeScript type-check and ESLint checks pass (0 errors)
+- TypeScript Fixer subagent resolved import ordering issues
+- TypeScript Tester subagent verified all 257 tests passing (16 new tests)
+- Code Reviewer subagent approved with zero issues:
+  - Clean, simple implementation (95 lines)
+  - Comprehensive testing (16 tests covering all interactions)
+  - Full accessibility (WCAG compliant)
+  - Type safety (proper TypeScript throughout)
+  - Zero security/performance concerns
+  - Follows all project conventions
+- Follows project patterns:
+  - Barrel exports (index.ts)
+  - Component structure (props interface, JSDoc, TypeScript)
+  - Testing patterns (Vitest + @testing-library/react)
+  - Tailwind CSS styling
+- No security vulnerabilities detected
+- Performance optimized (no unnecessary re-renders, small bundle size ~2KB)
