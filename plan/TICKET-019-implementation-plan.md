@@ -299,23 +299,23 @@ This plan breaks down the implementation of an interactive map view with MapLibr
 
 **Tasks**:
 
-- [ ] Create LoadingSpinner component for map
-- [ ] Create ErrorMessage component
-- [ ] Create EmptyState component ("No locations to display")
-- [ ] Handle loading state for all GraphQL queries
-- [ ] Handle error state for all GraphQL queries
-- [ ] Show appropriate message for empty data
-- [ ] Ensure map doesn't break on error
-- [ ] Add retry mechanism for failed queries (optional)
+- [x] Create LoadingSpinner component for map
+- [x] Create ErrorMessage component
+- [x] Create EmptyState component ("No locations to display")
+- [x] Handle loading state for all GraphQL queries
+- [x] Handle error state for all GraphQL queries
+- [x] Show appropriate message for empty data
+- [x] Ensure map doesn't break on error
+- [x] Add retry mechanism for failed queries (window.location.reload())
 
 **Tests**:
 
-- [ ] Loading state displays correctly
-- [ ] Error state displays correctly
-- [ ] Empty state displays correctly
-- [ ] Map recovers from errors gracefully
+- [x] Loading state displays correctly (11 tests)
+- [x] Error state displays correctly (14 tests)
+- [x] Empty state displays correctly (10 tests)
+- [x] Map recovers from errors gracefully (retry button)
 
-**Status**: Not Started
+**Status**: Completed (Commit: 8c8dd58)
 
 ---
 

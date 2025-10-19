@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6), 4d6068b (Stage 7), 330fad8 (Stage 8), dabaece (Stage 9)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6), 4d6068b (Stage 7), 330fad8 (Stage 8), dabaece (Stage 9), 8c8dd58 (Stage 10)
 
 ## Description
 
@@ -828,3 +828,117 @@ Testing:
 - O(n) filtering per entity type
 - Acceptable for MVP
 - Optimization opportunity noted for 1000+ entities
+
+### Stage 10: Loading States and Error Handling (Commit: 8c8dd58)
+
+**What was implemented:**
+
+Components:
+
+- LoadingSpinner component (`packages/frontend/src/components/features/map/LoadingSpinner.tsx`)
+  - Animated spinner with customizable message
+  - Overlay covers map with semi-transparent background
+  - Default message: "Loading map data..."
+  - Full accessibility (role="status", aria-live="polite", aria-label)
+  - Decorative spinner marked aria-hidden="true"
+
+- ErrorMessage component (`packages/frontend/src/components/features/map/ErrorMessage.tsx`)
+  - Error display with icon, title, and message
+  - Optional retry button with callback
+  - Full accessibility (role="alert", aria-live="assertive")
+  - Retry uses window.location.reload() for clean state
+  - Proper heading hierarchy (h3)
+
+- EmptyState component (`packages/frontend/src/components/features/map/EmptyState.tsx`)
+  - Shows when no data available after loading
+  - Icon, title, and helpful message
+  - Full accessibility (role="status", aria-live="polite")
+  - Only shown when intentionally trying to load data
+
+Map Component Integration:
+
+- Captures loading/error states from layer hooks:
+  - useLocationLayers returns loading, error, locationCount
+  - useSettlementLayers returns loading, error, settlementCount
+  - useCurrentWorldTime returns loading (timeLoading)
+
+- Aggregate state computation:
+  - isLoading: timeLoading || locationsLoading || settlementsLoading
+  - hasError: locationsError || settlementsError (with fallback message)
+  - isEmpty: no data after loading completes (smart check)
+
+- Proper rendering priority order:
+  1. Loading state (isLoading)
+  2. Error state (!isLoading && hasError)
+  3. Empty state (isEmpty)
+  4. Normal map content
+
+- Empty state only shows when worldId or kingdomId provided:
+  - Prevents "no data" on initial map without IDs
+  - Boolean(worldId || kingdomId) check
+
+Testing:
+
+- LoadingSpinner.test.tsx: 11 tests
+  - Rendering with default/custom messages
+  - Custom className application
+  - Accessibility attributes
+  - Styling classes
+
+- ErrorMessage.test.tsx: 14 tests
+  - Rendering with default/custom title and message
+  - Conditional retry button rendering
+  - Retry callback invocation (single and multiple clicks)
+  - Accessibility attributes
+  - Styling classes
+
+- EmptyState.test.tsx: 10 tests
+  - Rendering with default/custom title and message
+  - Custom className application
+  - Accessibility attributes
+  - Styling classes
+
+All 330 frontend tests passing (35 new tests).
+
+**Design decisions:**
+
+- Consistent overlay styling across all three components:
+  - absolute inset-0 positioning
+  - z-10 to appear above map content
+  - White semi-transparent background (bg-opacity-75/90)
+  - Centered content with flexbox
+
+- Empty state smart detection:
+  - Only shows when intentionally loading data (worldId or kingdomId provided)
+  - Checks for zero counts after loading completes
+  - Prevents confusing empty state on initial render
+
+- Error retry mechanism:
+  - Uses window.location.reload() for clean state
+  - Simple and pragmatic for MVP
+  - Future enhancement: call refetch() on GraphQL hooks
+
+- Loading states don't block map interactivity:
+  - Overlay is semi-transparent
+  - Map remains visible underneath
+  - User can see viewport while loading
+
+- Accessibility excellence:
+  - LoadingSpinner: role="status", aria-live="polite" (informative)
+  - ErrorMessage: role="alert", aria-live="assertive" (urgent)
+  - EmptyState: role="status", aria-live="polite" (informative)
+  - All decorative icons marked aria-hidden="true"
+  - Proper heading hierarchy with h3
+  - Focus-visible styles on interactive elements
+
+**Code quality:**
+
+- All TypeScript type-check and ESLint checks pass (0 errors)
+- Code reviewed by specialized Code Reviewer subagent with approval
+- All 35 new tests passing with comprehensive coverage
+- TypeScript strict mode compliant (no any types)
+- All interfaces documented with JSDoc
+- Proper prop typing with optional parameters
+- Clean separation of concerns
+- Follows existing project patterns
+- Tailwind CSS utility classes for consistency
