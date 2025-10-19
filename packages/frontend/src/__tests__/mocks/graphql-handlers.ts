@@ -117,8 +117,13 @@ export const graphqlHandlers = [
         errors: [{ message: 'Settlement not found' }],
       });
     }
+    const deleted = {
+      id: settlement.id,
+      deletedAt: new Date().toISOString(),
+      version: settlement.version + 1,
+    };
     return HttpResponse.json({
-      data: { deleteSettlement: true },
+      data: { deleteSettlement: deleted },
     });
   }),
 
@@ -202,8 +207,13 @@ export const graphqlHandlers = [
         errors: [{ message: 'Structure not found' }],
       });
     }
+    const deleted = {
+      id: structure.id,
+      deletedAt: new Date().toISOString(),
+      version: structure.version + 1,
+    };
     return HttpResponse.json({
-      data: { deleteStructure: true },
+      data: { deleteStructure: deleted },
     });
   }),
 
