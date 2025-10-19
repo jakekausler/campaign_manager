@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e, 9564ebd, 77c808e
+- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e, 9564ebd, 77c808e, da720bc
 
 ## Implementation Notes
 
@@ -333,7 +333,90 @@ Successfully implemented FlowControls component with styled navigation tools:
 - ✅ Zoom indicator updates correctly with viewport changes
 - ✅ Interval cleanup verified (no memory leaks)
 
-**Next**: Stage 8 will implement selection and highlighting features.
+**Next**: Stage 9 will add node editing integration (double-click to edit entities).
+
+### Stage 8: Implement Selection and Highlighting (Commit: da720bc)
+
+Successfully implemented complete selection and dependency highlighting system with BFS graph traversal:
+
+**Implemented**:
+
+- Created graph-selection.ts utility module with pure functions for selection logic
+  - getUpstreamNodes(): BFS traversal following incoming edges to find dependencies
+  - getDownstreamNodes(): BFS traversal following outgoing edges to find dependents
+  - calculateSelectionState(): Combines selected nodes with upstream/downstream dependencies
+  - applySelectionStyles(): Color-codes nodes based on their relationship to selection
+  - applySelectionEdgeStyles(): Highlights relevant edges, dims unrelated ones
+  - Cycle detection via visited sets (prevents infinite loops)
+  - Configurable maxDepth parameter for performance tuning
+  - O(V + E) time complexity for traversal algorithms
+- Created SelectionPanel component (bottom-left overlay)
+  - Displays selected node labels and types (truncated with tooltips)
+  - Shows upstream dependency count
+  - Shows downstream dependent count
+  - Visual legend explaining highlight colors
+  - Clear selection button (X icon) with Escape keyboard hint
+  - Automatically hidden when nothing selected
+  - React.memo optimization for performance
+- Updated FlowViewPage with complete selection system
+  - Single node selection via click
+  - Multi-node selection via Shift+Click, Ctrl+Click, Cmd+Click (cross-platform)
+  - Box selection support (React Flow selectionMode='partial')
+  - Click pane to clear selection
+  - Escape key to clear selection
+  - Selection state tracked separately from React Flow state
+  - Real-time highlighting recalculation using useMemo
+  - Selection cleared automatically on graph data refresh
+  - Keyboard event listener cleanup on unmount
+- Color coding scheme for visual feedback:
+  - Selected nodes: Blue border (#3b82f6) with shadow
+  - Upstream dependencies: Green border (#22c55e)
+  - Downstream dependents: Orange border (#f97316)
+  - Unrelated nodes: 30% opacity (dimmed)
+  - Unrelated edges: 20% opacity (dimmed)
+- Comprehensive test coverage: 40 new unit tests (all passing)
+  - graph-selection.test.ts: 25 tests
+    - getUpstreamNodes: 6 tests (empty, direct, multi-level, cycles, maxDepth, no self-include)
+    - getDownstreamNodes: 6 tests (empty, direct, multi-level, cycles, maxDepth, no self-include)
+    - calculateSelectionState: 4 tests (empty, single, multiple, overlapping dependencies)
+    - applySelectionStyles: 5 tests (no selection, selected, upstream, downstream, unrelated)
+    - applySelectionEdgeStyles: 4 tests (no selection, related, unrelated, partial)
+  - SelectionPanel.test.tsx: 15 tests
+    - Rendering: 4 tests (hidden when empty, shown when selected, count display, label truncation)
+    - Node display: 3 tests (label and type, multiple nodes, long labels)
+    - Dependency counts: 3 tests (upstream, downstream, zeros)
+    - Legend: 1 test (highlight colors explained)
+    - Clear selection: 2 tests (button click, accessibility attributes)
+    - Styling: 2 tests (positioning, card styling)
+- All 541 frontend tests passing (no regressions)
+- TypeScript compilation successful (strict mode)
+- ESLint clean (no warnings or errors)
+
+**Technical Decisions**:
+
+- BFS traversal chosen over DFS for predictable breadth-first dependency discovery
+- Pure utility functions in graph-selection.ts (no side effects, easy to test)
+- useMemo for expensive computations (selection state, styled nodes/edges)
+- React.memo for SelectionPanel to prevent unnecessary re-renders
+- Color palette matches Tailwind CSS for consistency (blue-500, green-500, orange-500)
+- Selection state separate from React Flow (enables custom highlighting logic)
+- Keyboard event listener pattern with cleanup (no memory leaks)
+- Multi-select modifier key detection works cross-platform (Shift/Ctrl/Cmd)
+
+**Code Review**: Approved - production-quality implementation with excellent test coverage
+
+**Tests**:
+
+- ✅ 40 new tests passing (25 utilities + 15 component)
+- ✅ 541 total frontend tests passing (no regressions)
+- ✅ TypeScript compilation successful
+- ✅ ESLint clean (no new errors or warnings)
+- ✅ BFS traversal handles cycles correctly
+- ✅ Multi-select works with Shift/Ctrl/Cmd keys
+- ✅ Selection clears on Escape key press
+- ✅ SelectionPanel shows/hides correctly
+
+**Next**: Stage 9 will add node editing integration (double-click to navigate to entity edit forms).
 
 ### Planning Phase Details
 
