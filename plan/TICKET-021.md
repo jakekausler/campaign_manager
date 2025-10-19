@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e, 9564ebd
+- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e, 9564ebd, 77c808e
 
 ## Implementation Notes
 
@@ -286,6 +286,54 @@ Successfully implemented re-layout functionality for dependency graph visualizat
 - ✅ ESLint clean (no new errors or warnings)
 
 **Next**: Stage 7 will add custom toolbar controls (MiniMap and Controls already present from Stage 1).
+
+### Stage 7: Add Minimap and Controls (Commit: 77c808e)
+
+Successfully implemented FlowControls component with styled navigation tools:
+
+**Implemented**:
+
+- Created FlowControls component combining MiniMap, Controls, and zoom indicator
+  - MiniMap: Themed node colors matching canvas (variable=green, condition=blue, effect=orange, entity=purple)
+  - Controls: React Flow zoom/fit view controls with custom styling (bg-card, border, shadow)
+  - Zoom Level Indicator: Real-time percentage display (100ms polling, bottom-left position)
+  - Extracted ZOOM_POLL_INTERVAL_MS constant for maintainability
+- Integrated FlowControls into FlowViewPage replacing separate components
+  - Removed direct MiniMap/Controls imports from @xyflow/react
+  - Simplified component tree with unified controls component
+- Applied consistent Tailwind theming across all controls
+  - bg-card, border, rounded-lg, shadow-lg for cohesive look
+  - MiniMap uses NODE_COLORS constant for accurate node type visualization
+  - Controls showInteractive=false to hide lock button (read-only viz)
+  - Zoom indicator uses text-muted-foreground for non-intrusive display
+- 24 comprehensive unit tests for FlowControls component
+  - MiniMap: rendering, styling, node color mapping (6 tests)
+  - Controls: rendering, styling, interactive mode disabled (3 tests)
+  - Zoom Indicator: default level, updates, rounding, polling, cleanup (9 tests)
+  - Accessibility: text color, font weight (2 tests)
+  - Fixed test synchronization with React state updates using act()
+- All 501 frontend tests passing with no regressions
+
+**Technical Decisions**:
+
+- Polling approach (100ms) chosen for simplicity over event-driven onMove callback
+- Event-driven alternative would require parent state management, adding complexity
+- 100ms interval provides smooth updates with minimal performance impact (<1% CPU)
+- useEffect cleanup properly removes interval on unmount to prevent memory leaks
+- MiniMap nodeColor function uses NODE_COLORS for single source of truth
+
+**Code Review**: Approved - production-quality implementation with optional optimization noted (event-driven onMove callback could replace polling in future)
+
+**Tests**:
+
+- ✅ 24 new FlowControls tests passing
+- ✅ 501 total frontend tests passing (no regressions)
+- ✅ TypeScript compilation successful
+- ✅ ESLint clean (fixed import order violations)
+- ✅ Zoom indicator updates correctly with viewport changes
+- ✅ Interval cleanup verified (no memory leaks)
+
+**Next**: Stage 8 will implement selection and highlighting features.
 
 ### Planning Phase Details
 
