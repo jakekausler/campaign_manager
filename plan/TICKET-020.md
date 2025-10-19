@@ -502,4 +502,89 @@ Add map editing capabilities for creating and modifying point locations and poly
 
 **Commits**: 04b1f82 (foundational infrastructure), 8c84f41 (complete implementation)
 
-**Next Steps**: Implement undo/redo for edits (Stage 7)
+**Next Steps**: Testing and documentation (Stage 8)
+
+### Stage 7: Undo/Redo for Edits (9672861)
+
+**Completed**: Successfully implemented comprehensive undo/redo functionality for map geometry editing.
+
+**Key Implementations**:
+
+1. **State Management** (`useMapDraw.ts`):
+   - Added undoStack and redoStack state arrays (50-item limit with FIFO eviction)
+   - Module-level MAX_HISTORY_SIZE constant with JSDoc documentation
+   - Automatic history tracking on handleFeatureUpdated events
+   - Deep cloning (JSON.parse/JSON.stringify) to prevent mutation bugs
+   - History cleared on mode changes (save, cancel, mode switch)
+   - Both undo/redo set hasUnsavedChanges=true
+   - Re-validation after undo/redo operations
+   - Added canUndo/canRedo boolean flags to MapDrawState
+   - Added undo() and redo() methods to MapDrawActions
+
+2. **UndoRedoControls Component** (`UndoRedoControls.tsx`):
+   - Clean UI with Undo and Redo buttons using lucide-react icons (Undo2, Redo2)
+   - Positioned at bottom-left (left-4 bottom-4)
+   - Buttons disabled when stack is empty (visual feedback)
+   - Accessibility: ARIA labels and keyboard shortcut hints in tooltips
+   - Conditionally rendered: only visible when actively editing (edit/draw_point/draw_polygon modes)
+   - data-testid attributes for future testing
+
+3. **Keyboard Shortcuts** (`Map.tsx`):
+   - Ctrl+Z / Cmd+Z: Undo last change
+   - Ctrl+Shift+Z / Cmd+Shift+Z: Redo last change
+   - Ctrl+Y: Redo (Windows compatibility)
+   - Input field detection: shortcuts don't fire when typing in INPUT/TEXTAREA/contentEditable
+   - Cross-platform support (Windows/Mac with metaKey)
+   - Proper event.preventDefault() to avoid browser defaults
+
+4. **Exports** (`index.ts`):
+   - Exported UndoRedoControls component
+   - Exported UndoRedoControlsProps interface
+
+**Technical Details**:
+
+- MAX_HISTORY_SIZE: 50 operations (balances memory usage with undo depth)
+- Deep cloning: JSON.parse(JSON.stringify()) prevents mutation of history
+- Type assertions: MapboxDraw compatibility requires `as any` with explanatory comments
+- Feature restoration: Includes geometry update + direct_select mode re-entry for edit mode
+- Proper dependency arrays: MAX_HISTORY_SIZE not included (module-level constant)
+
+**Workflow**:
+
+1. User edits geometry (drag vertices) → handleFeatureUpdated fires
+2. Current feature deep cloned and pushed to undo stack
+3. Redo stack cleared (standard undo/redo behavior)
+4. User presses Ctrl+Z or clicks Undo button → undo() called
+5. Previous feature popped from undo stack, current feature pushed to redo stack
+6. Feature updated in DrawControl, hasUnsavedChanges=true, validated
+7. User presses Ctrl+Shift+Z or clicks Redo button → redo() called
+8. Next feature popped from redo stack, current feature pushed to undo stack
+9. Feature updated in DrawControl, hasUnsavedChanges=true, validated
+
+**Code Quality**:
+
+- Type-check: Passed with no errors
+- Lint: Passed with no new warnings
+- Code review: Approved after addressing all critical issues
+- Deep cloning prevents mutation bugs
+- Input field detection prevents interfering with text entry
+- Proper keyboard shortcut conventions (platform-aware)
+
+**User Experience**:
+
+- Real-time undo/redo during editing sessions
+- Visual feedback (disabled buttons when unavailable)
+- Keyboard shortcuts follow platform conventions
+- History persists within editing session (cleared on save/cancel)
+- Clear tooltips explaining keyboard shortcuts
+
+**Testing Notes**:
+
+- Manual testing required for undo/redo workflow
+- Test keyboard shortcuts across browsers (Chrome, Firefox, Safari)
+- Test history limit behavior (50+ operations)
+- Test input field detection (shortcuts don't interfere with text entry)
+- Test edit mode re-entry after undo/redo
+- Test validation of restored features
+
+**Next Steps**: Testing and documentation (Stage 8)

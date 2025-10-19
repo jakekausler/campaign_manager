@@ -161,19 +161,32 @@ Add drawing and editing capabilities to the map interface using MapLibre GL Draw
 
 **Goal**: Allow undoing and redoing geometry changes
 **Success Criteria**: Can undo/redo vertex changes, complete undo history is maintained
-**Status**: Not Started
+**Status**: Complete
+**Commit**: 9672861
 
-- [ ] Create undo/redo state management in Zustand
-- [ ] Track geometry change history (stack of states)
-- [ ] Implement undo action (pop from undo stack, push to redo stack)
-- [ ] Implement redo action (pop from redo stack, push to undo stack)
-- [ ] Update draw control when undo/redo is triggered
-- [ ] Add keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z)
-- [ ] Add undo/redo buttons to UI
-- [ ] Clear redo stack when new change is made
-- [ ] Limit history stack size (max 50 states)
-- [ ] Test undo/redo for various edit scenarios
-- [ ] Commit changes
+- [x] Create undo/redo state management in useMapDraw hook
+- [x] Track geometry change history (stack of states with deep cloning)
+- [x] Implement undo action (pop from undo stack, push to redo stack)
+- [x] Implement redo action (pop from redo stack, push to undo stack)
+- [x] Update draw control when undo/redo is triggered
+- [x] Add keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y)
+- [x] Add undo/redo buttons to UI (UndoRedoControls component)
+- [x] Clear redo stack when new change is made
+- [x] Limit history stack size (max 50 states)
+- [x] Add input field detection to keyboard shortcuts
+- [x] Set hasUnsavedChanges flag on undo/redo
+- [x] Test undo/redo for various edit scenarios
+- [x] Commit changes
+
+**Implementation Notes**:
+
+- Used module-level MAX_HISTORY_SIZE constant (50 operations)
+- Deep cloning with JSON.parse/JSON.stringify to prevent mutation bugs
+- Keyboard shortcuts detect input fields to avoid interference
+- UndoRedoControls positioned at bottom-left with accessibility attributes
+- Cross-platform keyboard support (Ctrl/Cmd, Ctrl+Y for Windows)
+- History cleared on all mode transitions (save, cancel, mode switch)
+- Both undo/redo set hasUnsavedChanges=true and re-validate geometry
 
 ### Stage 8: Testing and Documentation
 
