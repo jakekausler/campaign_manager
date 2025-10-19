@@ -6,7 +6,7 @@
  */
 
 import type { Map as MaplibreMap } from 'maplibre-gl';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { useStructuresForMap } from '@/services/api/hooks';
 
@@ -34,21 +34,17 @@ export function useStructureLayers(
   const { structures, loading, error } = useStructuresForMap(settlementId, { skip: !enabled });
   const { addDataLayer } = useMapLayers(map);
 
-  useEffect(() => {
-    if (!map || !enabled) {
-      return;
-    }
-
+  // Memoize filtered and processed GeoJSON features
+  const structureFeatures = useMemo(() => {
     if (loading || error || !structures || structures.length === 0) {
-      // Don't render anything if loading, error, or no data
-      return;
+      return [];
     }
 
     // Filter structures by time
     const filteredStructures = filterByTime(structures, filterTime);
 
     // Create GeoJSON features for structures
-    const structureFeatures = filterValidFeatures(
+    return filterValidFeatures(
       filteredStructures.map((structure) => {
         // Structure must have a settlement with a location and valid geometry
         if (
@@ -92,6 +88,12 @@ export function useStructureLayers(
         });
       })
     );
+  }, [structures, loading, error, filterTime]);
+
+  useEffect(() => {
+    if (!map || !enabled) {
+      return;
+    }
 
     // Add/update structure layer
     if (structureFeatures.length > 0) {
@@ -101,7 +103,7 @@ export function useStructureLayers(
       };
       addDataLayer('structure', structureGeoJSON);
     }
-  }, [map, structures, loading, error, enabled, addDataLayer, filterTime]);
+  }, [map, enabled, structureFeatures, addDataLayer]);
 
   return {
     loading,

@@ -1,9 +1,16 @@
+import { memo } from 'react';
+
 import type { LocationPopupData, SettlementPopupData, StructurePopupData } from './types';
 
 /**
  * Popup content for Location entities
+ * Memoized to prevent unnecessary re-renders.
  */
-export function LocationPopupContent({ data }: { data: LocationPopupData }) {
+export const LocationPopupContent = memo(function LocationPopupContent({
+  data,
+}: {
+  data: LocationPopupData;
+}) {
   return (
     <div className="p-3 min-w-[200px]">
       <h3 className="font-semibold text-lg mb-2">{data.name}</h3>
@@ -23,12 +30,17 @@ export function LocationPopupContent({ data }: { data: LocationPopupData }) {
       </div>
     </div>
   );
-}
+});
 
 /**
  * Popup content for Settlement entities
+ * Memoized to prevent unnecessary re-renders.
  */
-export function SettlementPopupContent({ data }: { data: SettlementPopupData }) {
+export const SettlementPopupContent = memo(function SettlementPopupContent({
+  data,
+}: {
+  data: SettlementPopupData;
+}) {
   return (
     <div className="p-3 min-w-[200px]">
       <h3 className="font-semibold text-lg mb-2">{data.name}</h3>
@@ -60,12 +72,17 @@ export function SettlementPopupContent({ data }: { data: SettlementPopupData }) 
       </div>
     </div>
   );
-}
+});
 
 /**
  * Popup content for Structure entities
+ * Memoized to prevent unnecessary re-renders.
  */
-export function StructurePopupContent({ data }: { data: StructurePopupData }) {
+export const StructurePopupContent = memo(function StructurePopupContent({
+  data,
+}: {
+  data: StructurePopupData;
+}) {
   return (
     <div className="p-3 min-w-[200px]">
       <h3 className="font-semibold text-lg mb-2">{data.name}</h3>
@@ -100,4 +117,4 @@ export function StructurePopupContent({ data }: { data: StructurePopupData }) {
       </div>
     </div>
   );
-}
+});

@@ -5,6 +5,8 @@
  * Positioned to cover the map while maintaining interactivity where possible.
  */
 
+import { memo } from 'react';
+
 interface LoadingSpinnerProps {
   /**
    * Optional message to display below spinner
@@ -22,8 +24,9 @@ interface LoadingSpinnerProps {
  *
  * Shows an animated spinner with optional message.
  * Used to indicate loading state for map data.
+ * Memoized to prevent unnecessary re-renders.
  */
-export function LoadingSpinner({
+export const LoadingSpinner = memo(function LoadingSpinner({
   message = 'Loading map data...',
   className = '',
 }: LoadingSpinnerProps) {
@@ -46,4 +49,4 @@ export function LoadingSpinner({
       </div>
     </div>
   );
-}
+});

@@ -5,7 +5,7 @@
  * Allows users to scrub through time to see entities as they existed at different points.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 
 /**
  * Props for TimeScrubber component
@@ -62,6 +62,8 @@ function formatDisplayDate(date: Date | null): string {
  * Provides a slider control for scrubbing through world time.
  * Shows current selected time and allows resetting to present.
  *
+ * Memoized to prevent unnecessary re-renders when parent Map component updates.
+ *
  * @example
  * ```tsx
  * <TimeScrubber
@@ -72,7 +74,7 @@ function formatDisplayDate(date: Date | null): string {
  * />
  * ```
  */
-export function TimeScrubber({
+export const TimeScrubber = memo(function TimeScrubber({
   currentTime,
   selectedTime,
   onTimeChange,
@@ -225,4 +227,4 @@ export function TimeScrubber({
       `}</style>
     </div>
   );
-}
+});

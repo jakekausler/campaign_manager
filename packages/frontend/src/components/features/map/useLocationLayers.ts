@@ -6,7 +6,7 @@
  */
 
 import type { Map as MaplibreMap } from 'maplibre-gl';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { useLocationsByWorld } from '@/services/api/hooks';
 
@@ -35,14 +35,10 @@ export function useLocationLayers(
   const { locations, loading, error } = useLocationsByWorld(worldId, { skip: !enabled });
   const { addDataLayer } = useMapLayers(map);
 
-  useEffect(() => {
-    if (!map || !enabled) {
-      return;
-    }
-
+  // Memoize filtered and processed GeoJSON features
+  const { pointFeatures, regionFeatures } = useMemo(() => {
     if (loading || error || !locations || locations.length === 0) {
-      // Don't render anything if loading, error, or no data
-      return;
+      return { pointFeatures: [], regionFeatures: [] };
     }
 
     // Filter locations by time
@@ -53,7 +49,7 @@ export function useLocationLayers(
     const regionLocations = filteredLocations.filter((loc) => loc.type === 'region');
 
     // Create GeoJSON features for point locations
-    const pointFeatures = filterValidFeatures(
+    const points = filterValidFeatures(
       pointLocations.map((location) => {
         if (!location.geojson) {
           return null;
@@ -82,7 +78,7 @@ export function useLocationLayers(
     );
 
     // Create GeoJSON features for region locations
-    const regionFeatures = filterValidFeatures(
+    const regions = filterValidFeatures(
       regionLocations.map((location) => {
         if (!location.geojson) {
           return null;
@@ -119,6 +115,14 @@ export function useLocationLayers(
       })
     );
 
+    return { pointFeatures: points, regionFeatures: regions };
+  }, [locations, loading, error, filterTime]);
+
+  useEffect(() => {
+    if (!map || !enabled) {
+      return;
+    }
+
     // Add/update point layer
     if (pointFeatures.length > 0) {
       const pointGeoJSON = {
@@ -136,7 +140,7 @@ export function useLocationLayers(
       };
       addDataLayer('location-region', regionGeoJSON);
     }
-  }, [map, locations, loading, error, enabled, addDataLayer, filterTime]);
+  }, [map, enabled, pointFeatures, regionFeatures, addDataLayer]);
 
   return {
     loading,

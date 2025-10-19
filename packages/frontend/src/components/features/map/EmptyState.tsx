@@ -5,6 +5,8 @@
  * Provides helpful messaging to guide users.
  */
 
+import { memo } from 'react';
+
 interface EmptyStateProps {
   /**
    * Empty state title
@@ -27,8 +29,9 @@ interface EmptyStateProps {
  *
  * Shows an empty state with icon and message.
  * Used to indicate no data available for map.
+ * Memoized to prevent unnecessary re-renders.
  */
-export function EmptyState({
+export const EmptyState = memo(function EmptyState({
   title = 'No Data Available',
   message,
   className = '',
@@ -72,4 +75,4 @@ export function EmptyState({
       </div>
     </div>
   );
-}
+});

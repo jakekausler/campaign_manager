@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 import type { EntityType, LayerVisibility } from './types';
 
 interface LayerControlsProps {
@@ -51,8 +53,14 @@ const LAYER_CONFIGS: Record<EntityType, { label: string; color: string; descript
  * - Location Regions (blue)
  * - Settlements (green)
  * - Structures (amber)
+ *
+ * Memoized to prevent unnecessary re-renders when parent Map component updates.
  */
-export function LayerControls({ layerVisibility, onToggle, className = '' }: LayerControlsProps) {
+export const LayerControls = memo(function LayerControls({
+  layerVisibility,
+  onToggle,
+  className = '',
+}: LayerControlsProps) {
   const layers: EntityType[] = ['location-point', 'location-region', 'settlement', 'structure'];
 
   return (
@@ -92,4 +100,4 @@ export function LayerControls({ layerVisibility, onToggle, className = '' }: Lay
       </div>
     </div>
   );
-}
+});

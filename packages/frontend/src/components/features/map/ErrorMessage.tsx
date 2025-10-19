@@ -5,6 +5,8 @@
  * Provides retry functionality and clear error messaging.
  */
 
+import { memo } from 'react';
+
 interface ErrorMessageProps {
   /**
    * Error title
@@ -32,8 +34,9 @@ interface ErrorMessageProps {
  *
  * Shows an error state with icon, message, and optional retry button.
  * Used to indicate failed data loading for map.
+ * Memoized to prevent unnecessary re-renders.
  */
-export function ErrorMessage({
+export const ErrorMessage = memo(function ErrorMessage({
   title = 'Error Loading Data',
   message,
   onRetry,
@@ -89,4 +92,4 @@ export function ErrorMessage({
       </div>
     </div>
   );
-}
+});

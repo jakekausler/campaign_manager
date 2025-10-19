@@ -6,7 +6,7 @@
  */
 
 import type { Map as MaplibreMap } from 'maplibre-gl';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { useSettlementsForMap } from '@/services/api/hooks';
 
@@ -34,21 +34,17 @@ export function useSettlementLayers(
   const { settlements, loading, error } = useSettlementsForMap(kingdomId, { skip: !enabled });
   const { addDataLayer } = useMapLayers(map);
 
-  useEffect(() => {
-    if (!map || !enabled) {
-      return;
-    }
-
+  // Memoize filtered and processed GeoJSON features
+  const settlementFeatures = useMemo(() => {
     if (loading || error || !settlements || settlements.length === 0) {
-      // Don't render anything if loading, error, or no data
-      return;
+      return [];
     }
 
     // Filter settlements by time
     const filteredSettlements = filterByTime(settlements, filterTime);
 
     // Create GeoJSON features for settlements
-    const settlementFeatures = filterValidFeatures(
+    return filterValidFeatures(
       filteredSettlements.map((settlement) => {
         // Settlement must have a location with valid geometry
         if (!settlement.location || !settlement.location.geojson) {
@@ -78,6 +74,12 @@ export function useSettlementLayers(
         });
       })
     );
+  }, [settlements, loading, error, filterTime]);
+
+  useEffect(() => {
+    if (!map || !enabled) {
+      return;
+    }
 
     // Add/update settlement layer
     if (settlementFeatures.length > 0) {
@@ -87,7 +89,7 @@ export function useSettlementLayers(
       };
       addDataLayer('settlement', settlementGeoJSON);
     }
-  }, [map, settlements, loading, error, enabled, addDataLayer, filterTime]);
+  }, [map, enabled, settlementFeatures, addDataLayer]);
 
   return {
     loading,
