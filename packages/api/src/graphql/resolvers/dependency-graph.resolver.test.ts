@@ -6,6 +6,7 @@
 import type { AuthenticatedUser } from '../context/graphql-context';
 import type { DependencyGraphService } from '../services/dependency-graph.service';
 import type { DependencyNode } from '../types/dependency-graph.type';
+import { DependencyNodeType, DependencyEdgeType } from '../types/dependency-graph.type';
 import { DependencyGraph } from '../utils/dependency-graph';
 
 import { DependencyGraphResolver } from './dependency-graph.resolver';
@@ -41,20 +42,20 @@ describe('DependencyGraphResolver', () => {
     mockGraph = new DependencyGraph();
     mockGraph.addNode({
       id: 'VARIABLE:var1',
-      type: 'VARIABLE',
+      type: DependencyNodeType.VARIABLE,
       entityId: 'var1',
       label: 'Variable 1',
     });
     mockGraph.addNode({
       id: 'CONDITION:cond1',
-      type: 'CONDITION',
+      type: DependencyNodeType.CONDITION,
       entityId: 'cond1',
       label: 'Condition 1',
     });
     mockGraph.addEdge({
       fromId: 'CONDITION:cond1',
       toId: 'VARIABLE:var1',
-      type: 'READS',
+      type: DependencyEdgeType.READS,
     });
   });
 
@@ -110,11 +111,27 @@ describe('DependencyGraphResolver', () => {
 
     it('should calculate correct stats for graph with multiple node types', async () => {
       const complexGraph = new DependencyGraph();
-      complexGraph.addNode({ id: 'VARIABLE:v1', type: 'VARIABLE', entityId: 'v1' });
-      complexGraph.addNode({ id: 'VARIABLE:v2', type: 'VARIABLE', entityId: 'v2' });
-      complexGraph.addNode({ id: 'CONDITION:c1', type: 'CONDITION', entityId: 'c1' });
-      complexGraph.addNode({ id: 'EFFECT:e1', type: 'EFFECT', entityId: 'e1' });
-      complexGraph.addNode({ id: 'ENTITY:ent1', type: 'ENTITY', entityId: 'ent1' });
+      complexGraph.addNode({
+        id: 'VARIABLE:v1',
+        type: DependencyNodeType.VARIABLE,
+        entityId: 'v1',
+      });
+      complexGraph.addNode({
+        id: 'VARIABLE:v2',
+        type: DependencyNodeType.VARIABLE,
+        entityId: 'v2',
+      });
+      complexGraph.addNode({
+        id: 'CONDITION:c1',
+        type: DependencyNodeType.CONDITION,
+        entityId: 'c1',
+      });
+      complexGraph.addNode({ id: 'EFFECT:e1', type: DependencyNodeType.EFFECT, entityId: 'e1' });
+      complexGraph.addNode({
+        id: 'ENTITY:ent1',
+        type: DependencyNodeType.ENTITY,
+        entityId: 'ent1',
+      });
 
       mockDependencyGraphService.getGraph.mockResolvedValue(complexGraph);
 
@@ -130,8 +147,18 @@ describe('DependencyGraphResolver', () => {
   describe('getNodeDependencies', () => {
     it('should return all nodes that a specific node depends on', async () => {
       const mockDependencies: DependencyNode[] = [
-        { id: 'VARIABLE:var1', type: 'VARIABLE', entityId: 'var1', label: 'Variable 1' },
-        { id: 'VARIABLE:var2', type: 'VARIABLE', entityId: 'var2', label: 'Variable 2' },
+        {
+          id: 'VARIABLE:var1',
+          type: DependencyNodeType.VARIABLE,
+          entityId: 'var1',
+          label: 'Variable 1',
+        },
+        {
+          id: 'VARIABLE:var2',
+          type: DependencyNodeType.VARIABLE,
+          entityId: 'var2',
+          label: 'Variable 2',
+        },
       ];
 
       mockDependencyGraphService.getDependenciesOf.mockResolvedValue(mockDependencies);
@@ -188,9 +215,19 @@ describe('DependencyGraphResolver', () => {
   describe('getNodeDependents', () => {
     it('should return all nodes that depend on a specific node', async () => {
       const mockDependents: DependencyNode[] = [
-        { id: 'CONDITION:cond1', type: 'CONDITION', entityId: 'cond1', label: 'Condition 1' },
-        { id: 'CONDITION:cond2', type: 'CONDITION', entityId: 'cond2', label: 'Condition 2' },
-        { id: 'EFFECT:eff1', type: 'EFFECT', entityId: 'eff1', label: 'Effect 1' },
+        {
+          id: 'CONDITION:cond1',
+          type: DependencyNodeType.CONDITION,
+          entityId: 'cond1',
+          label: 'Condition 1',
+        },
+        {
+          id: 'CONDITION:cond2',
+          type: DependencyNodeType.CONDITION,
+          entityId: 'cond2',
+          label: 'Condition 2',
+        },
+        { id: 'EFFECT:eff1', type: DependencyNodeType.EFFECT, entityId: 'eff1', label: 'Effect 1' },
       ];
 
       mockDependencyGraphService.getDependents.mockResolvedValue(mockDependents);
@@ -242,8 +279,9 @@ describe('DependencyGraphResolver', () => {
   describe('validateDependencyGraph', () => {
     it('should return no cycles for valid DAG', async () => {
       const mockCycleResult = {
-        hasCycle: false,
+        hasCycles: false,
         cycles: [],
+        cycleCount: 0,
       };
 
       mockDependencyGraphService.validateNoCycles.mockResolvedValue(mockCycleResult);
@@ -262,11 +300,12 @@ describe('DependencyGraphResolver', () => {
 
     it('should detect and return cycle information', async () => {
       const mockCycleResult = {
-        hasCycle: true,
+        hasCycles: true,
         cycles: [
           ['CONDITION:cond1', 'VARIABLE:var1', 'CONDITION:cond2'],
           ['EFFECT:eff1', 'VARIABLE:var2', 'EFFECT:eff2'],
         ],
+        cycleCount: 2,
       };
 
       mockDependencyGraphService.validateNoCycles.mockResolvedValue(mockCycleResult);
@@ -287,8 +326,9 @@ describe('DependencyGraphResolver', () => {
 
     it('should generate descriptive cycle descriptions', async () => {
       const mockCycleResult = {
-        hasCycle: true,
+        hasCycles: true,
         cycles: [['NODE:a', 'NODE:b', 'NODE:c']],
+        cycleCount: 1,
       };
 
       mockDependencyGraphService.validateNoCycles.mockResolvedValue(mockCycleResult);
@@ -302,8 +342,9 @@ describe('DependencyGraphResolver', () => {
 
     it('should work with custom branch', async () => {
       mockDependencyGraphService.validateNoCycles.mockResolvedValue({
-        hasCycle: false,
+        hasCycles: false,
         cycles: [],
+        cycleCount: 0,
       });
 
       await resolver.validateDependencyGraph('campaign-abc', 'test-branch', mockUser);
