@@ -5,7 +5,10 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 import { useCurrentWorldTime } from '@/services/api/hooks';
 
+import { EmptyState } from './EmptyState';
+import { ErrorMessage } from './ErrorMessage';
 import { LayerControls } from './LayerControls';
+import { LoadingSpinner } from './LoadingSpinner';
 import { TimeScrubber } from './TimeScrubber';
 import type {
   LocationPointProperties,
@@ -120,10 +123,18 @@ export function Map({
   const { layerVisibility, toggleLayerVisibility } = useMapLayers(map.current);
 
   // Load location layers if worldId is provided
-  useLocationLayers(map.current, worldId ?? '', Boolean(worldId), filterTime);
+  const {
+    loading: locationsLoading,
+    error: locationsError,
+    locationCount,
+  } = useLocationLayers(map.current, worldId ?? '', Boolean(worldId), filterTime);
 
   // Load settlement layers if kingdomId is provided
-  useSettlementLayers(map.current, kingdomId ?? '', Boolean(kingdomId), filterTime);
+  const {
+    loading: settlementsLoading,
+    error: settlementsError,
+    settlementCount,
+  } = useSettlementLayers(map.current, kingdomId ?? '', Boolean(kingdomId), filterTime);
 
   // Entity popup management
   const { showPopup } = useEntityPopup(map.current);
@@ -291,6 +302,22 @@ export function Map({
     handleStructureClick,
   ]);
 
+  // Determine overall loading state
+  const isLoading = timeLoading || locationsLoading || settlementsLoading;
+
+  // Determine overall error state
+  const hasError = locationsError || settlementsError;
+  const errorMessage =
+    locationsError?.message || settlementsError?.message || 'Failed to load map data';
+
+  // Determine empty state (no data available after loading completes)
+  const isEmpty =
+    !isLoading &&
+    !hasError &&
+    Boolean(worldId || kingdomId) && // Only show empty if we're trying to load data
+    locationCount === 0 &&
+    settlementCount === 0;
+
   // Update viewport state from map
   const updateViewport = useCallback(() => {
     if (!map.current) return;
@@ -397,6 +424,26 @@ export function Map({
           selectedTime={selectedTime}
           onTimeChange={setSelectedTime}
           loading={timeLoading}
+        />
+      )}
+
+      {/* Loading state */}
+      {isLoading && <LoadingSpinner message="Loading map data..." />}
+
+      {/* Error state */}
+      {!isLoading && hasError && (
+        <ErrorMessage
+          title="Error Loading Map Data"
+          message={errorMessage}
+          onRetry={() => window.location.reload()}
+        />
+      )}
+
+      {/* Empty state */}
+      {isEmpty && (
+        <EmptyState
+          title="No Map Data Available"
+          message="There are no locations or settlements to display on the map."
         />
       )}
 
