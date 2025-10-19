@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
 /**
  * GeoJSON Feature type for draw events
  */
-interface DrawFeature {
+export interface DrawFeature {
   type: 'Feature';
   geometry: {
     type: string;
@@ -77,6 +77,11 @@ export interface DrawControlProps {
    * Callback when a feature is deleted
    */
   onDelete?: (features: DrawFeature[]) => void;
+
+  /**
+   * Callback to receive the MapboxDraw instance after initialization
+   */
+  onDrawReady?: (draw: MapboxDraw) => void;
 }
 
 /**
@@ -114,6 +119,7 @@ export function DrawControl({
   onCreate,
   onUpdate,
   onDelete,
+  onDrawReady,
 }: DrawControlProps) {
   const drawRef = useRef<MapboxDraw | null>(null);
 
@@ -132,6 +138,11 @@ export function DrawControl({
     // Add control to map
     // Type assertion needed due to incompatibility between maplibre-gl-draw and maplibre-gl Map types
     map.addControl(draw as unknown as IControl, position);
+
+    // Notify parent component that draw is ready
+    if (onDrawReady) {
+      onDrawReady(draw);
+    }
 
     // Set up event listeners
     const handleCreate = (e: DrawCreateEvent) => {
@@ -168,7 +179,7 @@ export function DrawControl({
         drawRef.current = null;
       }
     };
-  }, [map, position, controls, styles, onCreate, onUpdate, onDelete]);
+  }, [map, position, controls, styles, onCreate, onUpdate, onDelete, onDrawReady]);
 
   // This component doesn't render anything itself - it just adds controls to the map
   return null;

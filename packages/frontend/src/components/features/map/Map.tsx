@@ -1,11 +1,13 @@
 import { Map as MapLibre, NavigationControl } from 'maplibre-gl';
 import type { MapLayerMouseEvent } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import type MapboxDraw from 'maplibre-gl-draw';
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 import { useCurrentWorldTime } from '@/services/api/hooks';
 
 import { DrawControl } from './DrawControl';
+import { DrawToolbar } from './DrawToolbar';
 import { EmptyState } from './EmptyState';
 import { ErrorMessage } from './ErrorMessage';
 import { LayerControls } from './LayerControls';
@@ -21,6 +23,8 @@ import type {
 } from './types';
 import { useEntityPopup } from './useEntityPopup';
 import { useLocationLayers } from './useLocationLayers';
+import { useMapDraw } from './useMapDraw';
+import type { DrawFeature } from './useMapDraw';
 import { useMapLayers } from './useMapLayers';
 import { useSettlementLayers } from './useSettlementLayers';
 
@@ -118,6 +122,38 @@ export function Map({
 
   // Selected time state (null means "current time")
   const [selectedTime, setSelectedTime] = useState<Date | null>(null);
+
+  // Drawing state
+  const [drawInstance, setDrawInstance] = useState<MapboxDraw | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Map drawing hook
+  const {
+    state: drawState,
+    actions: drawActions,
+    handleFeatureCreated,
+    handleFeatureUpdated,
+  } = useMapDraw(drawInstance, {
+    onFeatureCreated: (feature: DrawFeature) => {
+      // Feature created - will be handled in later stages
+      void feature;
+    },
+    onFeatureUpdated: (feature: DrawFeature) => {
+      // Feature updated - will be handled in later stages
+      void feature;
+    },
+    onSave: async (feature: DrawFeature) => {
+      setIsSaving(true);
+      try {
+        // TODO: Implement actual save logic in later stages
+        // For now, simulate a save operation
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        void feature;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+  });
 
   // When current time loads, initialize selectedTime to current time
   useEffect(() => {
@@ -412,20 +448,40 @@ export function Map({
 
       {/* Drawing controls (conditionally rendered) */}
       {enableDrawing && (
-        <DrawControl
-          map={map.current}
-          position="top-left"
-          styles={drawStyles}
-          onCreate={(feature) => {
-            console.log('Feature created:', feature);
-          }}
-          onUpdate={(features) => {
-            console.log('Features updated:', features);
-          }}
-          onDelete={(features) => {
-            console.log('Features deleted:', features);
-          }}
-        />
+        <>
+          <DrawControl
+            map={map.current}
+            position="top-left"
+            styles={drawStyles}
+            onCreate={handleFeatureCreated}
+            onUpdate={(features) => {
+              if (features.length > 0) {
+                handleFeatureUpdated(features[0]);
+              }
+            }}
+            onDelete={(features) => {
+              void features;
+              drawActions.clearFeature();
+            }}
+            onDrawReady={setDrawInstance}
+          />
+          <DrawToolbar
+            mode={drawState.mode}
+            hasUnsavedChanges={drawState.hasUnsavedChanges}
+            onStartDrawPoint={drawActions.startDrawPoint}
+            onStartDrawPolygon={drawActions.startDrawPolygon}
+            onSave={async () => {
+              try {
+                await drawActions.saveFeature();
+              } catch (error) {
+                // TODO: Show user-friendly error message in Stage 6 (Save/Cancel Workflow)
+                console.error('Failed to save feature:', error);
+              }
+            }}
+            onCancel={drawActions.cancelDraw}
+            isSaving={isSaving}
+          />
+        </>
       )}
 
       {/* Reset viewport button */}
