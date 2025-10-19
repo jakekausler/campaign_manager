@@ -9,6 +9,7 @@ import { ProtectedRoute } from './ProtectedRoute';
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const MapPage = lazy(() => import('@/pages/MapPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 // Loading fallback component
@@ -55,6 +56,16 @@ export const router = createBrowserRouter([
           <ProtectedRoute>
             <LazyPage>
               <DashboardPage />
+            </LazyPage>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'map',
+        element: (
+          <ProtectedRoute>
+            <LazyPage>
+              <MapPage />
             </LazyPage>
           </ProtectedRoute>
         ),
