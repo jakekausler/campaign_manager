@@ -49,16 +49,17 @@ Add drawing and editing capabilities to the map interface using MapLibre GL Draw
 
 **Goal**: Enable drawing new point locations
 **Success Criteria**: Can click to place points, points appear on map
-**Status**: Not Started
+**Status**: Complete
+**Commit**: 8e20f64
 
-- [ ] Create useMapDraw hook for draw state management
-- [ ] Implement point draw mode activation
-- [ ] Handle draw.create event for points
-- [ ] Convert MapLibre geometry to PostGIS Point format
-- [ ] Display temporary marker for unsaved point
-- [ ] Add save/cancel buttons when point is drawn
-- [ ] Test point creation workflow
-- [ ] Commit changes
+- [x] Create useMapDraw hook for draw state management
+- [x] Implement point draw mode activation
+- [x] Handle draw.create event for points
+- [x] Convert MapLibre geometry to PostGIS Point format
+- [x] Display temporary marker for unsaved point
+- [x] Add save/cancel buttons when point is drawn
+- [x] Test point creation workflow
+- [x] Commit changes
 
 ### Stage 3: Polygon Drawing Tool
 

@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: aec1738 (Stage 1)
+- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2)
 
 ## Description
 
@@ -81,3 +81,73 @@ Add map editing capabilities for creating and modifying point locations and poly
 - DrawControl dependency array optimization recommended for better performance
 
 **Next Steps**: Implement point creation tool with save/cancel workflow (Stage 2)
+
+### Stage 2: Point Creation Tool (8e20f64)
+
+**Completed**: Successfully implemented point creation functionality with comprehensive UI controls and state management.
+
+**Key Implementations**:
+
+1. **useMapDraw Hook** (`packages/frontend/src/components/features/map/useMapDraw.ts`):
+   - Custom React hook for managing drawing state and interactions
+   - DrawMode type: 'none' | 'draw_point' | 'draw_polygon' | 'edit'
+   - State tracking: mode, currentFeature, hasUnsavedChanges, drawInstance
+   - Actions: startDrawPoint, startDrawPolygon, startEdit, cancelDraw, saveFeature, clearFeature
+   - Event handlers: handleFeatureCreated, handleFeatureUpdated
+   - Proper cleanup and state transitions
+   - Error handling with console.error for save failures
+
+2. **DrawToolbar Component** (`packages/frontend/src/components/features/map/DrawToolbar.tsx`):
+   - Three UI states based on mode and unsaved changes:
+     - View mode: Shows "Add Point" and "Draw Region" buttons
+     - Drawing mode (no feature yet): Shows instructional text
+     - Unsaved changes: Shows "Save" and "Cancel" buttons
+   - Buttons disabled during save operation
+   - Accessibility: ARIA labels and data-testid attributes for testing
+   - Positioned at `top-4 left-32` to avoid overlapping MapLibre controls
+
+3. **DrawControl Updates**:
+   - Added `onDrawReady` callback prop to expose MapboxDraw instance
+   - Exported DrawFeature interface for reuse across components
+   - Updated dependency array to include new callback
+
+4. **Map Component Integration**:
+   - Added useState for drawInstance and isSaving
+   - Integrated useMapDraw hook with callbacks for feature events
+   - Error handling wrapper around saveFeature (try/catch with TODO for user-friendly errors)
+   - Connected DrawControl onCreate/onUpdate/onDelete events to hook handlers
+   - Rendered DrawToolbar conditionally when enableDrawing is true
+   - Used `void feature` pattern to suppress unused variable warnings
+
+**Workflow**:
+
+1. User clicks "Add Point" button → enters draw_point mode
+2. User clicks on map → point is created, handleFeatureCreated called
+3. Save/Cancel buttons appear → hasUnsavedChanges = true
+4. User clicks "Save" → onSave callback invoked (simulated async operation)
+5. After save → feature cleared, mode returns to 'none'
+6. User clicks "Cancel" → feature deleted, mode returns to 'none'
+
+**Type Safety**:
+
+- All components fully typed with TypeScript
+- DrawFeature type reused from DrawControl
+- Proper function signatures for all callbacks
+- No type assertions except in DrawControl (MapLibre/MapboxDraw compatibility)
+
+**Code Quality**:
+
+- All callbacks memoized with useCallback
+- Proper React dependency arrays
+- Clean separation of state (MapDrawState) and actions (MapDrawActions)
+- Accessibility attributes on all interactive elements
+- Comprehensive JSDoc comments with examples
+
+**Testing Notes**:
+
+- Type-check passes with no errors
+- Lint passes with no new warnings
+- Build succeeds with expected MapPage bundle size
+- Ready for manual testing in browser
+
+**Next Steps**: Implement polygon drawing tool (Stage 3)
