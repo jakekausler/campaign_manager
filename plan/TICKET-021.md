@@ -131,6 +131,62 @@ Successfully implemented complete transformation pipeline with auto-layout algor
 
 **Next**: Stage 4 will create custom node components for each entity type (VariableNode, ConditionNode, EffectNode, EntityNode).
 
+### Stage 4: Create Custom Node Components (Commit: 8b2c7a4)
+
+Successfully implemented custom node components for all dependency graph entity types:
+
+**Implemented**:
+
+- Created CustomNode base component with shared styling and behavior
+  - Hover effects (scale-105 transform) and selection states (blue ring)
+  - Connection handles (top=target, bottom=source) for edges
+  - Icon + label + node type display with text truncation
+  - Consistent 180x60px sizing with proper ARIA labels
+  - Memoized with React.memo for performance
+- Created 4 specialized node components:
+  - VariableNode: Green (#22c55e) with Database icon
+  - ConditionNode: Blue (#3b82f6) with GitBranch icon
+  - EffectNode: Orange (#f97316) with Zap icon
+  - EntityNode: Purple (#a855f7) with Box icon
+- Centralized color constants in utils/node-colors.ts (DRY principle)
+  - NODE_COLORS constant with background and border colors
+  - Type-safe mapping using DependencyNodeType
+  - Single source of truth for all node colors
+- Registered custom node types with React Flow in FlowViewPage
+  - Lowercase type mapping (variable, condition, effect, entity)
+  - Updated stats panel legend to use NODE_COLORS
+- Updated test infrastructure:
+  - Created renderWithReactFlow utility for testing React Flow components
+  - Added ReactFlowProvider to test-utils.tsx
+- Comprehensive test coverage: 27 new unit tests
+  - CustomNode: 11 tests (rendering, styling, interactions, accessibility)
+  - VariableNode: 4 tests (label, color, icon, accessibility)
+  - ConditionNode: 4 tests (label, color, icon, accessibility)
+  - EffectNode: 4 tests (label, color, icon, accessibility)
+  - EntityNode: 4 tests (label, color, icon, accessibility)
+
+**Technical Decisions**:
+
+- Lucide React icons chosen for consistency with existing UI components
+- React.memo prevents unnecessary re-renders of static nodes
+- Hover transform could impact performance with 100+ nodes (flagged for future profiling)
+- Colors use Tailwind CSS palette (-500 for bg, -600 for borders)
+- Custom node components handle their own styling (removed from transformation layer)
+- Lowercase node type keys match React Flow's nodeTypes registration
+
+**Code Review**: Approved after refactoring hardcoded colors to NODE_COLORS constant
+
+**Tests**:
+
+- ✅ 448 total frontend tests passing (27 new, no regressions)
+- ✅ TypeScript compilation successful
+- ✅ ESLint clean (no new errors or warnings)
+- ✅ All node types render correctly with distinct styles
+- ✅ Hover and selection interactions working
+- ✅ Accessibility features verified (ARIA labels, keyboard nav)
+
+**Next**: Stage 5 will create custom edge components for relationship types (ReadsEdge, WritesEdge, DependsOnEdge).
+
 ### Planning Phase Details
 
 Created detailed 12-stage implementation plan covering:
