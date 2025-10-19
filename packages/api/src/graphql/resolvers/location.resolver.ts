@@ -3,25 +3,41 @@
  * GraphQL resolvers for Location queries and mutations
  */
 
-import { UseGuards } from '@nestjs/common';
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Logger, UseGuards } from '@nestjs/common';
+import {
+  Args,
+  Context,
+  ID,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from '@nestjs/graphql';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
-import type { AuthenticatedUser } from '../context/graphql-context';
+import { SpatialService } from '../../common/services/spatial.service';
+import type { AuthenticatedUser, GraphQLContext } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type {
   CreateLocationInput,
   UpdateLocationInput,
   UpdateLocationData,
 } from '../inputs/location.input';
+import { GeoJSONScalar } from '../scalars/geojson.scalar';
 import { LocationService } from '../services/location.service';
 import { Location } from '../types/location.type';
 
 @Resolver(() => Location)
 export class LocationResolver {
-  constructor(private readonly locationService: LocationService) {}
+  private readonly logger = new Logger(LocationResolver.name);
+
+  constructor(
+    private readonly locationService: LocationService,
+    private readonly spatialService: SpatialService
+  ) {}
 
   @Query(() => Location, { nullable: true, description: 'Get location by ID' })
   @UseGuards(JwtAuthGuard)
@@ -108,5 +124,30 @@ export class LocationResolver {
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Location> {
     return this.locationService.restore(id, user) as Promise<Location>;
+  }
+
+  @ResolveField(() => GeoJSONScalar, {
+    nullable: true,
+    description: 'GeoJSON geometry representation',
+  })
+  async geojson(
+    @Parent() location: Location,
+    @Context() context: GraphQLContext
+  ): Promise<unknown | null> {
+    // Use DataLoader to batch geometry fetches and prevent N+1 queries
+    const geom = await context.dataloaders.locationGeometryLoader.load(location.id);
+
+    if (!geom) {
+      return null;
+    }
+
+    try {
+      // Convert WKB buffer to GeoJSON
+      return this.spatialService.wkbToGeoJSON(geom);
+    } catch (error) {
+      // Log error but return null to prevent GraphQL from failing
+      this.logger.error(`Failed to convert geometry for location ${location.id}:`, error);
+      return null;
+    }
   }
 }

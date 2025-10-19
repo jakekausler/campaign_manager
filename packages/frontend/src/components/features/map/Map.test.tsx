@@ -8,10 +8,12 @@
  * - Cleanup on unmount
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { Map as MapLibre } from 'maplibre-gl';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { renderWithApollo } from '@/__tests__/utils/test-utils';
 
 import { Map } from './Map';
 
@@ -31,6 +33,12 @@ vi.mock('maplibre-gl', () => {
       getNorth: () => 10,
     })),
     flyTo: vi.fn(),
+    // Methods needed by useMapLayers hook
+    getLayer: vi.fn(() => null), // Return null to indicate layer doesn't exist yet
+    addSource: vi.fn(),
+    addLayer: vi.fn(),
+    getSource: vi.fn(() => null),
+    setLayoutProperty: vi.fn(),
   };
 
   return {
@@ -46,26 +54,26 @@ describe('Map Component', () => {
 
   describe('Rendering', () => {
     it('should render map container', () => {
-      render(<Map />);
+      renderWithApollo(<Map />);
       const container = screen.getByTestId('map-container');
       expect(container).toBeInTheDocument();
     });
 
     it('should render with custom className', () => {
-      render(<Map className="custom-class" />);
+      renderWithApollo(<Map className="custom-class" />);
       const container = screen.getByTestId('map-container');
       expect(container).toHaveClass('custom-class');
     });
 
     it('should render reset viewport button', () => {
-      render(<Map />);
+      renderWithApollo(<Map />);
       const resetButton = screen.getByTestId('reset-viewport-button');
       expect(resetButton).toBeInTheDocument();
       expect(resetButton).toHaveTextContent('Reset View');
     });
 
     it('should have proper ARIA labels', () => {
-      render(<Map />);
+      renderWithApollo(<Map />);
       const resetButton = screen.getByTestId('reset-viewport-button');
       expect(resetButton).toHaveAttribute('aria-label', 'Reset map viewport to initial position');
     });
@@ -73,12 +81,12 @@ describe('Map Component', () => {
 
   describe('Map Initialization', () => {
     it('should initialize MapLibre instance', () => {
-      render(<Map />);
+      renderWithApollo(<Map />);
       expect(MapLibre).toHaveBeenCalledTimes(1);
     });
 
     it('should initialize with default center', () => {
-      render(<Map />);
+      renderWithApollo(<Map />);
       expect(MapLibre).toHaveBeenCalledWith(
         expect.objectContaining({
           center: [0, 0],
@@ -87,7 +95,7 @@ describe('Map Component', () => {
     });
 
     it('should initialize with default zoom', () => {
-      render(<Map />);
+      renderWithApollo(<Map />);
       expect(MapLibre).toHaveBeenCalledWith(
         expect.objectContaining({
           zoom: 2,
@@ -96,7 +104,7 @@ describe('Map Component', () => {
     });
 
     it('should initialize with custom center', () => {
-      render(<Map initialCenter={[10, 20]} />);
+      renderWithApollo(<Map initialCenter={[10, 20]} />);
       expect(MapLibre).toHaveBeenCalledWith(
         expect.objectContaining({
           center: [10, 20],
@@ -105,7 +113,7 @@ describe('Map Component', () => {
     });
 
     it('should initialize with custom zoom', () => {
-      render(<Map initialZoom={5} />);
+      renderWithApollo(<Map initialZoom={5} />);
       expect(MapLibre).toHaveBeenCalledWith(
         expect.objectContaining({
           zoom: 5,
@@ -114,21 +122,21 @@ describe('Map Component', () => {
     });
 
     it('should add navigation controls', () => {
-      render(<Map />);
+      renderWithApollo(<Map />);
       const mockMapInstance = (MapLibre as unknown as ReturnType<typeof vi.fn>).mock.results[0]
         .value;
       expect(mockMapInstance.addControl).toHaveBeenCalledWith(expect.any(Object), 'top-right');
     });
 
     it('should register moveend event listener', () => {
-      render(<Map />);
+      renderWithApollo(<Map />);
       const mockMapInstance = (MapLibre as unknown as ReturnType<typeof vi.fn>).mock.results[0]
         .value;
       expect(mockMapInstance.on).toHaveBeenCalledWith('moveend', expect.any(Function));
     });
 
     it('should register zoomend event listener', () => {
-      render(<Map />);
+      renderWithApollo(<Map />);
       const mockMapInstance = (MapLibre as unknown as ReturnType<typeof vi.fn>).mock.results[0]
         .value;
       expect(mockMapInstance.on).toHaveBeenCalledWith('zoomend', expect.any(Function));
@@ -138,7 +146,7 @@ describe('Map Component', () => {
   describe('Viewport State Management', () => {
     it('should call onViewportChange callback when provided', async () => {
       const onViewportChange = vi.fn();
-      render(<Map onViewportChange={onViewportChange} />);
+      renderWithApollo(<Map onViewportChange={onViewportChange} />);
 
       // Wait for initial viewport update
       await waitFor(() => {
@@ -148,7 +156,7 @@ describe('Map Component', () => {
 
     it('should provide viewport state in callback', async () => {
       const onViewportChange = vi.fn();
-      render(<Map onViewportChange={onViewportChange} />);
+      renderWithApollo(<Map onViewportChange={onViewportChange} />);
 
       await waitFor(() => {
         expect(onViewportChange).toHaveBeenCalledWith(
@@ -162,14 +170,14 @@ describe('Map Component', () => {
     });
 
     it('should not fail when onViewportChange is not provided', () => {
-      expect(() => render(<Map />)).not.toThrow();
+      expect(() => renderWithApollo(<Map />)).not.toThrow();
     });
   });
 
   describe('Reset Viewport Functionality', () => {
     it('should call flyTo when reset button is clicked', async () => {
       const user = userEvent.setup();
-      render(<Map initialCenter={[5, 10]} initialZoom={3} />);
+      renderWithApollo(<Map initialCenter={[5, 10]} initialZoom={3} />);
 
       const mockMapInstance = (MapLibre as unknown as ReturnType<typeof vi.fn>).mock.results[0]
         .value;
@@ -188,7 +196,7 @@ describe('Map Component', () => {
 
     it('should reset to initial viewport regardless of current viewport', async () => {
       const user = userEvent.setup();
-      render(<Map initialCenter={[0, 0]} initialZoom={2} />);
+      renderWithApollo(<Map initialCenter={[0, 0]} initialZoom={2} />);
 
       const mockMapInstance = (MapLibre as unknown as ReturnType<typeof vi.fn>).mock.results[0]
         .value;
@@ -211,7 +219,7 @@ describe('Map Component', () => {
 
   describe('Cleanup', () => {
     it('should remove map instance on unmount', () => {
-      const { unmount } = render(<Map />);
+      const { unmount } = renderWithApollo(<Map />);
       const mockMapInstance = (MapLibre as unknown as ReturnType<typeof vi.fn>).mock.results[0]
         .value;
 
@@ -221,7 +229,7 @@ describe('Map Component', () => {
     });
 
     it('should remove event listeners on unmount', () => {
-      const { unmount } = render(<Map />);
+      const { unmount } = renderWithApollo(<Map />);
       const mockMapInstance = (MapLibre as unknown as ReturnType<typeof vi.fn>).mock.results[0]
         .value;
 
@@ -232,7 +240,7 @@ describe('Map Component', () => {
     });
 
     it('should not throw error when unmounting before map initialization', () => {
-      const { unmount } = render(<Map />);
+      const { unmount } = renderWithApollo(<Map />);
       expect(() => unmount()).not.toThrow();
     });
   });
@@ -251,11 +259,17 @@ describe('Map Component', () => {
         getZoom: vi.fn(() => 2),
         getBounds: vi.fn(() => null),
         flyTo: vi.fn(),
+        // Methods needed by useMapLayers hook
+        getLayer: vi.fn(() => null),
+        addSource: vi.fn(),
+        addLayer: vi.fn(),
+        getSource: vi.fn(() => null),
+        setLayoutProperty: vi.fn(),
       };
 
       (MapLibre as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(mockMapWithNullBounds);
 
-      render(<Map onViewportChange={onViewportChange} />);
+      renderWithApollo(<Map onViewportChange={onViewportChange} />);
 
       await waitFor(() => {
         expect(onViewportChange).toHaveBeenCalledWith(
@@ -267,7 +281,7 @@ describe('Map Component', () => {
     });
 
     it('should only initialize map once on multiple renders', () => {
-      const { rerender } = render(<Map />);
+      const { rerender } = renderWithApollo(<Map />);
       const initialCallCount = (MapLibre as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
 
       rerender(<Map />);
@@ -280,7 +294,7 @@ describe('Map Component', () => {
 
     it('should handle rapid reset button clicks', async () => {
       const user = userEvent.setup();
-      render(<Map />);
+      renderWithApollo(<Map />);
 
       const mockMapInstance = (MapLibre as unknown as ReturnType<typeof vi.fn>).mock.results[0]
         .value;

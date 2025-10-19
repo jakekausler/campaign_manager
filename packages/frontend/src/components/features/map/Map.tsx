@@ -2,6 +2,8 @@ import { Map as MapLibre, NavigationControl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+import { useLocationLayers } from './useLocationLayers';
+
 interface MapProps {
   /**
    * Initial center coordinates [longitude, latitude]
@@ -24,6 +26,12 @@ interface MapProps {
    * Callback when viewport changes (optional)
    */
   onViewportChange?: (viewport: ViewportState) => void;
+
+  /**
+   * World ID to fetch and display locations for (optional)
+   * When provided, location layers will be rendered on the map
+   */
+  worldId?: string;
 }
 
 /**
@@ -40,12 +48,14 @@ export interface ViewportState {
  *
  * Renders an interactive map with basic controls (zoom, pan, reset viewport)
  * Manages viewport state internally and exposes it via callback
+ * Optionally displays location layers when worldId is provided
  */
 export function Map({
   initialCenter = [0, 0],
   initialZoom = 2,
   className = '',
   onViewportChange,
+  worldId,
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre | null>(null);
@@ -59,6 +69,9 @@ export function Map({
     zoom: initialZoom,
     bounds: null,
   });
+
+  // Load location layers if worldId is provided
+  useLocationLayers(map.current, worldId ?? '', Boolean(worldId));
 
   // Update viewport state from map
   const updateViewport = useCallback(() => {

@@ -5,6 +5,8 @@
 
 import { ObjectType, Field, ID } from '@nestjs/graphql';
 
+import { GeoJSONScalar } from '../scalars/geojson.scalar';
+
 @ObjectType()
 export class Location {
   @Field(() => ID)
@@ -24,6 +26,12 @@ export class Location {
 
   @Field(() => ID, { nullable: true })
   parentLocationId?: string;
+
+  @Field(() => GeoJSONScalar, {
+    nullable: true,
+    description: 'GeoJSON geometry representation',
+  })
+  geojson?: unknown;
 
   @Field()
   createdAt!: Date;

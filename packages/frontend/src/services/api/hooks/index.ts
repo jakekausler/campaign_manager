@@ -12,6 +12,14 @@
  * @module services/api/hooks
  */
 
+// Location hooks
+export {
+  useLocationsByWorld,
+  useLocationDetails,
+  GET_LOCATIONS_BY_WORLD,
+  GET_LOCATION_DETAILS,
+} from './locations';
+
 // Settlement hooks
 export {
   useSettlementsByKingdom,

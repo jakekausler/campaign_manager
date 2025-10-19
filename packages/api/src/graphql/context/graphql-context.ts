@@ -11,6 +11,7 @@ import type { Structure } from '@prisma/client';
 import type DataLoader from 'dataloader';
 import type { Request, Response } from 'express';
 
+import { LocationGeometryDataLoader } from '../dataloaders/location-geometry.dataloader';
 import { StructureDataLoader } from '../dataloaders/structure.dataloader';
 
 // User type from JWT payload
@@ -36,11 +37,15 @@ export interface GraphQLContext {
 // DataLoaders interface
 export interface DataLoaders {
   structureLoader: DataLoader<string, Structure[]>;
+  locationGeometryLoader: DataLoader<string, Buffer | null>;
 }
 
 @Injectable()
 export class GraphQLContextFactory {
-  constructor(private readonly structureDataLoader: StructureDataLoader) {}
+  constructor(
+    private readonly structureDataLoader: StructureDataLoader,
+    private readonly locationGeometryDataLoader: LocationGeometryDataLoader
+  ) {}
 
   /**
    * Create GraphQL context for each request
@@ -80,6 +85,7 @@ export class GraphQLContextFactory {
 
     return {
       structureLoader: this.structureDataLoader.createLoader(user),
+      locationGeometryLoader: this.locationGeometryDataLoader.createLoader(),
     };
   }
 }

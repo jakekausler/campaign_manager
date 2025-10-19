@@ -6,6 +6,8 @@ import { Map, ViewportState } from '@/components/features/map';
  * Map page component (protected route)
  *
  * Interactive map view for visualizing campaign world, locations, settlements, and structures.
+ *
+ * TODO: Get worldId from campaign context or route params when available
  */
 export default function MapPage() {
   const [viewport, setViewport] = useState<ViewportState>({
@@ -13,6 +15,10 @@ export default function MapPage() {
     zoom: 2,
     bounds: null,
   });
+
+  // TODO: Replace with actual worldId from campaign context
+  // For now, using a placeholder to demonstrate location layer rendering
+  const worldId = 'world-placeholder-id';
 
   return (
     <div className="h-screen flex flex-col">
@@ -26,7 +32,12 @@ export default function MapPage() {
 
       {/* Map container - takes remaining viewport height */}
       <main className="flex-1 relative">
-        <Map initialCenter={[0, 0]} initialZoom={2} onViewportChange={setViewport} />
+        <Map
+          initialCenter={[0, 0]}
+          initialZoom={2}
+          onViewportChange={setViewport}
+          worldId={worldId}
+        />
       </main>
 
       {/* Footer with viewport info */}
