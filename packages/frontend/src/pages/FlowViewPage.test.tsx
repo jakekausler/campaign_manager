@@ -52,7 +52,8 @@ function createTestNode(
 }
 
 describe('FlowViewPage - Node Double-Click Integration', () => {
-  let alertSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let alertSpy: any;
 
   beforeEach(() => {
     // Spy on window.alert to test user feedback
@@ -156,7 +157,7 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
       useDependencyGraph.mockReturnValue({
         graph: null,
         loading: false,
-        error: null,
+        error: undefined,
         refetch: vi.fn(),
       });
 
@@ -177,7 +178,7 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
       useDependencyGraph.mockReturnValue({
         graph: null,
         loading: true,
-        error: null,
+        error: undefined,
         refetch: vi.fn(),
       });
 
@@ -223,7 +224,7 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
       useDependencyGraph.mockReturnValue({
         graph: null,
         loading: false,
-        error: null,
+        error: undefined,
         refetch: vi.fn(),
       });
 

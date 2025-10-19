@@ -15,6 +15,7 @@ import {
   FlowToolbar,
   FlowControls,
   SelectionPanel,
+  FlowLoadingSkeleton,
 } from '@/components/features/flow';
 import { useDependencyGraph } from '@/services/api/hooks';
 import { useCurrentCampaignId } from '@/stores';
@@ -174,16 +175,22 @@ export default function FlowViewPage() {
         return;
       }
 
+      // Import DependencyNodeType and assert the type
+      // node.data.nodeType comes from FlowNodeData which uses the type from dependency-graph
+      const typedNodeType = nodeType as import('@/services/api/hooks').DependencyNodeType;
+      const typedEntityId = String(entityId);
+      const typedLabel = String(label);
+
       // Check if this node type supports editing
-      if (isNodeEditable(nodeType)) {
+      if (isNodeEditable(typedNodeType)) {
         // Navigate to edit page
-        const route = getNodeEditRoute(nodeType, entityId, campaignId);
+        const route = getNodeEditRoute(typedNodeType, typedEntityId, campaignId);
         if (route) {
           navigate(route);
         }
       } else {
         // Show informational message about edit functionality
-        const message = getNodeEditMessage(nodeType, entityId, label);
+        const message = getNodeEditMessage(typedNodeType, typedEntityId, typedLabel);
         // eslint-disable-next-line no-alert
         alert(message);
       }
@@ -203,18 +210,9 @@ export default function FlowViewPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Show loading state
+  // Show loading state with skeleton
   if (loading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-lg font-medium">Loading dependency graph...</div>
-          <div className="text-sm text-muted-foreground mt-2">
-            Building visualization of campaign relationships
-          </div>
-        </div>
-      </div>
-    );
+    return <FlowLoadingSkeleton />;
   }
 
   // Show error state

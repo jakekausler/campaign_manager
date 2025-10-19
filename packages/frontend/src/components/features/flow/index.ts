@@ -23,3 +23,4 @@ export { DependsOnEdge } from './DependsOnEdge';
 export { FlowToolbar } from './FlowToolbar';
 export { FlowControls } from './FlowControls';
 export { SelectionPanel } from './SelectionPanel';
+export { FlowLoadingSkeleton } from './FlowLoadingSkeleton';

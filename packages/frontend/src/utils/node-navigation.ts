@@ -23,7 +23,7 @@ const NODE_TYPE_ROUTES: Record<DependencyNodeType, string> = {
  *
  * @param nodeType - The type of dependency node (VARIABLE, CONDITION, EFFECT, ENTITY)
  * @param entityId - The unique identifier of the entity to edit
- * @param campaignId - The campaign ID for context (currently unused but included for future use)
+ * @param _campaignId - The campaign ID for context (currently unused but included for future use)
  * @returns The route path string, or null if the node type doesn't support editing
  *
  * @example
@@ -35,7 +35,7 @@ const NODE_TYPE_ROUTES: Record<DependencyNodeType, string> = {
 export function getNodeEditRoute(
   nodeType: DependencyNodeType,
   entityId: string,
-  campaignId: string // eslint-disable-line @typescript-eslint/no-unused-vars
+  _campaignId: string
 ): string | null {
   const routeTemplate = NODE_TYPE_ROUTES[nodeType];
 

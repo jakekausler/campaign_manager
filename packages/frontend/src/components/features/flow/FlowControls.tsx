@@ -1,5 +1,5 @@
 import { Controls, MiniMap, useReactFlow } from '@xyflow/react';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 
 import { NODE_COLORS } from '@/utils/node-colors';
 
@@ -18,9 +18,11 @@ const ZOOM_POLL_INTERVAL_MS = 100;
  * - Controls: Zoom in/out, fit view, lock/unlock
  * - Zoom Level Indicator: Real-time zoom percentage display
  *
+ * Memoized to prevent unnecessary re-renders during graph interactions.
+ *
  * Part of TICKET-021 Stage 7 implementation.
  */
-export function FlowControls() {
+function FlowControlsComponent() {
   const { getZoom } = useReactFlow();
   const [zoomLevel, setZoomLevel] = useState(100);
 
@@ -72,3 +74,12 @@ export function FlowControls() {
     </>
   );
 }
+
+/**
+ * Memoized FlowControls to prevent unnecessary re-renders.
+ * The component uses useReactFlow hook internally which updates when viewport changes,
+ * but memoization prevents re-renders when parent component state changes unrelated to the viewport.
+ */
+export const FlowControls = memo(FlowControlsComponent);
+
+FlowControls.displayName = 'FlowControls';
