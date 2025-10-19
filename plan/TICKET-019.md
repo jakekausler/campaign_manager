@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4)
 
 ## Description
 
@@ -264,3 +264,69 @@ Implement interactive map view using MapLibre GL JS with GeoJSON layers, viewpor
   - JSDoc documentation for all public functions
 - 128 test cases with comprehensive edge case coverage
 - No security vulnerabilities detected (validated by Code Reviewer)
+
+### Stage 4: Location and Region Visualization (Commit: e89ca81)
+
+**What was implemented:**
+
+Backend:
+
+- Added `geojson` field to Location GraphQL type using GeoJSONScalar
+- Created LocationGeometryDataLoader to batch geometry fetches (prevents N+1 queries)
+- Implemented field resolver in LocationResolver using DataLoader pattern
+- Registered LocationGeometryDataLoader in GraphQL module and context
+- Uses Prisma $queryRaw to efficiently fetch PostGIS geometry for multiple locations
+- Converts WKB buffers to GeoJSON using SpatialService.wkbToGeoJSON()
+- NestJS Logger for error handling instead of console.error
+
+Frontend:
+
+- Created useLocationsByWorld GraphQL hook following settlement/structure patterns
+- Implemented GET_LOCATIONS_BY_WORLD and GET_LOCATION_DETAILS queries
+- Created useLocationLayers hook for managing location layers on map
+- Comprehensive coordinate validation (Number.isFinite checks for both Point and Polygon)
+- Validates GeoJSON structure before rendering to prevent runtime errors
+- Separate rendering for location-point and location-region layers
+- Integrated into Map component with optional worldId prop
+- Updated MapPage to pass worldId (currently placeholder)
+- Added 11 comprehensive unit tests for useLocationLayers hook
+
+**Design decisions:**
+
+- DataLoader batching pattern:
+  - Prevents N+1 query problem when loading multiple locations
+  - Batches up to 100 location IDs per query
+  - Per-request caching for performance
+  - Graceful error handling returns nulls instead of throwing
+
+- Coordinate validation:
+  - Point coordinates: checks for finite numbers before rendering
+  - Polygon coordinates: validates all rings and coordinate pairs
+  - Prevents MapLibre crashes from NaN, Infinity, or malformed data
+  - Returns null for invalid geometries to enable graceful degradation
+
+- GraphQL integration:
+  - Field resolver uses DataLoader from context
+  - Follows existing patterns (StructureDataLoader)
+  - No authorization needed for geometry data (public info)
+  - Logger service for production-ready error logging
+
+- Frontend hook architecture:
+  - useLocationsByWorld follows settlement/structure hook patterns
+  - useLocationLayers manages layer lifecycle in useEffect
+  - Filters locations by type (point vs region) before feature creation
+  - Uses existing geojson-utils factory functions
+  - Properly manages useEffect dependencies
+
+**Code quality:**
+
+- All TypeScript type-check and ESLint checks pass (0 errors)
+- Code reviewed by specialized Code Reviewer subagent with approval
+- All critical issues addressed:
+  - N+1 query problem solved with DataLoader
+  - Unsafe type assertions fixed with comprehensive validation
+  - Console.error replaced with NestJS Logger
+- 11 new tests for useLocationLayers (all passing)
+- Updated Map component tests to use Apollo Client context
+- 204/207 total tests passing (3 pre-existing failures unrelated to this stage)
+- No security vulnerabilities detected

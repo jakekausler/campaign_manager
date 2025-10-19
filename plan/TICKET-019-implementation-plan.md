@@ -99,28 +99,28 @@ This plan breaks down the implementation of an interactive map view with MapLibr
 
 **Tasks**:
 
-- [ ] Create GraphQL query for fetching locations by world (check if exists, if not create)
-- [ ] Create `useLocationsByWorld` hook (follow pattern from settlements/structures hooks)
-- [ ] Convert PostGIS geometry to GeoJSON format (may need backend changes)
-- [ ] Create point marker layer for Location type="point"
-- [ ] Create polygon layer for Location type="region"
-- [ ] Style markers and polygons distinctly
-- [ ] Add location name labels (optional)
+- [x] Create GraphQL query for fetching locations by world (check if exists, if not create)
+- [x] Create `useLocationsByWorld` hook (follow pattern from settlements/structures hooks)
+- [x] Convert PostGIS geometry to GeoJSON format (may need backend changes)
+- [x] Create point marker layer for Location type="point"
+- [x] Create polygon layer for Location type="region"
+- [x] Style markers and polygons distinctly
+- [ ] Add location name labels (optional - deferred)
 
 **Backend Tasks (if needed)**:
 
-- [ ] Add `geojson` field to Location GraphQL type (computed from PostGIS `geom`)
-- [ ] Implement field resolver to convert geometry to GeoJSON
-- [ ] Update LocationService if needed
+- [x] Add `geojson` field to Location GraphQL type (computed from PostGIS `geom`)
+- [x] Implement field resolver to convert geometry to GeoJSON
+- [x] Created LocationGeometryDataLoader to prevent N+1 queries
 
 **Tests**:
 
-- [ ] Locations query returns correct data
-- [ ] Point locations render as markers
-- [ ] Region locations render as polygons
-- [ ] Handles locations without geometry
+- [x] Locations query returns correct data
+- [x] Point locations render as markers
+- [x] Region locations render as polygons
+- [x] Handles locations without geometry
 
-**Status**: Not Started
+**Status**: Completed (Commit: e89ca81)
 
 ---
 
