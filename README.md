@@ -5,6 +5,7 @@ A full-stack campaign management tool for tabletop RPGs that unifies map, flowch
 ## Features
 
 - **Multi-View System**: Integrated map, flowchart, and timeline views
+- **Interactive Map**: MapLibre GL-based map rendering with drawing and editing tools for points and polygons
 - **Spatial Data**: PostGIS-powered location and geography management
 - **Party & Kingdom Management**: Support for multiple parties, kingdoms, settlements, and structures with level tracking
 - **Typed Variables**: Define custom typed variables (string, number, boolean, enum) for all entity types
@@ -40,7 +41,7 @@ A full-stack campaign management tool for tabletop RPGs that unifies map, flowch
 - **Apollo Client 4** - GraphQL client with caching, subscriptions, and error handling
 - **GraphQL Code Generator** - TypeScript types and React hooks from schema
 - **Vitest + MSW** - Testing infrastructure with API mocking at network level
-- **MapLibre** - Map rendering (planned)
+- **MapLibre GL JS** - Interactive map rendering with point and polygon editing
 - **React Flow** - Flowchart visualization (planned)
 
 ### DevOps

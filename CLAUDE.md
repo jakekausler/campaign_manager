@@ -1197,6 +1197,34 @@ Frontend infrastructure completed across two tickets:
 
 See `plan/TICKET-017.md` and `plan/TICKET-018.md` for detailed implementation notes and commit hashes.
 
+## Map Editing Tools
+
+Interactive drawing and editing tools for map geometries (points and polygons). See [detailed documentation](docs/features/map-editing-tools.md).
+
+**Quick Reference:**
+
+- Components: `DrawControl`, `DrawToolbar`, `UndoRedoControls` in `packages/frontend/src/components/features/map/`
+- Hook: `useMapDraw` for state management with undo/redo
+- Utilities: `geometry.ts`, `geometry-validation.ts` in `packages/frontend/src/utils/`
+- GraphQL: `updateLocationGeometry` mutation for persisting edits
+- Key Features: Point/polygon drawing, edit mode, geometry validation (Turf.js), undo/redo (50 operations), keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z)
+- Validation: Coordinate bounds, minimum vertices, self-intersection detection, area limits (1 m² - 10,000 km²)
+- Integration: MapLibre GL Draw library with custom styling, optimistic locking via version field
+- Implementation: TICKET-020 (8 stages, commits: aec1738 - 3f1fe15)
+
+**TICKET-020: Map Editing Tools** (8 stages):
+
+1. Setup MapLibre GL Draw with custom blue theme styling
+2. Point Creation Tool with save/cancel workflow
+3. Polygon Drawing Tool with real-time vertex count and area display
+4. Geometry Validation using Turf.js for self-intersection detection
+5. Edit Mode for Existing Geometry with vertex manipulation
+6. Save/Cancel Workflow with backend persistence and optimistic locking
+7. Undo/Redo for Edits with 50-operation history and keyboard shortcuts
+8. Testing and Documentation
+
+See `plan/TICKET-020.md` for detailed implementation notes and commit hashes.
+
 ## World Time System
 
 Campaign-specific time tracking with custom calendars. See [detailed documentation](docs/features/world-time-system.md).
