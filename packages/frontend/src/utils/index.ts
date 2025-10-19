@@ -25,3 +25,13 @@ export {
 
 // Node color constants for dependency graph visualization
 export { NODE_COLORS } from './node-colors';
+
+// Graph selection utilities for dependency graph highlighting
+export {
+  calculateSelectionState,
+  getUpstreamNodes,
+  getDownstreamNodes,
+  applySelectionStyles,
+  applySelectionEdgeStyles,
+  type SelectionState,
+} from './graph-selection';

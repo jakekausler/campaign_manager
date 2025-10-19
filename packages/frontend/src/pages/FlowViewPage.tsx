@@ -1,3 +1,4 @@
+import type { NodeMouseHandler, SelectionMode } from '@xyflow/react';
 import { ReactFlow, Background, useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -12,10 +13,16 @@ import {
   DependsOnEdge,
   FlowToolbar,
   FlowControls,
+  SelectionPanel,
 } from '@/components/features/flow';
 import { useDependencyGraph } from '@/services/api/hooks';
 import { useCurrentCampaignId } from '@/stores';
-import { transformGraphToFlow } from '@/utils';
+import {
+  transformGraphToFlow,
+  calculateSelectionState,
+  applySelectionStyles,
+  applySelectionEdgeStyles,
+} from '@/utils';
 import { NODE_COLORS } from '@/utils/node-colors';
 
 /**
@@ -70,10 +77,38 @@ export default function FlowViewPage() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialData.edges);
   const [isLayouting, setIsLayouting] = useState(false);
 
+  // Selection state tracking
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+
+  // Calculate selection state with dependencies
+  const selectionState = useMemo(
+    () => calculateSelectionState(selectedNodeIds, edges),
+    [selectedNodeIds, edges]
+  );
+
+  // Apply selection styles to nodes and edges
+  const styledNodes = useMemo(
+    () => applySelectionStyles(nodes, selectionState),
+    [nodes, selectionState]
+  );
+
+  const styledEdges = useMemo(
+    () => applySelectionEdgeStyles(edges, selectionState),
+    [edges, selectionState]
+  );
+
+  // Get selected node objects for SelectionPanel
+  const selectedNodes = useMemo(
+    () => nodes.filter((node) => selectedNodeIds.includes(node.id)),
+    [nodes, selectedNodeIds]
+  );
+
   // Update nodes and edges when graph data changes
   useEffect(() => {
     setNodes(initialData.nodes);
     setEdges(initialData.edges);
+    // Clear selection when graph data changes
+    setSelectedNodeIds([]);
   }, [initialData.nodes, initialData.edges, setNodes, setEdges]);
 
   // Re-layout handler: re-applies auto-layout algorithm to reset node positions
@@ -88,6 +123,48 @@ export default function FlowViewPage() {
     setEdges(newEdges);
     setIsLayouting(false);
   }, [graph, setNodes, setEdges]);
+
+  // Handle node click for selection
+  const handleNodeClick: NodeMouseHandler = useCallback((event, node) => {
+    // Check if Shift or Ctrl/Cmd key is pressed for multi-select
+    const isMultiSelect = event.shiftKey || event.ctrlKey || event.metaKey;
+
+    setSelectedNodeIds((prev) => {
+      if (isMultiSelect) {
+        // Toggle selection for multi-select
+        if (prev.includes(node.id)) {
+          return prev.filter((id) => id !== node.id);
+        } else {
+          return [...prev, node.id];
+        }
+      } else {
+        // Single selection
+        return [node.id];
+      }
+    });
+  }, []);
+
+  // Handle pane click to clear selection
+  const handlePaneClick = useCallback(() => {
+    setSelectedNodeIds([]);
+  }, []);
+
+  // Handle clear selection
+  const handleClearSelection = useCallback(() => {
+    setSelectedNodeIds([]);
+  }, []);
+
+  // Keyboard shortcut for clearing selection (Escape)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedNodeIds([]);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Show loading state
   if (loading) {
@@ -148,19 +225,31 @@ export default function FlowViewPage() {
   return (
     <div className="h-screen w-full">
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={styledNodes}
+        edges={styledEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
+        onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
         className="bg-background"
+        selectionMode={'partial' as SelectionMode}
+        multiSelectionKeyCode="Shift"
       >
         <Background />
         <FlowControls />
         <FlowToolbar onReLayout={handleReLayout} isLayouting={isLayouting} />
       </ReactFlow>
+
+      {/* Selection panel showing selected node details and dependencies */}
+      <SelectionPanel
+        selectedNodes={selectedNodes}
+        upstreamCount={selectionState.upstreamNodeIds.length}
+        downstreamCount={selectionState.downstreamNodeIds.length}
+        onClearSelection={handleClearSelection}
+      />
 
       {/* Info panel showing graph stats */}
       <div className="absolute top-4 right-4 bg-card border rounded-lg p-4 shadow-lg max-w-xs">
