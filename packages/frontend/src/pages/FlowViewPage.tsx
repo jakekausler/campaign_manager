@@ -1,11 +1,4 @@
-import {
-  ReactFlow,
-  Background,
-  Controls,
-  MiniMap,
-  useNodesState,
-  useEdgesState,
-} from '@xyflow/react';
+import { ReactFlow, Background, useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -18,6 +11,7 @@ import {
   WritesEdge,
   DependsOnEdge,
   FlowToolbar,
+  FlowControls,
 } from '@/components/features/flow';
 import { useDependencyGraph } from '@/services/api/hooks';
 import { useCurrentCampaignId } from '@/stores';
@@ -164,8 +158,7 @@ export default function FlowViewPage() {
         className="bg-background"
       >
         <Background />
-        <Controls />
-        <MiniMap />
+        <FlowControls />
         <FlowToolbar onReLayout={handleReLayout} isLayouting={isLayouting} />
       </ReactFlow>
 

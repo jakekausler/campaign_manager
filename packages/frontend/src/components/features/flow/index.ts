@@ -19,5 +19,6 @@ export { ReadsEdge } from './ReadsEdge';
 export { WritesEdge } from './WritesEdge';
 export { DependsOnEdge } from './DependsOnEdge';
 
-// Toolbar components
+// Toolbar and control components
 export { FlowToolbar } from './FlowToolbar';
+export { FlowControls } from './FlowControls';
