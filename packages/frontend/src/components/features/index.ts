@@ -10,3 +10,5 @@
 // export { CampaignCard } from './CampaignCard';
 // export { KingdomMap } from './KingdomMap';
 // export { EventTimeline } from './EventTimeline';
+
+export { Map } from './map';
