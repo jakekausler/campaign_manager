@@ -114,17 +114,49 @@ Add drawing and editing capabilities to the map interface using MapLibre GL Draw
 
 **Goal**: Persist geometry changes to backend
 **Success Criteria**: Saved geometries persist after page reload, cancelled edits discard changes
-**Status**: Not Started
+**Status**: In Progress
+**Commit**: 04b1f82 (partial - foundational infrastructure)
 
-- [ ] Create save handler that calls appropriate GraphQL mutation
-- [ ] Implement optimistic updates for save
-- [ ] Handle save errors with rollback
-- [ ] Create cancel handler that discards changes
-- [ ] Confirm before discarding unsaved changes
-- [ ] Clear draw control after save/cancel
-- [ ] Update map state to reflect saved changes
-- [ ] Test save/cancel for both create and edit modes
-- [ ] Commit changes
+**Completed Sub-tasks:**
+
+- [x] Research existing GraphQL mutations (updateLocationGeometry found)
+- [x] Create useUpdateLocationGeometry mutation hook following established patterns
+- [x] Add LocationEditMetadata interface to track location ID/version during edit mode
+- [x] Enhance useMapDraw state to track editLocationMetadata
+- [x] Update all state reset methods to clear location metadata
+- [x] Type-check and lint verification
+- [x] Code review (refactored to match codebase patterns)
+
+**Remaining Sub-tasks:**
+
+- [ ] Update Map component to get location metadata (ID, version, type) when clicking existing features
+- [ ] Integrate campaign store (useCampaignStore) to get branchId for mutations
+- [ ] Implement onSave callback in Map component:
+  - [ ] Call updateLocationGeometry mutation with location ID, geometry, branchId, version
+  - [ ] Handle success: clear draw control, show success message
+  - [ ] Handle errors: display user-friendly error message, keep feature in edit mode
+  - [ ] Handle optimistic lock failures: show version conflict message
+- [ ] Implement onCancel with confirmation:
+  - [ ] Show confirmation dialog if hasUnsavedChanges is true
+  - [ ] On confirm: discard changes and return to view mode
+  - [ ] On cancel (dialog): keep editing
+- [ ] Ensure location layers refresh after successful save (via refetchQueries or manual refetch)
+- [ ] Test save/cancel workflow:
+  - [ ] Edit existing point location and save
+  - [ ] Edit existing polygon region and save
+  - [ ] Edit and cancel with confirmation
+  - [ ] Handle save errors gracefully
+  - [ ] Verify geometry persists after page reload
+- [ ] Commit completed Stage 6 implementation
+
+**Technical Notes:**
+
+- Focus on **edit mode only** for Stage 6 (editing existing locations)
+- Create mode (new locations) deferred to future work - requires creating Location entity before geometry
+- LocationEditMetadata provides database context (ID, version) needed for updateLocationGeometry mutation
+- Mutation hook automatically invalidates LocationsByWorld query cache
+- Error handling via try/catch (no custom callbacks)
+- Confirmation dialog needed before discarding unsaved changes (hasUnsavedChanges flag)
 
 ### Stage 7: Undo/Redo for Edits
 

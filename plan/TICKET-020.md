@@ -385,3 +385,51 @@ Add map editing capabilities for creating and modifying point locations and poly
 - Event cleanup prevents memory leaks
 
 **Next Steps**: Implement save/cancel workflow with backend persistence (Stage 6)
+
+### Stage 6: Save/Cancel Workflow (04b1f82) - IN PROGRESS
+
+**Started**: Partial implementation complete - foundational infrastructure in place
+
+**Key Implementations**:
+
+1. **Location Geometry Mutation Hook** (`packages/frontend/src/services/api/mutations/locations.ts`):
+   - Created `useUpdateLocationGeometry` hook following established mutation patterns
+   - Matches settlements/structures hook structure (no custom onSuccess/onError callbacks)
+   - Returns mutation function, loading, error, data, and reset
+   - Automatic cache invalidation via refetchQueries: LocationsByWorld
+   - Type-safe with Location type using literal union: type: 'point' | 'region'
+
+2. **Enhanced Map Drawing State** (`packages/frontend/src/components/features/map/useMapDraw.ts`):
+   - Added `LocationEditMetadata` interface to track database location fields
+   - Stores locationId, version (for optimistic locking), and type during edit mode
+   - Modified `startEdit()` to accept optional LocationEditMetadata parameter
+   - Updated all state reset methods to clear editLocationMetadata
+   - Maintains separation between MapboxDraw internal feature ID and database location ID
+
+**Testing**:
+
+- Type-check: Passed with no errors
+- Lint: Passed with no new warnings
+- Code review: Approved after refactoring to match established patterns
+
+**Remaining Work**:
+
+- [ ] Update Map component to retrieve location metadata when feature is clicked for editing
+- [ ] Integrate campaign store to get branchId for mutations
+- [ ] Implement actual save handler in Map component onSave callback
+- [ ] Add user-friendly error handling and error message display
+- [ ] Implement confirmation dialog before discarding unsaved changes
+- [ ] Refresh location layers after successful save to show updated geometry
+- [ ] Full integration testing of save/cancel workflow for both create and edit modes
+
+**Technical Notes**:
+
+- Mutation hook pattern refactored to match existing codebase conventions after code review feedback
+- No custom onSuccess/onError callbacks - callers use try/catch for error handling
+- Type safety improved with literal union types for location.type field
+- All state transitions properly clear location metadata to prevent stale data bugs
+- For Stage 6 completion, focus on edit mode only (creating new locations deferred to future work)
+
+**Blocker**: Need to determine how Map component will know which locationId/version corresponds to drawn features. Current approach tracks this via LocationEditMetadata when entering edit mode. For create mode, will need different strategy (possibly creating location entity first, then updating geometry).
+
+**Next Steps**: When resuming, start by updating Map.tsx to integrate campaign store (for branchId) and implement the onSave callback that calls updateLocationGeometry mutation with proper error handling.
