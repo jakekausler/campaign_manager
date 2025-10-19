@@ -1,7 +1,16 @@
 import { Map as MapLibre, NavigationControl } from 'maplibre-gl';
+import type { MapLayerMouseEvent } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+import type {
+  LocationPointProperties,
+  LocationRegionProperties,
+  SettlementProperties,
+  StructureProperties,
+  PopupData,
+} from './types';
+import { useEntityPopup } from './useEntityPopup';
 import { useLocationLayers } from './useLocationLayers';
 import { useSettlementLayers } from './useSettlementLayers';
 
@@ -84,6 +93,172 @@ export function Map({
 
   // Load settlement layers if kingdomId is provided
   useSettlementLayers(map.current, kingdomId ?? '', Boolean(kingdomId));
+
+  // Entity popup management
+  const { showPopup } = useEntityPopup(map.current);
+
+  /**
+   * Handle clicks on location point layer
+   */
+  const handleLocationPointClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0) return;
+
+      const feature = e.features[0];
+      const properties = feature.properties as unknown as LocationPointProperties;
+      const geometry = feature.geometry;
+
+      if (geometry.type !== 'Point') return;
+
+      const popupData: PopupData = {
+        type: 'location-point',
+        id: properties.id,
+        name: properties.name,
+        description: properties.description,
+        coordinates: geometry.coordinates as [number, number],
+      };
+
+      showPopup(popupData);
+    },
+    [showPopup]
+  );
+
+  /**
+   * Handle clicks on location region layer
+   */
+  const handleLocationRegionClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0) return;
+
+      const feature = e.features[0];
+      const properties = feature.properties as unknown as LocationRegionProperties;
+
+      // For polygons, use the click coordinates as popup position
+      const coordinates: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+
+      const popupData: PopupData = {
+        type: 'location-region',
+        id: properties.id,
+        name: properties.name,
+        description: properties.description,
+        coordinates,
+      };
+
+      showPopup(popupData);
+    },
+    [showPopup]
+  );
+
+  /**
+   * Handle clicks on settlement layer
+   */
+  const handleSettlementClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0) return;
+
+      const feature = e.features[0];
+      const properties = feature.properties as unknown as SettlementProperties;
+      const geometry = feature.geometry;
+
+      if (geometry.type !== 'Point') return;
+
+      const popupData: PopupData = {
+        type: 'settlement',
+        id: properties.id,
+        name: properties.name,
+        level: properties.level,
+        kingdomId: properties.kingdomId,
+        typedVariables: properties.typedVariables,
+        coordinates: geometry.coordinates as [number, number],
+      };
+
+      showPopup(popupData);
+    },
+    [showPopup]
+  );
+
+  /**
+   * Handle clicks on structure layer
+   */
+  const handleStructureClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      if (!e.features || e.features.length === 0) return;
+
+      const feature = e.features[0];
+      const properties = feature.properties as unknown as StructureProperties;
+      const geometry = feature.geometry;
+
+      if (geometry.type !== 'Point') return;
+
+      const popupData: PopupData = {
+        type: 'structure',
+        id: properties.id,
+        name: properties.name,
+        structureType: properties.structureType,
+        level: properties.level,
+        settlementId: properties.settlementId,
+        typedVariables: properties.typedVariables,
+        coordinates: geometry.coordinates as [number, number],
+      };
+
+      showPopup(popupData);
+    },
+    [showPopup]
+  );
+
+  /**
+   * Set up click handlers for all entity layers
+   */
+  useEffect(() => {
+    if (!map.current) return;
+
+    const mapInstance = map.current;
+
+    // Add click handlers for all layers
+    mapInstance.on('click', 'location-point-layer', handleLocationPointClick);
+    mapInstance.on('click', 'location-region-layer', handleLocationRegionClick);
+    mapInstance.on('click', 'settlement-layer', handleSettlementClick);
+    mapInstance.on('click', 'structure-layer', handleStructureClick);
+
+    // Change cursor to pointer when hovering over clickable layers
+    const layers = [
+      'location-point-layer',
+      'location-region-layer',
+      'settlement-layer',
+      'structure-layer',
+    ];
+
+    const handleMouseEnter = () => {
+      mapInstance.getCanvas().style.cursor = 'pointer';
+    };
+
+    const handleMouseLeave = () => {
+      mapInstance.getCanvas().style.cursor = '';
+    };
+
+    layers.forEach((layerId) => {
+      mapInstance.on('mouseenter', layerId, handleMouseEnter);
+      mapInstance.on('mouseleave', layerId, handleMouseLeave);
+    });
+
+    // Cleanup
+    return () => {
+      mapInstance.off('click', 'location-point-layer', handleLocationPointClick);
+      mapInstance.off('click', 'location-region-layer', handleLocationRegionClick);
+      mapInstance.off('click', 'settlement-layer', handleSettlementClick);
+      mapInstance.off('click', 'structure-layer', handleStructureClick);
+
+      layers.forEach((layerId) => {
+        mapInstance.off('mouseenter', layerId, handleMouseEnter);
+        mapInstance.off('mouseleave', layerId, handleMouseLeave);
+      });
+    };
+  }, [
+    handleLocationPointClick,
+    handleLocationRegionClick,
+    handleSettlementClick,
+    handleStructureClick,
+  ]);
 
   // Update viewport state from map
   const updateViewport = useCallback(() => {

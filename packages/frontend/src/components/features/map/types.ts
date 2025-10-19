@@ -132,3 +132,46 @@ export interface LayerVisibility {
   settlement: boolean;
   structure: boolean;
 }
+
+/**
+ * Popup data for Location entities
+ */
+export interface LocationPopupData {
+  type: 'location-point' | 'location-region';
+  id: string;
+  name: string;
+  description?: string;
+  coordinates: [number, number];
+}
+
+/**
+ * Popup data for Settlement entities
+ */
+export interface SettlementPopupData {
+  type: 'settlement';
+  id: string;
+  name: string;
+  level: number;
+  kingdomId?: string;
+  typedVariables?: Record<string, unknown>;
+  coordinates: [number, number];
+}
+
+/**
+ * Popup data for Structure entities
+ */
+export interface StructurePopupData {
+  type: 'structure';
+  id: string;
+  name: string;
+  structureType: string;
+  level: number;
+  settlementId?: string;
+  typedVariables?: Record<string, unknown>;
+  coordinates: [number, number];
+}
+
+/**
+ * Union type for all popup data
+ */
+export type PopupData = LocationPopupData | SettlementPopupData | StructurePopupData;
