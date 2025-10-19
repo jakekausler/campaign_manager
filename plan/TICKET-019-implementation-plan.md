@@ -136,21 +136,21 @@ This plan breaks down the implementation of an interactive map view with MapLibr
 
 **Tasks**:
 
-- [ ] Extend existing `useSettlementsByKingdom` or create `useSettlementsForMap` hook
-- [ ] Ensure Settlement query includes Location relationship with geometry
-- [ ] Create Settlement GeoJSON features from Settlement + Location data
-- [ ] Create Settlement marker layer with distinct styling (different color/icon)
-- [ ] Display settlement level as marker size or icon variant
-- [ ] Handle settlements without location gracefully
+- [x] Extend existing `useSettlementsByKingdom` or create `useSettlementsForMap` hook
+- [x] Ensure Settlement query includes Location relationship with geometry
+- [x] Create Settlement GeoJSON features from Settlement + Location data
+- [x] Create Settlement marker layer with distinct styling (different color/icon)
+- [x] Display settlement level as marker size or icon variant
+- [x] Handle settlements without location gracefully
 
 **Tests**:
 
-- [ ] Settlement query includes location data
-- [ ] Settlements render at correct coordinates
-- [ ] Settlement markers are distinct from location markers
-- [ ] Settlement level affects visual appearance
+- [x] Settlement query includes location data
+- [x] Settlements render at correct coordinates
+- [x] Settlement markers are distinct from location markers
+- [x] Settlement level affects visual appearance
 
-**Status**: Not Started
+**Status**: Completed (Commit: 58f6550)
 
 ---
 
