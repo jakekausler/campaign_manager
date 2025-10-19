@@ -81,17 +81,18 @@ Add drawing and editing capabilities to the map interface using MapLibre GL Draw
 
 **Goal**: Validate geometry before allowing save
 **Success Criteria**: Invalid geometry shows errors, valid geometry can be saved
-**Status**: Not Started
+**Status**: Complete
+**Commit**: 42f5084
 
-- [ ] Create geometry validation utility functions
-- [ ] Validate point coordinates are within map bounds
-- [ ] Validate polygon has minimum 3 vertices
-- [ ] Validate polygon has no self-intersections (using Turf.js)
-- [ ] Validate polygon area is within reasonable limits
-- [ ] Display validation errors to user
-- [ ] Disable save button when validation fails
-- [ ] Add unit tests for validation functions
-- [ ] Commit changes
+- [x] Create geometry validation utility functions
+- [x] Validate point coordinates are within map bounds
+- [x] Validate polygon has minimum 3 vertices
+- [x] Validate polygon has no self-intersections (using Turf.js)
+- [x] Validate polygon area is within reasonable limits
+- [x] Display validation errors to user
+- [x] Disable save button when validation fails
+- [x] Add unit tests for validation functions
+- [x] Commit changes
 
 ### Stage 5: Edit Mode for Existing Geometry
 

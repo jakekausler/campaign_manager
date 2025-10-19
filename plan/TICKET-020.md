@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2), 7d3c845 (Stage 3)
+- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2), 7d3c845 (Stage 3), 42f5084 (Stage 4)
 
 ## Description
 
@@ -219,3 +219,89 @@ Add map editing capabilities for creating and modifying point locations and poly
 - Ready for manual browser testing
 
 **Next Steps**: Implement geometry validation (Stage 4)
+
+### Stage 4: Geometry Validation (42f5084)
+
+**Completed**: Successfully implemented comprehensive validation for point and polygon geometries with real-time feedback.
+
+**Key Implementations**:
+
+1. **Validation Utilities** (`packages/frontend/src/utils/geometry-validation.ts`):
+   - `validatePointCoordinates()`: Bounds checking for longitude (-180 to 180) and latitude (-90 to 90)
+   - `validatePolygonGeometry()`: Comprehensive polygon validation:
+     - Minimum 3 vertices (excluding GeoJSON closing point)
+     - Self-intersection detection using Turf.js `kinks()` function
+     - Area limits: 1 m² minimum, 10,000 km² maximum
+     - Closed polygon verification (first point === last point)
+     - All coordinates within valid geographic bounds
+     - Handles both single-ring and multi-ring (with holes) polygons
+   - `validateGeometry()`: Unified validation interface for DrawFeature (Point and Polygon)
+   - `ValidationResult` interface: `{ isValid: boolean, errors: string[] }`
+   - Error accumulation pattern: Collects all errors before returning for comprehensive feedback
+
+2. **Test Coverage** (`packages/frontend/src/utils/geometry-validation.test.ts`):
+   - 25 comprehensive unit tests covering all validation scenarios
+   - Valid cases: points at bounds, simple polygons, polygons with holes, high latitudes
+   - Invalid cases: out-of-bounds coordinates, self-intersecting polygons, area limits
+   - Edge cases: null inputs, malformed data, missing closing points, non-numeric values
+   - Full integration with DrawFeature type system
+   - All tests passing with proper error message assertions
+
+3. **State Management** (`packages/frontend/src/components/features/map/useMapDraw.ts`):
+   - Added `validationResult: ValidationResult | null` to MapDrawState interface
+   - Automatic validation on `handleFeatureCreated()` and `handleFeatureUpdated()`
+   - Validation state cleared in all mode transitions: `startDrawPoint()`, `startDrawPolygon()`, `cancelDraw()`, `clearFeature()`
+   - Imported and integrated `validateGeometry()` function
+
+4. **UI Integration** (`packages/frontend/src/components/features/map/DrawToolbar.tsx`):
+   - Added `validationResult` prop to DrawToolbarProps interface
+   - Save button disabled when `!isValid` (grayed out with `disabled:bg-green-400` and `disabled:cursor-not-allowed`)
+   - Tooltip on disabled save button: "Cannot save: validation errors present"
+   - Error display: Red alert box below toolbar with semantic HTML:
+     - `role="alert"` for screen readers
+     - `data-testid="validation-errors"` for testing
+     - Bulleted list (`ul` with `list-disc list-inside`) of all validation errors
+     - Positioned in flex column layout below action buttons
+   - Error box only shown when `hasValidationErrors` is true
+
+5. **Map Component Integration** (`packages/frontend/src/components/features/map/Map.tsx`):
+   - Pass `validationResult={drawState.validationResult}` to DrawToolbar
+   - Validation happens automatically through state management hooks
+
+6. **Dependencies**:
+   - Installed `@turf/turf` (129 new packages) for geodesic self-intersection detection
+   - Reused `calculatePolygonArea()` from existing `geometry.ts` utilities
+
+**Technical Decisions**:
+
+- **Turf.js for self-intersection**: Chosen for reliable, battle-tested geodesic calculations rather than implementing custom algorithms
+- **All errors collected**: Better UX to show all validation problems at once rather than failing on first error
+- **Area limits rationale**:
+  - Minimum 1 m²: Prevents accidental sub-meter regions (smaller than a room)
+  - Maximum 10,000 km²: Prevents continent-sized regions while allowing large kingdoms (~100km x 100km)
+- **Real-time validation**: Runs on both create and update events for immediate feedback as user draws
+- **Error messages**: User-friendly, actionable descriptions that explain how to fix the issue
+
+**User Experience**:
+
+- Validation errors appear immediately when feature is created/updated
+- Save button visually disabled with tooltip explaining why
+- All validation errors shown at once (not just first error)
+- No silent failures - all problems surfaced to user
+- Consistent error styling with red alert box matching Tailwind conventions
+
+**Testing**:
+
+- Type-check: Passed with no errors
+- Lint: Passed with no new warnings
+- Unit tests: 25/25 tests passing
+- Coverage: All validation functions and edge cases covered
+
+**Code Review**: Approved with no critical issues
+
+- Optional suggestions noted for future optimization (debouncing expensive validations)
+- Performance acceptable for Stage 4 (can optimize in future if needed)
+- Excellent test coverage and type safety
+- Proper accessibility with ARIA attributes
+
+**Next Steps**: Implement edit mode for existing geometry (Stage 5)
