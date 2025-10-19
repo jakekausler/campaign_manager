@@ -43,19 +43,24 @@
 **Overall Test Status (All Packages):**
 
 ```
-Test Suites: 7 skipped, 63 passed, 70 total (@campaign/api)
-Tests:       153 skipped, 1290 passed, 1443 total (@campaign/api)
+Test Suites: 8 skipped, 79 passed, 79 of 87 total
+Tests:       163 skipped, 1581 passed, 1744 total
 ```
 
 **Test Results by Package:**
 
-- ✅ **@campaign/api**: ALL TESTS PASSING - 63 passed suites (1290 passed tests, 153 skipped tests)
-- ✅ **@campaign/rules-engine**: All tests passing (163 tests, 10 skipped)
-- ✅ **@campaign/frontend**: All tests passing (128 tests)
+- ✅ **@campaign/api**: 7 skipped suites, 63 passed suites (70 total) | 153 skipped tests, 1290 passed (1443 total)
+- ✅ **@campaign/rules-engine**: 1 skipped suite, 10 passed suites (11 total) | 10 skipped tests, 163 passed (173 total)
+- ✅ **@campaign/frontend**: 6 test files passed | 128 tests passed
 - ✅ **@campaign/scheduler**: No tests (--passWithNoTests)
 - ✅ **@campaign/shared**: No tests (--passWithNoTests)
 
-**Total**: 1581 tests across all packages (0 failed, 1581 passed/skipped = 100% pass rate)
+**Total**: 1581 passing tests across all packages (163 intentionally skipped = 100% pass rate)
+
+**Skipped Tests Breakdown:**
+
+- API: 153 skipped (Redis Pub/Sub integration tests, performance tests)
+- Rules Engine: 10 skipped (gRPC integration tests requiring external services)
 
 ---
 
