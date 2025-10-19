@@ -463,6 +463,12 @@ export function Map({
               void features;
               drawActions.clearFeature();
             }}
+            onSelectionChange={(features) => {
+              // When user clicks on a drawn feature, enter edit mode
+              if (features.length > 0 && features[0].id) {
+                drawActions.startEdit(features[0].id as string);
+              }
+            }}
             onDrawReady={setDrawInstance}
           />
           <DrawToolbar

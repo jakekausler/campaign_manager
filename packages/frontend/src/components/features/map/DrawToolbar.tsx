@@ -159,12 +159,17 @@ export function DrawToolbar({
     );
   }
 
-  // In draw/edit mode but no feature created yet, show instruction text
+  // In draw/edit mode but no feature created yet (or in edit mode without changes), show instruction text
   return (
     <div className="absolute top-4 left-32 bg-white bg-opacity-90 text-gray-700 font-medium py-2 px-4 rounded shadow-md">
       {mode === 'draw_point' && 'Click on the map to place a point'}
       {mode === 'draw_polygon' && 'Click to add vertices, double-click to complete'}
-      {mode === 'edit' && 'Drag vertices to edit the shape'}
+      {mode === 'edit' && (
+        <div className="flex items-center gap-2">
+          <span>Editing geometry</span>
+          <span className="text-sm text-gray-500">• Drag vertices to modify</span>
+        </div>
+      )}
     </div>
   );
 }

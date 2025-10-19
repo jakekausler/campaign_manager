@@ -10,7 +10,6 @@ import * as turf from '@turf/turf';
 import type { DrawFeature } from '../components/features/map/DrawControl';
 
 import { calculatePolygonArea } from './geometry';
-
 /**
  * Result of geometry validation
  */

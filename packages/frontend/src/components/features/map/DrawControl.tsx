@@ -30,6 +30,10 @@ interface DrawDeleteEvent {
   features: DrawFeature[];
 }
 
+interface DrawSelectionChangeEvent {
+  features: DrawFeature[];
+}
+
 /**
  * Props for DrawControl component
  */
@@ -79,6 +83,11 @@ export interface DrawControlProps {
   onDelete?: (features: DrawFeature[]) => void;
 
   /**
+   * Callback when feature selection changes
+   */
+  onSelectionChange?: (features: DrawFeature[]) => void;
+
+  /**
    * Callback to receive the MapboxDraw instance after initialization
    */
   onDrawReady?: (draw: MapboxDraw) => void;
@@ -119,6 +128,7 @@ export function DrawControl({
   onCreate,
   onUpdate,
   onDelete,
+  onSelectionChange,
   onDrawReady,
 }: DrawControlProps) {
   const drawRef = useRef<MapboxDraw | null>(null);
@@ -163,15 +173,23 @@ export function DrawControl({
       }
     };
 
+    const handleSelectionChange = (e: DrawSelectionChangeEvent) => {
+      if (onSelectionChange) {
+        onSelectionChange(e.features);
+      }
+    };
+
     map.on('draw.create', handleCreate);
     map.on('draw.update', handleUpdate);
     map.on('draw.delete', handleDelete);
+    map.on('draw.selectionchange', handleSelectionChange);
 
     // Cleanup on unmount
     return () => {
       map.off('draw.create', handleCreate);
       map.off('draw.update', handleUpdate);
       map.off('draw.delete', handleDelete);
+      map.off('draw.selectionchange', handleSelectionChange);
 
       if (drawRef.current) {
         // Type assertion needed due to incompatibility between maplibre-gl-draw and maplibre-gl Map types
@@ -179,7 +197,17 @@ export function DrawControl({
         drawRef.current = null;
       }
     };
-  }, [map, position, controls, styles, onCreate, onUpdate, onDelete, onDrawReady]);
+  }, [
+    map,
+    position,
+    controls,
+    styles,
+    onCreate,
+    onUpdate,
+    onDelete,
+    onSelectionChange,
+    onDrawReady,
+  ]);
 
   // This component doesn't render anything itself - it just adds controls to the map
   return null;

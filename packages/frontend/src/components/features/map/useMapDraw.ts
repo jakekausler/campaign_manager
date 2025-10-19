@@ -29,6 +29,8 @@ export interface MapDrawState {
   drawInstance: MapboxDraw | null;
   /** Validation result for the current feature */
   validationResult: ValidationResult | null;
+  /** ID of the feature being edited (null if creating new) */
+  editFeatureId: string | null;
 }
 
 /**
@@ -101,6 +103,7 @@ export function useMapDraw(
   const [currentFeature, setCurrentFeature] = useState<DrawFeature | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [editFeatureId, setEditFeatureId] = useState<string | null>(null);
 
   // Store draw instance in ref for access in callbacks
   const drawRef = useRef<MapboxDraw | null>(drawInstance);
@@ -123,6 +126,7 @@ export function useMapDraw(
     setCurrentFeature(null);
     setHasUnsavedChanges(false);
     setValidationResult(null);
+    setEditFeatureId(null);
   }, []);
 
   /**
@@ -140,6 +144,7 @@ export function useMapDraw(
     setCurrentFeature(null);
     setHasUnsavedChanges(false);
     setValidationResult(null);
+    setEditFeatureId(null);
   }, []);
 
   /**
@@ -148,9 +153,25 @@ export function useMapDraw(
   const startEdit = useCallback((featureId: string) => {
     if (!drawRef.current) return;
 
-    // Change to simple_select mode and select the feature
-    drawRef.current.changeMode('simple_select', { featureIds: [featureId] });
+    // Get the feature from the draw instance
+    const feature = drawRef.current.get(featureId);
+    if (!feature) {
+      console.error(`Feature with ID ${featureId} not found in draw control`);
+      return;
+    }
+
+    // Change to direct_select mode to allow vertex manipulation
+    drawRef.current.changeMode('direct_select', { featureId });
+
+    // Update state
     setMode('edit');
+    setEditFeatureId(featureId);
+    setCurrentFeature(feature as DrawFeature);
+    setHasUnsavedChanges(false); // No changes yet until user modifies
+
+    // Validate the feature
+    const validation = validateGeometry(feature as DrawFeature);
+    setValidationResult(validation);
   }, []);
 
   /**
@@ -159,8 +180,11 @@ export function useMapDraw(
   const cancelDraw = useCallback(() => {
     if (!drawRef.current) return;
 
-    // Delete all drawn features
-    drawRef.current.deleteAll();
+    // If we were editing, keep the original feature
+    // If we were creating, delete the feature
+    if (!editFeatureId && currentFeature) {
+      drawRef.current.delete(currentFeature.id || '');
+    }
 
     // Change to simple_select mode (non-interactive viewing)
     drawRef.current.changeMode('simple_select');
@@ -170,7 +194,8 @@ export function useMapDraw(
     setCurrentFeature(null);
     setHasUnsavedChanges(false);
     setValidationResult(null);
-  }, []);
+    setEditFeatureId(null);
+  }, [editFeatureId, currentFeature]);
 
   /**
    * Clear the current feature from the map
@@ -182,6 +207,7 @@ export function useMapDraw(
     setCurrentFeature(null);
     setHasUnsavedChanges(false);
     setValidationResult(null);
+    setEditFeatureId(null);
   }, []);
 
   /**
@@ -251,6 +277,7 @@ export function useMapDraw(
     hasUnsavedChanges,
     drawInstance: drawRef.current,
     validationResult,
+    editFeatureId,
   };
 
   const actions: MapDrawActions = {
