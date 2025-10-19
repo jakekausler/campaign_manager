@@ -12,6 +12,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 import { VariableScope } from '../types/state-variable.type';
 
 import { AuditService } from './audit.service';
+import { DependencyGraphService } from './dependency-graph.service';
 import { StateVariableService } from './state-variable.service';
 import { VariableEvaluationService } from './variable-evaluation.service';
 import { VersionService } from './version.service';
@@ -87,6 +88,18 @@ describe('StateVariableService - Versioning Integration', () => {
         {
           provide: AuditService,
           useValue: auditService,
+        },
+        {
+          provide: DependencyGraphService,
+          useValue: {
+            invalidateGraph: jest.fn(),
+          },
+        },
+        {
+          provide: 'REDIS_PUBSUB',
+          useValue: {
+            publish: jest.fn(),
+          },
         },
       ],
     }).compile();
