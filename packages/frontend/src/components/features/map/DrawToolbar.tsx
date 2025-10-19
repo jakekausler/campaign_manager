@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { calculatePolygonArea, countPolygonVertices, formatArea } from '../../../utils/geometry';
+import type { ValidationResult } from '../../../utils/geometry-validation';
 
 import type { DrawMode, DrawFeature } from './useMapDraw';
 
@@ -14,6 +15,8 @@ export interface DrawToolbarProps {
   hasUnsavedChanges: boolean;
   /** Current feature being drawn/edited (for showing stats) */
   currentFeature?: DrawFeature | null;
+  /** Validation result for the current feature */
+  validationResult?: ValidationResult | null;
   /** Callback to start drawing a point */
   onStartDrawPoint: () => void;
   /** Callback to start drawing a polygon */
@@ -48,6 +51,7 @@ export function DrawToolbar({
   mode,
   hasUnsavedChanges,
   currentFeature,
+  validationResult,
   onStartDrawPoint,
   onStartDrawPolygon,
   onSave,
@@ -96,39 +100,61 @@ export function DrawToolbar({
     );
   }
 
+  // Check if current feature is valid
+  const isValid = validationResult?.isValid ?? true;
+  const hasValidationErrors = validationResult && !validationResult.isValid;
+
   // In draw/edit mode with unsaved changes, show save/cancel buttons
   if (hasUnsavedChanges) {
     return (
-      <div className="absolute top-4 left-32 flex gap-2">
-        {/* Show polygon stats if available */}
-        {polygonStats && (
-          <div className="bg-white bg-opacity-90 text-gray-700 font-medium py-2 px-4 rounded shadow-md flex items-center gap-4">
-            <span className="text-sm">
-              <span className="font-semibold">{polygonStats.vertices}</span> vertices
-            </span>
-            <span className="text-sm border-l border-gray-300 pl-4">
-              <span className="font-semibold">{formatArea(polygonStats.area)}</span> area
-            </span>
+      <div className="absolute top-4 left-32 flex flex-col gap-2">
+        <div className="flex gap-2">
+          {/* Show polygon stats if available */}
+          {polygonStats && (
+            <div className="bg-white bg-opacity-90 text-gray-700 font-medium py-2 px-4 rounded shadow-md flex items-center gap-4">
+              <span className="text-sm">
+                <span className="font-semibold">{polygonStats.vertices}</span> vertices
+              </span>
+              <span className="text-sm border-l border-gray-300 pl-4">
+                <span className="font-semibold">{formatArea(polygonStats.area)}</span> area
+              </span>
+            </div>
+          )}
+          <button
+            onClick={onSave}
+            disabled={isSaving || !isValid}
+            className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+            data-testid="save-feature-button"
+            aria-label="Save the drawn feature"
+            title={!isValid ? 'Cannot save: validation errors present' : undefined}
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </button>
+          <button
+            onClick={onCancel}
+            disabled={isSaving}
+            className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
+            data-testid="cancel-draw-button"
+            aria-label="Cancel and discard changes"
+          >
+            Cancel
+          </button>
+        </div>
+        {/* Show validation errors */}
+        {hasValidationErrors && (
+          <div
+            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-md"
+            role="alert"
+            data-testid="validation-errors"
+          >
+            <div className="font-semibold text-sm mb-1">Validation Errors:</div>
+            <ul className="list-disc list-inside text-sm space-y-1">
+              {validationResult.errors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
           </div>
         )}
-        <button
-          onClick={onSave}
-          disabled={isSaving}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium py-2 px-4 rounded shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
-          data-testid="save-feature-button"
-          aria-label="Save the drawn feature"
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </button>
-        <button
-          onClick={onCancel}
-          disabled={isSaving}
-          className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
-          data-testid="cancel-draw-button"
-          aria-label="Cancel and discard changes"
-        >
-          Cancel
-        </button>
       </div>
     );
   }

@@ -469,6 +469,7 @@ export function Map({
             mode={drawState.mode}
             hasUnsavedChanges={drawState.hasUnsavedChanges}
             currentFeature={drawState.currentFeature}
+            validationResult={drawState.validationResult}
             onStartDrawPoint={drawActions.startDrawPoint}
             onStartDrawPolygon={drawActions.startDrawPolygon}
             onSave={async () => {

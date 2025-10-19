@@ -1,6 +1,8 @@
 import MapboxDraw from 'maplibre-gl-draw';
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+import { validateGeometry, type ValidationResult } from '../../../utils/geometry-validation';
+
 import type { DrawFeature as DrawFeatureType } from './DrawControl';
 
 /**
@@ -25,6 +27,8 @@ export interface MapDrawState {
   hasUnsavedChanges: boolean;
   /** Reference to the MapboxDraw instance */
   drawInstance: MapboxDraw | null;
+  /** Validation result for the current feature */
+  validationResult: ValidationResult | null;
 }
 
 /**
@@ -96,6 +100,7 @@ export function useMapDraw(
   const [mode, setMode] = useState<DrawMode>('none');
   const [currentFeature, setCurrentFeature] = useState<DrawFeature | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
 
   // Store draw instance in ref for access in callbacks
   const drawRef = useRef<MapboxDraw | null>(drawInstance);
@@ -117,6 +122,7 @@ export function useMapDraw(
     setMode('draw_point');
     setCurrentFeature(null);
     setHasUnsavedChanges(false);
+    setValidationResult(null);
   }, []);
 
   /**
@@ -133,6 +139,7 @@ export function useMapDraw(
     setMode('draw_polygon');
     setCurrentFeature(null);
     setHasUnsavedChanges(false);
+    setValidationResult(null);
   }, []);
 
   /**
@@ -162,6 +169,7 @@ export function useMapDraw(
     setMode('none');
     setCurrentFeature(null);
     setHasUnsavedChanges(false);
+    setValidationResult(null);
   }, []);
 
   /**
@@ -173,6 +181,7 @@ export function useMapDraw(
     drawRef.current.deleteAll();
     setCurrentFeature(null);
     setHasUnsavedChanges(false);
+    setValidationResult(null);
   }, []);
 
   /**
@@ -205,6 +214,10 @@ export function useMapDraw(
       setCurrentFeature(feature);
       setHasUnsavedChanges(true);
 
+      // Validate the feature
+      const validation = validateGeometry(feature);
+      setValidationResult(validation);
+
       if (onFeatureCreated) {
         onFeatureCreated(feature);
       }
@@ -220,6 +233,10 @@ export function useMapDraw(
       setCurrentFeature(feature);
       setHasUnsavedChanges(true);
 
+      // Validate the updated feature
+      const validation = validateGeometry(feature);
+      setValidationResult(validation);
+
       if (onFeatureUpdated) {
         onFeatureUpdated(feature);
       }
@@ -233,6 +250,7 @@ export function useMapDraw(
     currentFeature,
     hasUnsavedChanges,
     drawInstance: drawRef.current,
+    validationResult,
   };
 
   const actions: MapDrawActions = {
