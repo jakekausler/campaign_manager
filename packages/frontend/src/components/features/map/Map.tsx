@@ -3,7 +3,10 @@ import type { MapLayerMouseEvent } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+import { useCurrentWorldTime } from '@/services/api/hooks';
+
 import { LayerControls } from './LayerControls';
+import { TimeScrubber } from './TimeScrubber';
 import type {
   LocationPointProperties,
   LocationRegionProperties,
@@ -50,6 +53,12 @@ interface MapProps {
    * When provided, settlement layers will be rendered on the map
    */
   kingdomId?: string;
+
+  /**
+   * Campaign ID for querying world time (optional)
+   * When provided, enables time scrubber for historical view
+   */
+  campaignId?: string;
 }
 
 /**
@@ -76,6 +85,7 @@ export function Map({
   onViewportChange,
   worldId,
   kingdomId,
+  campaignId,
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre | null>(null);
@@ -90,14 +100,30 @@ export function Map({
     bounds: null,
   });
 
+  // World time for time scrubber
+  const { currentTime, loading: timeLoading } = useCurrentWorldTime(campaignId);
+
+  // Selected time state (null means "current time")
+  const [selectedTime, setSelectedTime] = useState<Date | null>(null);
+
+  // When current time loads, initialize selectedTime to current time
+  useEffect(() => {
+    if (currentTime && !selectedTime) {
+      setSelectedTime(currentTime);
+    }
+  }, [currentTime, selectedTime]);
+
+  // Determine filter time: use selectedTime if set, otherwise null (shows all active)
+  const filterTime = selectedTime;
+
   // Map layer visibility management
   const { layerVisibility, toggleLayerVisibility } = useMapLayers(map.current);
 
   // Load location layers if worldId is provided
-  useLocationLayers(map.current, worldId ?? '', Boolean(worldId));
+  useLocationLayers(map.current, worldId ?? '', Boolean(worldId), filterTime);
 
   // Load settlement layers if kingdomId is provided
-  useSettlementLayers(map.current, kingdomId ?? '', Boolean(kingdomId));
+  useSettlementLayers(map.current, kingdomId ?? '', Boolean(kingdomId), filterTime);
 
   // Entity popup management
   const { showPopup } = useEntityPopup(map.current);
@@ -363,6 +389,16 @@ export function Map({
         onToggle={toggleLayerVisibility}
         className="absolute top-4 right-4 mt-20"
       />
+
+      {/* Time scrubber (only shown if campaignId provided) */}
+      {campaignId && (
+        <TimeScrubber
+          currentTime={currentTime}
+          selectedTime={selectedTime}
+          onTimeChange={setSelectedTime}
+          loading={timeLoading}
+        />
+      )}
 
       {/* Viewport debug info (hidden by default, useful for development) */}
       {import.meta.env.DEV && (

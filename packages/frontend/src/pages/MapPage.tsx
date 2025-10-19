@@ -16,10 +16,11 @@ export default function MapPage() {
     bounds: null,
   });
 
-  // TODO: Replace with actual worldId and kingdomId from campaign context
-  // For now, using placeholders to demonstrate layer rendering
+  // TODO: Replace with actual worldId, kingdomId, and campaignId from campaign context
+  // For now, using placeholders to demonstrate layer rendering and time scrubber
   const worldId = 'world-placeholder-id';
   const kingdomId = 'kingdom-placeholder-id';
+  const campaignId = 'campaign-placeholder-id';
 
   return (
     <div className="h-screen flex flex-col">
@@ -39,6 +40,7 @@ export default function MapPage() {
           onViewportChange={setViewport}
           worldId={worldId}
           kingdomId={kingdomId}
+          campaignId={campaignId}
         />
       </main>
 

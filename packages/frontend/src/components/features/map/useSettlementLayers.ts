@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { useSettlementsForMap } from '@/services/api/hooks';
 
 import { createSettlementFeature, filterValidFeatures } from './geojson-utils';
+import { filterByTime } from './time-filter';
 import { useMapLayers } from './useMapLayers';
 
 /**
@@ -22,8 +23,14 @@ import { useMapLayers } from './useMapLayers';
  * @param map - MapLibre map instance
  * @param kingdomId - Kingdom ID to fetch settlements for
  * @param enabled - Whether to render settlement layers (default: true)
+ * @param filterTime - Optional time to filter entities by (for historical view)
  */
-export function useSettlementLayers(map: MaplibreMap | null, kingdomId: string, enabled = true) {
+export function useSettlementLayers(
+  map: MaplibreMap | null,
+  kingdomId: string,
+  enabled = true,
+  filterTime: Date | null = null
+) {
   const { settlements, loading, error } = useSettlementsForMap(kingdomId, { skip: !enabled });
   const { addDataLayer } = useMapLayers(map);
 
@@ -37,9 +44,12 @@ export function useSettlementLayers(map: MaplibreMap | null, kingdomId: string, 
       return;
     }
 
+    // Filter settlements by time
+    const filteredSettlements = filterByTime(settlements, filterTime);
+
     // Create GeoJSON features for settlements
     const settlementFeatures = filterValidFeatures(
-      settlements.map((settlement) => {
+      filteredSettlements.map((settlement) => {
         // Settlement must have a location with valid geometry
         if (!settlement.location || !settlement.location.geojson) {
           return null;
@@ -77,7 +87,7 @@ export function useSettlementLayers(map: MaplibreMap | null, kingdomId: string, 
       };
       addDataLayer('settlement', settlementGeoJSON);
     }
-  }, [map, settlements, loading, error, enabled, addDataLayer]);
+  }, [map, settlements, loading, error, enabled, addDataLayer, filterTime]);
 
   return {
     loading,

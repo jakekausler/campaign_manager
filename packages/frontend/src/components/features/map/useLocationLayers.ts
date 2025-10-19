@@ -15,6 +15,7 @@ import {
   createLocationRegionFeature,
   filterValidFeatures,
 } from './geojson-utils';
+import { filterByTime } from './time-filter';
 import { useMapLayers } from './useMapLayers';
 
 /**
@@ -23,8 +24,14 @@ import { useMapLayers } from './useMapLayers';
  * @param map - MapLibre map instance
  * @param worldId - World ID to fetch locations for
  * @param enabled - Whether to render location layers (default: true)
+ * @param filterTime - Optional time to filter entities by (for historical view)
  */
-export function useLocationLayers(map: MaplibreMap | null, worldId: string, enabled = true) {
+export function useLocationLayers(
+  map: MaplibreMap | null,
+  worldId: string,
+  enabled = true,
+  filterTime: Date | null = null
+) {
   const { locations, loading, error } = useLocationsByWorld(worldId, { skip: !enabled });
   const { addDataLayer } = useMapLayers(map);
 
@@ -38,9 +45,12 @@ export function useLocationLayers(map: MaplibreMap | null, worldId: string, enab
       return;
     }
 
+    // Filter locations by time
+    const filteredLocations = filterByTime(locations, filterTime);
+
     // Separate locations by type
-    const pointLocations = locations.filter((loc) => loc.type === 'point');
-    const regionLocations = locations.filter((loc) => loc.type === 'region');
+    const pointLocations = filteredLocations.filter((loc) => loc.type === 'point');
+    const regionLocations = filteredLocations.filter((loc) => loc.type === 'region');
 
     // Create GeoJSON features for point locations
     const pointFeatures = filterValidFeatures(
@@ -126,7 +136,7 @@ export function useLocationLayers(map: MaplibreMap | null, worldId: string, enab
       };
       addDataLayer('location-region', regionGeoJSON);
     }
-  }, [map, locations, loading, error, enabled, addDataLayer]);
+  }, [map, locations, loading, error, enabled, addDataLayer, filterTime]);
 
   return {
     loading,

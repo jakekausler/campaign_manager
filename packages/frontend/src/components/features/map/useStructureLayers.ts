@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { useStructuresForMap } from '@/services/api/hooks';
 
 import { createStructureFeature, filterValidFeatures } from './geojson-utils';
+import { filterByTime } from './time-filter';
 import { useMapLayers } from './useMapLayers';
 
 /**
@@ -22,8 +23,14 @@ import { useMapLayers } from './useMapLayers';
  * @param map - MapLibre map instance
  * @param settlementId - Settlement ID to fetch structures for
  * @param enabled - Whether to render structure layers (default: true)
+ * @param filterTime - Optional time to filter entities by (for historical view)
  */
-export function useStructureLayers(map: MaplibreMap | null, settlementId: string, enabled = true) {
+export function useStructureLayers(
+  map: MaplibreMap | null,
+  settlementId: string,
+  enabled = true,
+  filterTime: Date | null = null
+) {
   const { structures, loading, error } = useStructuresForMap(settlementId, { skip: !enabled });
   const { addDataLayer } = useMapLayers(map);
 
@@ -37,9 +44,12 @@ export function useStructureLayers(map: MaplibreMap | null, settlementId: string
       return;
     }
 
+    // Filter structures by time
+    const filteredStructures = filterByTime(structures, filterTime);
+
     // Create GeoJSON features for structures
     const structureFeatures = filterValidFeatures(
-      structures.map((structure) => {
+      filteredStructures.map((structure) => {
         // Structure must have a settlement with a location and valid geometry
         if (
           !structure.settlement ||
@@ -91,7 +101,7 @@ export function useStructureLayers(map: MaplibreMap | null, settlementId: string
       };
       addDataLayer('structure', structureGeoJSON);
     }
-  }, [map, structures, loading, error, enabled, addDataLayer]);
+  }, [map, structures, loading, error, enabled, addDataLayer, filterTime]);
 
   return {
     loading,

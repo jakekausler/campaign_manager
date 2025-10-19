@@ -6,6 +6,9 @@ export { useSettlementLayers } from './useSettlementLayers';
 export { useStructureLayers } from './useStructureLayers';
 export { useEntityPopup } from './useEntityPopup';
 export { LayerControls } from './LayerControls';
+export { TimeScrubber } from './TimeScrubber';
+export type { TimeScrubberProps } from './TimeScrubber';
+export { filterByTime } from './time-filter';
 export {
   LocationPopupContent,
   SettlementPopupContent,

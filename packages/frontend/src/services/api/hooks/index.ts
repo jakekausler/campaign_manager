@@ -42,5 +42,8 @@ export {
   GET_STRUCTURES_FOR_MAP,
 } from './structures';
 
+// World Time hooks
+export { useCurrentWorldTime, GET_CURRENT_WORLD_TIME } from './world-time';
+
 // Mutation hooks (Stage 8)
 export * from '../mutations';
