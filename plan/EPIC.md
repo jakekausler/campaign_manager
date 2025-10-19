@@ -59,7 +59,7 @@ Gateway API → Rules Engine + Scheduler → PostgreSQL/PostGIS + Redis + MinIO 
 
 ### Advanced Features (Milestone 4: Weeks 7-8)
 
-- [ ] [TICKET-021](TICKET-021.md) - Flow View with React Flow
+- [x] [TICKET-021](TICKET-021.md) - Flow View with React Flow
 - [ ] [TICKET-022](TICKET-022.md) - Timeline View Implementation
 - [ ] [TICKET-023](TICKET-023.md) - Entity Inspector Component
 - [ ] [TICKET-024](TICKET-024.md) - Cross-View Synchronization
