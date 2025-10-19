@@ -78,6 +78,12 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
           },
         },
         {
+          provide: 'REDIS_PUBSUB',
+          useValue: {
+            publish: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
           provide: PrismaService,
           useValue: {
             fieldCondition: {
