@@ -35,7 +35,41 @@ Successfully installed React Flow library and created basic FlowView page:
 1. Adding consistent header/footer layout (deferred to later stages)
 2. Extracting to feature component following MapPage pattern (deferred to Stage 2)
 
-**Next**: Stage 2 will add GraphQL integration to fetch dependency graph data.
+**Next**: Stage 3 will transform graph data to React Flow format.
+
+### Stage 2: Create GraphQL Integration (Commit: 8406688)
+
+Successfully implemented complete GraphQL integration for fetching dependency graph data:
+
+**Implemented**:
+
+- Created GET_DEPENDENCY_GRAPH query fetching nodes, edges, and statistics
+- Implemented useDependencyGraph custom hook with loading/error states
+- Added 9 comprehensive unit tests (all passing)
+- Integrated hook into FlowViewPage with 4 UI states (loading, error, no campaign, no data)
+- Added mockDependencyGraph test data (7 nodes, 7 edges, realistic relationships)
+- Added MSW handler for GetDependencyGraph query
+- Temporary TypeScript types (codegen pending backend startup fix)
+- Temporary stats panel displays graph metrics
+
+**Technical Decisions**:
+
+- cache-and-network fetch policy for fresh data while using cache
+- useMemo optimization to prevent unnecessary re-renders
+- Comprehensive error handling with user-friendly messages
+- Test coverage includes all edge cases and error scenarios
+- Backend has NestJS dependency injection error (RulesEngineClientService), preventing codegen
+
+**Code Review**: Approved - production-quality code with excellent test coverage
+
+**Tests**:
+
+- ✅ 9 new tests passing (dependency graph hook)
+- ✅ 404 total frontend tests passing (no regressions)
+- ✅ TypeScript compilation successful
+- ✅ ESLint clean (no new errors or warnings)
+
+**Next**: Stage 3 will create utility to transform DependencyGraphResult to React Flow nodes/edges format.
 
 ### Planning Phase Details
 
