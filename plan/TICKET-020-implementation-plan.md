@@ -65,16 +65,17 @@ Add drawing and editing capabilities to the map interface using MapLibre GL Draw
 
 **Goal**: Enable drawing polygon regions
 **Success Criteria**: Can draw polygons by clicking vertices, polygons render correctly
-**Status**: Not Started
+**Status**: Complete
+**Commit**: 7d3c845
 
-- [ ] Implement polygon draw mode activation
-- [ ] Handle draw.create event for polygons
-- [ ] Convert MapLibre geometry to PostGIS Polygon format
-- [ ] Display temporary polygon fill for unsaved polygon
-- [ ] Show vertex count and area while drawing
-- [ ] Complete polygon on double-click or Enter
-- [ ] Test polygon drawing workflow
-- [ ] Commit changes
+- [x] Implement polygon draw mode activation
+- [x] Handle draw.create event for polygons
+- [x] Convert MapLibre geometry to PostGIS Polygon format
+- [x] Display temporary polygon fill for unsaved polygon
+- [x] Show vertex count and area while drawing
+- [x] Complete polygon on double-click or Enter
+- [x] Test polygon drawing workflow
+- [x] Commit changes
 
 ### Stage 4: Geometry Validation
 

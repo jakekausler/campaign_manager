@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2)
+- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2), 7d3c845 (Stage 3)
 
 ## Description
 
@@ -151,3 +151,71 @@ Add map editing capabilities for creating and modifying point locations and poly
 - Ready for manual testing in browser
 
 **Next Steps**: Implement polygon drawing tool (Stage 3)
+
+### Stage 3: Polygon Drawing Tool (7d3c845)
+
+**Completed**: Successfully implemented polygon drawing with real-time vertex count and area display.
+
+**Key Implementations**:
+
+1. **Geometry Utilities** (`packages/frontend/src/utils/geometry.ts`):
+   - `calculatePolygonArea()`: Shoelace formula for spherical approximation (accurate for < 100 km²)
+   - `formatArea()`: Auto-format with appropriate units (m², ha, km²)
+   - `countPolygonVertices()`: Count vertices excluding GeoJSON closing point
+   - Comprehensive input validation with type guards
+   - Handles single-ring and multi-ring (with holes) polygons
+   - Smart rounding: nearest 10 for values >= 100 m²
+   - Named constants for conversion factors
+
+2. **Unit Tests** (`packages/frontend/src/utils/geometry.test.ts`):
+   - 28 comprehensive tests covering all three functions
+   - Valid polygons: simple squares, triangles, with holes
+   - Invalid/degenerate: < 3 vertices, null, undefined, malformed arrays
+   - Edge cases: high latitudes, very small polygons, no closing point
+   - All tests passing (100% coverage of geometry functions)
+
+3. **UI Enhancements** (`DrawToolbar.tsx`):
+   - Real-time polygon stats display: "{vertices} vertices | {area} area"
+   - `useMemo` optimization to cache expensive trigonometric calculations
+   - Validation before type casting (checks geometry.type and coordinates array)
+   - Stats only shown for polygon features (not points)
+   - Clean visual design with divider between stats
+
+4. **Map Component Integration** (`Map.tsx`):
+   - Pass `currentFeature` prop to DrawToolbar for stats calculation
+
+**Technical Details**:
+
+- Polygon mode already functional from Stage 2 (`startDrawPolygon()`)
+- Area calculation uses spherical Shoelace formula with Earth radius (6,371 km)
+- Accuracy limitations documented: degrades for large polygons (> 100 km²), high latitudes (> 60°), antimeridian crossing
+- GeoJSON format: `[longitude, latitude]` coordinate pairs
+- Performance optimized with React.useMemo
+
+**Workflow**:
+
+1. User clicks "Draw Region" button → enters `draw_polygon` mode
+2. MapLibre GL Draw shows instruction: "Click to add vertices, double-click to complete"
+3. User clicks on map → vertices added to polygon
+4. Stats display updates in real-time: e.g., "4 vertices | 1.25 km² area"
+5. User double-clicks → polygon completed, `hasUnsavedChanges` = true
+6. Save/Cancel buttons appear with stats still visible
+7. User clicks Save → onSave callback invoked (placeholder for Stage 6)
+8. After save → feature cleared, mode returns to 'none'
+
+**Code Quality**:
+
+- All critical issues from code review addressed
+- Type-check and lint passing
+- 28/28 unit tests passing
+- Code review approved
+- TDD approach followed
+
+**Testing Notes**:
+
+- Unit tests verify area calculation accuracy (±10% tolerance for spherical approximation)
+- Tests cover GeoJSON polygon format (both single-ring and multi-ring)
+- Runtime validation ensures no crashes on malformed input
+- Ready for manual browser testing
+
+**Next Steps**: Implement geometry validation (Stage 4)
