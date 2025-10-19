@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5)
 
 ## Description
 
@@ -330,3 +330,101 @@ Frontend:
 - Updated Map component tests to use Apollo Client context
 - 204/207 total tests passing (3 pre-existing failures unrelated to this stage)
 - No security vulnerabilities detected
+
+### Stage 5: Settlement Layer Rendering (Commit: 58f6550)
+
+**What was implemented:**
+
+Backend:
+
+- Added `location` field to Settlement GraphQL type (`packages/api/src/graphql/types/settlement.type.ts`)
+- Created LocationDataLoader for batch loading locations (`packages/api/src/graphql/dataloaders/location.dataloader.ts`)
+  - Prevents N+1 query problems when loading settlements with locations
+  - Does not require user authorization (world-scoped data)
+- Added `findByIds` batch method to LocationService (`packages/api/src/graphql/services/location.service.ts`)
+  - Uses Prisma `$queryRaw` with `ST_AsBinary` for PostGIS geometry
+  - Maintains input order (critical for DataLoader contract)
+  - Returns null for missing locations (graceful degradation)
+- Added location field resolver in SettlementResolver (`packages/api/src/graphql/resolvers/settlement.resolver.ts`)
+  - Uses DataLoader pattern for optimal performance
+  - Loads location via `context.dataloaders.locationLoader`
+- Registered LocationDataLoader in GraphQL module and context
+
+Frontend:
+
+- Created GET_SETTLEMENTS_FOR_MAP query in settlements.ts
+  - Fetches settlements with location field including geojson geometry
+  - Follows cache-and-network fetch policy for fresh data
+- Created useSettlementsForMap hook
+  - Follows existing settlement hook patterns (useSettlementsByKingdom, useSettlementDetails)
+  - Returns settlements array, loading, error states
+- Created useSettlementLayers hook (`packages/frontend/src/components/features/map/useSettlementLayers.ts`)
+  - Fetches settlements with location data
+  - Creates GeoJSON features using createSettlementFeature utility
+  - Validates coordinates (Number.isFinite checks)
+  - Handles missing locations gracefully (filters out nulls)
+  - Adds settlement layer to map via addDataLayer
+- Integrated settlement layers into Map component
+  - Added kingdomId prop to Map component
+  - Calls useSettlementLayers when kingdomId is provided
+- Updated MapPage to pass kingdomId placeholder (to be replaced with actual context data)
+- Settlement markers distinct from location markers:
+  - Green color (#22c55e)
+  - 8px circle (larger than location points at 6px)
+  - Layer name: 'settlement'
+
+Testing:
+
+- Created 10 comprehensive unit tests for useSettlementLayers hook
+- Tests cover:
+  - Fetching settlements with skip option when disabled
+  - Loading and error states
+  - Valid location geometry rendering
+  - Handling settlements without locations (graceful null handling)
+  - Handling invalid coordinates (NaN, Infinity)
+  - Settlement count tracking
+  - Return values (loading, error, settlementCount)
+- All 10 tests passing (100%)
+- 214/217 total frontend tests passing (3 pre-existing failures unrelated to Stage 5)
+- 1289/1290 backend tests passing (1 pre-existing flaky performance test)
+
+**Design decisions:**
+
+- DataLoader pattern for location loading:
+  - Prevents N+1 query problems when resolving location field for multiple settlements
+  - Maintains ordering (critical for DataLoader contract)
+  - No user authorization needed (locations are world-scoped public data)
+  - Similar pattern to existing StructureDataLoader
+
+- Coordinate validation:
+  - Frontend validates Number.isFinite for both longitude and latitude
+  - Prevents MapLibre crashes from NaN, Infinity, or invalid coordinates
+  - Returns null for invalid geometries (graceful degradation)
+  - Similar validation to location layer rendering
+
+- Settlement-specific GraphQL query:
+  - GET_SETTLEMENTS_FOR_MAP includes location field with geojson
+  - Separate from GET_SETTLEMENTS_BY_KINGDOM which doesn't need location data
+  - Follows principle of querying only needed data
+  - Uses cache-and-network fetch policy for fresh data
+
+- Frontend hook architecture:
+  - useSettlementsForMap follows existing settlement hook patterns
+  - useSettlementLayers similar to useLocationLayers
+  - Manages layer lifecycle in useEffect with proper dependencies
+  - Exports loading/error states for UI integration
+
+**Code quality:**
+
+- All TypeScript type-check and ESLint checks pass (0 errors, warnings acceptable)
+- Code reviewed by specialized Code Reviewer subagent with approval
+- All critical feedback addressed:
+  - N+1 query problem solved with DataLoader
+  - Proper ordering maintained in findByIds
+  - Comprehensive coordinate validation
+  - Graceful null handling throughout
+- 10 new tests for useSettlementLayers (all passing)
+- No regressions in existing tests
+- No security vulnerabilities detected
+- Follows project conventions (barrel exports, component structure, lazy loading)
+- Import ordering fixed per ESLint rules
