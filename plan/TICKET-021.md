@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db
+- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e
 
 ## Implementation Notes
 
@@ -185,7 +185,60 @@ Successfully implemented custom node components for all dependency graph entity 
 - ✅ Hover and selection interactions working
 - ✅ Accessibility features verified (ARIA labels, keyboard nav)
 
-**Next**: Stage 5 will create custom edge components for relationship types (ReadsEdge, WritesEdge, DependsOnEdge).
+**Next**: Stage 6 will implement auto-layout (already complete from Stage 3), Stage 7 will add minimap and controls.
+
+### Stage 5: Create Custom Edge Components (Commit: a1a290e)
+
+Successfully implemented custom edge components for all dependency graph relationship types:
+
+**Implemented**:
+
+- Created CustomEdge base component with shared behavior
+  - Smooth step paths using React Flow's getSmoothStepPath
+  - Optional label rendering via EdgeLabelRenderer (avoids path interference)
+  - Animation overlay support for active edges
+  - Customizable stroke color, width, and dash patterns
+  - Memoized with React.memo for performance
+- Created 3 specialized edge components:
+  - ReadsEdge: Solid line (#64748b - slate-500) for read relationships
+  - WritesEdge: Dashed line (#f97316 - orange-500) with animation for write/mutation operations
+  - DependsOnEdge: Dotted line (#a855f7 - purple-500) for dependency relationships
+- Updated graph-layout.ts to use custom edge types
+  - Removed getEdgeStyle() function (styling now in components - SRP)
+  - transformEdge() maps to lowercase types (reads, writes, dependson)
+  - Color-based arrow marker IDs (arrow-64748b, arrow-f97316, arrow-a855f7)
+  - FlowEdgeData properly extends Edge<{edgeType, metadata}>
+- Registered edge types in FlowViewPage alongside node types
+- Enhanced test utilities with forEdges flag
+  - renderWithReactFlow creates full ReactFlow instance for edge tests
+  - Properly initializes EdgeLabelRenderer portal system
+- Comprehensive test coverage: 27 new unit tests
+  - CustomEdge: 11 tests (stroke color/width, dash patterns, labels, animation)
+  - ReadsEdge: 5 tests (color, width, solid line, not animated)
+  - WritesEdge: 6 tests (color, width, dashed line, animated, opacity)
+  - DependsOnEdge: 5 tests (color, width, dotted line, not animated)
+  - Updated graph-layout.test.ts to match new edge transformation (18 tests)
+
+**Technical Decisions**:
+
+- BaseEdge + EdgeLabelRenderer pattern from React Flow best practices
+- Animation only on WritesEdge (semantic meaning - active mutation)
+- Consistent 2px stroke width across all edge types
+- Color coding matches visual hierarchy (slate for reads, orange for writes, purple for dependencies)
+- EdgeLabelRenderer requires full ReactFlow instance in tests for portal rendering
+
+**Code Review**: Approved - production-quality code with excellent test coverage and proper type safety
+
+**Tests**:
+
+- ✅ 475 total frontend tests passing (27 new edge tests, no regressions)
+- ✅ TypeScript compilation successful
+- ✅ ESLint clean (no new errors or warnings)
+- ✅ All edge types render with distinct visual styles
+- ✅ Animation works correctly on WritesEdge only
+- ✅ Labels render properly when provided
+
+**Next**: Stage 6 is already complete (auto-layout implemented in Stage 3), so Stage 7 will add minimap and controls (MiniMap already added in Stage 1, needs custom toolbar).
 
 ### Planning Phase Details
 
