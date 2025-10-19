@@ -6,7 +6,7 @@ Interactive flowchart visualization for exploring relationships between campaign
 
 The Flow View provides an interactive, visual representation of your campaign's dependency graph, showing how variables, conditions, effects, and other entities relate to and depend on each other. This makes it easy to understand complex campaign logic at a glance.
 
-**Implementation**: TICKET-021 (12 stages, commits: 66d4238 - TBD)
+**Implementation**: TICKET-021 (12 stages, commits: 66d4238 - ea4f9e0)
 
 ## Features
 

@@ -1241,7 +1241,7 @@ Interactive flowchart visualization for exploring dependency graphs. See [detail
 - Edge Types: READS (solid), WRITES (dashed/animated), DEPENDS_ON (dotted)
 - Performance: <2s for 100 nodes, <3s for 200 nodes, <5s for 500 nodes
 - Integration: React Flow library, MiniMap, Controls, zoom indicator, loading skeleton
-- Implementation: TICKET-021 (12 stages, commits: 66d4238 - TBD)
+- Implementation: TICKET-021 (12 stages, commits: 66d4238 - ea4f9e0)
 
 **TICKET-021: Flow View with React Flow** (12 stages):
 
