@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 66d4238, 80ef9d3
+- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db
 
 ## Implementation Notes
 
@@ -70,6 +70,66 @@ Successfully implemented complete GraphQL integration for fetching dependency gr
 - ✅ ESLint clean (no new errors or warnings)
 
 **Next**: Stage 3 will create utility to transform DependencyGraphResult to React Flow nodes/edges format.
+
+### Stage 3: Transform Graph Data to React Flow Format (Commit: 71610db)
+
+Successfully implemented complete transformation pipeline with auto-layout algorithm:
+
+**Implemented**:
+
+- Created graph-layout.ts utility with comprehensive transformation functions
+- transformNode(): Maps DependencyNode to React Flow Node with type-based styling
+  - VARIABLE nodes: Green (#22c55e)
+  - CONDITION nodes: Blue (#3b82f6)
+  - EFFECT nodes: Orange (#f97316)
+  - ENTITY nodes: Purple (#a855f7)
+  - Fallback label to entityId when label is null
+  - Node dimensions: 180x60px for readability
+- transformEdge(): Maps DependencyEdge to React Flow Edge with relationship-based styling
+  - READS: Solid line (no dash array)
+  - WRITES: Dashed line (5,5) with animation
+  - DEPENDS_ON: Dotted line (2,2)
+  - All edges use smoothstep type for better readability
+  - Arrow markers on all edges
+- applyAutoLayout(): Dagre hierarchical layout algorithm
+  - Top-to-bottom (TB) layout direction for natural flow
+  - Node spacing: 100px horizontal, 80px vertical
+  - Handles cycles gracefully
+  - Handles disconnected subgraphs
+  - Handles single nodes without edges
+  - Margins: 50px around the graph
+- transformGraphToFlow(): Main function combining transformation and layout
+  - Transforms nodes and edges
+  - Applies auto-layout
+  - Returns positioned nodes and styled edges
+- Integrated transformation into FlowViewPage with useMemo optimization
+  - useMemo called before conditional returns (React Hooks rules)
+  - Null-safe check for graph data
+- Added color legend to stats panel for node type identification
+- Installed dagre v0.8.5 and @types/dagre v0.7.52
+- Exported all types and functions from utils/index.ts
+
+**Technical Decisions**:
+
+- Dagre layout algorithm chosen for fast, proven hierarchical layout (100+ nodes in <100ms)
+- Namespace import (`import * as dagre`) for compatibility with ESLint import/default rule
+- Color scheme uses Tailwind color palette for consistency with rest of app
+- useMemo prevents unnecessary recalculations when graph data hasn't changed
+- React Hooks rules enforced: useMemo called unconditionally before conditional returns
+
+**Tests**:
+
+- 18 comprehensive unit tests covering all transformation functions
+- transformNode: 6 tests (all node types, fallback label, styling, position)
+- transformEdge: 4 tests (all edge types, animation, arrow markers)
+- applyAutoLayout: 4 tests (basic layout, disconnected subgraphs, single node, cycles)
+- transformGraphToFlow: 4 tests (empty graph, single node, complex graph, cycles)
+- All 422 tests passing with no regressions
+- Test coverage: node types, edge types, empty graphs, cycles, disconnected graphs
+
+**Code Review**: Approved - production-quality code with excellent test coverage
+
+**Next**: Stage 4 will create custom node components for each entity type (VariableNode, ConditionNode, EffectNode, EntityNode).
 
 ### Planning Phase Details
 
