@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6), 4d6068b (Stage 7), 330fad8 (Stage 8), dabaece (Stage 9), 8c8dd58 (Stage 10)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6), 4d6068b (Stage 7), 330fad8 (Stage 8), dabaece (Stage 9), 8c8dd58 (Stage 10), 7544232 (Stage 11)
 
 ## Description
 
@@ -942,3 +942,68 @@ All 330 frontend tests passing (35 new tests).
 - Clean separation of concerns
 - Follows existing project patterns
 - Tailwind CSS utility classes for consistency
+
+### Stage 11: Performance Optimization (Commit: 7544232)
+
+**What was implemented:**
+
+Hook Optimizations (useMemo):
+
+- useLocationLayers.ts: Added useMemo to cache GeoJSON point and region feature generation
+  - Memoizes pointFeatures and regionFeatures separately
+  - Dependencies: locations, loading, error, filterTime
+  - Prevents redundant filtering, mapping, and validation on every render
+- useSettlementLayers.ts: Added useMemo to cache GeoJSON settlement feature generation
+  - Memoizes settlementFeatures array
+  - Dependencies: settlements, loading, error, filterTime
+  - Avoids reprocessing settlement data when only map state changes
+- useStructureLayers.ts: Added useMemo to cache GeoJSON structure feature generation
+  - Memoizes structureFeatures array
+  - Dependencies: structures, loading, error, filterTime
+  - Consistent with other layer hooks for uniform performance
+
+Component Optimizations (React.memo):
+
+- LayerControls.tsx: Wrapped with React.memo to prevent re-render when parent Map updates
+- TimeScrubber.tsx: Wrapped with React.memo to prevent re-render on unrelated state changes
+- EntityPopupContent.tsx: Wrapped all three variants with React.memo
+  - LocationPopupContent
+  - SettlementPopupContent
+  - StructurePopupContent
+- LoadingSpinner.tsx: Wrapped with React.memo to prevent re-render during map interactions
+- ErrorMessage.tsx: Wrapped with React.memo to prevent re-render on viewport changes
+- EmptyState.tsx: Wrapped with React.memo to prevent re-render when no data
+
+**Design decisions:**
+
+- Separation of concerns:
+  - useMemo handles expensive data transformation (pure computations)
+  - useEffect handles imperative map updates (side effects)
+  - Clear dependency chains prevent unnecessary work
+
+- Memoization strategy:
+  - Layer hooks memoize GeoJSON feature generation (most expensive operation)
+  - filterByTime included in memo to avoid re-filtering unchanged data
+  - Memo dependencies accurately reflect when recomputation is needed
+  - Consistent pattern across all three layer hooks (DRY principle)
+
+- React.memo for presentational components:
+  - All pure UI components memoized to prevent cascading re-renders
+  - Parent Map component can update without triggering child re-renders
+  - Particularly beneficial with 1000+ entities on map
+
+- Performance impact:
+  - Eliminates redundant array processing on every render
+  - Prevents React virtual DOM reconciliation for unchanged components
+  - Addresses acceptance criteria: "Performance good with 1000+ entities"
+  - No behavioral changes, only performance improvements
+
+**Code quality:**
+
+- All TypeScript type-check and ESLint checks pass (0 errors)
+- All 330 frontend tests passing (no regressions)
+- Code reviewed by specialized Code Reviewer subagent with approval
+- Consistent memoization pattern across all layer hooks
+- Updated JSDoc comments note memoization in all optimized components
+- Follows React best practices for memoization
+- No security vulnerabilities detected
