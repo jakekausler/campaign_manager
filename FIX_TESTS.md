@@ -5,9 +5,9 @@
 **Progress Summary:**
 
 - **Initial State**: 189 failed tests, 1079 passed (10 test suites failed)
-- **After Stage 3**: 43 failed tests, 1247 passed (4 test suites failed)
-- **Tests Fixed**: 146 tests (77% reduction in failures)
-- **Improvement**: +168 passing tests
+- **After Stage 4**: 34 failed tests, 1256 passed (3 test suites failed)
+- **Tests Fixed**: 155 tests (82% reduction in failures)
+- **Improvement**: +177 passing tests
 
 **Completed Fixes:**
 
@@ -22,9 +22,11 @@
 9. ✅ Fixed dependency-graph resolver test enum types
 10. ✅ Added missing REDIS_PUBSUB provider to dependency-graph cache invalidation tests (Stage 2)
 11. ✅ Added missing DependencyGraphService and REDIS_PUBSUB providers to state-variable-versioning integration tests (Stage 3)
+12. ✅ Implemented extractAffectedFields method and pre-populated mock entity data in effect-system E2E tests (Stage 4)
 
 **Commits:**
 
+- `1bfc7c8` - fix(api): fix effect-system E2E tests by implementing extractAffectedFields and pre-populating mock data (Stage 4)
 - `fbd55f4` - fix(api): add missing test providers to state-variable-versioning integration tests (Stage 3)
 - `df95f3b` - fix(api): add missing REDIS_PUBSUB mock to dependency-graph cache invalidation tests (Stage 2)
 - `6d72b9f` - test(rules-engine): increase performance test timeouts for CI environments
@@ -35,12 +37,11 @@
 
 ## Remaining Test Failures
 
-**4 Test Suites Still Failing (43 tests total):**
+**3 Test Suites Still Failing (34 tests total):**
 
 1. `src/common/services/spatial-indexes.integration.test.ts` - Spatial index integration tests
 2. `src/graphql/services/settlement.service.test.ts` - Settlement service unit tests
 3. `src/graphql/services/structure.service.test.ts` - Structure service unit tests
-4. `src/__tests__/e2e/effect-system.e2e.test.ts` - Effect system E2E tests
 
 ---
 
@@ -198,52 +199,50 @@ This follows the same pattern used in other integration tests (encounter.service
 
 ---
 
-## Stage 4: E2E Tests - Effect System (Medium Priority)
+## Stage 4: E2E Tests - Effect System (Medium Priority) ✅ COMPLETED
+
+**Status**: ✅ All 9 tests passing (commit: `1bfc7c8`)
 
 **File:**
 
 - `packages/api/src/__tests__/e2e/effect-system.e2e.test.ts`
 
-**Estimated Failures**: ~10 tests
+**Actual Failures**: 9 tests (all now fixed)
 
-**Root Cause Analysis:**
-E2E tests likely fail due to:
+**Root Cause:**
+Tests were failing because:
 
-1. Missing providers in test module setup
-2. GraphQL schema not properly initialized
-3. Database state not properly managed between tests
+1. **extractAffectedFields method was a placeholder** - Always returned empty array instead of extracting paths from JSON Patch operations
+2. **Mock entity variables incomplete** - JSON Patch 'replace' operations require target fields to exist, but mock entities were missing fields like defense, casualties, step, food, gold
 
-**Implementation Steps:**
+**Implementation Summary:**
 
-### 4.1 Review Test Module Setup
+1. **Implemented extractAffectedFields method** (effect-execution.service.ts:466-485):
+   - Extracts field paths from JSON Patch operations
+   - Tracks both 'path' and 'from' fields for copy/move operations
+   - Uses Set to deduplicate paths
+   - Added Operation type import from fast-json-patch
 
-- Ensure all required providers are included
-- Verify GraphQL schema is properly compiled
-- Check that all resolvers are registered
+2. **Pre-populated mock entity variables** (effect-system.e2e.test.ts:70-78, 96-106):
+   - Added missing fields to mockEncounter: defense, casualties, step, food
+   - Added gold field to mockEvent at top level
+   - Pre-populated nested resources object for nested path tests
 
-### 4.2 Fix Database State Management
+**Test Results:**
 
-- Ensure test database is reset between tests
-- Verify that foreign key constraints are satisfied
-- Check that cascading deletes work correctly
+✅ All 9 tests now pass (3.8s execution time):
 
-### 4.3 Verify GraphQL Queries/Mutations
+- Complete Encounter Resolution with Multi-Effect Chain (3 tests)
+- Event Completion with State Mutations (1 test)
+- Authorization Scenarios (2 tests)
+- Complex Patch Operations (2 tests)
+- Circular Dependency Detection (1 test)
 
-- Check that all GraphQL operations use correct syntax
-- Verify that variables are properly typed
-- Ensure that error responses are correctly handled
+**Quality Checks:**
 
-**Verification:**
-
-```bash
-pnpm --filter @campaign/api test effect-system.e2e.test.ts -- --verbose
-```
-
-**Success Criteria:**
-
-- All E2E tests pass
-- Database state properly isolated between tests
-- GraphQL operations execute correctly
+✅ Type-check: Passed
+✅ Lint: Passed (warnings only, no errors)
+✅ Code Review: Approved
 
 ---
 
@@ -579,4 +578,4 @@ If you encounter issues not covered in this plan:
 4. Use `git log --oneline --grep="test"` to find test-related commits
 5. Ask for clarification on specific error messages
 
-**Last Updated**: 2025-10-18 (after commit fbd55f4 - Stage 3 complete)
+**Last Updated**: 2025-10-18 (after commit 1bfc7c8 - Stage 4 complete)
