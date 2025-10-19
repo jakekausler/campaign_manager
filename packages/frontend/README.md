@@ -379,8 +379,91 @@ The application uses React Router v7 with code-splitting:
 - `/` - Home page
 - `/auth/login` - Login page
 - `/dashboard` - Main dashboard (protected)
+- `/map` - Interactive map view (protected)
 
 See `src/router/README.md` for routing documentation.
+
+## Map Feature
+
+Interactive map visualization of campaign worlds, locations, settlements, and structures using MapLibre GL JS.
+
+### Features
+
+- **GeoJSON Layer Rendering**: Displays locations (points and regions), settlements, and structures
+- **Entity Popups**: Click entities to view detailed information with typed variables
+- **Layer Controls**: Toggle visibility of different entity types
+- **Time Scrubber**: View historical state of the world at different points in time
+- **Loading & Error States**: Graceful handling of data loading and errors
+- **Performance Optimized**: Handles 1000+ entities smoothly with memoization
+
+### Usage
+
+```tsx
+import { Map } from '@/components/features/map';
+
+function MapPage() {
+  return (
+    <Map
+      initialCenter={[0, 0]}
+      initialZoom={4}
+      worldId="world-123"
+      kingdomId="kingdom-456"
+      campaignId="campaign-789"
+    />
+  );
+}
+```
+
+### Components and Hooks
+
+**Core Components:**
+
+- `Map` - Main map component with viewport management
+- `LayerControls` - Toggle layer visibility (locations, settlements, structures)
+- `TimeScrubber` - View map state at different points in world time
+- `LoadingSpinner`, `ErrorMessage`, `EmptyState` - UI states
+
+**Layer Hooks:**
+
+- `useLocationLayers` - Fetch and render location layers (points and regions)
+- `useSettlementLayers` - Fetch and render settlement markers
+- `useStructureLayers` - Fetch and render structure markers
+- `useMapLayers` - Core hook for managing MapLibre layers and visibility
+- `useEntityPopup` - Manage popup lifecycle with React portal rendering
+
+**Utilities:**
+
+- GeoJSON factory functions (createLocationPointFeature, createSettlementFeature, etc.)
+- Time filtering utilities (filterByTime)
+- Coordinate validation (prevents MapLibre crashes from invalid data)
+
+### Architecture
+
+**Coordinate Validation:**
+All GeoJSON factory functions validate coordinates to prevent MapLibre crashes (checks for NaN, Infinity, null, undefined).
+
+**Performance Optimizations:**
+
+- useMemo for GeoJSON feature generation (prevents redundant processing)
+- React.memo for presentational components (prevents cascading re-renders)
+- DataLoader batching on backend (prevents N+1 queries)
+
+**Time Filtering:**
+Client-side filtering approach using createdAt, deletedAt, and archivedAt timestamps. Acceptable for MVP (1000+ entities).
+
+### Testing
+
+342 comprehensive tests covering all map functionality:
+
+- Map component (23 tests)
+- Layer hooks (70 tests)
+- Popup components (19 tests)
+- GeoJSON utilities (84 tests)
+- Time filtering (49 tests)
+- UI components (85 tests)
+- MapPage (12 tests)
+
+See `src/components/features/map/README.md` for complete documentation.
 
 ## Styling
 
