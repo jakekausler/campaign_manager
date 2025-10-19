@@ -146,5 +146,6 @@ export function useLocationLayers(
     loading,
     error,
     locationCount: locations?.length ?? 0,
+    locations: locations ?? [],
   };
 }

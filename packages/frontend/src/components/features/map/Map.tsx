@@ -2,9 +2,11 @@ import { Map as MapLibre, NavigationControl } from 'maplibre-gl';
 import type { MapLayerMouseEvent } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type MapboxDraw from 'maplibre-gl-draw';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
 import { useCurrentWorldTime } from '@/services/api/hooks';
+import { useUpdateLocationGeometry } from '@/services/api/mutations/locations';
+import { useCurrentBranchId } from '@/stores';
 
 import { DrawControl } from './DrawControl';
 import { DrawToolbar } from './DrawToolbar';
@@ -24,7 +26,7 @@ import type {
 import { useEntityPopup } from './useEntityPopup';
 import { useLocationLayers } from './useLocationLayers';
 import { useMapDraw } from './useMapDraw';
-import type { DrawFeature } from './useMapDraw';
+import type { DrawFeature, LocationEditMetadata } from './useMapDraw';
 import { useMapLayers } from './useMapLayers';
 import { useSettlementLayers } from './useSettlementLayers';
 
@@ -126,6 +128,37 @@ export function Map({
   // Drawing state
   const [drawInstance, setDrawInstance] = useState<MapboxDraw | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Campaign branch ID for mutations
+  const branchId = useCurrentBranchId();
+
+  // Location geometry mutation
+  const { updateLocationGeometry } = useUpdateLocationGeometry();
+
+  // Store location data for looking up metadata when entering edit mode
+  const locationDataRef = useRef(new globalThis.Map<string, LocationEditMetadata>());
+
+  // Determine filter time: use selectedTime if set, otherwise null (shows all active)
+  const filterTime = selectedTime;
+
+  // Map layer visibility management
+  const { layerVisibility, toggleLayerVisibility } = useMapLayers(map.current);
+
+  // Load location layers if worldId is provided
+  const {
+    loading: locationsLoading,
+    error: locationsError,
+    locationCount,
+    locations,
+  } = useLocationLayers(map.current, worldId ?? '', Boolean(worldId), filterTime);
+
+  // Load settlement layers if kingdomId is provided
+  const {
+    loading: settlementsLoading,
+    error: settlementsError,
+    settlementCount,
+  } = useSettlementLayers(map.current, kingdomId ?? '', Boolean(kingdomId), filterTime);
 
   // Map drawing hook
   const {
@@ -135,20 +168,63 @@ export function Map({
     handleFeatureUpdated,
   } = useMapDraw(drawInstance, {
     onFeatureCreated: (feature: DrawFeature) => {
-      // Feature created - will be handled in later stages
+      // Feature created - will be handled in future work (create mode)
       void feature;
     },
     onFeatureUpdated: (feature: DrawFeature) => {
-      // Feature updated - will be handled in later stages
+      // Feature updated - tracked automatically by useMapDraw
       void feature;
     },
     onSave: async (feature: DrawFeature) => {
+      // Clear any previous errors
+      setSaveError(null);
+
+      // Only handle edit mode saves (editLocationMetadata must be present)
+      const { editLocationMetadata } = drawState;
+      if (!editLocationMetadata) {
+        setSaveError(
+          'Cannot save: Create mode not yet implemented. Please edit existing locations only.'
+        );
+        return;
+      }
+
+      // Validate branchId is available
+      if (!branchId) {
+        setSaveError('Cannot save: No branch selected. Please select a campaign branch.');
+        return;
+      }
+
       setIsSaving(true);
       try {
-        // TODO: Implement actual save logic in later stages
-        // For now, simulate a save operation
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        void feature;
+        // Call mutation with location geometry
+        await updateLocationGeometry(editLocationMetadata.locationId, {
+          geoJson: feature.geometry,
+          branchId,
+          expectedVersion: editLocationMetadata.version,
+        });
+
+        // Success - geometry has been saved and cache invalidated
+        console.log('Location geometry saved successfully');
+        setSaveError(null);
+      } catch (error) {
+        // Parse error and set user-friendly message
+        let errorMessage = 'Failed to save location geometry. Please try again.';
+
+        if (error instanceof Error) {
+          // Check for version conflict (optimistic lock failure)
+          if (error.message.includes('version') || error.message.includes('conflict')) {
+            errorMessage =
+              'This location was modified by someone else. Please refresh and try again.';
+          } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Network error. Please check your connection and try again.';
+          } else if (error.message.includes('auth') || error.message.includes('permission')) {
+            errorMessage = 'You do not have permission to edit this location.';
+          }
+        }
+
+        setSaveError(errorMessage);
+        console.error('Failed to save location geometry:', error);
+        throw error;
       } finally {
         setIsSaving(false);
       }
@@ -162,25 +238,28 @@ export function Map({
     }
   }, [currentTime, selectedTime]);
 
-  // Determine filter time: use selectedTime if set, otherwise null (shows all active)
-  const filterTime = selectedTime;
+  // Populate location metadata ref when locations change
+  // Memoize to avoid recreating Map on every render
+  const locationMetadata = useMemo(() => {
+    if (!locations || locations.length === 0) {
+      return new globalThis.Map<string, LocationEditMetadata>();
+    }
 
-  // Map layer visibility management
-  const { layerVisibility, toggleLayerVisibility } = useMapLayers(map.current);
+    const map = new globalThis.Map<string, LocationEditMetadata>();
+    locations.forEach((location) => {
+      map.set(location.id, {
+        locationId: location.id,
+        version: location.version,
+        type: location.type,
+      });
+    });
+    return map;
+  }, [locations]);
 
-  // Load location layers if worldId is provided
-  const {
-    loading: locationsLoading,
-    error: locationsError,
-    locationCount,
-  } = useLocationLayers(map.current, worldId ?? '', Boolean(worldId), filterTime);
-
-  // Load settlement layers if kingdomId is provided
-  const {
-    loading: settlementsLoading,
-    error: settlementsError,
-    settlementCount,
-  } = useSettlementLayers(map.current, kingdomId ?? '', Boolean(kingdomId), filterTime);
+  // Update ref when metadata changes
+  useEffect(() => {
+    locationDataRef.current = locationMetadata;
+  }, [locationMetadata]);
 
   // Entity popup management
   const { showPopup } = useEntityPopup(map.current);
@@ -198,6 +277,29 @@ export function Map({
 
       if (geometry.type !== 'Point') return;
 
+      // If drawing is enabled, enter edit mode for this location
+      if (enableDrawing && drawInstance) {
+        const locationMetadata = locationDataRef.current.get(properties.id);
+        if (locationMetadata) {
+          // Add feature to draw control
+          const drawFeature = {
+            type: 'Feature' as const,
+            geometry: {
+              type: 'Point' as const,
+              coordinates: geometry.coordinates as [number, number],
+            },
+            properties: {},
+          };
+          const addedFeatures = drawInstance.add(drawFeature);
+          if (addedFeatures && addedFeatures.length > 0) {
+            const featureId = addedFeatures[0];
+            drawActions.startEdit(featureId, locationMetadata);
+          }
+        }
+        return;
+      }
+
+      // Otherwise show popup
       const popupData: PopupData = {
         type: 'location-point',
         id: properties.id,
@@ -208,7 +310,7 @@ export function Map({
 
       showPopup(popupData);
     },
-    [showPopup]
+    [showPopup, enableDrawing, drawInstance, drawActions]
   );
 
   /**
@@ -220,7 +322,33 @@ export function Map({
 
       const feature = e.features[0];
       const properties = feature.properties as unknown as LocationRegionProperties;
+      const geometry = feature.geometry;
 
+      if (geometry.type !== 'Polygon') return;
+
+      // If drawing is enabled, enter edit mode for this location
+      if (enableDrawing && drawInstance) {
+        const locationMetadata = locationDataRef.current.get(properties.id);
+        if (locationMetadata) {
+          // Add feature to draw control
+          const drawFeature = {
+            type: 'Feature' as const,
+            geometry: {
+              type: 'Polygon' as const,
+              coordinates: geometry.coordinates as number[][][],
+            },
+            properties: {},
+          };
+          const addedFeatures = drawInstance.add(drawFeature);
+          if (addedFeatures && addedFeatures.length > 0) {
+            const featureId = addedFeatures[0];
+            drawActions.startEdit(featureId, locationMetadata);
+          }
+        }
+        return;
+      }
+
+      // Otherwise show popup
       // For polygons, use the click coordinates as popup position
       const coordinates: [number, number] = [e.lngLat.lng, e.lngLat.lat];
 
@@ -234,7 +362,7 @@ export function Map({
 
       showPopup(popupData);
     },
-    [showPopup]
+    [showPopup, enableDrawing, drawInstance, drawActions]
   );
 
   /**
@@ -482,13 +610,80 @@ export function Map({
               try {
                 await drawActions.saveFeature();
               } catch (error) {
-                // TODO: Show user-friendly error message in Stage 6 (Save/Cancel Workflow)
-                console.error('Failed to save feature:', error);
+                // Error message is already set in onSave callback via setSaveError
+                // Don't need to do anything here - just prevent error propagation
+                void error;
               }
             }}
-            onCancel={drawActions.cancelDraw}
+            onCancel={() => {
+              // If there are unsaved changes, confirm before discarding
+              // TODO: Replace window.confirm with custom async dialog component for better UX/accessibility
+              if (drawState.hasUnsavedChanges) {
+                const confirmed = window.confirm(
+                  'You have unsaved changes. Are you sure you want to discard them?'
+                );
+                if (!confirmed) {
+                  return; // User cancelled the cancel action
+                }
+              }
+              // Clear error state when cancelling
+              setSaveError(null);
+              // Proceed with cancel
+              drawActions.cancelDraw();
+            }}
             isSaving={isSaving}
           />
+          {/* Error message display */}
+          {saveError && (
+            <div
+              className="absolute top-32 left-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded shadow-md max-w-sm"
+              role="alert"
+              data-testid="save-error-message"
+            >
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-red-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium">{saveError}</p>
+                </div>
+                <div className="ml-auto pl-3">
+                  <button
+                    type="button"
+                    className="inline-flex text-red-400 hover:text-red-500 focus:outline-none"
+                    onClick={() => setSaveError(null)}
+                    aria-label="Dismiss error"
+                  >
+                    <svg
+                      className="h-5 w-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 

@@ -19,6 +19,7 @@ type Location = {
   description?: string | null;
   parentLocationId?: string | null;
   geojson?: unknown | null; // GeoJSON geometry
+  version: number; // For optimistic locking
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -60,6 +61,7 @@ export const GET_LOCATIONS_BY_WORLD = gql`
       description
       parentLocationId
       geojson
+      version
       createdAt
       updatedAt
       deletedAt
@@ -87,6 +89,7 @@ export const GET_LOCATION_DETAILS = gql`
       description
       parentLocationId
       geojson
+      version
       createdAt
       updatedAt
       deletedAt

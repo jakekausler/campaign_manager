@@ -18,7 +18,7 @@ export interface UpdateLocationGeometryInput {
 export interface Location {
   id: string;
   worldId: string;
-  type: string; // "point" | "region"
+  type: 'point' | 'region';
   name?: string | null;
   description?: string | null;
   parentLocationId?: string | null;
@@ -49,61 +49,70 @@ export const UPDATE_LOCATION_GEOMETRY = gql`
 `;
 
 /**
- * Hook for updating location geometry with optimistic updates and error handling.
+ * Hook to update location geometry with cache invalidation.
+ *
+ * @param options - Apollo Client mutation options
+ * @returns Mutation function and state
  *
  * @example
  * ```tsx
- * const { updateGeometry, loading, error } = useUpdateLocationGeometry({
- *   onSuccess: (location) => console.log('Geometry saved:', location),
- *   onError: (err) => console.error('Save failed:', err),
- * });
+ * function EditGeometryForm({ locationId }: { locationId: string }) {
+ *   const { updateLocationGeometry, loading, error } = useUpdateLocationGeometry();
  *
- * // Update a location's geometry
- * await updateGeometry({
- *   id: 'location-id',
- *   geoJson: { type: 'Point', coordinates: [0, 0] },
- *   branchId: 'branch-id',
- *   expectedVersion: 1,
- * });
+ *   const handleSave = async (geoJson: unknown, branchId: string, version: number) => {
+ *     try {
+ *       const location = await updateLocationGeometry(locationId, {
+ *         geoJson,
+ *         branchId,
+ *         expectedVersion: version,
+ *       });
+ *       console.log('Updated:', location);
+ *     } catch (err) {
+ *       console.error('Failed to update geometry:', err);
+ *     }
+ *   };
+ *
+ *   return <form onSubmit={handleSave}>...</form>;
+ * }
  * ```
  */
-export function useUpdateLocationGeometry(options?: {
-  onSuccess?: (location: Location) => void;
-  onError?: (error: Error) => void;
-}) {
-  const [mutate, { loading, error, data }] = useMutation<
+export function useUpdateLocationGeometry(
+  options?: useMutation.Options<
     { updateLocationGeometry: Location },
     { id: string; input: UpdateLocationGeometryInput }
-  >(UPDATE_LOCATION_GEOMETRY);
+  >
+) {
+  const [mutate, result] = useMutation<
+    { updateLocationGeometry: Location },
+    { id: string; input: UpdateLocationGeometryInput }
+  >(UPDATE_LOCATION_GEOMETRY, {
+    ...options,
+    // Refetch the locationsByWorld query to ensure cache consistency
+    refetchQueries: ['LocationsByWorld'],
+    update(cache, { data }, context) {
+      if (!data?.updateLocationGeometry) return;
 
-  const updateGeometry = useMemo(
-    () => async (variables: { id: string } & UpdateLocationGeometryInput) => {
-      const { id, ...input } = variables;
-
-      try {
-        const result = await mutate({
-          variables: { id, input },
-        });
-
-        if (result.data?.updateLocationGeometry && options?.onSuccess) {
-          options.onSuccess(result.data.updateLocationGeometry);
-        }
-
-        return result.data?.updateLocationGeometry ?? null;
-      } catch (err) {
-        if (options?.onError) {
-          options.onError(err as Error);
-        }
-        throw err;
+      // Call user-provided update function if exists
+      if (options?.update) {
+        options.update(cache, { data }, context);
       }
     },
-    [mutate, options]
-  );
+  });
 
-  return {
-    updateGeometry,
-    loading,
-    error,
-    location: data?.updateLocationGeometry ?? null,
-  };
+  return useMemo(
+    () => ({
+      updateLocationGeometry: async (
+        id: string,
+        input: UpdateLocationGeometryInput
+      ): Promise<Location | undefined> => {
+        const { data } = await mutate({ variables: { id, input } });
+        return data?.updateLocationGeometry;
+      },
+      loading: result.loading,
+      error: result.error,
+      data: result.data?.updateLocationGeometry,
+      reset: result.reset,
+    }),
+    [mutate, result.loading, result.error, result.data, result.reset]
+  );
 }
