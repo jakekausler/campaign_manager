@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2), 7d3c845 (Stage 3), 42f5084 (Stage 4), a1ff302 (Stage 5)
+- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2), 7d3c845 (Stage 3), 42f5084 (Stage 4), a1ff302 (Stage 5), 04b1f82 + 8c84f41 (Stage 6)
 
 ## Description
 
@@ -386,9 +386,9 @@ Add map editing capabilities for creating and modifying point locations and poly
 
 **Next Steps**: Implement save/cancel workflow with backend persistence (Stage 6)
 
-### Stage 6: Save/Cancel Workflow (04b1f82) - IN PROGRESS
+### Stage 6: Save/Cancel Workflow (04b1f82, 8c84f41)
 
-**Started**: Partial implementation complete - foundational infrastructure in place
+**Completed**: Successfully implemented full save/cancel workflow for editing existing location geometries.
 
 **Key Implementations**:
 
@@ -406,30 +406,100 @@ Add map editing capabilities for creating and modifying point locations and poly
    - Updated all state reset methods to clear editLocationMetadata
    - Maintains separation between MapboxDraw internal feature ID and database location ID
 
+3. **Location Metadata Tracking** (`packages/frontend/src/components/features/map/Map.tsx`):
+   - Added `version` field to location GraphQL queries (useLocationLayers) for optimistic locking
+   - Created memoized `locationMetadata` Map to track locationId, version, and type
+   - Used globalThis.Map to avoid naming conflict with MapLibre Map class
+   - Metadata automatically populated when locations load from API
+   - Stored in ref for stable access across renders without dependency issues
+
+4. **Edit Mode Entry**:
+   - Updated `handleLocationPointClick` and `handleLocationRegionClick` to enter edit mode when `enableDrawing` is true
+   - Retrieves location metadata from ref using feature properties.id
+   - Loads location geometry into DrawControl using `drawInstance.add()`
+   - Passes LocationEditMetadata to `startEdit()` method
+   - Seamless transition from viewing to editing mode
+
+5. **Save Workflow**:
+   - Integrated `useCurrentBranchId()` from campaign store for version control
+   - Implemented comprehensive `onSave` callback in useMapDraw configuration:
+     - Validates editLocationMetadata is present (edit mode only)
+     - Validates branchId is available
+     - Calls `updateLocationGeometry` mutation with geometry, branchId, expectedVersion
+     - Automatic cache invalidation via refetchQueries (LocationsByWorld)
+     - Sets `isSaving` state during async operation for loading indicators
+     - Success: Clears feature and returns to view mode
+     - Error: Sets user-friendly error message and keeps feature in edit mode
+
+6. **User-Friendly Error Handling**:
+   - Parse GraphQL errors and display context-specific messages:
+     - Version conflict: "This location was modified by someone else. Please refresh and try again."
+     - Network errors: "Network error. Please check your connection and try again."
+     - Permission errors: "You do not have permission to edit this location."
+     - Generic fallback: "Failed to save location geometry. Please try again."
+   - Styled error alert component positioned below draw toolbar
+   - Accessibility: role="alert", proper ARIA attributes, data-testid for testing
+   - Dismissible with X button
+   - Error state cleared on cancel or successful save
+
+7. **Cancel Workflow**:
+   - Confirmation dialog when `hasUnsavedChanges` is true
+   - Uses `window.confirm()` for Stage 6 (TODO comment added for custom async dialog replacement)
+   - User can cancel the cancel action (returns without changes)
+   - Clears error state on cancel
+   - Properly distinguishes edit vs create mode in `useMapDraw.cancelDraw()`:
+     - Edit mode: Preserves feature (feature remains on map)
+     - Create mode: Deletes feature (removes from map)
+
+8. **Performance Optimizations**:
+   - Memoized location metadata map using React.useMemo to avoid recreation on every render
+   - Only recreates when locations array changes
+   - Stored in ref for stable access across callbacks
+
+**Workflow**:
+
+1. User clicks on existing location point or region (when enableDrawing is true)
+2. Click handler retrieves location metadata (ID, version, type) from ref
+3. Geometry loaded into DrawControl, `startEdit()` called with metadata
+4. User drags vertices to modify geometry → `hasUnsavedChanges = true`
+5. Validation runs automatically on updates
+6. User clicks "Save" → mutation called with branchId and expectedVersion
+7. Success: Feature cleared, mode returns to 'none', cache invalidated
+8. Error: User-friendly message displayed, feature remains in edit mode
+9. User can cancel with confirmation dialog if unsaved changes exist
+
+**Technical Decisions**:
+
+- **Edit mode only**: Creating new locations deferred to future work (requires creating Location entity before geometry)
+- **Optimistic locking**: Uses version field from database to detect concurrent modifications
+- **Error categorization**: Parses error messages to provide context-specific user feedback
+- **Cache invalidation**: Automatic via refetchQueries (LocationsByWorld) - ensures UI updates after save
+- **Confirmation dialog**: Used window.confirm() for Stage 6 simplicity (marked with TODO for custom dialog)
+- **State separation**: MapboxDraw feature ID vs. database location ID kept separate via metadata tracking
+
 **Testing**:
 
 - Type-check: Passed with no errors
 - Lint: Passed with no new warnings
-- Code review: Approved after refactoring to match established patterns
+- Code review: Approved after addressing performance concerns (memoization added)
+- All file modifications properly integrated
+- Ready for manual browser testing
 
-**Remaining Work**:
+**Code Review**: Approved with improvements implemented
 
-- [ ] Update Map component to retrieve location metadata when feature is clicked for editing
-- [ ] Integrate campaign store to get branchId for mutations
-- [ ] Implement actual save handler in Map component onSave callback
-- [ ] Add user-friendly error handling and error message display
-- [ ] Implement confirmation dialog before discarding unsaved changes
-- [ ] Refresh location layers after successful save to show updated geometry
-- [ ] Full integration testing of save/cancel workflow for both create and edit modes
+- Performance concern addressed: Added React.useMemo for location metadata map
+- TODO added for window.confirm replacement with custom dialog
+- All critical functionality complete and type-safe
 
-**Technical Notes**:
+**Scope Limitation**: Stage 6 focuses on **edit mode only** (editing existing locations). Create mode (drawing new locations from scratch) is intentionally deferred to future work as it requires a different strategy - creating the Location entity first, then updating its geometry.
 
-- Mutation hook pattern refactored to match existing codebase conventions after code review feedback
-- No custom onSuccess/onError callbacks - callers use try/catch for error handling
-- Type safety improved with literal union types for location.type field
-- All state transitions properly clear location metadata to prevent stale data bugs
-- For Stage 6 completion, focus on edit mode only (creating new locations deferred to future work)
+**Files Modified**:
 
-**Blocker**: Need to determine how Map component will know which locationId/version corresponds to drawn features. Current approach tracks this via LocationEditMetadata when entering edit mode. For create mode, will need different strategy (possibly creating location entity first, then updating geometry).
+- `packages/frontend/src/components/features/map/Map.tsx`: Main integration (metadata tracking, edit mode entry, error display)
+- `packages/frontend/src/components/features/map/useLocationLayers.ts`: Added version field to GraphQL query
+- `packages/frontend/src/services/api/hooks/locations.ts`: Added version field to fragment
+- `packages/frontend/src/services/api/mutations/locations.ts`: Refactored mutation hook to match patterns
 
-**Next Steps**: When resuming, start by updating Map.tsx to integrate campaign store (for branchId) and implement the onSave callback that calls updateLocationGeometry mutation with proper error handling.
+**Commits**: 04b1f82 (foundational infrastructure), 8c84f41 (complete implementation)
+
+**Next Steps**: Implement undo/redo for edits (Stage 7)
