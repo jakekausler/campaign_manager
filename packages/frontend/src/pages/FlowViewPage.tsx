@@ -16,6 +16,7 @@ import {
   FlowControls,
   SelectionPanel,
   FlowLoadingSkeleton,
+  FilterPanel,
 } from '@/components/features/flow';
 import { useDependencyGraph } from '@/services/api/hooks';
 import { useCurrentCampaignId } from '@/stores';
@@ -27,6 +28,12 @@ import {
   getNodeEditRoute,
   getNodeEditMessage,
   isNodeEditable,
+  createEmptyFilters,
+  hasActiveFilters,
+  filterNodes,
+  filterEdges,
+  getNodeTypeCount,
+  getEdgeTypeCount,
 } from '@/utils';
 import { NODE_COLORS } from '@/utils/node-colors';
 
@@ -88,21 +95,40 @@ export default function FlowViewPage() {
   // Selection state tracking
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
+  // Filter state tracking
+  const [filters, setFilters] = useState(() => createEmptyFilters());
+
   // Calculate selection state with dependencies
   const selectionState = useMemo(
     () => calculateSelectionState(selectedNodeIds, edges),
     [selectedNodeIds, edges]
   );
 
-  // Apply selection styles to nodes and edges
+  // Apply filters to nodes and edges
+  const filteredNodes = useMemo(
+    () => filterNodes(nodes, edges, filters, selectedNodeIds),
+    [nodes, edges, filters, selectedNodeIds]
+  );
+
+  const filteredNodeIds = useMemo(
+    () => new Set(filteredNodes.map((node) => node.id)),
+    [filteredNodes]
+  );
+
+  const filteredEdges = useMemo(
+    () => filterEdges(edges, filteredNodeIds, filters),
+    [edges, filteredNodeIds, filters]
+  );
+
+  // Apply selection styles to filtered nodes and edges
   const styledNodes = useMemo(
-    () => applySelectionStyles(nodes, selectionState),
-    [nodes, selectionState]
+    () => applySelectionStyles(filteredNodes, selectionState),
+    [filteredNodes, selectionState]
   );
 
   const styledEdges = useMemo(
-    () => applySelectionEdgeStyles(edges, selectionState),
-    [edges, selectionState]
+    () => applySelectionEdgeStyles(filteredEdges, selectionState),
+    [filteredEdges, selectionState]
   );
 
   // Get selected node objects for SelectionPanel
@@ -161,6 +187,37 @@ export default function FlowViewPage() {
   const handleClearSelection = useCallback(() => {
     setSelectedNodeIds([]);
   }, []);
+
+  // Handle filter changes
+  const handleFiltersChange = useCallback((newFilters: typeof filters) => {
+    setFilters(newFilters);
+  }, []);
+
+  // Handle clear filters
+  const handleClearFilters = useCallback(() => {
+    setFilters(createEmptyFilters());
+  }, []);
+
+  // Calculate node type counts for filter panel
+  const nodeTypeCounts = useMemo(
+    () => ({
+      VARIABLE: getNodeTypeCount(nodes, 'VARIABLE'),
+      CONDITION: getNodeTypeCount(nodes, 'CONDITION'),
+      EFFECT: getNodeTypeCount(nodes, 'EFFECT'),
+      ENTITY: getNodeTypeCount(nodes, 'ENTITY'),
+    }),
+    [nodes]
+  );
+
+  // Calculate edge type counts for filter panel
+  const edgeTypeCounts = useMemo(
+    () => ({
+      READS: getEdgeTypeCount(edges, 'READS'),
+      WRITES: getEdgeTypeCount(edges, 'WRITES'),
+      DEPENDS_ON: getEdgeTypeCount(edges, 'DEPENDS_ON'),
+    }),
+    [edges]
+  );
 
   // Handle node double-click for editing
   const handleNodeDoubleClick: NodeMouseHandler = useCallback(
@@ -278,6 +335,16 @@ export default function FlowViewPage() {
         <FlowControls />
         <FlowToolbar onReLayout={handleReLayout} isLayouting={isLayouting} />
       </ReactFlow>
+
+      {/* Filter panel for searching and filtering nodes/edges */}
+      <FilterPanel
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        onClearFilters={handleClearFilters}
+        nodeTypeCounts={nodeTypeCounts}
+        edgeTypeCounts={edgeTypeCounts}
+        hasActiveFilters={hasActiveFilters(filters)}
+      />
 
       {/* Selection panel showing selected node details and dependencies */}
       <SelectionPanel

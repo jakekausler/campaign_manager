@@ -43,3 +43,15 @@ export {
   isNodeEditable,
   getNodeEditMessage,
 } from './node-navigation';
+
+// Graph filter utilities for dependency graph filtering
+export {
+  createEmptyFilters,
+  hasActiveFilters,
+  detectCycles,
+  filterNodes,
+  filterEdges,
+  getNodeTypeCount,
+  getEdgeTypeCount,
+  type GraphFilters,
+} from './graph-filters';
