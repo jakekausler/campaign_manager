@@ -593,20 +593,85 @@ All hooks include:
 
 **Tasks**:
 
-- [ ] Write integration tests for useStructureDetails
-- [ ] Write integration tests for useStructureConditions
-- [ ] Verify GraphQL queries work with MSW
-- [ ] Test loading states, errors, refetch
-- [ ] Run integration tests and verify they pass
+- [x] Write integration tests for useStructureDetails
+- [x] Write integration tests for useStructureConditions
+- [x] Verify GraphQL queries work with MSW
+- [x] Test loading states, errors, refetch
+- [x] Run integration tests and verify they pass
 
 **Success Criteria**:
 
-- All Structure hook tests pass
-- MSW correctly mocks GraphQL responses
-- Hooks handle loading/error states properly
-- No type-check or lint errors
+- ✅ All Structure hook tests pass (17 tests)
+- ✅ MSW correctly mocks GraphQL responses
+- ✅ Hooks handle loading/error states properly
+- ✅ No type-check or lint errors
 
-**Status**: Not Started
+**Status**: Complete
+
+**Implementation Notes**:
+
+**New Test File:**
+
+- `packages/frontend/src/services/api/hooks/structures.test.tsx` (17 tests total)
+
+**Test Coverage:**
+
+useStructureDetails (9 tests):
+
+- Fetches structure details by ID with all fields (name, typeId, settlementId)
+- Includes position data (x, y) and orientation
+- Includes archival status (isArchived, archivedAt)
+- Includes computed fields for dynamic calculations
+- Includes timestamps (createdAt, updatedAt)
+- Returns null for non-existent structures with proper error handling
+- Provides refetch function for manual re-fetching
+- Provides networkStatus for Apollo Client state monitoring
+- Handles different structure types (barracks, marketplace, temple)
+
+useStructureConditions (8 tests):
+
+- Fetches structure conditions by ID with basic info (id, name)
+- Includes computed fields in structure object
+- Provides computedFields as separate convenience property
+- Fetches different computed fields for different structure types
+- Returns null for non-existent structures with proper error handling
+- Provides refetch function for manual re-fetching
+- Provides networkStatus for Apollo Client state monitoring
+- Handles structures with empty/null computed fields gracefully
+
+**Mock Data Updates:**
+
+- Updated `packages/frontend/src/__tests__/mocks/data.ts` with missing fields:
+  - Added `orientation` (0°, 90°, 180° for different structures)
+  - Added `isArchived` (false for all mock structures)
+  - Added `archivedAt` (null for all mock structures)
+- Ensures mock data matches Structure TypeScript type definition
+
+**Type Safety Fixes:**
+
+- Fixed optional chaining in `settlements.test.tsx` (refetchResult.data?.X)
+- Fixed optional chaining in `structures.test.tsx` (refetchResult.data?.X)
+- Fixed Apollo Client return type in `test-utils.tsx` (ReturnType inference)
+- All fixes address TypeScript strict mode requirements (TS18048, TS2315)
+
+**Integration with MSW:**
+
+- GraphQL handlers already support GetStructureDetails and GetStructureConditions queries
+- MSW correctly mocks responses with realistic structure data
+- Error scenarios handled (404-style null responses with errors)
+- MSW server resets between tests for proper isolation
+
+**Quality Checks:**
+
+- All 96 tests passing (79 previous + 17 new)
+- Type-check: ✅ Passed
+- Lint: ✅ Passed
+- Code review: ✅ Approved
+
+**Code Review Outcome:**
+Approved with optional suggestions for future improvements (factory functions for mock data, explicit Apollo Client types).
+
+**Commit**: 4131f1c
 
 ---
 
@@ -662,9 +727,9 @@ All hooks include:
 
 ---
 
-## Stage 14: Documentation Updates
+## Stage 14: Code Documentation
 
-**Goal**: Document state management architecture and GraphQL client setup
+**Goal**: Document state management architecture and GraphQL client setup in code
 
 **Tasks**:
 
@@ -673,12 +738,11 @@ All hooks include:
 - [ ] Document code generation process
 - [ ] Document cache policies and strategies
 - [ ] Add examples of using hooks in components
-- [ ] Update frontend README with state management section
 - [ ] Document MSW test setup
 
 **Success Criteria**:
 
-- Documentation is clear and comprehensive
+- Code-level documentation is clear and comprehensive
 - Examples demonstrate common use cases
 - All integration points documented
 - No broken links or outdated information
@@ -698,8 +762,6 @@ All hooks include:
 - [ ] Run type-check on all packages
 - [ ] Run lint on all packages
 - [ ] Fix any issues found
-- [ ] Update TICKET-018.md with all commit hashes
-- [ ] Mark ticket as complete in plan/EPIC.md
 
 **Success Criteria**:
 
@@ -707,7 +769,30 @@ All hooks include:
 - Test coverage meets standards
 - No type-check or lint errors
 - Code ready for review
-- Documentation complete
+
+**Status**: Not Started
+
+---
+
+## Stage 16: Project Documentation Updates
+
+**Goal**: Update project-level documentation (README, CLAUDE.md, etc.) if needed
+
+**Tasks**:
+
+- [ ] Review frontend README.md for accuracy and completeness
+- [ ] Update CLAUDE.md if new patterns or workflows were introduced
+- [ ] Update root README.md if frontend setup changed
+- [ ] Verify all documentation links work correctly
+- [ ] Update TICKET-018.md with all commit hashes
+- [ ] Mark ticket as complete in plan/EPIC.md
+
+**Success Criteria**:
+
+- All project documentation is up-to-date
+- Setup instructions are accurate
+- All links and references are valid
+- Ticket properly closed in tracking files
 
 **Status**: Not Started
 
@@ -737,8 +822,9 @@ All hooks include:
 11. Stage 11: Structure hooks integration tests
 12. Stage 12: Settlement mutation integration tests
 13. Stage 13: Structure mutation integration tests
-14. Stage 14: Documentation updates
+14. Stage 14: Code documentation
 15. Stage 15: Final quality checks
+16. Stage 16: Project documentation updates
 
 ## Completion Checklist
 
@@ -752,11 +838,12 @@ All hooks include:
 - [x] Stage 8: Mutations
 - [x] Stage 9: Test infrastructure and store unit tests
 - [x] Stage 10: Settlement hooks integration tests
-- [ ] Stage 11: Structure hooks integration tests
+- [x] Stage 11: Structure hooks integration tests
 - [ ] Stage 12: Settlement mutation integration tests
 - [ ] Stage 13: Structure mutation integration tests
-- [ ] Stage 14: Documentation updates
+- [ ] Stage 14: Code documentation
 - [ ] Stage 15: Final quality checks
+- [ ] Stage 16: Project documentation updates
 - [ ] All acceptance criteria met
 - [ ] All tests passing
 - [ ] Code reviewed
