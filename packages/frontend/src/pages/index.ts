@@ -13,4 +13,5 @@ export { default as HomePage } from './HomePage';
 export { default as LoginPage } from './LoginPage';
 export { default as DashboardPage } from './DashboardPage';
 export { default as MapPage } from './MapPage';
+export { default as FlowViewPage } from './FlowViewPage';
 export { default as NotFoundPage } from './NotFoundPage';
