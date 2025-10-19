@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e
+- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e, 9564ebd
 
 ## Implementation Notes
 
@@ -239,6 +239,53 @@ Successfully implemented custom edge components for all dependency graph relatio
 - ✅ Labels render properly when provided
 
 **Next**: Stage 6 is already complete (auto-layout implemented in Stage 3), so Stage 7 will add minimap and controls (MiniMap already added in Stage 1, needs custom toolbar).
+
+### Stage 6: Implement Auto-Layout Algorithm (Commit: 9564ebd)
+
+Successfully implemented re-layout functionality for dependency graph visualization:
+
+**Note**: The core auto-layout algorithm was already implemented in Stage 3. Stage 6 focused on adding the re-layout button and user interaction.
+
+**Implemented**:
+
+- Created FlowToolbar component with re-layout button
+  - RotateCw icon from lucide-react with spinning animation during layout
+  - Disabled state during layouting operation
+  - Proper accessibility (aria-label, title attributes)
+  - Positioned at top-left of canvas (z-10 layering)
+- Integrated FlowToolbar into FlowViewPage
+  - React Flow state management using useNodesState and useEdgesState hooks
+  - Manual node repositioning support via onNodesChange/onEdgesChange
+  - Re-layout handler re-applies transformGraphToFlow to reset positions
+  - useEffect for synchronizing nodes/edges when graph data changes
+- 8 comprehensive unit tests for FlowToolbar component
+  - Button rendering, click handling, disabled state
+  - Spinning icon animation during layouting
+  - Accessibility features (aria-label, title)
+- All 483 frontend tests passing (no regressions)
+
+**Technical Decisions**:
+
+- Used React Flow's built-in state hooks for proper node position tracking
+- Manual repositioning is preserved until user clicks re-layout
+- No artificial delays - layout applies immediately for responsive UX
+- Changed useMemo to useEffect per code review (React best practices)
+- Removed setTimeout delay per code review for better performance
+
+**Code Review Fixes**:
+
+- Fixed: Changed `useMemo` to `useEffect` for side effects (lines 80-83)
+- Fixed: Removed artificial 100ms `setTimeout` delay from re-layout handler
+- Both changes improve code quality and follow React best practices
+
+**Tests**:
+
+- ✅ 8 new FlowToolbar tests passing
+- ✅ 483 total frontend tests passing (no regressions)
+- ✅ TypeScript compilation successful
+- ✅ ESLint clean (no new errors or warnings)
+
+**Next**: Stage 7 will add custom toolbar controls (MiniMap and Controls already present from Stage 1).
 
 ### Planning Phase Details
 
