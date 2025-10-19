@@ -5,6 +5,7 @@ export { useLocationLayers } from './useLocationLayers';
 export { useSettlementLayers } from './useSettlementLayers';
 export { useStructureLayers } from './useStructureLayers';
 export { useEntityPopup } from './useEntityPopup';
+export { LayerControls } from './LayerControls';
 export {
   LocationPopupContent,
   SettlementPopupContent,

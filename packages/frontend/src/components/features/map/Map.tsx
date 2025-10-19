@@ -3,6 +3,7 @@ import type { MapLayerMouseEvent } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+import { LayerControls } from './LayerControls';
 import type {
   LocationPointProperties,
   LocationRegionProperties,
@@ -12,6 +13,7 @@ import type {
 } from './types';
 import { useEntityPopup } from './useEntityPopup';
 import { useLocationLayers } from './useLocationLayers';
+import { useMapLayers } from './useMapLayers';
 import { useSettlementLayers } from './useSettlementLayers';
 
 interface MapProps {
@@ -87,6 +89,9 @@ export function Map({
     zoom: initialZoom,
     bounds: null,
   });
+
+  // Map layer visibility management
+  const { layerVisibility, toggleLayerVisibility } = useMapLayers(map.current);
 
   // Load location layers if worldId is provided
   useLocationLayers(map.current, worldId ?? '', Boolean(worldId));
@@ -351,6 +356,13 @@ export function Map({
       >
         Reset View
       </button>
+
+      {/* Layer toggle controls */}
+      <LayerControls
+        layerVisibility={layerVisibility}
+        onToggle={toggleLayerVisibility}
+        className="absolute top-4 right-4 mt-20"
+      />
 
       {/* Viewport debug info (hidden by default, useful for development) */}
       {import.meta.env.DEV && (
