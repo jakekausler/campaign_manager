@@ -70,11 +70,13 @@ describe('Spatial Indexes Integration Tests', () => {
       });
 
       // Create locations with geometry
+      // Create 1000+ points to make index usage beneficial
       const locationPromises = [];
-      for (let i = 0; i < 100; i++) {
-        // Create points spread across a grid (longitude: 0-10, latitude: 0-10)
-        const lon = (i % 10) * 1.0;
-        const lat = Math.floor(i / 10) * 1.0;
+      for (let i = 0; i < 1000; i++) {
+        // Create points spread across a larger grid (longitude: 0-100, latitude: 0-100)
+        // This creates a 100x10 grid of points spread across a much larger area
+        const lon = (i % 100) * 1.0;
+        const lat = Math.floor(i / 100) * 1.0;
 
         // Use ST_GeomFromText to create point geometry
         locationPromises.push(
@@ -95,6 +97,9 @@ describe('Spatial Indexes Integration Tests', () => {
       }
 
       await Promise.all(locationPromises);
+
+      // Update table statistics so PostgreSQL query planner can make informed decisions
+      await prisma.$executeRaw`ANALYZE "Location"`;
     });
 
     afterAll(async () => {
@@ -160,14 +165,16 @@ describe('Spatial Indexes Integration Tests', () => {
 
     it('should use GIST index for distance queries', async () => {
       // Use EXPLAIN to verify index usage for ST_DWithin
+      // Use a small distance (5.0 units) to make index usage beneficial
+      // This should only match a few points near (50, 5) out of 1000 total
       const explainResult = await prisma.$queryRawUnsafe<Array<{ 'QUERY PLAN': string }>>(`
         EXPLAIN
         SELECT *
         FROM "Location"
         WHERE ST_DWithin(
           geom,
-          ST_SetSRID(ST_MakePoint(5.0, 5.0), 3857),
-          100000.0
+          ST_SetSRID(ST_MakePoint(50.0, 5.0), 3857),
+          5.0
         )
       `);
 
