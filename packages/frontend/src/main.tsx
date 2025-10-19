@@ -10,6 +10,7 @@ import { createRoot } from 'react-dom/client';
 import '@/config/env';
 
 import './index.css';
+import 'maplibre-gl-draw/dist/mapbox-gl-draw.css';
 import App from './App';
 
 const root = document.getElementById('root');

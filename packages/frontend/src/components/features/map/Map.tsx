@@ -5,11 +5,13 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 import { useCurrentWorldTime } from '@/services/api/hooks';
 
+import { DrawControl } from './DrawControl';
 import { EmptyState } from './EmptyState';
 import { ErrorMessage } from './ErrorMessage';
 import { LayerControls } from './LayerControls';
 import { LoadingSpinner } from './LoadingSpinner';
 import { TimeScrubber } from './TimeScrubber';
+import { drawStyles } from './draw-styles';
 import type {
   LocationPointProperties,
   LocationRegionProperties,
@@ -62,6 +64,13 @@ interface MapProps {
    * When provided, enables time scrubber for historical view
    */
   campaignId?: string;
+
+  /**
+   * Enable drawing controls (optional)
+   * When true, adds drawing tools for creating and editing geometry
+   * @default false
+   */
+  enableDrawing?: boolean;
 }
 
 /**
@@ -89,6 +98,7 @@ export function Map({
   worldId,
   kingdomId,
   campaignId,
+  enableDrawing = false,
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre | null>(null);
@@ -399,6 +409,24 @@ export function Map({
         className={`w-full h-full ${className}`}
         data-testid="map-container"
       />
+
+      {/* Drawing controls (conditionally rendered) */}
+      {enableDrawing && (
+        <DrawControl
+          map={map.current}
+          position="top-left"
+          styles={drawStyles}
+          onCreate={(feature) => {
+            console.log('Feature created:', feature);
+          }}
+          onUpdate={(features) => {
+            console.log('Features updated:', features);
+          }}
+          onDelete={(features) => {
+            console.log('Features deleted:', features);
+          }}
+        />
+      )}
 
       {/* Reset viewport button */}
       <button

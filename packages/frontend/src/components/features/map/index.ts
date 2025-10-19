@@ -11,6 +11,9 @@ export type { TimeScrubberProps } from './TimeScrubber';
 export { LoadingSpinner } from './LoadingSpinner';
 export { ErrorMessage } from './ErrorMessage';
 export { EmptyState } from './EmptyState';
+export { DrawControl } from './DrawControl';
+export type { DrawControlProps } from './DrawControl';
+export { drawStyles } from './draw-styles';
 export { filterByTime } from './time-filter';
 export {
   LocationPopupContent,
