@@ -37,43 +37,21 @@ export type FlowNodeData = {
 /**
  * React Flow edge data structure for dependency graph edges.
  * Contains relationship type and metadata.
+ *
+ * This extends React Flow's Edge type to include our custom data fields.
  */
-export type FlowEdgeData = {
+export type FlowEdgeData = Edge<{
   edgeType: DependencyEdgeType;
   metadata?: Record<string, unknown> | null;
-};
+}>;
 
 /**
  * Complete transformation result including nodes and edges
  */
 export type TransformedGraphData = {
   nodes: Node<FlowNodeData>[];
-  edges: Edge<FlowEdgeData>[];
+  edges: FlowEdgeData[];
 };
-
-/**
- * Get edge style based on relationship type.
- *
- * Edge mapping:
- * - READS: Solid line - reading data
- * - WRITES: Dashed line - writing/mutating data
- * - DEPENDS_ON: Dotted line - dependency relationship
- */
-function getEdgeStyle(edgeType: DependencyEdgeType): {
-  strokeDasharray?: string;
-  strokeWidth: number;
-} {
-  switch (edgeType) {
-    case 'READS':
-      return { strokeWidth: 2 }; // solid
-    case 'WRITES':
-      return { strokeDasharray: '5,5', strokeWidth: 2 }; // dashed
-    case 'DEPENDS_ON':
-      return { strokeDasharray: '2,2', strokeWidth: 2 }; // dotted
-    default:
-      return { strokeWidth: 1 };
-  }
-}
 
 /**
  * Transform a DependencyNode to React Flow Node format.
@@ -116,32 +94,41 @@ export function transformNode(node: DependencyNode): Node<FlowNodeData> {
  * Maps backend edge structure to React Flow's expected format with:
  * - Unique ID based on source and target
  * - Source and target node IDs
- * - Edge type for styling
- * - Animated attribute for visual feedback
- * - Styling based on relationship type
+ * - Custom edge type for specialized rendering
+ * - Data containing edge type and metadata
+ * - Arrow marker at the end
+ *
+ * Edge types map to custom React Flow components:
+ * - READS → 'reads' (ReadsEdge component)
+ * - WRITES → 'writes' (WritesEdge component)
+ * - DEPENDS_ON → 'dependson' (DependsOnEdge component)
  */
-export function transformEdge(edge: DependencyEdge): Edge<FlowEdgeData> {
-  const style = getEdgeStyle(edge.type);
+export function transformEdge(edge: DependencyEdge): FlowEdgeData {
+  // Map backend uppercase types to lowercase for React Flow edge types
+  const typeMap: Record<DependencyEdgeType, string> = {
+    READS: 'reads',
+    WRITES: 'writes',
+    DEPENDS_ON: 'dependson',
+  };
+
+  // Define color based on edge type
+  const edgeColor =
+    edge.type === 'WRITES' ? '#f97316' : edge.type === 'DEPENDS_ON' ? '#a855f7' : '#64748b';
 
   return {
     id: `${edge.fromId}-${edge.toId}`,
     source: edge.fromId,
     target: edge.toId,
-    type: 'smoothstep', // Use smooth step edges for better readability
-    animated: edge.type === 'WRITES', // Animate write operations
+    type: typeMap[edge.type], // Lowercase type for React Flow custom components
     data: {
-      edgeType: edge.type,
+      edgeType: edge.type, // Keep uppercase in data for reference
       metadata: edge.metadata,
     },
+    // markerEnd expects a string ID reference to an SVG marker definition
+    // We'll use a template string to create a unique marker ID based on color
+    markerEnd: `arrow-${edgeColor.replace('#', '')}`,
     style: {
-      stroke: '#64748b', // slate-500
-      ...style,
-    },
-    markerEnd: {
-      type: 'arrowclosed' as const,
-      width: 20,
-      height: 20,
-      color: '#64748b',
+      stroke: edgeColor,
     },
   };
 }
@@ -163,7 +150,7 @@ export function transformEdge(edge: DependencyEdge): Edge<FlowEdgeData> {
  */
 export function applyAutoLayout(
   nodes: Node<FlowNodeData>[],
-  edges: Edge<FlowEdgeData>[]
+  edges: FlowEdgeData[]
 ): Node<FlowNodeData>[] {
   // Create a new directed graph
   const graph = new dagre.graphlib.Graph();

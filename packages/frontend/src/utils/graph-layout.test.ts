@@ -1,4 +1,4 @@
-import type { Node, Edge } from '@xyflow/react';
+import type { Node } from '@xyflow/react';
 import { describe, it, expect } from 'vitest';
 
 import type { DependencyNode, DependencyEdge, DependencyGraphResult } from '@/services/api/hooks';
@@ -127,13 +127,14 @@ describe('graph-layout utilities', () => {
       expect(result.id).toBe('cond-1-var-1');
       expect(result.source).toBe('cond-1');
       expect(result.target).toBe('var-1');
-      expect(result.type).toBe('smoothstep');
-      expect(result.animated).toBe(false);
+      expect(result.type).toBe('reads'); // Maps to custom ReadsEdge component
       expect(result.data?.edgeType).toBe('READS');
-      expect(result.style?.strokeDasharray).toBeUndefined(); // solid line
+      expect(result.data?.metadata).toEqual({ someKey: 'someValue' });
+      expect(result.markerEnd).toBe('arrow-64748b'); // slate-500 for READS
+      expect(result.style?.stroke).toBe('#64748b');
     });
 
-    it('should transform a WRITES edge correctly and animate it', () => {
+    it('should transform a WRITES edge correctly', () => {
       const backendEdge: DependencyEdge = {
         fromId: 'effect-1',
         toId: 'var-1',
@@ -144,9 +145,10 @@ describe('graph-layout utilities', () => {
       const result = transformEdge(backendEdge);
 
       expect(result.id).toBe('effect-1-var-1');
-      expect(result.animated).toBe(true); // WRITES edges are animated
+      expect(result.type).toBe('writes'); // Maps to custom WritesEdge component
       expect(result.data?.edgeType).toBe('WRITES');
-      expect(result.style?.strokeDasharray).toBe('5,5'); // dashed line
+      expect(result.markerEnd).toBe('arrow-f97316'); // orange-500 for WRITES
+      expect(result.style?.stroke).toBe('#f97316');
     });
 
     it('should transform a DEPENDS_ON edge correctly', () => {
@@ -159,9 +161,10 @@ describe('graph-layout utilities', () => {
       const result = transformEdge(backendEdge);
 
       expect(result.id).toBe('cond-2-cond-1');
-      expect(result.animated).toBe(false);
+      expect(result.type).toBe('dependson'); // Maps to custom DependsOnEdge component
       expect(result.data?.edgeType).toBe('DEPENDS_ON');
-      expect(result.style?.strokeDasharray).toBe('2,2'); // dotted line
+      expect(result.markerEnd).toBe('arrow-a855f7'); // purple-500 for DEPENDS_ON
+      expect(result.style?.stroke).toBe('#a855f7');
     });
 
     it('should add arrow markers to all edges', () => {
@@ -174,9 +177,8 @@ describe('graph-layout utilities', () => {
       const result = transformEdge(backendEdge);
 
       expect(result.markerEnd).toBeDefined();
-      if (result.markerEnd && typeof result.markerEnd === 'object' && 'type' in result.markerEnd) {
-        expect(result.markerEnd.type).toBe('arrowclosed');
-      }
+      expect(typeof result.markerEnd).toBe('string');
+      expect(result.markerEnd).toMatch(/^arrow-/);
     });
   });
 
@@ -197,13 +199,12 @@ describe('graph-layout utilities', () => {
         },
       ];
 
-      const edges: Edge<FlowEdgeData>[] = [
-        {
-          id: 'a-b',
-          source: 'a',
-          target: 'b',
-          data: { edgeType: 'READS' },
-        },
+      const edges: FlowEdgeData[] = [
+        transformEdge({
+          fromId: 'a',
+          toId: 'b',
+          type: 'READS',
+        }),
       ];
 
       const result = applyAutoLayout(nodes, edges);
@@ -243,13 +244,12 @@ describe('graph-layout utilities', () => {
       ];
 
       // Two disconnected edges: a->b and c (standalone)
-      const edges: Edge<FlowEdgeData>[] = [
-        {
-          id: 'a-b',
-          source: 'a',
-          target: 'b',
-          data: { edgeType: 'READS' },
-        },
+      const edges: FlowEdgeData[] = [
+        transformEdge({
+          fromId: 'a',
+          toId: 'b',
+          type: 'READS',
+        }),
       ];
 
       const result = applyAutoLayout(nodes, edges);
@@ -270,7 +270,7 @@ describe('graph-layout utilities', () => {
         },
       ];
 
-      const edges: Edge<FlowEdgeData>[] = [];
+      const edges: FlowEdgeData[] = [];
 
       const result = applyAutoLayout(nodes, edges);
 
@@ -301,25 +301,22 @@ describe('graph-layout utilities', () => {
       ];
 
       // Create a cycle: a -> b -> c -> a
-      const edges: Edge<FlowEdgeData>[] = [
-        {
-          id: 'a-b',
-          source: 'a',
-          target: 'b',
-          data: { edgeType: 'READS' },
-        },
-        {
-          id: 'b-c',
-          source: 'b',
-          target: 'c',
-          data: { edgeType: 'READS' },
-        },
-        {
-          id: 'c-a',
-          source: 'c',
-          target: 'a',
-          data: { edgeType: 'WRITES' },
-        },
+      const edges: FlowEdgeData[] = [
+        transformEdge({
+          fromId: 'a',
+          toId: 'b',
+          type: 'READS',
+        }),
+        transformEdge({
+          fromId: 'b',
+          toId: 'c',
+          type: 'READS',
+        }),
+        transformEdge({
+          fromId: 'c',
+          toId: 'a',
+          type: 'WRITES',
+        }),
       ];
 
       const result = applyAutoLayout(nodes, edges);

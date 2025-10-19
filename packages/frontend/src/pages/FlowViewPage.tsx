@@ -2,7 +2,15 @@ import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useMemo } from 'react';
 
-import { VariableNode, ConditionNode, EffectNode, EntityNode } from '@/components/features/flow';
+import {
+  VariableNode,
+  ConditionNode,
+  EffectNode,
+  EntityNode,
+  ReadsEdge,
+  WritesEdge,
+  DependsOnEdge,
+} from '@/components/features/flow';
 import { useDependencyGraph } from '@/services/api/hooks';
 import { useCurrentCampaignId } from '@/stores';
 import { transformGraphToFlow } from '@/utils';
@@ -18,6 +26,17 @@ const nodeTypes = {
   condition: ConditionNode,
   effect: EffectNode,
   entity: EntityNode,
+};
+
+/**
+ * Custom edge types for React Flow.
+ * Maps edge type strings (lowercase) to their corresponding React components.
+ * Must match the lowercase types returned by transformEdge() in graph-layout.ts
+ */
+const edgeTypes = {
+  reads: ReadsEdge,
+  writes: WritesEdge,
+  dependson: DependsOnEdge,
 };
 
 /**
@@ -105,6 +124,7 @@ export default function FlowViewPage() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         className="bg-background"
       >

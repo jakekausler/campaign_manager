@@ -10,7 +10,7 @@
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
 import { ApolloProvider } from '@apollo/client/react';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
-import { ReactFlowProvider } from '@xyflow/react';
+import { ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import { type ReactElement, type ReactNode } from 'react';
 
 /**
@@ -83,22 +83,42 @@ export function renderWithApollo(
 /**
  * Custom render function that wraps component with React Flow Provider
  *
- * This is required for testing React Flow node components that use
- * Handle components, which need access to React Flow's internal store.
+ * This is required for testing React Flow node and edge components.
+ * For edge components with labels, it creates a full ReactFlow instance
+ * to properly initialize the EdgeLabelRenderer portal.
  *
  * @param ui - The React element to render
- * @param options - Render options
+ * @param options - Render options with optional edges flag
  * @returns Render result from @testing-library/react
  */
 export function renderWithReactFlow(
   ui: ReactElement,
-  renderOptions: RenderOptions = {}
+  renderOptions: RenderOptions & { forEdges?: boolean } = {}
 ): RenderResult {
+  const { forEdges = false, ...restOptions } = renderOptions;
+
   function Wrapper({ children }: { children: ReactNode }) {
+    // For edge components, render within a full ReactFlow instance
+    // This properly initializes EdgeLabelRenderer portals
+    if (forEdges) {
+      return (
+        <ReactFlowProvider>
+          <div style={{ width: '500px', height: '500px' }}>
+            <ReactFlow nodes={[]} edges={[]}>
+              <svg>
+                <g>{children}</g>
+              </svg>
+            </ReactFlow>
+          </div>
+        </ReactFlowProvider>
+      );
+    }
+
+    // For node components, just the provider is sufficient
     return <ReactFlowProvider>{children}</ReactFlowProvider>;
   }
 
-  return render(ui, { wrapper: Wrapper, ...renderOptions });
+  return render(ui, { wrapper: Wrapper, ...restOptions });
 }
 
 // Re-export everything from @testing-library/react
