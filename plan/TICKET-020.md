@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2), 7d3c845 (Stage 3), 42f5084 (Stage 4)
+- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2), 7d3c845 (Stage 3), 42f5084 (Stage 4), a1ff302 (Stage 5)
 
 ## Description
 
@@ -305,3 +305,83 @@ Add map editing capabilities for creating and modifying point locations and poly
 - Proper accessibility with ARIA attributes
 
 **Next Steps**: Implement edit mode for existing geometry (Stage 5)
+
+### Stage 5: Edit Mode for Existing Geometry (a1ff302)
+
+**Completed**: Successfully implemented edit mode that allows users to select and modify existing drawn features.
+
+**Key Implementations**:
+
+1. **Enhanced useMapDraw Hook** (`packages/frontend/src/components/features/map/useMapDraw.ts`):
+   - Added `editFeatureId: string | null` to MapDrawState interface to track which feature is being edited
+   - Enhanced `startEdit(featureId)` method:
+     - Loads feature from draw instance using `draw.get(featureId)`
+     - Enters `direct_select` mode (not `simple_select`) to allow vertex manipulation
+     - Sets currentFeature and validates geometry immediately
+     - Initializes `hasUnsavedChanges = false` (changes tracked when user modifies)
+   - Updated `cancelDraw()` logic:
+     - Preserves edited features (when `editFeatureId` is set)
+     - Deletes newly created features (when `editFeatureId` is null)
+     - Smart differentiation between edit vs create workflows
+   - Updated all state reset methods to clear `editFeatureId`
+   - All methods maintain proper state transitions
+
+2. **DrawControl Event Integration** (`packages/frontend/src/components/features/map/DrawControl.tsx`):
+   - Added `DrawSelectionChangeEvent` interface for type safety
+   - Added `onSelectionChange?: (features: DrawFeature[]) => void` callback prop
+   - Registered `draw.selectionchange` event listener
+   - Proper cleanup in useEffect dependencies
+   - Type-safe event handling throughout
+
+3. **Map Component Integration** (`packages/frontend/src/components/features/map/Map.tsx`):
+   - Added `onSelectionChange` handler to DrawControl
+   - Triggers `drawActions.startEdit()` when user clicks on existing feature
+   - Guards against missing feature IDs with conditional check
+   - Type-safe casting with proper null checks
+   - Seamless integration with existing draw workflow
+
+4. **Enhanced Edit Mode UI** (`packages/frontend/src/components/features/map/DrawToolbar.tsx`):
+   - Improved edit mode instruction text with visual hierarchy
+   - Shows "Editing geometry • Drag vertices to modify" with color differentiation
+   - Gray secondary text for instructional hint
+   - Consistent with existing toolbar patterns
+
+**User Workflow**:
+
+1. User clicks on existing drawn feature (point or polygon)
+2. `draw.selectionchange` event fires with selected feature
+3. `onSelectionChange` handler triggers `startEdit(featureId)`
+4. Feature loads into `direct_select` mode, vertices become draggable
+5. Toolbar shows "Editing geometry • Drag vertices to modify"
+6. User drags vertex → `handleFeatureUpdated` fires, `hasUnsavedChanges = true`
+7. Save/Cancel buttons appear with validation
+8. On Save → feature persisted to backend (Stage 6)
+9. On Cancel → edited feature preserved (not deleted), returns to view mode
+
+**Technical Decisions**:
+
+- **direct_select mode**: Allows vertex manipulation (move, add, delete vertices). More appropriate than `simple_select` which only allows feature selection/movement.
+- **Edit vs Create distinction**: `editFeatureId` null check determines whether to preserve (edit) or delete (create) on cancel. Clean separation of concerns.
+- **Immediate validation**: Validates geometry when entering edit mode to catch any existing issues before user makes changes.
+- **Type safety**: All events properly typed with interfaces, proper null/undefined checks throughout.
+- **State consistency**: `editFeatureId` cleared in all mode transition methods for clean state resets.
+
+**Testing**:
+
+- Type-check: Passed with no errors
+- Lint: Passed with no new warnings
+- Code review: Approved with no critical issues
+- All interfaces properly typed
+- Event listeners properly registered and cleaned up
+- State transitions correctly implemented
+
+**Code Review**: Approved
+
+- No security vulnerabilities
+- No performance issues
+- Type safety maintained throughout
+- Proper error handling
+- React hooks correctly used with proper dependencies
+- Event cleanup prevents memory leaks
+
+**Next Steps**: Implement save/cancel workflow with backend persistence (Stage 6)

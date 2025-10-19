@@ -98,16 +98,17 @@ Add drawing and editing capabilities to the map interface using MapLibre GL Draw
 
 **Goal**: Allow editing locations and regions already in the database
 **Success Criteria**: Can select and modify existing geometries
-**Status**: Not Started
+**Status**: Complete
+**Commit**: a1ff302
 
-- [ ] Implement edit mode activation (click on existing feature)
-- [ ] Load existing geometry into draw control
-- [ ] Handle draw.update event for modified geometries
-- [ ] Track which feature is being edited
-- [ ] Show different visual state for edit vs. create
-- [ ] Allow vertex manipulation (move, add, delete)
-- [ ] Test editing existing points and polygons
-- [ ] Commit changes
+- [x] Implement edit mode activation (click on existing feature)
+- [x] Load existing geometry into draw control
+- [x] Handle draw.update event for modified geometries
+- [x] Track which feature is being edited
+- [x] Show different visual state for edit vs. create
+- [x] Allow vertex manipulation (move, add, delete)
+- [x] Test editing existing points and polygons
+- [x] Commit changes
 
 ### Stage 6: Save/Cancel Workflow
 
