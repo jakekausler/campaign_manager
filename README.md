@@ -36,7 +36,10 @@ A full-stack campaign management tool for tabletop RPGs that unifies map, flowch
 - **Radix UI** - Accessible, unstyled component primitives (Dialog, Slot, Label)
 - **shadcn/ui** - Beautiful, customizable component library built on Radix UI
 - **React Router 7** - Client-side routing with lazy loading and code splitting
+- **Zustand** - State management with slice pattern and localStorage persistence
 - **Apollo Client 4** - GraphQL client with caching, subscriptions, and error handling
+- **GraphQL Code Generator** - TypeScript types and React hooks from schema
+- **Vitest + MSW** - Testing infrastructure with API mocking at network level
 - **MapLibre** - Map rendering (planned)
 - **React Flow** - Flowchart visualization (planned)
 
@@ -500,6 +503,7 @@ This project is currently in active development. See the `plan/` directory for d
 - [x] TICKET-015: Rules Engine Service Worker
 - [x] TICKET-016: Effect System Implementation
 - [x] TICKET-017: Frontend Project Setup (React + Vite)
+- [x] TICKET-018: State Management & GraphQL Client
 
 **Party & Kingdom Management (TICKET-009)**
 
@@ -580,29 +584,50 @@ The Effect System enables dynamic game mechanics like:
 
 See `docs/features/effect-system.md` for detailed documentation including examples, security model, and integration details.
 
-**Frontend Setup (TICKET-017)**
+**Frontend (TICKETS 017-018)**
 
 The React frontend is built with modern tooling for optimal developer experience and performance:
+
+**Infrastructure (TICKET-017)**:
 
 - **Vite 5**: Lightning-fast HMR and optimized production builds with code splitting
 - **React 18 + TypeScript**: Type-safe component development with strict mode enabled
 - **Tailwind CSS 3**: Utility-first styling with JIT compilation and HSL color system
 - **Radix UI + shadcn/ui**: Accessible component primitives (Button, Card, Dialog) with beautiful styling
 - **React Router 7**: Client-side routing with lazy loading and protected routes
-- **Apollo Client 4**: GraphQL integration with caching, subscriptions, and authentication
 - **Environment Configuration**: Validated env vars with separate dev/prod configurations
 - **Development Proxy**: Vite proxy forwards `/graphql` requests to backend, eliminating CORS issues
 - **Organized Structure**: Clean folder organization (components, pages, hooks, utils, services, types)
 - **Code Quality**: ESLint with jsx-a11y for accessibility, Prettier formatting, pre-commit hooks
 
+**State Management & GraphQL (TICKET-018)**:
+
+- **Zustand**: State management with slice pattern (auth, campaign) and localStorage persistence
+- **Apollo Client 4**: GraphQL integration with custom cache policies and optimized fetching strategies
+  - Cache-first for entity details (efficient, manual refetch available)
+  - Cache-and-network for lists (show cached immediately, fetch fresh data)
+  - Computed fields disabled from caching (merge: false for dynamic calculations)
+  - Automatic auth token injection from Zustand store
+- **GraphQL Code Generator**: TypeScript types and React hooks from backend schema
+- **Specialized Hooks**: Domain-specific hooks for Settlement and Structure entities
+  - Query hooks: `useSettlementsByKingdom`, `useSettlementDetails`, `useStructuresBySettlement`, `useStructureDetails`, `useStructureConditions`
+  - Mutation hooks: `useCreateSettlement`, `useUpdateSettlement`, `useDeleteSettlement` (with archive/restore support)
+  - Cache update strategies: refetchQueries for creates, cache eviction for deletes, field modifications for archives
+- **Testing Infrastructure**: Vitest + Testing Library + MSW v2 (128 tests)
+  - Unit tests for Zustand stores (auth, campaign state)
+  - Integration tests for GraphQL hooks (queries, mutations)
+  - MSW intercepts GraphQL at network level for realistic testing
+  - Test utilities: `createTestApolloClient`, `renderWithApollo`, mock data factories
+
 Key Features:
 
 - Hot module replacement for instant feedback during development
 - Route-based code splitting reduces initial bundle size (<150KB gzipped)
-- Mock authentication for development with localStorage tokens
-- Type-safe GraphQL operations with Apollo Client
+- Mock authentication with Zustand store (persisted to localStorage)
+- Type-safe GraphQL operations with code-generated hooks
 - Responsive design with Tailwind CSS utilities
 - Accessible components following WAI-ARIA patterns
+- Comprehensive test coverage with fast, isolated tests
 
 See `packages/frontend/README.md` for detailed frontend documentation and development guide.
 

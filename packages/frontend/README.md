@@ -9,7 +9,11 @@ React + TypeScript + Vite frontend application for the Campaign Manager tabletop
 - **Language**: TypeScript (strict mode)
 - **Styling**: Tailwind CSS v3
 - **Component Library**: Radix UI + shadcn/ui
-- **Routing**: React Router v6
+- **Routing**: React Router v7
+- **State Management**: Zustand (with persist middleware)
+- **GraphQL Client**: Apollo Client v4
+- **Code Generation**: GraphQL Code Generator
+- **Testing**: Vitest + Testing Library + MSW
 - **Code Quality**: ESLint, Prettier
 
 ## Getting Started
@@ -60,6 +64,14 @@ pnpm --filter @campaign/frontend lint -- --fix
 # Formatting
 pnpm --filter @campaign/frontend format
 pnpm --filter @campaign/frontend format:check
+
+# Testing
+pnpm --filter @campaign/frontend test
+pnpm --filter @campaign/frontend test:watch
+
+# Code generation (requires backend running)
+pnpm --filter @campaign/frontend codegen
+pnpm --filter @campaign/frontend codegen:watch
 ```
 
 ## Environment Variables
@@ -114,6 +126,32 @@ if (env.features.debug) {
 
 See `src/config/README.md` for detailed documentation.
 
+## State Management
+
+The application uses Zustand for global state management with a slice-based architecture.
+
+### Store Architecture
+
+```typescript
+import { useAuthStore, useCampaignStore } from '@/stores';
+
+// Auth slice - authentication state
+const { token, user, isAuthenticated, login, logout } = useAuthStore();
+
+// Campaign slice - campaign context state
+const { currentCampaignId, currentBranchId, asOfTime, setCurrentCampaign } = useCampaignStore();
+```
+
+### Features
+
+- **Slice Pattern**: Separate concerns (auth, campaign) with combined root store
+- **Persistence**: Token and campaign ID persisted to localStorage
+- **DevTools**: Redux DevTools integration in development
+- **Fine-Grained Reactivity**: Optimized selector hooks prevent unnecessary re-renders
+- **Apollo Integration**: Store provides auth token to GraphQL client automatically
+
+See `src/stores/README.md` for comprehensive documentation.
+
 ## API Integration
 
 ### Development Proxy
@@ -165,13 +203,81 @@ const { data } = await graphqlClient.mutate({
 
 Features:
 
-- Automatic authentication headers (Bearer token)
-- Error handling and logging
-- WebSocket support for subscriptions
-- Optimistic UI updates
-- Cache normalization
+- Automatic authentication headers (Bearer token from Zustand store)
+- Error handling and retry logic with circuit breaker
+- WebSocket support for GraphQL subscriptions
+- Cache normalization (keyFields: ['id'] for all entities)
+- Custom cache policies (cache-first for details, cache-and-network for lists)
+- Computed fields disabled from caching (merge: false for fresh data)
 
-See `src/services/README.md` for API client documentation.
+### Custom GraphQL Hooks
+
+The application provides specialized hooks for domain entities:
+
+**Settlement Hooks:**
+
+```typescript
+import {
+  useSettlementsByKingdom,
+  useSettlementDetails,
+  useStructuresBySettlement,
+} from '@/services/api/hooks';
+
+// List settlements by kingdom
+const { settlements, loading, error, refetch } = useSettlementsByKingdom(kingdomId);
+
+// Get settlement details
+const { settlement, loading, error } = useSettlementDetails(settlementId);
+
+// Get structures in a settlement
+const { structures, loading, error } = useStructuresBySettlement(settlementId);
+```
+
+**Structure Hooks:**
+
+```typescript
+import { useStructureDetails, useStructureConditions } from '@/services/api/hooks';
+
+// Get structure details
+const { structure, loading, error, refetch } = useStructureDetails(structureId);
+
+// Get computed fields for a structure
+const { computedFields, loading, error } = useStructureConditions(structureId);
+```
+
+**Mutation Hooks:**
+
+```typescript
+import {
+  useCreateSettlement,
+  useUpdateSettlement,
+  useDeleteSettlement,
+  useCreateStructure,
+  useUpdateStructure,
+  useDeleteStructure,
+} from '@/services/api/hooks';
+
+// Create settlement
+const { createSettlement, loading } = useCreateSettlement();
+await createSettlement({ kingdomId, locationId, name, level });
+
+// Update structure
+const { updateStructure, loading } = useUpdateStructure();
+await updateStructure(id, { name: 'New Name' });
+
+// Delete (soft delete)
+const { deleteSettlement, loading } = useDeleteSettlement();
+await deleteSettlement(id);
+```
+
+All mutation hooks support:
+
+- Cache updates (refetchQueries for creates, cache modification for updates)
+- Archive/restore operations (soft delete management)
+- Loading and error states
+- Optional branchId parameter for temporal queries
+
+See `src/services/api/README.md` for comprehensive API client documentation.
 
 ### GraphQL Code Generation
 
@@ -241,22 +347,34 @@ src/
 │   ├── ui/          # Reusable UI primitives (shadcn/ui)
 │   ├── features/    # Feature-specific components
 │   └── layout/      # Layout components (headers, footers)
-├── pages/           # Route components
+├── pages/           # Route components (lazy-loaded)
 ├── router/          # React Router configuration
+├── stores/          # Zustand state management
+│   ├── auth-slice.ts      # Authentication state
+│   ├── campaign-slice.ts  # Campaign context state
+│   └── index.ts           # Root store with middleware
+├── services/        # API clients and external integrations
+│   └── api/
+│       ├── hooks/         # Custom GraphQL query hooks
+│       ├── mutations/     # Custom GraphQL mutation hooks
+│       └── graphql-client.ts  # Apollo Client configuration
 ├── hooks/           # Custom React hooks
 ├── utils/           # Pure utility functions
-├── services/        # API clients and external integrations
 ├── types/           # TypeScript type definitions
 ├── lib/             # Third-party library configurations
 ├── config/          # Application configuration
-└── main.tsx         # Application entry point
+├── __generated__/   # GraphQL Code Generator output
+└── __tests__/       # Test setup and utilities
+    ├── setup.ts           # Global test setup
+    ├── mocks/             # MSW handlers and mock data
+    └── utils/             # Test utilities (Apollo Client wrapper)
 ```
 
 See individual `README.md` files in each directory for detailed documentation.
 
 ## Routing
 
-The application uses React Router v6 with code-splitting:
+The application uses React Router v7 with code-splitting:
 
 - `/` - Home page
 - `/auth/login` - Login page
@@ -287,6 +405,76 @@ import { Button, Card, Dialog } from '@/components/ui';
 ```
 
 Available components: Button, Card, Dialog, etc.
+
+## Testing
+
+The application uses Vitest with Testing Library and Mock Service Worker (MSW) for comprehensive testing.
+
+### Test Stack
+
+- **Test Runner**: Vitest (Vite-native, fast)
+- **React Testing**: @testing-library/react
+- **API Mocking**: MSW v2 (Mock Service Worker)
+- **Environment**: happy-dom (faster than jsdom)
+- **Matchers**: @testing-library/jest-dom
+
+### Running Tests
+
+```bash
+# Run all tests
+pnpm --filter @campaign/frontend test
+
+# Watch mode (recommended for development)
+pnpm --filter @campaign/frontend test:watch
+
+# Coverage report
+pnpm --filter @campaign/frontend test -- --coverage
+```
+
+### Test Types
+
+**Unit Tests** (Zustand stores):
+
+```typescript
+// auth-slice.test.ts
+it('should log in user successfully', () => {
+  const store = createTestStore();
+  const user = { id: '1', email: 'test@example.com', role: 'player' };
+
+  store.getState().login('token123', user);
+
+  expect(store.getState().isAuthenticated).toBe(true);
+  expect(store.getState().user).toEqual(user);
+});
+```
+
+**Integration Tests** (GraphQL hooks):
+
+```typescript
+// settlements.test.tsx
+it('should fetch settlements by kingdom', async () => {
+  const { result } = renderHook(() => useSettlementsByKingdom('kingdom-1'), {
+    wrapper: createApolloWrapper(),
+  });
+
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  expect(result.current.settlements).toHaveLength(2);
+});
+```
+
+**MSW Mocking**:
+MSW intercepts GraphQL requests at the network level for realistic integration testing:
+
+```typescript
+// graphql-handlers.ts
+graphql.query('GetSettlementsByKingdom', ({ variables }) => {
+  const settlements = mockSettlements.filter((s) => s.kingdomId === variables.kingdomId);
+  return HttpResponse.json({ data: { settlementsByKingdom: settlements } });
+});
+```
+
+See `src/__tests__/README.md` for comprehensive testing documentation.
 
 ## Code Quality
 

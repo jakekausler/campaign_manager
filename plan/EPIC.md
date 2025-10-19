@@ -53,7 +53,7 @@ Gateway API → Rules Engine + Scheduler → PostgreSQL/PostGIS + Redis + MinIO 
 ### Frontend Core (Milestone 2-3: Weeks 3-6)
 
 - [x] [TICKET-017](TICKET-017.md) - Frontend Project Setup (React + Vite) ✓
-- [ ] [TICKET-018](TICKET-018.md) - State Management & GraphQL Client
+- [x] [TICKET-018](TICKET-018.md) - State Management & GraphQL Client ✓
 - [ ] [TICKET-019](TICKET-019.md) - Map View with MapLibre
 - [ ] [TICKET-020](TICKET-020.md) - Map Editing Tools (Draw/Edit Geometry)
 
