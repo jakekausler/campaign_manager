@@ -681,23 +681,66 @@ Approved with optional suggestions for future improvements (factory functions fo
 
 **Tasks**:
 
-- [ ] Write integration tests for useCreateSettlement
-- [ ] Write integration tests for useUpdateSettlement
-- [ ] Write integration tests for useDeleteSettlement
-- [ ] Write integration tests for useArchiveSettlement
-- [ ] Write integration tests for useRestoreSettlement
-- [ ] Verify cache updates work correctly
-- [ ] Test refetchQueries behavior
-- [ ] Run integration tests and verify they pass
+- [x] Write integration tests for useCreateSettlement
+- [x] Write integration tests for useUpdateSettlement
+- [x] Write integration tests for useDeleteSettlement
+- [x] Write integration tests for useArchiveSettlement
+- [x] Write integration tests for useRestoreSettlement
+- [x] Verify cache updates work correctly
+- [x] Test refetchQueries behavior
+- [x] Run integration tests and verify they pass
 
 **Success Criteria**:
 
-- All Settlement mutation tests pass
-- Cache updates work as expected
-- refetchQueries properly updates lists
-- No type-check or lint errors
+- ✅ All Settlement mutation tests pass (16 tests)
+- ✅ Cache updates work as expected
+- ✅ refetchQueries properly updates lists
+- ✅ No type-check or lint errors
 
-**Status**: Not Started
+**Status**: Complete
+
+**Implementation Notes**:
+
+Created comprehensive integration test suite for all five Settlement mutation hooks with MSW-mocked GraphQL responses.
+
+**New Test File:**
+
+- `packages/frontend/src/services/api/mutations/settlements.test.tsx` (16 tests)
+
+**Test Coverage:**
+
+- useCreateSettlement (3 tests): Creates settlement, loading state, error handling
+- useUpdateSettlement (3 tests): Updates settlement, non-existent handling, partial updates
+- useDeleteSettlement (3 tests): Deletes settlement, branchId support, error handling
+- useArchiveSettlement (3 tests): Archives settlement, branchId support, error handling
+- useRestoreSettlement (3 tests): Restores settlement, branchId support, error handling
+- Cache Update Integration (1 test): Archive/restore cycle verifies cache updates
+
+**MSW Handler Fixes:**
+
+Fixed critical type mismatch in `DeleteSettlement` and `DeleteStructure` handlers:
+
+- Previously returned boolean (`true`) instead of Settlement/Structure objects
+- Now returns proper objects with `id`, `deletedAt`, and `version` fields
+- Eliminates Apollo Client cache warnings about missing fields
+
+**Technical Decisions:**
+
+- Type annotations (`Settlement | undefined`) for all mutation result variables
+- Test assertions use optional chaining (?.) for type safety
+- Delete operations verify returned Settlement object (not boolean)
+- MSW handlers generate realistic timestamps and version increments
+- All tests isolated with fresh Apollo Client instances per test
+
+**Quality Checks:**
+
+- ✅ All 112 frontend tests passing (16 new + 96 existing)
+- ✅ Type-check passed
+- ✅ Lint passed
+- ✅ Format check passed
+- ✅ Code review approved (after fixing MSW handler type mismatch)
+
+**Commit**: e95904b
 
 ---
 
