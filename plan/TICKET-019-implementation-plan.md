@@ -69,20 +69,20 @@ This plan breaks down the implementation of an interactive map view with MapLibr
 
 **Tasks**:
 
-- [ ] Create utility functions for GeoJSON feature creation
-- [ ] Create hook or service for managing map layers (`useMapLayers` or similar)
-- [ ] Implement layer add/remove functions
-- [ ] Create TypeScript types for GeoJSON features (Location, Settlement, Structure)
-- [ ] Add layer visibility toggle functionality
-- [ ] Handle empty/null geometry gracefully
+- [x] Create utility functions for GeoJSON feature creation
+- [x] Create hook or service for managing map layers (`useMapLayers` or similar)
+- [x] Implement layer add/remove functions
+- [x] Create TypeScript types for GeoJSON features (Location, Settlement, Structure)
+- [x] Add layer visibility toggle functionality
+- [x] Handle empty/null geometry gracefully
 
 **Tests**:
 
-- [ ] Can add GeoJSON source to map
-- [ ] Can toggle layer visibility
-- [ ] Handles empty data without errors
+- [x] Can add GeoJSON source to map
+- [x] Can toggle layer visibility
+- [x] Handles empty data without errors
 
-**Status**: Not Started
+**Status**: Completed (Commit: 6324d6c)
 
 ---
 

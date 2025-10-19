@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3)
 
 ## Description
 
@@ -158,3 +158,109 @@ Implement interactive map view using MapLibre GL JS with GeoJSON layers, viewpor
 - Follows project conventions (barrel exports, component structure, lazy loading)
 - Proper use of React hooks and cleanup patterns
 - All 23 tests passing with comprehensive coverage
+
+### Stage 3: GeoJSON Layer Infrastructure (Commit: 6324d6c)
+
+**What was implemented:**
+
+- TypeScript type system for GeoJSON features (`types.ts`):
+  - EntityType union ('location-point', 'location-region', 'settlement', 'structure')
+  - Feature property interfaces for each entity type with discriminated unions
+  - GeoJSON Feature types (LocationPointFeature, LocationRegionFeature, SettlementFeature, StructureFeature)
+  - LayerConfig and LayerVisibility interfaces for map layer management
+  - Proper TypeScript strict mode compliance with exported type-only imports
+
+- GeoJSON utility functions (`geojson-utils.ts`):
+  - createLocationPointFeature() - converts location data to GeoJSON Point feature
+  - createLocationRegionFeature() - converts location data to GeoJSON Polygon feature
+  - createSettlementFeature() - converts settlement + location to GeoJSON Point feature
+  - createStructureFeature() - converts structure + location to GeoJSON Point feature
+  - filterValidFeatures() - removes null features from arrays using type guards
+  - Comprehensive validation: checks for null, undefined, NaN, Infinity coordinates
+  - Polygon ring validation: ensures minimum 3 coordinates per ring
+  - Returns null for invalid data to enable graceful error handling
+
+- Map layer management hook (`useMapLayers.ts`):
+  - addSource/updateSource() - manage GeoJSON data sources on map
+  - addLayer/removeLayer() - manage MapLibre layers with entity-specific styling
+  - toggleLayerVisibility/setLayerVisible() - control layer visibility
+  - addDataLayer/updateDataLayer() - convenience methods for source + layer
+  - Layer style configuration constants (colors, sizes, stroke widths):
+    - location-point: blue circle (6px)
+    - location-region: blue fill with opacity
+    - settlement: green circle (8px)
+    - structure: amber circle (6px)
+  - React state management with useCallback for stable function references
+  - useEffect to sync visibility state changes to MapLibre map
+  - Proper handling of null map instance
+
+- Comprehensive test coverage (128 test cases):
+  - geojson-utils.test.ts (84 tests):
+    - Valid feature creation for all entity types
+    - Edge cases: NaN, Infinity, null, undefined, zero coordinates
+    - Polygon validation: empty rings, too few coordinates, holes
+    - Feature filtering with type guards
+    - 100% coverage of utility functions
+  - useMapLayers.test.ts (44 tests):
+    - Source and layer CRUD operations
+    - Visibility toggling and state management
+    - MapLibre GL mock with realistic map behavior
+    - Async state updates with renderHook + act
+    - All hook functions and edge cases covered
+
+- Updated barrel exports (`index.ts`):
+  - Exported all new types, utilities, and hooks
+  - Follows existing project patterns for type-only exports
+
+- Dependencies:
+  - Added @types/geojson (2.0.0) for proper GeoJSON TypeScript types
+
+**Design decisions:**
+
+- Null return pattern for invalid data:
+  - Allows callers to decide how to handle errors (filter, log, skip)
+  - More flexible than throwing exceptions
+  - Enables bulk processing with filterValidFeatures()
+
+- Coordinate validation prevents rendering bugs:
+  - Checks for NaN/Infinity prevent MapLibre crashes
+  - Checks for null/undefined prevent type errors
+  - Zero coordinates are valid (equator/prime meridian)
+
+- Layer visibility managed in React state:
+  - Enables UI integration (checkboxes, toggles)
+  - useEffect syncs state to MapLibre map
+  - Separation of concerns (React state vs. MapLibre state)
+
+- Entity-specific styling configuration:
+  - Extracted to LAYER_STYLES constant for maintainability
+  - Distinct colors for each entity type (blue/green/amber)
+  - Settlement circles larger (8px) than structures (6px) for hierarchy
+
+- TypeScript discriminated unions:
+  - Type-safe feature properties with EntityType discriminator
+  - Enables exhaustive type checking in switch statements
+  - Prevents mixing incompatible feature types
+
+- Comprehensive validation in factories:
+  - Polygon rings validated for minimum 3 coordinates
+  - Prevents MapLibre errors from malformed geometry
+  - Graceful degradation for missing location data
+
+**Code quality:**
+
+- All TypeScript type-check and ESLint checks pass (0 errors)
+- 11 ESLint warnings about `any` types in tests (acceptable for MapLibre mocks)
+- Code reviewed by specialized Code Reviewer subagent with approval
+- TypeScript Fixer subagent resolved all type errors:
+  - Removed extends GeoJsonProperties (can't extend type aliases)
+  - Added GeoJSONSource type imports and assertions
+  - Fixed import ordering per project ESLint rules
+  - Added `as any` for MapLibre layer config (complex type unions)
+- Follows project conventions:
+  - Barrel exports with type-only imports
+  - Vitest testing patterns with @testing-library/react
+  - React hook patterns with useCallback and proper dependencies
+  - JSDoc documentation for all public functions
+- 128 test cases with comprehensive edge case coverage
+- No security vulnerabilities detected (validated by Code Reviewer)
