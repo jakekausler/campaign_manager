@@ -2,8 +2,8 @@
 
 ## Status
 
-- [ ] Completed
-- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2), 7d3c845 (Stage 3), 42f5084 (Stage 4), a1ff302 (Stage 5), 04b1f82 + 8c84f41 (Stage 6)
+- [x] Completed
+- **Commits**: aec1738 (Stage 1), 8e20f64 (Stage 2), 7d3c845 (Stage 3), 42f5084 (Stage 4), a1ff302 (Stage 5), 04b1f82 + 8c84f41 (Stage 6), 9672861 (Stage 7), 3f1fe15 (Stage 8)
 
 ## Description
 
@@ -21,12 +21,12 @@ Add map editing capabilities for creating and modifying point locations and poly
 
 ## Acceptance Criteria
 
-- [ ] Can draw new point locations
-- [ ] Can draw polygon regions
-- [ ] Can edit existing geometry
-- [ ] Invalid geometry is rejected
-- [ ] Edits persist to backend
-- [ ] Undo/redo works
+- [x] Can draw new point locations
+- [x] Can draw polygon regions
+- [x] Can edit existing geometry
+- [x] Invalid geometry is rejected
+- [x] Edits persist to backend
+- [x] Undo/redo works
 
 ## Dependencies
 
@@ -587,4 +587,96 @@ Add map editing capabilities for creating and modifying point locations and poly
 - Test edit mode re-entry after undo/redo
 - Test validation of restored features
 
-**Next Steps**: Testing and documentation (Stage 8)
+**Next Steps**: Ticket complete - all stages finished
+
+### Stage 8: Testing and Documentation (3f1fe15)
+
+**Completed**: Successfully completed comprehensive testing verification and feature documentation.
+
+**Key Deliverables:**
+
+1. **Feature Documentation** (`docs/features/map-editing-tools.md`):
+   - Comprehensive 580+ line documentation covering all aspects of map editing tools
+   - Component documentation: DrawControl, useMapDraw, DrawToolbar, UndoRedoControls
+   - User workflows for drawing, editing, undo/redo, and save/cancel
+   - Keyboard shortcuts reference table (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y, double-click)
+   - GraphQL integration details (mutations, queries, cache strategy)
+   - Technical details: validation rules, optimistic locking, state management
+   - Testing information: 53 unit tests, 395 total frontend tests
+   - Future enhancements section
+
+2. **Bug Fixes** (from Stage 7 code review):
+   - Input field detection for keyboard shortcuts (`Map.tsx:489`)
+   - Deep cloning in undo/redo to prevent mutation bugs (`useMapDraw.ts:323, 362, 394`)
+   - hasUnsavedChanges tracking after undo/redo operations (`useMapDraw.ts:377, 410`)
+   - MAX_HISTORY_SIZE as module-level constant with JSDoc (`useMapDraw.ts:13-17`)
+
+3. **Test Verification:**
+   - All 395 frontend tests passing (100% pass rate)
+   - Unit tests: 53 tests for geometry utilities and validation
+   - Integration tests: 64 tests for GraphQL hooks and mutations
+   - Component tests: 209 tests for map components
+   - State management tests: 64 tests for Zustand stores
+   - TypeScript type-check: Passing with no errors
+   - ESLint: Passing with no new warnings
+
+4. **Existing Documentation Verified:**
+   - JSDoc comments: Comprehensive coverage on all functions, interfaces, and components
+   - Inline help: Instructional text for each drawing mode
+   - Tooltips: ARIA labels and title attributes on all interactive elements
+   - Validation errors: User-friendly error messages with actionable guidance
+
+**Testing Results:**
+
+- **Test Files**: 23 passed
+- **Total Tests**: 395 passed
+- **Duration**: 9.53 seconds
+- **Coverage**: Stores, hooks, mutations, utilities, components, pages
+
+**Quality Checks:**
+
+- ✅ TypeScript compilation: No errors
+- ✅ ESLint: No new warnings (existing test file warnings unrelated to this ticket)
+- ✅ Prettier: All files formatted correctly
+- ✅ Code review: Approved with optional suggestions only
+
+**Code Review Findings:**
+
+- No critical issues
+- No security vulnerabilities
+- No performance issues
+- All suggestions were optional enhancements
+- Ready to commit without blockers
+
+**Acceptance Criteria Verification:**
+
+- ✅ Can draw new point locations (implemented in Stage 2)
+- ✅ Can draw polygon regions (implemented in Stage 3)
+- ✅ Can edit existing geometry (implemented in Stage 5)
+- ✅ Invalid geometry is rejected (implemented in Stage 4)
+- ✅ Edits persist to backend (implemented in Stage 6)
+- ✅ Undo/redo works (implemented in Stage 7)
+
+**Documentation Highlights:**
+
+The feature documentation includes:
+
+- Quick reference guide for developers
+- User workflow diagrams (via prose)
+- Keyboard shortcut table
+- GraphQL mutation examples
+- Validation rule details
+- Known limitations and future enhancements
+- Related documentation links
+
+**Notes:**
+
+Much of the testing and documentation infrastructure was already in place from previous stages. Stage 8 focused on:
+
+1. Creating comprehensive feature documentation
+2. Fixing remaining bugs from code reviews
+3. Verifying all tests pass
+4. Confirming type-check and lint pass
+5. Ensuring all acceptance criteria are met
+
+**Ticket Status**: All 8 stages complete. Ready for project manager verification and EPIC update.

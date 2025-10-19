@@ -192,19 +192,38 @@ Add drawing and editing capabilities to the map interface using MapLibre GL Draw
 
 **Goal**: Comprehensive testing and user documentation
 **Success Criteria**: All features tested, documentation complete
-**Status**: Not Started
+**Status**: Complete
+**Commit**: 3f1fe15
 
-- [ ] Write unit tests for geometry validation
-- [ ] Write integration tests for draw/edit workflows
-- [ ] Test error handling and edge cases
-- [ ] Add JSDoc comments to all functions
-- [ ] Create user documentation for drawing tools
-- [ ] Document keyboard shortcuts
-- [ ] Add inline help/tooltips in UI
-- [ ] Run full test suite and fix any failures
-- [ ] Run TypeScript type-check and fix errors
-- [ ] Run linter and fix issues
-- [ ] Commit changes
+- [x] Write unit tests for geometry validation (already existed - 53 tests)
+- [x] Write integration tests for draw/edit workflows (already existed - part of 395 tests)
+- [x] Test error handling and edge cases (covered by existing tests)
+- [x] Add JSDoc comments to all functions (comprehensive coverage already exists)
+- [x] Create user documentation for drawing tools (docs/features/map-editing-tools.md)
+- [x] Document keyboard shortcuts (included in documentation)
+- [x] Add inline help/tooltips in UI (already existed)
+- [x] Run full test suite and fix any failures (395/395 tests passing)
+- [x] Run TypeScript type-check and fix errors (passing)
+- [x] Run linter and fix issues (passing)
+- [x] Commit changes (3f1fe15)
+
+**Implementation Notes:**
+
+Much of the testing and documentation infrastructure was already in place from previous stages:
+
+- Unit tests for geometry utilities (28 tests) and validation (25 tests) were added in Stage 3 and 4
+- JSDoc comments were added throughout implementation in all previous stages
+- Tooltips and ARIA labels were added in Stages 2, 4, and 7
+- All 395 frontend tests passing (includes map components, stores, GraphQL hooks, utilities)
+
+New additions in Stage 8:
+
+- Created comprehensive feature documentation (docs/features/map-editing-tools.md)
+- Bug fixes from Stage 7 code review:
+  - Input field detection for keyboard shortcuts (prevents interference with text entry)
+  - Deep cloning in undo/redo history (prevents mutation bugs)
+  - hasUnsavedChanges tracking after undo/redo (ensures Save/Cancel buttons appear)
+  - MAX_HISTORY_SIZE as module-level constant (better organization, removed from dependency array)
 
 ## Notes
 
