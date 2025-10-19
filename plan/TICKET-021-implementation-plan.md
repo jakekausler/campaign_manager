@@ -10,12 +10,12 @@ Implement an interactive flowchart/dependency graph visualization using React Fl
 
 **Tasks**:
 
-- [ ] Install React Flow and types (`@xyflow/react`, `@types/react-flow`)
-- [ ] Create basic FlowView page component
-- [ ] Add route for FlowView page (`/flow`)
-- [ ] Set up React Flow provider with initial config
-- [ ] Add React Flow CSS imports
-- [ ] Verify basic empty flow canvas renders
+- [x] Install React Flow and types (`@xyflow/react`, `@types/react-flow`)
+- [x] Create basic FlowView page component
+- [x] Add route for FlowView page (`/flow`)
+- [x] Set up React Flow provider with initial config
+- [x] Add React Flow CSS imports
+- [x] Verify basic empty flow canvas renders
 
 **Success Criteria**:
 
@@ -29,7 +29,7 @@ Implement an interactive flowchart/dependency graph visualization using React Fl
 - Manual verification of empty canvas
 - Type-check passes
 
-**Status**: Not Started
+**Status**: Complete (Commit: 80ef9d3)
 
 ---
 
