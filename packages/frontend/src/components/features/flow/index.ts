@@ -18,3 +18,6 @@ export { CustomEdge } from './CustomEdge';
 export { ReadsEdge } from './ReadsEdge';
 export { WritesEdge } from './WritesEdge';
 export { DependsOnEdge } from './DependsOnEdge';
+
+// Toolbar components
+export { FlowToolbar } from './FlowToolbar';

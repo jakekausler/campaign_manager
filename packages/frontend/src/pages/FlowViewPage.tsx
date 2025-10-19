@@ -1,6 +1,13 @@
-import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   VariableNode,
@@ -10,6 +17,7 @@ import {
   ReadsEdge,
   WritesEdge,
   DependsOnEdge,
+  FlowToolbar,
 } from '@/components/features/flow';
 import { useDependencyGraph } from '@/services/api/hooks';
 import { useCurrentCampaignId } from '@/stores';
@@ -57,10 +65,35 @@ export default function FlowViewPage() {
 
   // Transform graph data to React Flow format with auto-layout
   // Must be called before any conditional returns (React Hooks rules)
-  const { nodes, edges } = useMemo(
+  const initialData = useMemo(
     () => (graph ? transformGraphToFlow(graph) : { nodes: [], edges: [] }),
     [graph]
   );
+
+  // React Flow state management for nodes and edges
+  // This allows manual repositioning while preserving the ability to re-layout
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialData.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialData.edges);
+  const [isLayouting, setIsLayouting] = useState(false);
+
+  // Update nodes and edges when graph data changes
+  useEffect(() => {
+    setNodes(initialData.nodes);
+    setEdges(initialData.edges);
+  }, [initialData.nodes, initialData.edges, setNodes, setEdges]);
+
+  // Re-layout handler: re-applies auto-layout algorithm to reset node positions
+  const handleReLayout = useCallback(() => {
+    if (!graph) return;
+
+    setIsLayouting(true);
+
+    // Re-run the full transformation including auto-layout
+    const { nodes: newNodes, edges: newEdges } = transformGraphToFlow(graph);
+    setNodes(newNodes);
+    setEdges(newEdges);
+    setIsLayouting(false);
+  }, [graph, setNodes, setEdges]);
 
   // Show loading state
   if (loading) {
@@ -123,6 +156,8 @@ export default function FlowViewPage() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
@@ -131,6 +166,7 @@ export default function FlowViewPage() {
         <Background />
         <Controls />
         <MiniMap />
+        <FlowToolbar onReLayout={handleReLayout} isLayouting={isLayouting} />
       </ReactFlow>
 
       {/* Info panel showing graph stats */}
