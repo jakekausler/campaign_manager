@@ -9,6 +9,9 @@ import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 
 import { AuditService } from './audit.service';
+import { DependencyGraphService } from './dependency-graph.service';
+import { EffectExecutionService } from './effect-execution.service';
+import { EffectPatchService } from './effect-patch.service';
 import { EventService } from './event.service';
 import { VersionService } from './version.service';
 
@@ -120,6 +123,24 @@ describe('EventService', () => {
             createVersion: jest.fn(),
             resolveVersion: jest.fn(),
             decompressVersion: jest.fn(),
+          },
+        },
+        {
+          provide: DependencyGraphService,
+          useValue: {
+            invalidateCache: jest.fn(),
+          },
+        },
+        {
+          provide: EffectExecutionService,
+          useValue: {
+            executeEffects: jest.fn(),
+          },
+        },
+        {
+          provide: EffectPatchService,
+          useValue: {
+            applyPatch: jest.fn(),
           },
         },
         {

@@ -130,7 +130,7 @@ describe('Effect System E2E Tests', () => {
             },
             fieldCondition: { findMany: jest.fn() },
             stateVariable: { findMany: jest.fn() },
-            $transaction: jest.fn((callback) => callback({})),
+            $transaction: jest.fn(),
           },
         },
         {
@@ -273,8 +273,8 @@ describe('Effect System E2E Tests', () => {
           } as EffectExecution);
         });
 
-      // Mock transaction
-      jest.spyOn(prismaService, '$transaction').mockImplementation(async (callback: any) => {
+      // Mock transaction - pass prismaService as transaction client
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
         return await callback(prismaService);
       });
 
@@ -405,8 +405,8 @@ describe('Effect System E2E Tests', () => {
           } as EffectExecution);
         });
 
-      // Mock transaction
-      jest.spyOn(prismaService, '$transaction').mockImplementation(async (callback: any) => {
+      // Mock transaction - pass prismaService as transaction client
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
         return await callback(prismaService);
       });
 
@@ -521,8 +521,8 @@ describe('Effect System E2E Tests', () => {
           } as EffectExecution);
         });
 
-      // Mock transaction
-      jest.spyOn(prismaService, '$transaction').mockImplementation(async (callback: any) => {
+      // Mock transaction - pass prismaService as transaction client
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
         return await callback(prismaService);
       });
 
@@ -611,8 +611,8 @@ describe('Effect System E2E Tests', () => {
           } as EffectExecution);
         });
 
-      // Mock transaction
-      jest.spyOn(prismaService, '$transaction').mockImplementation(async (callback: any) => {
+      // Mock transaction - pass prismaService as transaction client
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
         return await callback(prismaService);
       });
 
@@ -781,8 +781,8 @@ describe('Effect System E2E Tests', () => {
           } as EffectExecution);
         });
 
-      // Mock transaction
-      jest.spyOn(prismaService, '$transaction').mockImplementation(async (callback: any) => {
+      // Mock transaction - pass prismaService as transaction client
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
         return await callback(prismaService);
       });
 
@@ -866,8 +866,8 @@ describe('Effect System E2E Tests', () => {
           } as EffectExecution);
         });
 
-      // Mock transaction
-      jest.spyOn(prismaService, '$transaction').mockImplementation(async (callback: any) => {
+      // Mock transaction - pass prismaService as transaction client
+      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
         return await callback(prismaService);
       });
 

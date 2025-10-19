@@ -11,12 +11,15 @@ module.exports = {
   moduleNameMapper: {
     '^@campaign/shared$': '<rootDir>/../shared/src',
   },
-  globals: {
-    'ts-jest': {
-      tsconfig: {
-        experimentalDecorators: true,
-        emitDecoratorMetadata: true,
+  transform: {
+    '^.+\\.ts$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          experimentalDecorators: true,
+          emitDecoratorMetadata: true,
+        },
       },
-    },
+    ],
   },
 };

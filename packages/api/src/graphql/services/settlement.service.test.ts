@@ -12,6 +12,7 @@ import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 import { AuditService } from './audit.service';
 import { CampaignContextService } from './campaign-context.service';
 import { ConditionEvaluationService } from './condition-evaluation.service';
+import { DependencyGraphService } from './dependency-graph.service';
 import { SettlementService } from './settlement.service';
 import { VersionService } from './version.service';
 
@@ -117,6 +118,12 @@ describe('SettlementService', () => {
           useValue: {
             buildContextWithVariables: jest.fn(),
             evaluateExpression: jest.fn(),
+          },
+        },
+        {
+          provide: DependencyGraphService,
+          useValue: {
+            invalidateCache: jest.fn(),
           },
         },
       ],

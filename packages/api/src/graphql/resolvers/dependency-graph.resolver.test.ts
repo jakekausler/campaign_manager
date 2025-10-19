@@ -302,8 +302,14 @@ describe('DependencyGraphResolver', () => {
       const mockCycleResult = {
         hasCycles: true,
         cycles: [
-          ['CONDITION:cond1', 'VARIABLE:var1', 'CONDITION:cond2'],
-          ['EFFECT:eff1', 'VARIABLE:var2', 'EFFECT:eff2'],
+          {
+            path: ['CONDITION:cond1', 'VARIABLE:var1', 'CONDITION:cond2'],
+            description: 'Cycle detected: CONDITION:cond1 -> VARIABLE:var1 -> CONDITION:cond2',
+          },
+          {
+            path: ['EFFECT:eff1', 'VARIABLE:var2', 'EFFECT:eff2'],
+            description: 'Cycle detected: EFFECT:eff1 -> VARIABLE:var2 -> EFFECT:eff2',
+          },
         ],
         cycleCount: 2,
       };
@@ -327,7 +333,12 @@ describe('DependencyGraphResolver', () => {
     it('should generate descriptive cycle descriptions', async () => {
       const mockCycleResult = {
         hasCycles: true,
-        cycles: [['NODE:a', 'NODE:b', 'NODE:c']],
+        cycles: [
+          {
+            path: ['NODE:a', 'NODE:b', 'NODE:c'],
+            description: 'Cycle detected: NODE:a → NODE:b → NODE:c → NODE:a',
+          },
+        ],
         cycleCount: 1,
       };
 

@@ -22,6 +22,7 @@ import { SortOrder } from '../inputs/filter.input';
 import { AuditService } from './audit.service';
 import { ConditionEvaluationService } from './condition-evaluation.service';
 import { ConditionService } from './condition.service';
+import { DependencyGraphService } from './dependency-graph.service';
 
 describe('ConditionService', () => {
   let service: ConditionService;
@@ -68,18 +69,23 @@ describe('ConditionService', () => {
             },
             settlement: {
               findFirst: jest.fn(),
+              findUnique: jest.fn(),
             },
             structure: {
               findFirst: jest.fn(),
+              findUnique: jest.fn(),
             },
             kingdom: {
               findFirst: jest.fn(),
+              findUnique: jest.fn(),
             },
             party: {
               findFirst: jest.fn(),
+              findUnique: jest.fn(),
             },
             character: {
               findFirst: jest.fn(),
+              findUnique: jest.fn(),
             },
           },
         },
@@ -94,6 +100,18 @@ describe('ConditionService', () => {
           useValue: {
             validateExpression: jest.fn(),
             evaluateWithTrace: jest.fn(),
+          },
+        },
+        {
+          provide: DependencyGraphService,
+          useValue: {
+            invalidateCache: jest.fn(),
+          },
+        },
+        {
+          provide: 'REDIS_PUBSUB',
+          useValue: {
+            publish: jest.fn(),
           },
         },
       ],
