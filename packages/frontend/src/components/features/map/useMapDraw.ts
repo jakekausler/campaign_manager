@@ -11,6 +11,12 @@ import type { DrawFeature as DrawFeatureType } from './DrawControl';
 export type DrawFeature = DrawFeatureType;
 
 /**
+ * Maximum history size for undo/redo operations
+ * Balances memory usage with undo depth - 50 operations should cover typical editing sessions
+ */
+const MAX_HISTORY_SIZE = 50;
+
+/**
  * Drawing mode types
  */
 export type DrawMode = 'none' | 'draw_point' | 'draw_polygon' | 'edit';
@@ -133,9 +139,6 @@ export function useMapDraw(
   // Undo/redo history stacks
   const [undoStack, setUndoStack] = useState<DrawFeature[]>([]);
   const [redoStack, setRedoStack] = useState<DrawFeature[]>([]);
-
-  // Maximum history size
-  const MAX_HISTORY_SIZE = 50;
 
   // Store draw instance in ref for access in callbacks
   const drawRef = useRef<MapboxDraw | null>(drawInstance);
@@ -317,7 +320,9 @@ export function useMapDraw(
       // Push current feature to undo stack before updating
       if (currentFeature) {
         setUndoStack((prev) => {
-          const newStack = [...prev, currentFeature];
+          // Deep clone to prevent mutation of history
+          const clone = JSON.parse(JSON.stringify(currentFeature)) as DrawFeature;
+          const newStack = [...prev, clone];
           // Limit stack size to MAX_HISTORY_SIZE
           if (newStack.length > MAX_HISTORY_SIZE) {
             return newStack.slice(1); // Remove oldest entry
@@ -340,7 +345,7 @@ export function useMapDraw(
         onFeatureUpdated(feature);
       }
     },
-    [onFeatureUpdated, currentFeature, MAX_HISTORY_SIZE]
+    [onFeatureUpdated, currentFeature]
   );
 
   /**
@@ -353,11 +358,12 @@ export function useMapDraw(
     const previousFeature = undoStack[undoStack.length - 1];
     setUndoStack((prev) => prev.slice(0, -1));
 
-    // Push current feature to redo stack
-    setRedoStack((prev) => [...prev, currentFeature]);
+    // Push current feature to redo stack (deep clone to prevent mutation)
+    setRedoStack((prev) => [...prev, JSON.parse(JSON.stringify(currentFeature)) as DrawFeature]);
 
     // Update the feature in the draw control
     drawRef.current.delete(currentFeature.id || '');
+    // Type assertion needed due to DrawFeature interface having loose geometry.type
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     drawRef.current.add(previousFeature as any);
 
@@ -368,6 +374,7 @@ export function useMapDraw(
 
     // Update state
     setCurrentFeature(previousFeature);
+    setHasUnsavedChanges(true); // Mark as unsaved after undo
 
     // Validate the restored feature
     const validation = validateGeometry(previousFeature);
@@ -384,11 +391,12 @@ export function useMapDraw(
     const nextFeature = redoStack[redoStack.length - 1];
     setRedoStack((prev) => prev.slice(0, -1));
 
-    // Push current feature to undo stack
-    setUndoStack((prev) => [...prev, currentFeature]);
+    // Push current feature to undo stack (deep clone to prevent mutation)
+    setUndoStack((prev) => [...prev, JSON.parse(JSON.stringify(currentFeature)) as DrawFeature]);
 
     // Update the feature in the draw control
     drawRef.current.delete(currentFeature.id || '');
+    // Type assertion needed due to DrawFeature interface having loose geometry.type
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     drawRef.current.add(nextFeature as any);
 
@@ -399,6 +407,7 @@ export function useMapDraw(
 
     // Update state
     setCurrentFeature(nextFeature);
+    setHasUnsavedChanges(true); // Mark as unsaved after redo
 
     // Validate the restored feature
     const validation = validateGeometry(nextFeature);

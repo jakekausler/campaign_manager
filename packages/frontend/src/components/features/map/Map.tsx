@@ -484,6 +484,12 @@ export function Map({
     if (!enableDrawing) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept shortcuts if user is typing in an input field
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
       // Check for Ctrl+Z (undo) or Cmd+Z on Mac
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
