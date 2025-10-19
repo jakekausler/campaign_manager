@@ -16,6 +16,18 @@ export type DrawFeature = DrawFeatureType;
 export type DrawMode = 'none' | 'draw_point' | 'draw_polygon' | 'edit';
 
 /**
+ * Metadata about the location being edited
+ */
+export interface LocationEditMetadata {
+  /** Database location ID */
+  locationId: string;
+  /** Current version (for optimistic locking) */
+  version: number;
+  /** Location type ("point" | "region") */
+  type: string;
+}
+
+/**
  * State for the map drawing interface
  */
 export interface MapDrawState {
@@ -31,6 +43,8 @@ export interface MapDrawState {
   validationResult: ValidationResult | null;
   /** ID of the feature being edited (null if creating new) */
   editFeatureId: string | null;
+  /** Metadata about the location being edited (null if creating new or not editing) */
+  editLocationMetadata: LocationEditMetadata | null;
 }
 
 /**
@@ -42,7 +56,7 @@ export interface MapDrawActions {
   /** Activate polygon drawing mode */
   startDrawPolygon: () => void;
   /** Enter edit mode for existing feature */
-  startEdit: (featureId: string) => void;
+  startEdit: (featureId: string, locationMetadata?: LocationEditMetadata) => void;
   /** Exit current mode and return to view */
   cancelDraw: () => void;
   /** Save the current feature */
@@ -104,6 +118,9 @@ export function useMapDraw(
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [editFeatureId, setEditFeatureId] = useState<string | null>(null);
+  const [editLocationMetadata, setEditLocationMetadata] = useState<LocationEditMetadata | null>(
+    null
+  );
 
   // Store draw instance in ref for access in callbacks
   const drawRef = useRef<MapboxDraw | null>(drawInstance);
@@ -127,6 +144,7 @@ export function useMapDraw(
     setHasUnsavedChanges(false);
     setValidationResult(null);
     setEditFeatureId(null);
+    setEditLocationMetadata(null);
   }, []);
 
   /**
@@ -145,12 +163,13 @@ export function useMapDraw(
     setHasUnsavedChanges(false);
     setValidationResult(null);
     setEditFeatureId(null);
+    setEditLocationMetadata(null);
   }, []);
 
   /**
    * Enter edit mode for an existing feature
    */
-  const startEdit = useCallback((featureId: string) => {
+  const startEdit = useCallback((featureId: string, locationMetadata?: LocationEditMetadata) => {
     if (!drawRef.current) return;
 
     // Get the feature from the draw instance
@@ -166,6 +185,7 @@ export function useMapDraw(
     // Update state
     setMode('edit');
     setEditFeatureId(featureId);
+    setEditLocationMetadata(locationMetadata || null);
     setCurrentFeature(feature as DrawFeature);
     setHasUnsavedChanges(false); // No changes yet until user modifies
 
@@ -195,6 +215,7 @@ export function useMapDraw(
     setHasUnsavedChanges(false);
     setValidationResult(null);
     setEditFeatureId(null);
+    setEditLocationMetadata(null);
   }, [editFeatureId, currentFeature]);
 
   /**
@@ -208,6 +229,7 @@ export function useMapDraw(
     setHasUnsavedChanges(false);
     setValidationResult(null);
     setEditFeatureId(null);
+    setEditLocationMetadata(null);
   }, []);
 
   /**
@@ -278,6 +300,7 @@ export function useMapDraw(
     drawInstance: drawRef.current,
     validationResult,
     editFeatureId,
+    editLocationMetadata,
   };
 
   const actions: MapDrawActions = {

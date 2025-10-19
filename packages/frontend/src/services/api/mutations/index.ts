@@ -48,3 +48,8 @@ export {
 } from './structures';
 
 export type { CreateStructureInput, UpdateStructureInput, Structure } from './structures';
+
+// Location mutations
+export { UPDATE_LOCATION_GEOMETRY, useUpdateLocationGeometry } from './locations';
+
+export type { UpdateLocationGeometryInput, Location } from './locations';
