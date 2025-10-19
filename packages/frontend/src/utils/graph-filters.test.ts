@@ -1,4 +1,4 @@
-import type { Node, Edge } from '@xyflow/react';
+import type { Node } from '@xyflow/react';
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -11,7 +11,7 @@ import {
   getEdgeTypeCount,
   type GraphFilters,
 } from './graph-filters';
-import type { FlowNodeData } from './graph-layout';
+import type { FlowNodeData, FlowEdgeData } from './graph-layout';
 
 describe('graph-filters', () => {
   // Test data - nodes
@@ -43,7 +43,7 @@ describe('graph-filters', () => {
   ];
 
   // Test data - edges
-  const mockEdges: Edge[] = [
+  const mockEdges: FlowEdgeData[] = [
     {
       id: 'edge-1',
       source: 'node-1',
@@ -138,7 +138,7 @@ describe('graph-filters', () => {
     });
 
     it('should return empty set for acyclic graph', () => {
-      const acyclicEdges: Edge[] = [
+      const acyclicEdges: FlowEdgeData[] = [
         {
           id: 'edge-1',
           source: 'node-1',
@@ -193,7 +193,7 @@ describe('graph-filters', () => {
         },
       ];
 
-      const edges: Edge[] = [
+      const edges: FlowEdgeData[] = [
         { id: 'e1', source: 'a', target: 'b', type: 'reads', data: { edgeType: 'READS' as const } },
         { id: 'e2', source: 'b', target: 'a', type: 'reads', data: { edgeType: 'READS' as const } }, // Cycle: a <-> b
         { id: 'e3', source: 'c', target: 'd', type: 'reads', data: { edgeType: 'READS' as const } }, // No cycle
@@ -386,7 +386,7 @@ describe('graph-filters', () => {
     });
 
     it('should return 0 for edge types not in the graph', () => {
-      const edges: Edge[] = [
+      const edges: FlowEdgeData[] = [
         { id: 'e1', source: 'a', target: 'b', type: 'reads', data: { edgeType: 'READS' as const } },
       ];
       const count = getEdgeTypeCount(edges, 'WRITES');
@@ -394,7 +394,7 @@ describe('graph-filters', () => {
     });
 
     it('should handle edges without data', () => {
-      const edges: Edge[] = [{ id: 'e1', source: 'a', target: 'b', type: 'reads' }];
+      const edges: FlowEdgeData[] = [{ id: 'e1', source: 'a', target: 'b', type: 'reads' }];
       const count = getEdgeTypeCount(edges, 'READS');
       expect(count).toBe(0); // No data.edgeType, so not counted
     });

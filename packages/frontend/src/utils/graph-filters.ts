@@ -1,8 +1,8 @@
-import type { Node, Edge } from '@xyflow/react';
+import type { Node } from '@xyflow/react';
 
 import type { DependencyEdgeType, DependencyNodeType } from '@/services/api/hooks';
 
-import type { FlowNodeData } from './graph-layout';
+import type { FlowNodeData, FlowEdgeData } from './graph-layout';
 
 /**
  * Filter configuration for the dependency graph visualization.
@@ -63,7 +63,7 @@ export function hasActiveFilters(filters: GraphFilters): boolean {
  * const nodesInCycles = nodes.filter(n => cycleNodeIds.has(n.id));
  * ```
  */
-export function detectCycles(nodes: Node<FlowNodeData>[], edges: Edge[]): Set<string> {
+export function detectCycles(nodes: Node<FlowNodeData>[], edges: FlowEdgeData[]): Set<string> {
   const cycleNodes = new Set<string>();
   const visited = new Set<string>();
   const recursionStack = new Set<string>();
@@ -125,7 +125,7 @@ export function detectCycles(nodes: Node<FlowNodeData>[], edges: Edge[]): Set<st
  */
 export function filterNodes(
   nodes: Node<FlowNodeData>[],
-  edges: Edge[],
+  edges: FlowEdgeData[],
   filters: GraphFilters,
   selectedNodeIds: string[] = []
 ): Node<FlowNodeData>[] {
@@ -180,10 +180,10 @@ export function filterNodes(
  * @returns Filtered array of edges
  */
 export function filterEdges(
-  edges: Edge[],
+  edges: FlowEdgeData[],
   visibleNodeIds: Set<string>,
   filters: GraphFilters
-): Edge[] {
+): FlowEdgeData[] {
   let filteredEdges = edges;
 
   // Only show edges where both nodes are visible
@@ -194,7 +194,7 @@ export function filterEdges(
   // Filter by edge type
   if (filters.edgeTypes.size > 0) {
     filteredEdges = filteredEdges.filter((edge) => {
-      const edgeType = edge.data?.edgeType;
+      const edgeType = edge.data?.edgeType as DependencyEdgeType | undefined;
       return edgeType && filters.edgeTypes.has(edgeType);
     });
   }
@@ -225,6 +225,6 @@ export function getNodeTypeCount(
  * @param edgeType - The edge type to count
  * @returns Number of edges of that type
  */
-export function getEdgeTypeCount(edges: Edge[], edgeType: DependencyEdgeType): number {
+export function getEdgeTypeCount(edges: FlowEdgeData[], edgeType: DependencyEdgeType): number {
   return edges.filter((edge) => edge.data?.edgeType === edgeType).length;
 }

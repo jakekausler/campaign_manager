@@ -1225,6 +1225,41 @@ Interactive drawing and editing tools for map geometries (points and polygons). 
 
 See `plan/TICKET-020.md` for detailed implementation notes and commit hashes.
 
+## Flow View
+
+Interactive flowchart visualization for exploring dependency graphs. See [detailed documentation](docs/features/flow-view.md).
+
+**Quick Reference:**
+
+- Page: `FlowViewPage` in `packages/frontend/src/pages/`
+- Components: Custom nodes/edges, `FilterPanel`, `SelectionPanel`, `FlowToolbar`, `FlowControls` in `packages/frontend/src/components/features/flow/`
+- Hook: `useDependencyGraph` for GraphQL query
+- Utilities: `graph-layout.ts`, `graph-selection.ts`, `graph-filters.ts`, `node-navigation.ts` in `packages/frontend/src/utils/`
+- GraphQL: `getDependencyGraph` query from Dependency Graph API
+- Key Features: Auto-layout (Dagre), node/edge filtering, search, selection highlighting, cycle detection, multi-select, keyboard shortcuts
+- Node Types: VARIABLE (green), CONDITION (blue), EFFECT (orange), ENTITY (purple)
+- Edge Types: READS (solid), WRITES (dashed/animated), DEPENDS_ON (dotted)
+- Performance: <2s for 100 nodes, <3s for 200 nodes, <5s for 500 nodes
+- Integration: React Flow library, MiniMap, Controls, zoom indicator, loading skeleton
+- Implementation: TICKET-021 (12 stages, commits: 66d4238 - TBD)
+
+**TICKET-021: Flow View with React Flow** (12 stages):
+
+1. Install and Configure React Flow (React Flow + CSS imports)
+2. Create GraphQL Integration (`useDependencyGraph` hook, MSW handlers)
+3. Transform Graph Data to React Flow Format (Dagre auto-layout)
+4. Create Custom Node Components (VariableNode, ConditionNode, EffectNode, EntityNode)
+5. Create Custom Edge Components (ReadsEdge, WritesEdge, DependsOnEdge)
+6. Implement Auto-Layout Algorithm (Re-layout button, React Flow state management)
+7. Add Minimap and Controls (FlowControls component with zoom indicator)
+8. Implement Selection and Highlighting (BFS traversal, SelectionPanel, keyboard support)
+9. Add Node Editing Integration (Double-click handler, route infrastructure)
+10. Performance Optimization (React.memo, loading skeleton, performance tests)
+11. Add Filtering and Search (FilterPanel, DFS cycle detection, multi-filter support)
+12. Testing and Documentation (639 tests passing, accessibility audit, feature docs)
+
+See `plan/TICKET-021.md` for detailed implementation notes and commit hashes.
+
 ## World Time System
 
 Campaign-specific time tracking with custom calendars. See [detailed documentation](docs/features/world-time-system.md).
