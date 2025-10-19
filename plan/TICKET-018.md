@@ -633,3 +633,115 @@ function SettlementManager({ kingdomId }: { kingdomId: string }) {
   );
 }
 ```
+
+---
+
+### Stage 9: Test Infrastructure and Store Unit Tests (Complete - ca38b5a)
+
+**What was implemented:**
+
+Test Infrastructure Setup:
+
+- Configured Vitest in vite.config.ts with happy-dom environment and coverage reporting
+- Installed MSW 2.11.5 for API mocking, @testing-library/react 14.3.1, @testing-library/jest-dom 6.8.2, and happy-dom 20.0.5
+- Created MSW server setup with GraphQL handlers for Settlement and Structure operations
+- Built reusable test utilities with Apollo Client wrapper for integration tests
+- Added test setup file with MSW lifecycle management (beforeAll, afterEach, afterAll)
+
+Unit Tests Created (64 tests total):
+
+- **Auth Slice (30 tests)**: Covers initial state, login/logout, updateUser, refreshToken, setToken, state consistency, and all user roles (player, gm, admin)
+- **Campaign Slice (34 tests)**: Covers initial state, setCurrentCampaign with branch/time reset, setCurrentBranch, setAsOfTime, clearCampaignContext, state consistency, branch workflows, time-travel workflows, and campaign switching scenarios
+
+Integration Tests Created (15 tests):
+
+- **useSettlementsByKingdom (5 tests)**: Fetch settlements by kingdom, empty results, filtering by kingdom ID, refetch function, network status
+- **useSettlementDetails (4 tests)**: Fetch by ID, computed fields inclusion, non-existent settlement handling, refetch function
+- **useStructuresBySettlement (6 tests)**: Fetch structures by settlement, settlement name inclusion, empty results, filtering by settlement ID, refetch function, settlement not found handling
+
+**Technical decisions:**
+
+- Used happy-dom instead of jsdom for faster test execution
+- MSW v2 with latest syntax (graphql.query/mutation, HttpResponse.json)
+- Apollo Client test wrapper with HttpLink and no-cache fetch policy for predictable tests
+- Comprehensive MSW handlers covering all queries and mutations with proper error scenarios
+- Test store factories (createTestStore, createTestApolloClient) for test isolation
+- Mock data centralized in **tests**/mocks/data.ts for reusability
+
+**Code review outcome:**
+
+Approved with no critical issues. Minor suggestions noted but deferred:
+
+1. Empty beforeEach in auth-slice.test.ts can be removed
+2. Coverage exclusions pattern could be more specific
+3. Edge case documentation for refreshToken behavior
+4. Consider Object.freeze() on mock data to prevent mutations
+
+**Quality checks:**
+
+- All 79 tests passing (64 unit + 15 integration)
+- Type-check: ✅ Passed
+- Lint: ✅ Passed (6 import order issues auto-fixed)
+- Format: ✅ Passed (2 files auto-formatted)
+- Test isolation verified (each test creates fresh stores)
+- Apollo Client properly configured with MSW interception
+
+**Files created:**
+
+- `packages/frontend/vite.config.ts` - Updated with Vitest configuration
+- `packages/frontend/src/__tests__/setup.ts` - MSW and test setup
+- `packages/frontend/src/__tests__/mocks/server.ts` - MSW server
+- `packages/frontend/src/__tests__/mocks/graphql-handlers.ts` - GraphQL mock handlers
+- `packages/frontend/src/__tests__/mocks/data.ts` - Mock Settlement and Structure data
+- `packages/frontend/src/__tests__/mocks/index.ts` - Centralized exports
+- `packages/frontend/src/__tests__/utils/test-utils.tsx` - Apollo Client test wrapper
+- `packages/frontend/src/stores/auth-slice.test.ts` - Auth store unit tests (30 tests)
+- `packages/frontend/src/stores/campaign-slice.test.ts` - Campaign store unit tests (34 tests)
+- `packages/frontend/src/services/api/hooks/settlements.test.tsx` - Settlement hooks integration tests (15 tests)
+
+**Dependencies added:**
+
+- msw@2.11.5
+- @testing-library/react@14.3.1
+- @testing-library/jest-dom@6.8.2
+- @testing-library/user-event@14.5.2
+- happy-dom@20.0.5
+
+---
+
+### Stage 10: Settlement Hooks Integration Tests (Complete - ca38b5a)
+
+**What was implemented:**
+
+Completed as part of Stage 9 commit. Includes 15 integration tests for Settlement GraphQL hooks.
+
+**Test coverage:**
+
+- useSettlementsByKingdom: 5 tests
+- useSettlementDetails: 4 tests
+- useStructuresBySettlement: 6 tests
+
+**Test scenarios covered:**
+
+- Loading states (initially loading, then data loaded)
+- Error handling (non-existent entities, GraphQL errors)
+- Data filtering (by kingdom ID, by settlement ID)
+- Refetch functionality (manual re-fetching of data)
+- Network status monitoring
+- Computed fields inclusion
+- Settlement name accessibility
+
+**Integration with MSW:**
+
+- GraphQL queries properly mocked with realistic responses
+- Handlers support filtering by variables (kingdomId, settlementId)
+- Error scenarios handled (404-style null responses with errors)
+- MSW server resets between tests for isolation
+
+**Quality verified:**
+
+- All 15 tests passing
+- Proper Apollo Client integration
+- MSW intercepts all GraphQL requests
+- No console errors or warnings (except expected Apollo cache warnings for missing fields)
+- Type-safe test implementations

@@ -532,40 +532,182 @@ All hooks include:
 
 ---
 
-## Stage 9: Testing and Documentation
+## Stage 9: Test Infrastructure and Store Unit Tests
 
-**Goal**: Write comprehensive tests and documentation for state management and GraphQL client
+**Goal**: Set up testing infrastructure with MSW and write unit tests for Zustand stores
 
 **Tasks**:
 
-- [ ] Write unit tests for auth store
-- [ ] Write unit tests for campaign store
-- [ ] Write integration tests for Settlement hooks
-- [ ] Write integration tests for Structure hooks
-- [ ] Write integration tests for mutations
-- [ ] Set up Mock Service Worker (MSW) for GraphQL mocking
-- [ ] Create test utilities for mocking GraphQL responses
-- [ ] Document state management architecture in `src/stores/README.md`
+- [x] Install test dependencies (MSW, Testing Library, happy-dom)
+- [x] Configure Vitest in vite.config.ts
+- [x] Set up Mock Service Worker (MSW) for GraphQL mocking
+- [x] Create MSW server with GraphQL handlers
+- [x] Create test utilities for Apollo Client
+- [x] Write unit tests for auth store (30 tests)
+- [x] Write unit tests for campaign store (34 tests)
+- [x] Run unit tests and verify they pass
+
+**Success Criteria**:
+
+- ✅ Test infrastructure configured and working
+- ✅ MSW intercepts GraphQL requests in tests
+- ✅ All unit tests pass (64 tests)
+- ✅ No type-check or lint errors
+- ✅ Code review approved
+
+**Status**: Complete
+
+**Commit**: ca38b5a
+
+---
+
+## Stage 10: Settlement Hooks Integration Tests
+
+**Goal**: Write integration tests for Settlement GraphQL hooks
+
+**Tasks**:
+
+- [x] Write integration tests for useSettlementsByKingdom (5 tests)
+- [x] Write integration tests for useSettlementDetails (4 tests)
+- [x] Write integration tests for useStructuresBySettlement (6 tests)
+- [x] Verify GraphQL queries work with MSW
+- [x] Test loading states, errors, refetch, and data filtering
+- [x] Run integration tests and verify they pass
+
+**Success Criteria**:
+
+- ✅ All Settlement hook tests pass (15 tests)
+- ✅ MSW correctly mocks GraphQL responses
+- ✅ Hooks handle loading/error states properly
+- ✅ No type-check or lint errors
+
+**Status**: Complete
+
+**Commit**: ca38b5a
+
+---
+
+## Stage 11: Structure Hooks Integration Tests
+
+**Goal**: Write integration tests for Structure GraphQL hooks
+
+**Tasks**:
+
+- [ ] Write integration tests for useStructureDetails
+- [ ] Write integration tests for useStructureConditions
+- [ ] Verify GraphQL queries work with MSW
+- [ ] Test loading states, errors, refetch
+- [ ] Run integration tests and verify they pass
+
+**Success Criteria**:
+
+- All Structure hook tests pass
+- MSW correctly mocks GraphQL responses
+- Hooks handle loading/error states properly
+- No type-check or lint errors
+
+**Status**: Not Started
+
+---
+
+## Stage 12: Settlement Mutation Integration Tests
+
+**Goal**: Write integration tests for Settlement mutation hooks
+
+**Tasks**:
+
+- [ ] Write integration tests for useCreateSettlement
+- [ ] Write integration tests for useUpdateSettlement
+- [ ] Write integration tests for useDeleteSettlement
+- [ ] Write integration tests for useArchiveSettlement
+- [ ] Write integration tests for useRestoreSettlement
+- [ ] Verify cache updates work correctly
+- [ ] Test refetchQueries behavior
+- [ ] Run integration tests and verify they pass
+
+**Success Criteria**:
+
+- All Settlement mutation tests pass
+- Cache updates work as expected
+- refetchQueries properly updates lists
+- No type-check or lint errors
+
+**Status**: Not Started
+
+---
+
+## Stage 13: Structure Mutation Integration Tests
+
+**Goal**: Write integration tests for Structure mutation hooks
+
+**Tasks**:
+
+- [ ] Write integration tests for useCreateStructure
+- [ ] Write integration tests for useUpdateStructure
+- [ ] Write integration tests for useDeleteStructure
+- [ ] Write integration tests for useArchiveStructure
+- [ ] Write integration tests for useRestoreStructure
+- [ ] Verify cache updates work correctly
+- [ ] Test Settlement.structures field cleanup on delete
+- [ ] Run integration tests and verify they pass
+
+**Success Criteria**:
+
+- All Structure mutation tests pass
+- Cache updates work as expected
+- Parent reference cleanup works on delete
+- No type-check or lint errors
+
+**Status**: Not Started
+
+---
+
+## Stage 14: Documentation Updates
+
+**Goal**: Document state management architecture and GraphQL client setup
+
+**Tasks**:
+
+- [ ] Update `src/stores/README.md` with architecture overview
 - [ ] Document GraphQL client setup in `src/services/api/README.md`
 - [ ] Document code generation process
 - [ ] Document cache policies and strategies
 - [ ] Add examples of using hooks in components
 - [ ] Update frontend README with state management section
-- [ ] Run all tests and ensure they pass
-- [ ] Run type-check and lint
+- [ ] Document MSW test setup
 
 **Success Criteria**:
 
-- All tests pass
-- Test coverage is adequate (>80% for critical paths)
 - Documentation is clear and comprehensive
-- No type-check or lint errors
-- Code is ready for review
+- Examples demonstrate common use cases
+- All integration points documented
+- No broken links or outdated information
 
-**Tests**:
+**Status**: Not Started
 
-- All unit and integration tests pass
+---
+
+## Stage 15: Final Quality Checks
+
+**Goal**: Run all tests, verify coverage, and prepare for code review
+
+**Tasks**:
+
+- [ ] Run all tests and ensure they pass
+- [ ] Check test coverage (target >80% for critical paths)
+- [ ] Run type-check on all packages
+- [ ] Run lint on all packages
+- [ ] Fix any issues found
+- [ ] Update TICKET-018.md with all commit hashes
+- [ ] Mark ticket as complete in plan/EPIC.md
+
+**Success Criteria**:
+
+- All tests pass (100+ tests expected)
 - Test coverage meets standards
+- No type-check or lint errors
+- Code ready for review
+- Documentation complete
 
 **Status**: Not Started
 
@@ -590,7 +732,13 @@ All hooks include:
 6. Stage 6: Settlement hooks (domain queries)
 7. Stage 7: Structure hooks (domain queries)
 8. Stage 8: Mutations (domain writes)
-9. Stage 9: Testing and documentation (quality assurance)
+9. Stage 9: Test infrastructure and store unit tests
+10. Stage 10: Settlement hooks integration tests
+11. Stage 11: Structure hooks integration tests
+12. Stage 12: Settlement mutation integration tests
+13. Stage 13: Structure mutation integration tests
+14. Stage 14: Documentation updates
+15. Stage 15: Final quality checks
 
 ## Completion Checklist
 
@@ -602,7 +750,13 @@ All hooks include:
 - [x] Stage 6: Settlement hooks
 - [x] Stage 7: Structure hooks
 - [x] Stage 8: Mutations
-- [ ] Stage 9: Testing and documentation
+- [x] Stage 9: Test infrastructure and store unit tests
+- [x] Stage 10: Settlement hooks integration tests
+- [ ] Stage 11: Structure hooks integration tests
+- [ ] Stage 12: Settlement mutation integration tests
+- [ ] Stage 13: Structure mutation integration tests
+- [ ] Stage 14: Documentation updates
+- [ ] Stage 15: Final quality checks
 - [ ] All acceptance criteria met
 - [ ] All tests passing
 - [ ] Code reviewed
