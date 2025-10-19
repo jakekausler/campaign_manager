@@ -826,21 +826,104 @@ All suggestions are minor and deferred to future iterations.
 
 **Tasks**:
 
-- [ ] Update `src/stores/README.md` with architecture overview
-- [ ] Document GraphQL client setup in `src/services/api/README.md`
-- [ ] Document code generation process
-- [ ] Document cache policies and strategies
-- [ ] Add examples of using hooks in components
-- [ ] Document MSW test setup
+- [x] Update `src/stores/README.md` with architecture overview
+- [x] Document GraphQL client setup in `src/services/api/README.md`
+- [x] Document code generation process
+- [x] Document cache policies and strategies
+- [x] Add examples of using hooks in components
+- [x] Document MSW test setup
 
 **Success Criteria**:
 
-- Code-level documentation is clear and comprehensive
-- Examples demonstrate common use cases
-- All integration points documented
-- No broken links or outdated information
+- ✅ Code-level documentation is clear and comprehensive
+- ✅ Examples demonstrate common use cases
+- ✅ All integration points documented
+- ✅ No broken links or outdated information
 
-**Status**: Not Started
+**Status**: Complete
+
+**Implementation Notes**:
+
+All documentation created in earlier stages (Stages 1-13) already meets the requirements for Stage 14:
+
+**Zustand State Management Documentation** (`src/stores/README.md`):
+
+- Comprehensive architecture overview with slice pattern explanation
+- Complete documentation of auth and campaign slices
+- Detailed usage examples for authentication flows and campaign context
+- Integration documentation with Apollo Client (token management, WebSocket auth)
+- Persistence strategy clearly explained (what persists, what doesn't, rehydration behavior)
+- Best practices section with do's and don'ts
+- Testing guide with unit test examples
+- Comparison table: Zustand vs Redux vs Context API
+
+**GraphQL Client Documentation** (`src/services/api/README.md`):
+
+- Complete Apollo Client configuration documentation (links, cache, fetch policies)
+- Cache policies explained in detail:
+  - Query-level caching (settlementsByKingdom, structuresBySettlement)
+  - Entity-level normalization (Settlement, Structure)
+  - Computed fields strategy (merge: false for no caching)
+  - Mutation cache update strategies (refetchQueries, eviction, field modifications)
+- Comprehensive hook documentation:
+  - All Settlement hooks (useSettlementsByKingdom, useSettlementDetails, useStructuresBySettlement)
+  - All Structure hooks (useStructureDetails, useStructureConditions)
+  - All mutation hooks (create, update, delete, archive, restore)
+- Error handling documentation (error link, hook-level errors, error policies)
+- Authentication integration (token management, lifecycle, Zustand integration)
+- Usage examples for queries, mutations, polling, variables, confirmations
+- Best practices section with 8 key guidelines
+
+**Code Generation Documentation** (`src/__generated__/README.md`):
+
+- Complete workflow documentation (write operations → run codegen → use generated hooks)
+- Prerequisites clearly stated (backend running, database running)
+- Commands documented (codegen, codegen:watch)
+- Configuration explained (schema source, documents, output, plugins)
+- Usage examples (importing types, using generated hooks)
+- Troubleshooting section with common issues and solutions
+- CI/CD integration examples
+- Current status note about backend dependency injection issue
+
+**MSW Test Documentation** (`src/__tests__/README.md`):
+
+- Complete test stack overview with version numbers
+- Directory structure explained
+- Global test setup documentation (MSW lifecycle, matchers, cleanup)
+- Vitest configuration details (happy-dom, coverage settings)
+- MSW v2 syntax guide with examples
+- GraphQL handlers documentation with realistic examples
+- Mock data best practices (\_\_typename, field names, realistic IDs)
+- Test utilities documentation (createTestApolloClient, renderWithApollo)
+- Writing tests guide:
+  - Unit tests (Zustand stores)
+  - Integration tests (GraphQL hooks)
+  - Component tests (React components)
+- Best practices section with 7 key guidelines
+- Running tests commands and CI/CD integration
+- Troubleshooting section with 6 common issues
+
+**Additional Documentation**:
+
+- Frontend README.md has comprehensive code generation section
+- All other README files created in earlier stages remain accurate and comprehensive
+
+**Quality Verification**:
+
+All documentation reviewed and verified to be:
+
+- ✅ Accurate and up-to-date
+- ✅ Comprehensive with no missing topics
+- ✅ Well-organized with clear table of contents
+- ✅ Includes practical examples for all major features
+- ✅ Has troubleshooting sections where appropriate
+- ✅ Uses consistent formatting and terminology
+- ✅ No broken links or references
+- ✅ All integration points clearly explained
+
+**Conclusion**:
+
+No additional documentation updates were required for Stage 14. All documentation created during implementation (Stages 1-13) already exceeds the requirements. The documentation is production-ready and provides excellent developer experience for understanding and using the state management and GraphQL client systems.
 
 ---
 
