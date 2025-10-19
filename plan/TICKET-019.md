@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6), 4d6068b (Stage 7), 330fad8 (Stage 8)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6), 4d6068b (Stage 7), 330fad8 (Stage 8), dabaece (Stage 9)
 
 ## Description
 
@@ -763,3 +763,68 @@ Testing (`packages/frontend/src/components/features/map/LayerControls.test.tsx`)
   - Tailwind CSS styling
 - No security vulnerabilities detected
 - Performance optimized (no unnecessary re-renders, small bundle size ~2KB)
+
+### Stage 9: Time Scrubber for Historical View (Commit: dabaece)
+
+**What was implemented:**
+
+Components:
+
+- TimeScrubber component with slider UI for time selection
+- Shows current world time and selected viewing time
+- Reset button to return to current time
+- Historical state indicator (amber warning)
+- Loading state while fetching world time
+- Responsive layout at bottom center
+
+GraphQL Hooks:
+
+- useCurrentWorldTime: queries getCurrentWorldTime for campaign
+- Returns Date with loading/error states
+- Uses cache-and-network policy
+
+Time Filtering:
+
+- filterByTime utility: generic TypeScript function
+- Filters by createdAt, deletedAt, archivedAt
+- Null time = current (active entities only)
+- Works with Date objects and ISO strings
+
+Layer Hook Updates:
+
+- useLocationLayers, useSettlementLayers, useStructureLayers: added filterTime parameter
+- All hooks filter entities before rendering based on selected time
+
+Map Integration:
+
+- Added campaignId prop and selectedTime state
+- Queries current world time when campaignId provided
+- Passes filterTime to all layer hooks
+- TimeScrubber conditionally rendered
+
+Testing:
+
+- 15 TimeScrubber unit tests (rendering, interaction, accessibility)
+- 49 time-filter unit tests (boundaries, edge cases, precision)
+- All 295 tests passing
+
+**Design decisions:**
+
+- Time state in Map component (not global)
+- Slider uses percentage positioning (0-100%)
+- Client-side filtering (no backend changes)
+- Entity hidden at exact deletion/archival time
+- useMemo for performance optimization
+
+**Code quality:**
+
+- All type-check and lint pass
+- Code Reviewer approved
+- Comprehensive JSDoc documentation
+- Full accessibility with ARIA
+
+**Performance:**
+
+- O(n) filtering per entity type
+- Acceptable for MVP
+- Optimization opportunity noted for 1000+ entities

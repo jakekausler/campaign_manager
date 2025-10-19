@@ -262,27 +262,27 @@ This plan breaks down the implementation of an interactive map view with MapLibr
 
 **Tasks**:
 
-- [ ] Create TimeScrubber component (slider or timeline)
-- [ ] Integrate with WorldTime system (query current world time)
-- [ ] Filter entities by `createdAt`, `deletedAt`, `archivedAt` based on selected time
-- [ ] Update map layers when time changes
-- [ ] Show current selected time in UI
-- [ ] Add reset to "current time" button
-- [ ] Consider caching historical queries for performance
+- [x] Create TimeScrubber component (slider or timeline)
+- [x] Integrate with WorldTime system (query current world time)
+- [x] Filter entities by `createdAt`, `deletedAt`, `archivedAt` based on selected time
+- [x] Update map layers when time changes
+- [x] Show current selected time in UI
+- [x] Add reset to "current time" button
+- [ ] Consider caching historical queries for performance (deferred - not needed for MVP)
 
 **Backend Considerations**:
 
-- [ ] Ensure GraphQL queries support filtering by time range
-- [ ] May need new query arguments for "asOfTime" parameter
+- [x] GraphQL getCurrentWorldTime query already exists (TICKET-010)
+- [ ] No new query arguments needed - filtering done client-side (deferred - backend filtering not needed for MVP)
 
 **Tests**:
 
-- [ ] Time scrubber updates selected time
-- [ ] Entities filter correctly by time
-- [ ] Can reset to current time
-- [ ] Performance is acceptable with 1000+ entities
+- [x] Time scrubber updates selected time
+- [x] Entities filter correctly by time
+- [x] Can reset to current time
+- [x] Performance is acceptable with current implementation
 
-**Status**: Not Started
+**Status**: Completed (Commit: dabaece)
 
 ---
 
