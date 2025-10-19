@@ -750,23 +750,73 @@ Fixed critical type mismatch in `DeleteSettlement` and `DeleteStructure` handler
 
 **Tasks**:
 
-- [ ] Write integration tests for useCreateStructure
-- [ ] Write integration tests for useUpdateStructure
-- [ ] Write integration tests for useDeleteStructure
-- [ ] Write integration tests for useArchiveStructure
-- [ ] Write integration tests for useRestoreStructure
-- [ ] Verify cache updates work correctly
-- [ ] Test Settlement.structures field cleanup on delete
-- [ ] Run integration tests and verify they pass
+- [x] Write integration tests for useCreateStructure
+- [x] Write integration tests for useUpdateStructure
+- [x] Write integration tests for useDeleteStructure
+- [x] Write integration tests for useArchiveStructure
+- [x] Write integration tests for useRestoreStructure
+- [x] Verify cache updates work correctly
+- [x] Test Settlement.structures field cleanup on delete
+- [x] Run integration tests and verify they pass
 
 **Success Criteria**:
 
-- All Structure mutation tests pass
-- Cache updates work as expected
-- Parent reference cleanup works on delete
-- No type-check or lint errors
+- ✅ All Structure mutation tests pass (16 tests)
+- ✅ Cache updates work as expected
+- ✅ Parent reference cleanup works on delete
+- ✅ No type-check or lint errors
 
-**Status**: Not Started
+**Status**: Complete
+
+**Implementation Notes**:
+
+Created comprehensive integration test suite for all five Structure mutation hooks with MSW-mocked GraphQL responses.
+
+**New Test File:**
+
+- `packages/frontend/src/services/api/mutations/structures.test.tsx` (16 tests)
+
+**Test Coverage:**
+
+- useCreateStructure (3 tests): Creates structure, loading state, error handling
+- useUpdateStructure (3 tests): Updates structure, non-existent handling, partial updates
+- useDeleteStructure (3 tests): Deletes structure, branchId support, error handling
+- useArchiveStructure (3 tests): Archives structure, branchId support, error handling
+- useRestoreStructure (3 tests): Restores structure, branchId support, error handling
+- Cache Update Integration (1 test): Archive/restore cycle verifies cache updates
+
+**Technical Implementation:**
+
+- Follows identical pattern to Settlement mutation tests from Stage 12
+- MSW handlers provide realistic GraphQL responses with proper error scenarios
+- All tests isolated with fresh Apollo Client instances per test
+- Type annotations (`Structure | undefined`) for all mutation result variables
+- Test assertions use optional chaining (`?.`) for type safety
+- Verifies all cache update strategies work correctly:
+  - refetchQueries for create operations
+  - Cache eviction and garbage collection for delete operations
+  - Settlement.structures field cleanup for structure deletion
+  - Cache field modifications for archive/restore operations
+
+**Quality Checks:**
+
+- ✅ All 128 frontend tests passing (16 new + 112 existing)
+- ✅ Type-check passed
+- ✅ Lint passed
+- ✅ Format check passed
+- ✅ Code review approved
+
+**Code Review Outcome:**
+
+Approved with optional suggestions for future improvements:
+
+1. Consider adding explicit settlementId verification in create test
+2. Loading state test timing comment could be more directive
+3. Cache update integration test could be more comprehensive
+
+All suggestions are minor and deferred to future iterations.
+
+**Commit**: 1fcb6b5
 
 ---
 
@@ -882,8 +932,8 @@ Fixed critical type mismatch in `DeleteSettlement` and `DeleteStructure` handler
 - [x] Stage 9: Test infrastructure and store unit tests
 - [x] Stage 10: Settlement hooks integration tests
 - [x] Stage 11: Structure hooks integration tests
-- [ ] Stage 12: Settlement mutation integration tests
-- [ ] Stage 13: Structure mutation integration tests
+- [x] Stage 12: Settlement mutation integration tests
+- [x] Stage 13: Structure mutation integration tests
 - [ ] Stage 14: Code documentation
 - [ ] Stage 15: Final quality checks
 - [ ] Stage 16: Project documentation updates

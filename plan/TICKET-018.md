@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] In Progress
-- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3, 8a7ed27, 8de2dfb, 7f45d98, c2a265d, f8cd55e
+- **Commits**: afcd587, 0b0c13e, 276dd98, 682acc3, 8a7ed27, 8de2dfb, 7f45d98, c2a265d, f8cd55e, ca38b5a, 4131f1c, e95904b, 1fcb6b5
 
 ## Description
 
@@ -745,3 +745,101 @@ Completed as part of Stage 9 commit. Includes 15 integration tests for Settlemen
 - MSW intercepts all GraphQL requests
 - No console errors or warnings (except expected Apollo cache warnings for missing fields)
 - Type-safe test implementations
+
+---
+
+### Stage 13: Structure Mutation Integration Tests (Complete - 1fcb6b5)
+
+**What was implemented:**
+
+Created comprehensive integration test suite for all five Structure mutation hooks with MSW-mocked GraphQL responses following the identical pattern established in Stage 12 for Settlement mutations.
+
+**New Test File:**
+
+- `packages/frontend/src/services/api/mutations/structures.test.tsx` (16 tests total)
+
+**Test Coverage:**
+
+useCreateStructure (3 tests):
+
+- Creates new structure with proper field validation
+- Handles creation errors appropriately
+- Sets loading state during mutation
+
+useUpdateStructure (3 tests):
+
+- Updates existing structure with version increment
+- Handles updates to non-existent structures with errors
+- Updates with optional fields (partial updates)
+
+useDeleteStructure (3 tests):
+
+- Deletes structure with deletedAt timestamp
+- Deletes with optional branchId parameter support
+- Handles deletion errors appropriately
+
+useArchiveStructure (3 tests):
+
+- Archives structure with deletedAt timestamp
+- Archives with optional branchId parameter support
+- Handles archival errors appropriately
+
+useRestoreStructure (3 tests):
+
+- Restores archived structure with null deletedAt
+- Restores with optional branchId parameter support
+- Handles restoration errors appropriately
+
+Cache Update Integration (1 test):
+
+- Archive/restore cycle verifies cache updates work correctly
+
+**Technical implementation:**
+
+- **Pattern consistency**: Follows identical pattern to Settlement mutation tests from Stage 12
+- **MSW integration**: Realistic GraphQL responses with proper error scenarios
+- **Test isolation**: Fresh Apollo Client instances per test for complete isolation
+- **Type safety**: Type annotations (`Structure | undefined`) for all mutation result variables
+- **Safe assertions**: Test assertions use optional chaining (`?.`) for type safety
+- **Cache verification**: Verifies all cache update strategies work correctly:
+  - refetchQueries for create operations
+  - Cache eviction and garbage collection for delete operations
+  - Settlement.structures field cleanup for structure deletion
+  - Cache field modifications for archive/restore operations
+
+**Code review outcome:**
+
+Approved with optional suggestions for future improvements:
+
+1. Consider adding explicit settlementId verification in create test
+2. Loading state test timing comment could be more directive
+3. Cache update integration test could be more comprehensive
+
+All suggestions are minor and deferred to future iterations.
+
+**Quality checks:**
+
+- ✅ All 128 frontend tests passing (16 new + 112 existing)
+- ✅ Type-check passed
+- ✅ Lint passed
+- ✅ Format check passed
+- ✅ Code review approved
+
+**Integration notes:**
+
+Structure mutation tests are fully integrated with:
+
+1. **MSW Handlers**: Existing GraphQL handlers in `graphql-handlers.ts` support all Structure mutations
+2. **Apollo Client**: Tests verify mutations work correctly with Apollo Client cache
+3. **Cache Strategies**: Tests confirm cache update strategies from structures.ts implementation
+4. **Settlement Cleanup**: Delete tests verify Structure removal from Settlement.structures field
+5. **Archive/Restore**: Tests confirm deletedAt and version field updates in cache
+
+**Future work:**
+
+Once backend is fixed:
+
+- Integration test mutation hooks with live backend
+- Verify Settlement.structures field cleanup in real database
+- Test cache invalidation with actual GraphQL subscriptions
+- Replace placeholder types with generated GraphQL types
