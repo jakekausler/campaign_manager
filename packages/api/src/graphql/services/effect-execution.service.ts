@@ -19,14 +19,11 @@ import {
   NotImplementedException,
 } from '@nestjs/common';
 import type { Effect, EffectExecution, Encounter, Event, Prisma } from '@prisma/client';
+import type { Operation } from 'fast-json-patch';
 
 import { PrismaService } from '../../database/prisma.service';
 
-import {
-  EffectPatchService,
-  type PatchableEntityType,
-  type ApplyPatchResult,
-} from './effect-patch.service';
+import { EffectPatchService, type PatchableEntityType } from './effect-patch.service';
 
 /**
  * User context for authorization and audit
@@ -217,7 +214,7 @@ export class EffectExecutionService {
           result: {
             success: true,
             patchApplied: effect.payload,
-            affectedFields: this.extractAffectedFields(patchResult),
+            affectedFields: this.extractAffectedFields(effect.payload as never),
           },
           error: null,
         },
@@ -458,19 +455,29 @@ export class EffectExecutionService {
   }
 
   /**
-   * Extract affected field names from patch result
+   * Extract affected field paths from patch operations
    *
-   * @param _patchResult - Result of patch application (currently unused)
-   * @returns Array of affected field names
+   * @param operations - JSON Patch operations array
+   * @returns Array of affected field paths
    */
-  private extractAffectedFields(_patchResult: ApplyPatchResult): string[] {
-    // Extract top-level field names from patch operations
-    // This is a simplified implementation - could be enhanced
-    // to track nested field changes
+  private extractAffectedFields(operations: Operation[]): string[] {
+    // Extract paths from patch operations
     const fields = new Set<string>();
 
-    // If we have the patched entity, we could compare before/after
-    // For now, return empty array as placeholder
+    if (!Array.isArray(operations)) {
+      return [];
+    }
+
+    for (const operation of operations) {
+      if (operation.path) {
+        fields.add(operation.path);
+      }
+      // For copy/move operations, also track the 'from' path
+      if ('from' in operation && operation.from) {
+        fields.add(operation.from as string);
+      }
+    }
+
     return Array.from(fields);
   }
 

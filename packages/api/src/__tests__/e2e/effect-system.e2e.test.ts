@@ -67,7 +67,15 @@ describe('Effect System E2E Tests', () => {
     difficulty: 10,
     isResolved: false,
     resolvedAt: null,
-    variables: { enemyCount: 1, dragonType: 'red', gold: 1000 },
+    variables: {
+      enemyCount: 1,
+      dragonType: 'red',
+      gold: 1000,
+      defense: 50, // Pre-populate for replace operations
+      casualties: 0, // Pre-populate for replace operations
+      step: 0, // Pre-populate for priority ordering test
+      food: 400, // Pre-populate for replace operations
+    },
     version: 1,
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
@@ -85,7 +93,17 @@ describe('Effect System E2E Tests', () => {
     isCompleted: false,
     scheduledAt: new Date('2025-06-01'),
     occurredAt: null,
-    variables: { harvestMultiplier: 1.5, food: 500 },
+    variables: {
+      harvestMultiplier: 1.5,
+      food: 500,
+      gold: 300, // Pre-populate for replace operations
+      resources: {
+        // Pre-populate for nested path test
+        gold: 100,
+        food: 200,
+        wood: 50,
+      },
+    },
     version: 1,
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
