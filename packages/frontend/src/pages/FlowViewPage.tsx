@@ -1,8 +1,10 @@
 import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { useMemo } from 'react';
 
 import { useDependencyGraph } from '@/services/api/hooks';
 import { useCurrentCampaignId } from '@/stores';
+import { transformGraphToFlow } from '@/utils';
 
 /**
  * FlowViewPage - Interactive dependency graph visualization
@@ -19,6 +21,13 @@ export default function FlowViewPage() {
 
   // Fetch dependency graph for the current campaign
   const { graph, loading, error } = useDependencyGraph(campaignId || '');
+
+  // Transform graph data to React Flow format with auto-layout
+  // Must be called before any conditional returns (React Hooks rules)
+  const { nodes, edges } = useMemo(
+    () => (graph ? transformGraphToFlow(graph) : { nodes: [], edges: [] }),
+    [graph]
+  );
 
   // Show loading state
   if (loading) {
@@ -76,27 +85,37 @@ export default function FlowViewPage() {
     );
   }
 
-  // TODO: Transform graph data to React Flow format in Stage 3
-  // For now, display basic statistics
   return (
     <div className="h-screen w-full">
-      <ReactFlow nodes={[]} edges={[]} fitView className="bg-background">
+      <ReactFlow nodes={nodes} edges={edges} fitView className="bg-background">
         <Background />
         <Controls />
         <MiniMap />
       </ReactFlow>
 
-      {/* Temporary info panel showing graph stats */}
-      <div className="absolute top-4 right-4 bg-card border rounded-lg p-4 shadow-lg">
-        <h3 className="font-semibold mb-2">Dependency Graph Stats</h3>
+      {/* Info panel showing graph stats */}
+      <div className="absolute top-4 right-4 bg-card border rounded-lg p-4 shadow-lg max-w-xs">
+        <h3 className="font-semibold mb-2">Dependency Graph</h3>
         <div className="text-sm space-y-1">
           <div>Total Nodes: {graph.stats.nodeCount}</div>
           <div>Total Edges: {graph.stats.edgeCount}</div>
           <div className="pt-2 border-t mt-2">
-            <div>Variables: {graph.stats.variableCount}</div>
-            <div>Conditions: {graph.stats.conditionCount}</div>
-            <div>Effects: {graph.stats.effectCount}</div>
-            <div>Entities: {graph.stats.entityCount}</div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#22c55e' }} />
+              <span>Variables: {graph.stats.variableCount}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#3b82f6' }} />
+              <span>Conditions: {graph.stats.conditionCount}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#f97316' }} />
+              <span>Effects: {graph.stats.effectCount}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#a855f7' }} />
+              <span>Entities: {graph.stats.entityCount}</span>
+            </div>
           </div>
         </div>
       </div>

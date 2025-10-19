@@ -11,3 +11,14 @@
 // export { validateEmail, validatePassword } from './validation';
 // export { capitalize, truncate, slugify } from './string';
 // export { clamp, random, roundTo } from './math';
+
+// Graph layout utilities for React Flow dependency visualization
+export {
+  transformGraphToFlow,
+  transformNode,
+  transformEdge,
+  applyAutoLayout,
+  type FlowNodeData,
+  type FlowEdgeData,
+  type TransformedGraphData,
+} from './graph-layout';
