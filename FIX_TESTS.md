@@ -5,9 +5,9 @@
 **Progress Summary:**
 
 - **Initial State**: 189 failed tests, 1079 passed (10 test suites failed)
-- **After Stage 2**: 59 failed tests, 1231 passed (5 test suites failed)
-- **Tests Fixed**: 130 tests (69% reduction in failures)
-- **Improvement**: +152 passing tests
+- **After Stage 3**: 43 failed tests, 1247 passed (4 test suites failed)
+- **Tests Fixed**: 146 tests (77% reduction in failures)
+- **Improvement**: +168 passing tests
 
 **Completed Fixes:**
 
@@ -21,9 +21,11 @@
 8. ✅ Fixed rules-engine performance test timeouts
 9. ✅ Fixed dependency-graph resolver test enum types
 10. ✅ Added missing REDIS_PUBSUB provider to dependency-graph cache invalidation tests (Stage 2)
+11. ✅ Added missing DependencyGraphService and REDIS_PUBSUB providers to state-variable-versioning integration tests (Stage 3)
 
 **Commits:**
 
+- `fbd55f4` - fix(api): add missing test providers to state-variable-versioning integration tests (Stage 3)
 - `df95f3b` - fix(api): add missing REDIS_PUBSUB mock to dependency-graph cache invalidation tests (Stage 2)
 - `6d72b9f` - test(rules-engine): increase performance test timeouts for CI environments
 - `a067e17` - fix(api): use proper enum types in dependency-graph resolver tests
@@ -33,13 +35,12 @@
 
 ## Remaining Test Failures
 
-**5 Test Suites Still Failing (59 tests total):**
+**4 Test Suites Still Failing (43 tests total):**
 
 1. `src/common/services/spatial-indexes.integration.test.ts` - Spatial index integration tests
 2. `src/graphql/services/settlement.service.test.ts` - Settlement service unit tests
 3. `src/graphql/services/structure.service.test.ts` - Structure service unit tests
 4. `src/__tests__/e2e/effect-system.e2e.test.ts` - Effect system E2E tests
-5. `src/graphql/services/state-variable-versioning.integration.test.ts` - State variable versioning integration tests
 
 ---
 
@@ -146,49 +147,54 @@ This follows the same pattern used in other integration tests (encounter.service
 
 ---
 
-## Stage 3: Integration Tests - State Variable Versioning (Medium Priority)
+## Stage 3: Integration Tests - State Variable Versioning (Medium Priority) ✅ COMPLETED
+
+**Status**: ✅ All 16 tests passing (commit: `fbd55f4`)
 
 **File:**
 
 - `packages/api/src/graphql/services/state-variable-versioning.integration.test.ts`
 
-**Estimated Failures**: ~10 tests
+**Actual Failures**: 16 tests (all now fixed)
 
-**Root Cause Analysis:**
-Similar to Stage 2, likely issues with:
+**Root Cause:**
+StateVariableService constructor requires `DependencyGraphService` (at index [4]) and `REDIS_PUBSUB` for cache invalidation, but the test setup did not provide mocks for these services.
 
-1. Missing providers (REDIS_PUBSUB)
-2. Test database setup
-3. Optimistic locking version conflicts
+**Implementation Summary:**
 
-**Implementation Steps:**
+Added missing providers to the test module configuration at lines 92-103:
 
-### 3.1 Add Missing Providers
-
-Same as Stage 2 - add REDIS_PUBSUB provider
-
-### 3.2 Fix Version Conflict Handling
-
-- Verify that optimistic locking tests properly simulate version conflicts
-- Ensure version increments are correctly tracked
-- Check that rollback behavior is tested correctly
-
-### 3.3 Database State Management
-
-- Ensure tests properly clean up state variables between tests
-- Verify that version history is correctly maintained
-
-**Verification:**
-
-```bash
-pnpm --filter @campaign/api test state-variable-versioning.integration.test.ts -- --verbose
+```typescript
+{
+  provide: DependencyGraphService,
+  useValue: {
+    invalidateGraph: jest.fn(),
+  },
+},
+{
+  provide: 'REDIS_PUBSUB',
+  useValue: {
+    publish: jest.fn(),
+  },
+},
 ```
 
-**Success Criteria:**
+This follows the same pattern used in other integration tests (encounter.service.test.ts, event.service.test.ts, effect.service.test.ts).
 
-- All versioning tests pass
-- Optimistic locking correctly prevents concurrent updates
-- Version history is properly maintained
+**Test Results:**
+
+✅ All 16 tests now pass (3.948s execution time):
+
+- update with versioning (6 tests) - version snapshot creation and validation
+- getVariableAsOf (3 tests) - historical state retrieval
+- getVariableHistory (3 tests) - version history tracking
+- getCampaignIdForScope (4 tests) - campaign ID resolution for different scopes
+
+**Quality Checks:**
+
+✅ Type-check: Passed
+✅ Lint: Passed (warnings only, no errors)
+✅ Code Review: Approved
 
 ---
 
@@ -573,4 +579,4 @@ If you encounter issues not covered in this plan:
 4. Use `git log --oneline --grep="test"` to find test-related commits
 5. Ask for clarification on specific error messages
 
-**Last Updated**: 2025-10-18 (after commit df95f3b - Stage 2 complete)
+**Last Updated**: 2025-10-18 (after commit fbd55f4 - Stage 3 complete)
