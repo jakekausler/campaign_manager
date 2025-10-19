@@ -2,6 +2,7 @@ export { Map } from './Map';
 export type { ViewportState } from './Map';
 export { useMapLayers } from './useMapLayers';
 export { useLocationLayers } from './useLocationLayers';
+export { useSettlementLayers } from './useSettlementLayers';
 export {
   createLocationPointFeature,
   createLocationRegionFeature,

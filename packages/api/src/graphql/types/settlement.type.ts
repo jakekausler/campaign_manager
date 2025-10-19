@@ -6,6 +6,7 @@
 import { ObjectType, Field, ID, Int } from '@nestjs/graphql';
 import { GraphQLJSON } from 'graphql-type-json';
 
+import { Location } from './location.type';
 import { VariableSchemaType } from './variable-schema.types';
 
 @ObjectType()
@@ -18,6 +19,9 @@ export class Settlement {
 
   @Field(() => ID)
   locationId!: string;
+
+  @Field(() => Location, { description: 'The location where this settlement is placed' })
+  location!: Location;
 
   @Field()
   name!: string;

@@ -21,6 +21,7 @@ import { ExpressionParserService } from '../rules/expression-parser.service';
 import { createRedisCache, REDIS_CACHE } from './cache/redis-cache.provider';
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
 import { LocationGeometryDataLoader } from './dataloaders/location-geometry.dataloader';
+import { LocationDataLoader } from './dataloaders/location.dataloader';
 import { StructureDataLoader } from './dataloaders/structure.dataloader';
 import { createRedisPubSub, REDIS_PUBSUB } from './pubsub/redis-pubsub.provider';
 import { CampaignResolver } from './resolvers/campaign.resolver';
@@ -198,8 +199,9 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     EffectExecutionService,
     EffectService,
     // DataLoaders
-    StructureDataLoader,
+    LocationDataLoader,
     LocationGeometryDataLoader,
+    StructureDataLoader,
     // Resolvers
     HealthResolver,
     VersionResolver,

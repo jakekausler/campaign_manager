@@ -24,9 +24,11 @@ export {
 export {
   useSettlementsByKingdom,
   useSettlementDetails,
+  useSettlementsForMap,
   useStructuresBySettlement,
   GET_SETTLEMENTS_BY_KINGDOM,
   GET_SETTLEMENT_DETAILS,
+  GET_SETTLEMENTS_FOR_MAP,
   GET_SETTLEMENT_STRUCTURES,
 } from './settlements';
 

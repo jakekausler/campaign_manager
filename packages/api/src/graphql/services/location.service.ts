@@ -121,6 +121,55 @@ export class LocationService {
   }
 
   /**
+   * Batch load locations by IDs
+   * Used by DataLoader to prevent N+1 query problems
+   * Returns locations in same order as input IDs
+   */
+  async findByIds(locationIds: readonly string[]): Promise<(LocationWithGeometry | null)[]> {
+    if (locationIds.length === 0) {
+      return [];
+    }
+
+    // Query all locations with geometry in one query
+    const locations = await this.prisma.$queryRaw<
+      Array<Omit<LocationWithGeometry, 'geom'> & { geom: Buffer | null }>
+    >`
+      SELECT
+        id,
+        "worldId",
+        type,
+        name,
+        description,
+        "parentLocationId",
+        version,
+        "createdAt",
+        "updatedAt",
+        "deletedAt",
+        "archivedAt",
+        ST_AsBinary(geom) as geom
+      FROM "Location"
+      WHERE id = ANY(${[...locationIds]})
+        AND "deletedAt" IS NULL
+    `;
+
+    // Convert to Buffer if needed
+    locations.forEach((location) => {
+      if (location.geom && !Buffer.isBuffer(location.geom)) {
+        location.geom = Buffer.from(location.geom as unknown as Uint8Array);
+      }
+    });
+
+    // Create a map for quick lookup
+    const locationMap = new Map<string, LocationWithGeometry>();
+    locations.forEach((loc) => {
+      locationMap.set(loc.id, loc as LocationWithGeometry);
+    });
+
+    // Return in same order as input IDs, with null for missing locations
+    return locationIds.map((id) => locationMap.get(id) || null);
+  }
+
+  /**
    * Create a new location
    */
   async create(input: CreateLocationInput, user: AuthenticatedUser): Promise<PrismaLocation> {

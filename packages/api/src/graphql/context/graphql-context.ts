@@ -12,7 +12,9 @@ import type DataLoader from 'dataloader';
 import type { Request, Response } from 'express';
 
 import { LocationGeometryDataLoader } from '../dataloaders/location-geometry.dataloader';
+import { LocationDataLoader } from '../dataloaders/location.dataloader';
 import { StructureDataLoader } from '../dataloaders/structure.dataloader';
+import type { LocationWithGeometry } from '../services/location.service';
 
 // User type from JWT payload
 export interface AuthenticatedUser {
@@ -36,15 +38,17 @@ export interface GraphQLContext {
 
 // DataLoaders interface
 export interface DataLoaders {
-  structureLoader: DataLoader<string, Structure[]>;
+  locationLoader: DataLoader<string, LocationWithGeometry | null>;
   locationGeometryLoader: DataLoader<string, Buffer | null>;
+  structureLoader: DataLoader<string, Structure[]>;
 }
 
 @Injectable()
 export class GraphQLContextFactory {
   constructor(
-    private readonly structureDataLoader: StructureDataLoader,
-    private readonly locationGeometryDataLoader: LocationGeometryDataLoader
+    private readonly locationDataLoader: LocationDataLoader,
+    private readonly locationGeometryDataLoader: LocationGeometryDataLoader,
+    private readonly structureDataLoader: StructureDataLoader
   ) {}
 
   /**
@@ -84,8 +88,9 @@ export class GraphQLContextFactory {
     }
 
     return {
-      structureLoader: this.structureDataLoader.createLoader(user),
+      locationLoader: this.locationDataLoader.createLoader(),
       locationGeometryLoader: this.locationGeometryDataLoader.createLoader(),
+      structureLoader: this.structureDataLoader.createLoader(user),
     };
   }
 }

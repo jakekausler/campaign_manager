@@ -30,6 +30,7 @@ import type {
 import { DefineVariableSchemaInput, SetVariableInput } from '../inputs/variable.input';
 import { SettlementService } from '../services/settlement.service';
 import { VariableSchemaService } from '../services/variable-schema.service';
+import { Location } from '../types/location.type';
 import { Settlement } from '../types/settlement.type';
 import { Structure } from '../types/structure.type';
 import { Variable, VariableSchemaType, VariableTypeEnum } from '../types/variable-schema.types';
@@ -247,6 +248,17 @@ export class SettlementResolver {
       defaultValue: schema.defaultValue,
       description: schema.description,
     }));
+  }
+
+  @ResolveField(() => Location, { description: 'The location where this settlement is placed' })
+  async location(
+    @Parent() settlement: Settlement,
+    @Context() context: GraphQLContext
+  ): Promise<Location | null> {
+    // Use DataLoader to batch and cache location queries
+    return context.dataloaders.locationLoader.load(
+      settlement.locationId
+    ) as unknown as Location | null;
   }
 
   @ResolveField(() => [Structure], { description: 'Structures in this settlement' })

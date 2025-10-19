@@ -13,6 +13,20 @@ import { useMemo } from 'react';
 // } from '@/__generated__/graphql';
 
 // Temporary placeholder types until code generation runs
+type Location = {
+  id: string;
+  worldId: string;
+  type: string;
+  name?: string | null;
+  description?: string | null;
+  parentLocationId?: string | null;
+  geojson?: unknown | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  archivedAt?: string | null;
+};
+
 type Settlement = {
   id: string;
   name: string;
@@ -28,6 +42,7 @@ type Settlement = {
   createdAt: string;
   updatedAt: string;
   computedFields?: Record<string, unknown>;
+  location?: Location;
   structures?: Structure[];
 };
 
@@ -67,6 +82,14 @@ type GetSettlementStructuresQuery = {
 
 type GetSettlementStructuresQueryVariables = {
   id: string;
+};
+
+type GetSettlementsForMapQuery = {
+  settlementsByKingdom: Settlement[];
+};
+
+type GetSettlementsForMapQueryVariables = {
+  kingdomId: string;
 };
 
 /**
@@ -155,6 +178,36 @@ export const GET_SETTLEMENT_STRUCTURES = gql`
         createdAt
         updatedAt
       }
+    }
+  }
+`;
+
+/**
+ * GraphQL query to get settlements with location data for map rendering.
+ *
+ * This query fetches settlements with their associated locations (including GeoJSON geometry).
+ * Used specifically for rendering settlements on the map.
+ *
+ * @param kingdomId - The ID of the kingdom to query settlements for
+ * @returns Array of Settlement objects with location data
+ */
+export const GET_SETTLEMENTS_FOR_MAP = gql`
+  query GetSettlementsForMap($kingdomId: ID!) {
+    settlementsByKingdom(kingdomId: $kingdomId) {
+      id
+      name
+      level
+      location {
+        id
+        worldId
+        type
+        name
+        description
+        geojson
+      }
+      createdAt
+      updatedAt
+      archivedAt
     }
   }
 `;
@@ -325,6 +378,67 @@ export function useStructuresBySettlement(
     () => ({
       structures: result.data?.settlement?.structures ?? [],
       settlementName: result.data?.settlement?.name ?? null,
+      loading: result.loading,
+      error: result.error,
+      refetch: result.refetch,
+      networkStatus: result.networkStatus,
+    }),
+    [result.data, result.loading, result.error, result.refetch, result.networkStatus]
+  );
+}
+
+/**
+ * Hook to fetch settlements with location data for map rendering.
+ *
+ * Uses cache-and-network fetch policy to ensure fresh data while showing cached results immediately.
+ * Fetches settlements with their associated Location entities (including GeoJSON geometry).
+ *
+ * @param kingdomId - The ID of the kingdom to query settlements for
+ * @param options - Additional Apollo query options (skip, onCompleted, onError, etc.)
+ * @returns Query result with settlements data (with locations), loading state, and error state
+ *
+ * @example
+ * ```tsx
+ * function SettlementsMapLayer({ kingdomId }: { kingdomId: string }) {
+ *   const { settlements, loading, error } = useSettlementsForMap(kingdomId);
+ *
+ *   if (loading) return <Spinner />;
+ *   if (error) return <ErrorAlert message={error.message} />;
+ *   if (!settlements || settlements.length === 0) return null;
+ *
+ *   return (
+ *     <>
+ *       {settlements.map(settlement => (
+ *         <SettlementMarker
+ *           key={settlement.id}
+ *           settlement={settlement}
+ *           location={settlement.location}
+ *         />
+ *       ))}
+ *     </>
+ *   );
+ * }
+ * ```
+ */
+export function useSettlementsForMap(
+  kingdomId: string,
+  options?: Omit<
+    QueryHookOptions<GetSettlementsForMapQuery, GetSettlementsForMapQueryVariables>,
+    'variables'
+  >
+) {
+  const result = useQuery<GetSettlementsForMapQuery, GetSettlementsForMapQueryVariables>(
+    GET_SETTLEMENTS_FOR_MAP,
+    {
+      variables: { kingdomId },
+      fetchPolicy: 'cache-and-network', // Show cached data immediately, but fetch fresh data
+      ...options,
+    }
+  );
+
+  return useMemo(
+    () => ({
+      settlements: result.data?.settlementsByKingdom ?? [],
       loading: result.loading,
       error: result.error,
       refetch: result.refetch,

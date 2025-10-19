@@ -3,6 +3,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 import { useLocationLayers } from './useLocationLayers';
+import { useSettlementLayers } from './useSettlementLayers';
 
 interface MapProps {
   /**
@@ -32,6 +33,12 @@ interface MapProps {
    * When provided, location layers will be rendered on the map
    */
   worldId?: string;
+
+  /**
+   * Kingdom ID to fetch and display settlements for (optional)
+   * When provided, settlement layers will be rendered on the map
+   */
+  kingdomId?: string;
 }
 
 /**
@@ -49,6 +56,7 @@ export interface ViewportState {
  * Renders an interactive map with basic controls (zoom, pan, reset viewport)
  * Manages viewport state internally and exposes it via callback
  * Optionally displays location layers when worldId is provided
+ * Optionally displays settlement layers when kingdomId is provided
  */
 export function Map({
   initialCenter = [0, 0],
@@ -56,6 +64,7 @@ export function Map({
   className = '',
   onViewportChange,
   worldId,
+  kingdomId,
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre | null>(null);
@@ -72,6 +81,9 @@ export function Map({
 
   // Load location layers if worldId is provided
   useLocationLayers(map.current, worldId ?? '', Boolean(worldId));
+
+  // Load settlement layers if kingdomId is provided
+  useSettlementLayers(map.current, kingdomId ?? '', Boolean(kingdomId));
 
   // Update viewport state from map
   const updateViewport = useCallback(() => {
