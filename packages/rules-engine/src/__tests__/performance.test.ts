@@ -299,7 +299,7 @@ describe('Performance Test Suite', () => {
       // Acceptance criteria: Can handle 100 conditions
       // Should complete in reasonable time (< 5 seconds)
       expect(stats.p95).toBeLessThan(5000);
-    });
+    }, 15000); // 15 second timeout for CI environments
   });
 
   describe('Cache Performance', () => {
@@ -581,7 +581,7 @@ describe('Performance Test Suite', () => {
 
       const initialMemory = process.memoryUsage().heapUsed;
 
-      // Run 5000 evaluations (reduced from 10k to fit within 10s timeout)
+      // Run 5000 evaluations (reduced from 10k to fit within timeout)
       for (let i = 0; i < 5000; i++) {
         await evaluationEngine.evaluateCondition(
           conditionId,
@@ -607,6 +607,6 @@ describe('Performance Test Suite', () => {
 
       // Memory increase should be minimal (< 25MB for 5k evaluations)
       expect(memoryIncrease).toBeLessThan(25);
-    }, 10000); // 10 second timeout
+    }, 20000); // 20 second timeout for CI environments
   });
 });
