@@ -13,6 +13,31 @@ import { useMemo } from 'react';
 // } from '@/__generated__/graphql';
 
 // Temporary placeholder types until code generation runs
+type Location = {
+  id: string;
+  worldId: string;
+  type: string;
+  name?: string | null;
+  description?: string | null;
+  parentLocationId?: string | null;
+  geojson?: unknown | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  archivedAt?: string | null;
+};
+
+type Settlement = {
+  id: string;
+  name: string;
+  level: number;
+  locationId: string;
+  location?: Location;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt?: string | null;
+};
+
 type Structure = {
   id: string;
   name: string;
@@ -26,6 +51,10 @@ type Structure = {
   createdAt: string;
   updatedAt: string;
   computedFields?: Record<string, unknown>;
+  settlement?: Settlement;
+  // Fields returned by GET_STRUCTURES_FOR_MAP query
+  type?: string;
+  level?: number;
 };
 
 type GetStructureDetailsQuery = {
@@ -42,6 +71,14 @@ type GetStructureConditionsQuery = {
 
 type GetStructureConditionsQueryVariables = {
   id: string;
+};
+
+type GetStructuresForMapQuery = {
+  structuresBySettlement: Structure[];
+};
+
+type GetStructuresForMapQueryVariables = {
+  settlementId: string;
 };
 
 /**
@@ -88,6 +125,42 @@ export const GET_STRUCTURE_CONDITIONS = gql`
       id
       name
       computedFields
+    }
+  }
+`;
+
+/**
+ * GraphQL query to get structures with settlement and location data for map rendering.
+ *
+ * This query fetches structures with their associated Settlement entities
+ * (which include Location with GeoJSON geometry) for rendering on the map.
+ *
+ * @param settlementId - The ID of the settlement to query structures for
+ * @returns Array of Structure objects with settlement and location data
+ */
+export const GET_STRUCTURES_FOR_MAP = gql`
+  query GetStructuresForMap($settlementId: ID!) {
+    structuresBySettlement(settlementId: $settlementId) {
+      id
+      name
+      type
+      level
+      settlement {
+        id
+        name
+        level
+        location {
+          id
+          worldId
+          type
+          name
+          description
+          geojson
+        }
+      }
+      createdAt
+      updatedAt
+      archivedAt
     }
   }
 `;
@@ -201,6 +274,67 @@ export function useStructureConditions(
     () => ({
       structure: result.data?.structure ?? null,
       computedFields: result.data?.structure?.computedFields ?? null,
+      loading: result.loading,
+      error: result.error,
+      refetch: result.refetch,
+      networkStatus: result.networkStatus,
+    }),
+    [result.data, result.loading, result.error, result.refetch, result.networkStatus]
+  );
+}
+
+/**
+ * Hook to fetch structures with settlement and location data for map rendering.
+ *
+ * Uses cache-and-network fetch policy to ensure fresh data while showing cached results immediately.
+ * Fetches structures with their associated Settlement entities (including Location with GeoJSON geometry).
+ *
+ * @param settlementId - The ID of the settlement to query structures for
+ * @param options - Additional Apollo query options (skip, onCompleted, onError, etc.)
+ * @returns Query result with structures data (with settlement and location), loading state, and error state
+ *
+ * @example
+ * ```tsx
+ * function StructuresMapLayer({ settlementId }: { settlementId: string }) {
+ *   const { structures, loading, error } = useStructuresForMap(settlementId);
+ *
+ *   if (loading) return <Spinner />;
+ *   if (error) return <ErrorAlert message={error.message} />;
+ *   if (!structures || structures.length === 0) return null;
+ *
+ *   return (
+ *     <>
+ *       {structures.map(structure => (
+ *         <StructureMarker
+ *           key={structure.id}
+ *           structure={structure}
+ *           location={structure.settlement?.location}
+ *         />
+ *       ))}
+ *     </>
+ *   );
+ * }
+ * ```
+ */
+export function useStructuresForMap(
+  settlementId: string,
+  options?: Omit<
+    QueryHookOptions<GetStructuresForMapQuery, GetStructuresForMapQueryVariables>,
+    'variables'
+  >
+) {
+  const result = useQuery<GetStructuresForMapQuery, GetStructuresForMapQueryVariables>(
+    GET_STRUCTURES_FOR_MAP,
+    {
+      variables: { settlementId },
+      fetchPolicy: 'cache-and-network', // Show cached data immediately, but fetch fresh data
+      ...options,
+    }
+  );
+
+  return useMemo(
+    () => ({
+      structures: result.data?.structuresBySettlement ?? [],
       loading: result.loading,
       error: result.error,
       refetch: result.refetch,

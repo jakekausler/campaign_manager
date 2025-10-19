@@ -6,6 +6,7 @@
 import { ObjectType, Field, ID, Int } from '@nestjs/graphql';
 import { GraphQLJSON } from 'graphql-type-json';
 
+import { Settlement } from './settlement.type';
 import { VariableSchemaType } from './variable-schema.types';
 
 @ObjectType()
@@ -15,6 +16,9 @@ export class Structure {
 
   @Field(() => ID)
   settlementId!: string;
+
+  @Field(() => Settlement, { nullable: true, description: 'Settlement this structure belongs to' })
+  settlement?: Settlement;
 
   @Field({ description: 'Structure type (e.g., temple, barracks, market, library)' })
   type!: string;

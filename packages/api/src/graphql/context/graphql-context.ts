@@ -7,12 +7,13 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import type { Structure } from '@prisma/client';
+import type { Prisma, Structure } from '@prisma/client';
 import type DataLoader from 'dataloader';
 import type { Request, Response } from 'express';
 
 import { LocationGeometryDataLoader } from '../dataloaders/location-geometry.dataloader';
 import { LocationDataLoader } from '../dataloaders/location.dataloader';
+import { SettlementDataLoader } from '../dataloaders/settlement.dataloader';
 import { StructureDataLoader } from '../dataloaders/structure.dataloader';
 import type { LocationWithGeometry } from '../services/location.service';
 
@@ -28,6 +29,9 @@ export interface RequestWithUser extends Request {
   user?: AuthenticatedUser;
 }
 
+// Type for Settlement with location relation included (used by SettlementDataLoader)
+export type SettlementWithLocation = Prisma.SettlementGetPayload<{ include: { location: true } }>;
+
 // GraphQL Context interface
 export interface GraphQLContext {
   req: RequestWithUser;
@@ -40,6 +44,7 @@ export interface GraphQLContext {
 export interface DataLoaders {
   locationLoader: DataLoader<string, LocationWithGeometry | null>;
   locationGeometryLoader: DataLoader<string, Buffer | null>;
+  settlementLoader: DataLoader<string, SettlementWithLocation | null>;
   structureLoader: DataLoader<string, Structure[]>;
 }
 
@@ -48,6 +53,7 @@ export class GraphQLContextFactory {
   constructor(
     private readonly locationDataLoader: LocationDataLoader,
     private readonly locationGeometryDataLoader: LocationGeometryDataLoader,
+    private readonly settlementDataLoader: SettlementDataLoader,
     private readonly structureDataLoader: StructureDataLoader
   ) {}
 
@@ -90,6 +96,7 @@ export class GraphQLContextFactory {
     return {
       locationLoader: this.locationDataLoader.createLoader(),
       locationGeometryLoader: this.locationGeometryDataLoader.createLoader(),
+      settlementLoader: this.settlementDataLoader.createLoader(),
       structureLoader: this.structureDataLoader.createLoader(user),
     };
   }

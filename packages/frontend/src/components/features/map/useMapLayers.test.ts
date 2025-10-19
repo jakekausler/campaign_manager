@@ -20,51 +20,62 @@ describe('useMapLayers', () => {
   let mockMap: Partial<MapLibre>;
   let mockSources: Map<string, { type: string; data: FeatureCollection }>;
   let mockLayers: Map<string, { id: string; visibility: string }>;
+  let mockSourceSpies: Map<string, ReturnType<typeof vi.fn>>;
 
   beforeEach(() => {
     mockSources = new Map();
     mockLayers = new Map();
+    mockSourceSpies = new Map();
 
     mockMap = {
       addSource: vi.fn((sourceId: string, config: { type: string; data: FeatureCollection }) => {
         mockSources.set(sourceId, config);
+        // Create a persistent spy for this source
+        const setDataSpy = vi.fn((data: FeatureCollection) => {
+          mockSources.set(sourceId, { ...config, data });
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mockSourceSpies.set(sourceId, setDataSpy as any);
         return {} as MapLibre;
-      }) as any,
+      }) as MapLibre['addSource'],
       getSource: vi.fn((sourceId: string) => {
         const source = mockSources.get(sourceId);
         if (!source) return undefined;
+        // Return the same spy instance for consistent testing
+        const setDataSpy = mockSourceSpies.get(sourceId);
         return {
           type: source.type,
-          setData: vi.fn((data: FeatureCollection) => {
-            mockSources.set(sourceId, { ...source, data });
-          }),
+          setData: setDataSpy,
         } as unknown as GeoJSONSource;
-      }) as any,
+      }) as MapLibre['getSource'],
       removeSource: vi.fn((sourceId: string) => {
         mockSources.delete(sourceId);
+        mockSourceSpies.delete(sourceId);
         return {} as MapLibre;
-      }) as any,
-      addLayer: vi.fn((layer: any) => {
+      }) as MapLibre['removeSource'],
+      addLayer: vi.fn((layer: { id: string; layout?: { visibility?: string } }) => {
         mockLayers.set(layer.id, {
           id: layer.id,
           visibility: layer.layout?.visibility || 'visible',
         });
         return {} as MapLibre;
-      }) as any,
+      }) as MapLibre['addLayer'],
       getLayer: vi.fn((layerId: string) => {
         return mockLayers.get(layerId);
-      }) as any,
+      }) as MapLibre['getLayer'],
       removeLayer: vi.fn((layerId: string) => {
         mockLayers.delete(layerId);
         return {} as MapLibre;
-      }) as any,
-      setLayoutProperty: vi.fn((layerId: string, property: string, value: any) => {
-        const layer = mockLayers.get(layerId);
-        if (layer && property === 'visibility') {
-          layer.visibility = value;
+      }) as MapLibre['removeLayer'],
+      setLayoutProperty: vi.fn(
+        (layerId: string, property: string, value: string | number | boolean) => {
+          const layer = mockLayers.get(layerId);
+          if (layer && property === 'visibility') {
+            layer.visibility = value as string;
+          }
+          return {} as MapLibre;
         }
-        return {} as MapLibre;
-      }) as any,
+      ) as MapLibre['setLayoutProperty'],
     };
   });
 
@@ -323,8 +334,9 @@ describe('useMapLayers', () => {
         result.current.removeLayer('non-existent', 'non-existent');
       });
 
-      // Should not throw error
-      expect(mockMap.removeLayer).toHaveBeenCalled();
+      // Should not throw error, but also shouldn't call removeLayer since layer doesn't exist
+      expect(mockMap.removeLayer).not.toHaveBeenCalled();
+      expect(mockMap.removeSource).not.toHaveBeenCalled();
     });
   });
 

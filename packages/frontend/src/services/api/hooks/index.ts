@@ -36,8 +36,10 @@ export {
 export {
   useStructureDetails,
   useStructureConditions,
+  useStructuresForMap,
   GET_STRUCTURE_DETAILS,
   GET_STRUCTURE_CONDITIONS,
+  GET_STRUCTURES_FOR_MAP,
 } from './structures';
 
 // Mutation hooks (Stage 8)

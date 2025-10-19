@@ -1,5 +1,10 @@
 import type { FeatureCollection } from 'geojson';
-import type { Map as MapLibre, GeoJSONSource } from 'maplibre-gl';
+import type {
+  Map as MapLibre,
+  GeoJSONSource,
+  CircleLayerSpecification,
+  FillLayerSpecification,
+} from 'maplibre-gl';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { EntityType, LayerVisibility, MapFeature } from './types';
@@ -7,7 +12,24 @@ import type { EntityType, LayerVisibility, MapFeature } from './types';
 /**
  * Layer style configurations for different entity types
  */
-const LAYER_STYLES = {
+const LAYER_STYLES: {
+  'location-point': {
+    type: 'circle';
+    paint: CircleLayerSpecification['paint'];
+  };
+  'location-region': {
+    type: 'fill';
+    paint: FillLayerSpecification['paint'];
+  };
+  settlement: {
+    type: 'circle';
+    paint: CircleLayerSpecification['paint'];
+  };
+  structure: {
+    type: 'circle';
+    paint: CircleLayerSpecification['paint'];
+  };
+} = {
   'location-point': {
     type: 'circle' as const,
     paint: {
@@ -43,7 +65,7 @@ const LAYER_STYLES = {
       'circle-stroke-color': '#ffffff',
     },
   },
-} as const;
+};
 
 /**
  * Hook for managing GeoJSON layers on a MapLibre map
@@ -119,15 +141,30 @@ export function useMapLayers(map: MapLibre | null) {
 
       const style = LAYER_STYLES[entityType];
 
-      map.addLayer({
-        id: layerId,
-        type: style.type,
-        source: sourceId,
-        paint: style.paint as any,
-        layout: {
-          visibility: layerVisibility[entityType] ? 'visible' : 'none',
-        },
-      } as any);
+      // Create layer specification based on type (must handle circle and fill separately due to TypeScript discriminated unions)
+      if (style.type === 'circle') {
+        const layerSpec: CircleLayerSpecification = {
+          id: layerId,
+          type: 'circle',
+          source: sourceId,
+          paint: style.paint,
+          layout: {
+            visibility: layerVisibility[entityType] ? 'visible' : 'none',
+          },
+        };
+        map.addLayer(layerSpec);
+      } else {
+        const layerSpec: FillLayerSpecification = {
+          id: layerId,
+          type: 'fill',
+          source: sourceId,
+          paint: style.paint,
+          layout: {
+            visibility: layerVisibility[entityType] ? 'visible' : 'none',
+          },
+        };
+        map.addLayer(layerSpec);
+      }
     },
     [map, layerVisibility]
   );

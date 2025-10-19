@@ -4,18 +4,29 @@
  */
 
 import { Logger, UseGuards } from '@nestjs/common';
-import { Args, ID, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
+import {
+  Args,
+  Context,
+  ID,
+  Int,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from '@nestjs/graphql';
 import type { Structure as PrismaStructure } from '@prisma/client';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
-import type { AuthenticatedUser } from '../context/graphql-context';
+import type { AuthenticatedUser, GraphQLContext } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type { CreateStructureInput, UpdateStructureInput } from '../inputs/structure.input';
 import { DefineVariableSchemaInput, SetVariableInput } from '../inputs/variable.input';
 import { StructureService } from '../services/structure.service';
 import { VariableSchemaService } from '../services/variable-schema.service';
+import { Settlement } from '../types/settlement.type';
 import { Structure } from '../types/structure.type';
 import { Variable, VariableSchemaType, VariableTypeEnum } from '../types/variable-schema.types';
 
@@ -231,6 +242,22 @@ export class StructureResolver {
       defaultValue: schema.defaultValue,
       description: schema.description,
     }));
+  }
+
+  @ResolveField(() => Settlement, {
+    nullable: true,
+    description: 'The settlement this structure belongs to',
+  })
+  async settlement(
+    @Parent() structure: Structure,
+    @Context() context: GraphQLContext
+  ): Promise<Settlement | null> {
+    // Use DataLoader to batch and cache settlement queries
+    // The loader returns a Settlement with Location from Prisma
+    // GraphQL will handle the null->undefined conversion for optional fields
+    return context.dataloaders.settlementLoader.load(
+      structure.settlementId
+    ) as Promise<Settlement | null>;
   }
 
   @ResolveField(() => Object, {

@@ -180,6 +180,45 @@ export class SettlementService {
   }
 
   /**
+   * Find settlements by IDs (batch operation for DataLoader)
+   * Returns settlements in the same order as input IDs, with null for missing settlements
+   *
+   * No authorization - settlements are world-scoped data accessible to all users with access
+   * to the world's campaign. Authorization is enforced at the GraphQL resolver level
+   * (e.g., SettlementResolver.settlement) where user context is available.
+   */
+  async findByIds(
+    settlementIds: readonly string[]
+  ): Promise<Array<Prisma.SettlementGetPayload<{ include: { location: true } }> | null>> {
+    if (settlementIds.length === 0) {
+      return [];
+    }
+
+    // Query all settlements in one query, including location relation
+    const settlements = await this.prisma.settlement.findMany({
+      where: {
+        id: { in: [...settlementIds] },
+        deletedAt: null,
+      },
+      include: {
+        location: true,
+      },
+    });
+
+    // Create a map for quick lookup
+    const settlementMap = new Map<
+      string,
+      Prisma.SettlementGetPayload<{ include: { location: true } }>
+    >();
+    settlements.forEach((settlement) => {
+      settlementMap.set(settlement.id, settlement);
+    });
+
+    // Return in same order as input IDs, with null for missing settlements
+    return settlementIds.map((id) => settlementMap.get(id) || null);
+  }
+
+  /**
    * Create a new settlement
    * Only owner or GM can create settlements
    */

@@ -22,6 +22,7 @@ import { createRedisCache, REDIS_CACHE } from './cache/redis-cache.provider';
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
 import { LocationGeometryDataLoader } from './dataloaders/location-geometry.dataloader';
 import { LocationDataLoader } from './dataloaders/location.dataloader';
+import { SettlementDataLoader } from './dataloaders/settlement.dataloader';
 import { StructureDataLoader } from './dataloaders/structure.dataloader';
 import { createRedisPubSub, REDIS_PUBSUB } from './pubsub/redis-pubsub.provider';
 import { CampaignResolver } from './resolvers/campaign.resolver';
@@ -201,6 +202,7 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     // DataLoaders
     LocationDataLoader,
     LocationGeometryDataLoader,
+    SettlementDataLoader,
     StructureDataLoader,
     // Resolvers
     HealthResolver,
