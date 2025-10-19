@@ -2,6 +2,7 @@ import type { NodeMouseHandler, SelectionMode } from '@xyflow/react';
 import { ReactFlow, Background, useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import {
   VariableNode,
@@ -22,6 +23,9 @@ import {
   calculateSelectionState,
   applySelectionStyles,
   applySelectionEdgeStyles,
+  getNodeEditRoute,
+  getNodeEditMessage,
+  isNodeEditable,
 } from '@/utils';
 import { NODE_COLORS } from '@/utils/node-colors';
 
@@ -60,6 +64,9 @@ const edgeTypes = {
 export default function FlowViewPage() {
   // Get current campaign from store
   const campaignId = useCurrentCampaignId();
+
+  // Navigation hook for routing to edit pages
+  const navigate = useNavigate();
 
   // Fetch dependency graph for the current campaign
   const { graph, loading, error } = useDependencyGraph(campaignId || '');
@@ -154,6 +161,36 @@ export default function FlowViewPage() {
     setSelectedNodeIds([]);
   }, []);
 
+  // Handle node double-click for editing
+  const handleNodeDoubleClick: NodeMouseHandler = useCallback(
+    (event, node) => {
+      event.stopPropagation(); // Prevent pane click event
+
+      const { nodeType, entityId, label } = node.data;
+
+      if (!campaignId) {
+        // eslint-disable-next-line no-alert
+        alert('No campaign selected. Cannot navigate to edit page.');
+        return;
+      }
+
+      // Check if this node type supports editing
+      if (isNodeEditable(nodeType)) {
+        // Navigate to edit page
+        const route = getNodeEditRoute(nodeType, entityId, campaignId);
+        if (route) {
+          navigate(route);
+        }
+      } else {
+        // Show informational message about edit functionality
+        const message = getNodeEditMessage(nodeType, entityId, label);
+        // eslint-disable-next-line no-alert
+        alert(message);
+      }
+    },
+    [campaignId, navigate]
+  );
+
   // Keyboard shortcut for clearing selection (Escape)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -230,6 +267,7 @@ export default function FlowViewPage() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onNodeDoubleClick={handleNodeDoubleClick}
         onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}

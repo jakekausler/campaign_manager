@@ -35,3 +35,11 @@ export {
   applySelectionEdgeStyles,
   type SelectionState,
 } from './graph-selection';
+
+// Node navigation utilities for dependency graph interaction
+export {
+  getNodeEditRoute,
+  getNodeTypeLabel,
+  isNodeEditable,
+  getNodeEditMessage,
+} from './node-navigation';
