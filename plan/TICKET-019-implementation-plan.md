@@ -37,23 +37,23 @@ This plan breaks down the implementation of an interactive map view with MapLibr
 
 **Tasks**:
 
-- [ ] Create `Map.tsx` component with ref to map container
-- [ ] Initialize MapLibre map instance with basic configuration
-- [ ] Set up viewport state management (consider Zustand slice or local state)
-- [ ] Implement map cleanup on component unmount
-- [ ] Add basic zoom and pan controls
-- [ ] Add reset viewport button
-- [ ] Style map container with proper dimensions
-- [ ] Create MapPage.tsx in `packages/frontend/src/pages/`
-- [ ] Add route for map page in router
+- [x] Create `Map.tsx` component with ref to map container
+- [x] Initialize MapLibre map instance with basic configuration
+- [x] Set up viewport state management (consider Zustand slice or local state)
+- [x] Implement map cleanup on component unmount
+- [x] Add basic zoom and pan controls
+- [x] Add reset viewport button
+- [x] Style map container with proper dimensions
+- [x] Create MapPage.tsx in `packages/frontend/src/pages/`
+- [x] Add route for map page in router
 
 **Tests**:
 
-- [ ] Map component renders without crashing
-- [ ] Map initializes with correct viewport
-- [ ] Cleanup properly disposes of map instance
+- [x] Map component renders without crashing
+- [x] Map initializes with correct viewport
+- [x] Cleanup properly disposes of map instance
 
-**Status**: Not Started
+**Status**: Completed (Commit: 79d7a03)
 
 ---
 

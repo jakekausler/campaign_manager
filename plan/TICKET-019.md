@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2)
 
 ## Description
 
@@ -80,3 +80,81 @@ Implement interactive map view using MapLibre GL JS with GeoJSON layers, viewpor
 - Code reviewed by specialized Code Reviewer subagent
 - Follows project conventions (barrel exports, component structure)
 - Proper use of React hooks and cleanup patterns
+
+### Stage 2: Create Base Map Component with Viewport State (Commit: 79d7a03)
+
+**What was implemented:**
+
+- Enhanced Map component with viewport state management:
+  - Viewport state tracks center coordinates, zoom level, and bounds in real-time
+  - React state with `useState` and `useCallback` for efficient updates
+  - Event listeners for `moveend` and `zoomend` events update viewport state
+  - Optional `onViewportChange` callback prop for parent components
+  - Exported `ViewportState` TypeScript interface for type safety
+
+- Reset viewport functionality:
+  - Button positioned top-left with accessible styling
+  - Smooth `flyTo` animation (1 second duration) returns to initial viewport
+  - Stores initial viewport in `useRef` for reset
+  - Proper ARIA label for accessibility
+
+- Development debugging:
+  - Debug panel in bottom-left showing current viewport (development only)
+  - Uses `import.meta.env.DEV` for Vite environment detection
+
+- MapPage component (`packages/frontend/src/pages/MapPage.tsx`):
+  - Full-screen responsive layout with header, map content, footer
+  - Protected route at `/map` with lazy loading
+  - Displays current viewport state in footer
+  - Clean semantic HTML with Tailwind CSS styling
+  - Proper state initialization to match Map component defaults
+
+- Router integration:
+  - Added `/map` route with `ProtectedRoute` wrapper
+  - Lazy-loaded MapPage component for code splitting
+  - Exported from pages barrel export
+  - Follows existing router patterns
+
+- Comprehensive testing:
+  - 23 unit tests covering all Map component functionality
+  - Tests for rendering, initialization, viewport management, reset, cleanup, edge cases
+  - MapLibre GL JS properly mocked for isolated testing
+  - Tests verify accessibility, state updates, and lifecycle management
+  - 100% test coverage for Map component
+
+**Design decisions:**
+
+- Used local React state rather than Zustand for viewport management:
+  - Viewport state is component-specific, not global application state
+  - Parent components can opt-in via `onViewportChange` callback if needed
+  - Simpler and more appropriate for this use case
+
+- `useCallback` for `updateViewport` and `resetViewport`:
+  - Ensures stable function references to prevent unnecessary re-renders
+  - Safe to omit from useEffect dependencies with explanatory comment
+
+- MapPage initializes viewport state to match Map defaults:
+  - Eliminates null checks and potential rendering issues
+  - Footer always shows viewport info (no conditional rendering)
+
+- Development-only debug panel:
+  - Uses `import.meta.env.DEV` instead of `process.env.NODE_ENV` for Vite
+  - Helpful for debugging during development without cluttering production
+
+- Reset button placement:
+  - Top-left position avoids conflict with MapLibre's navigation controls (top-right)
+  - Tailwind styling matches project design system
+  - Focus ring for keyboard accessibility
+
+**Code quality:**
+
+- All TypeScript type-check and ESLint checks pass
+- Code reviewed by specialized Code Reviewer subagent with all feedback addressed:
+  - Removed unused `LngLatBounds` import
+  - Fixed Vite environment check (`import.meta.env.DEV`)
+  - Added explanatory comment for ESLint disable
+  - Simplified MapPage component (direct `setViewport` usage)
+- Import order fixed per project ESLint rules
+- Follows project conventions (barrel exports, component structure, lazy loading)
+- Proper use of React hooks and cleanup patterns
+- All 23 tests passing with comprehensive coverage
