@@ -52,30 +52,6 @@ export type TransformedGraphData = {
 };
 
 /**
- * Get color scheme for a node based on its type.
- *
- * Color mapping:
- * - VARIABLE: Green (#22c55e) - represents data storage
- * - CONDITION: Blue (#3b82f6) - represents logic/rules
- * - EFFECT: Orange (#f97316) - represents side effects/actions
- * - ENTITY: Purple (#a855f7) - represents game entities
- */
-function getNodeStyle(nodeType: DependencyNodeType): { backgroundColor: string; color: string } {
-  switch (nodeType) {
-    case 'VARIABLE':
-      return { backgroundColor: '#22c55e', color: '#ffffff' }; // green-500
-    case 'CONDITION':
-      return { backgroundColor: '#3b82f6', color: '#ffffff' }; // blue-500
-    case 'EFFECT':
-      return { backgroundColor: '#f97316', color: '#ffffff' }; // orange-500
-    case 'ENTITY':
-      return { backgroundColor: '#a855f7', color: '#ffffff' }; // purple-500
-    default:
-      return { backgroundColor: '#6b7280', color: '#ffffff' }; // gray-500 fallback
-  }
-}
-
-/**
  * Get edge style based on relationship type.
  *
  * Edge mapping:
@@ -104,35 +80,33 @@ function getEdgeStyle(edgeType: DependencyEdgeType): {
  *
  * Maps backend node structure to React Flow's expected format with:
  * - Unique ID
- * - Type for custom rendering
+ * - Type for custom rendering (lowercase)
  * - Position (to be calculated by layout algorithm)
  * - Data containing label and metadata
  * - Styling based on node type
  */
 export function transformNode(node: DependencyNode): Node<FlowNodeData> {
-  const style = getNodeStyle(node.type);
   const label = node.label || node.entityId; // Fallback to entityId if no label
+
+  // Map backend uppercase types to lowercase for React Flow node types
+  const typeMap: Record<DependencyNodeType, string> = {
+    VARIABLE: 'variable',
+    CONDITION: 'condition',
+    EFFECT: 'effect',
+    ENTITY: 'entity',
+  };
 
   return {
     id: node.id,
-    type: node.type.toLowerCase(), // 'variable', 'condition', 'effect', 'entity'
+    type: typeMap[node.type], // Lowercase type for React Flow custom components
     position: { x: 0, y: 0 }, // Will be set by layout algorithm
     data: {
       label,
-      nodeType: node.type,
+      nodeType: node.type, // Keep uppercase in data for display
       entityId: node.entityId,
       metadata: node.metadata,
     },
-    style: {
-      ...style,
-      border: '2px solid rgba(0, 0, 0, 0.1)',
-      borderRadius: '8px',
-      padding: '10px',
-      fontSize: '14px',
-      fontWeight: 500,
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
-    },
+    // Note: backgroundColor style removed - custom node components handle their own colors
   };
 }
 

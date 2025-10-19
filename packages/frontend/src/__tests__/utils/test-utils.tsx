@@ -4,11 +4,13 @@
  * Provides wrappers for rendering React components with:
  * - Apollo Client (for GraphQL hooks)
  * - Zustand stores
+ * - React Flow (for node components)
  */
 
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
 import { ApolloProvider } from '@apollo/client/react';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
+import { ReactFlowProvider } from '@xyflow/react';
 import { type ReactElement, type ReactNode } from 'react';
 
 /**
@@ -76,6 +78,27 @@ export function renderWithApollo(
     ...render(ui, { wrapper: Wrapper, ...renderOptions }),
     client,
   };
+}
+
+/**
+ * Custom render function that wraps component with React Flow Provider
+ *
+ * This is required for testing React Flow node components that use
+ * Handle components, which need access to React Flow's internal store.
+ *
+ * @param ui - The React element to render
+ * @param options - Render options
+ * @returns Render result from @testing-library/react
+ */
+export function renderWithReactFlow(
+  ui: ReactElement,
+  renderOptions: RenderOptions = {}
+): RenderResult {
+  function Wrapper({ children }: { children: ReactNode }) {
+    return <ReactFlowProvider>{children}</ReactFlowProvider>;
+  }
+
+  return render(ui, { wrapper: Wrapper, ...renderOptions });
 }
 
 // Re-export everything from @testing-library/react

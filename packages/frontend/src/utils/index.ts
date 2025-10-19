@@ -22,3 +22,6 @@ export {
   type FlowEdgeData,
   type TransformedGraphData,
 } from './graph-layout';
+
+// Node color constants for dependency graph visualization
+export { NODE_COLORS } from './node-colors';

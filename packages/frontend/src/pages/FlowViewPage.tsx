@@ -2,9 +2,23 @@ import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useMemo } from 'react';
 
+import { VariableNode, ConditionNode, EffectNode, EntityNode } from '@/components/features/flow';
 import { useDependencyGraph } from '@/services/api/hooks';
 import { useCurrentCampaignId } from '@/stores';
 import { transformGraphToFlow } from '@/utils';
+import { NODE_COLORS } from '@/utils/node-colors';
+
+/**
+ * Custom node types for React Flow.
+ * Maps node type strings (lowercase) to their corresponding React components.
+ * Must match the lowercase types returned by transformNode() in graph-layout.ts
+ */
+const nodeTypes = {
+  variable: VariableNode,
+  condition: ConditionNode,
+  effect: EffectNode,
+  entity: EntityNode,
+};
 
 /**
  * FlowViewPage - Interactive dependency graph visualization
@@ -87,7 +101,13 @@ export default function FlowViewPage() {
 
   return (
     <div className="h-screen w-full">
-      <ReactFlow nodes={nodes} edges={edges} fitView className="bg-background">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        fitView
+        className="bg-background"
+      >
         <Background />
         <Controls />
         <MiniMap />
@@ -101,19 +121,25 @@ export default function FlowViewPage() {
           <div>Total Edges: {graph.stats.edgeCount}</div>
           <div className="pt-2 border-t mt-2">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#22c55e' }} />
+              <div
+                className="w-3 h-3 rounded"
+                style={{ backgroundColor: NODE_COLORS.VARIABLE.bg }}
+              />
               <span>Variables: {graph.stats.variableCount}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#3b82f6' }} />
+              <div
+                className="w-3 h-3 rounded"
+                style={{ backgroundColor: NODE_COLORS.CONDITION.bg }}
+              />
               <span>Conditions: {graph.stats.conditionCount}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#f97316' }} />
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: NODE_COLORS.EFFECT.bg }} />
               <span>Effects: {graph.stats.effectCount}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded" style={{ backgroundColor: '#a855f7' }} />
+              <div className="w-3 h-3 rounded" style={{ backgroundColor: NODE_COLORS.ENTITY.bg }} />
               <span>Entities: {graph.stats.entityCount}</span>
             </div>
           </div>

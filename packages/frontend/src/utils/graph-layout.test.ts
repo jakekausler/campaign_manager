@@ -31,7 +31,8 @@ describe('graph-layout utilities', () => {
       expect(result.data.nodeType).toBe('VARIABLE');
       expect(result.data.entityId).toBe('state-var-123');
       expect(result.data.metadata).toEqual({ someKey: 'someValue' });
-      expect(result.style?.backgroundColor).toBe('#22c55e'); // green
+      // Note: backgroundColor is now handled by custom node components, not inline styles
+      expect(result.style?.backgroundColor).toBeUndefined();
     });
 
     it('should transform a CONDITION node correctly', () => {
@@ -49,7 +50,8 @@ describe('graph-layout utilities', () => {
       expect(result.type).toBe('condition');
       expect(result.data.label).toBe('Is Player Alive');
       expect(result.data.nodeType).toBe('CONDITION');
-      expect(result.style?.backgroundColor).toBe('#3b82f6'); // blue
+      // Note: backgroundColor is now handled by custom node components, not inline styles
+      expect(result.style?.backgroundColor).toBeUndefined();
     });
 
     it('should transform an EFFECT node correctly', () => {
@@ -64,7 +66,8 @@ describe('graph-layout utilities', () => {
 
       expect(result.type).toBe('effect');
       expect(result.data.nodeType).toBe('EFFECT');
-      expect(result.style?.backgroundColor).toBe('#f97316'); // orange
+      // Note: backgroundColor is now handled by custom node components, not inline styles
+      expect(result.style?.backgroundColor).toBeUndefined();
     });
 
     it('should transform an ENTITY node correctly', () => {
@@ -79,7 +82,8 @@ describe('graph-layout utilities', () => {
 
       expect(result.type).toBe('entity');
       expect(result.data.nodeType).toBe('ENTITY');
-      expect(result.style?.backgroundColor).toBe('#a855f7'); // purple
+      // Note: backgroundColor is now handled by custom node components, not inline styles
+      expect(result.style?.backgroundColor).toBeUndefined();
     });
 
     it('should fallback to entityId when label is not provided', () => {
