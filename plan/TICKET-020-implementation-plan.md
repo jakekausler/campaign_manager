@@ -34,15 +34,16 @@ Add drawing and editing capabilities to the map interface using MapLibre GL Draw
 
 **Goal**: Install and configure the drawing library
 **Success Criteria**: Map has drawing controls visible, can enter draw mode
-**Status**: Not Started
+**Status**: Complete
+**Commit**: aec1738
 
-- [ ] Install @maplibre/maplibre-gl-draw package
-- [ ] Add MapLibre GL Draw CSS to main layout
-- [ ] Create DrawControl component wrapper
-- [ ] Add DrawControl to MapView
-- [ ] Configure basic draw styles (colors, line widths)
-- [ ] Test that controls appear and basic interaction works
-- [ ] Commit changes
+- [x] Install @maplibre/maplibre-gl-draw package
+- [x] Add MapLibre GL Draw CSS to main layout
+- [x] Create DrawControl component wrapper
+- [x] Add DrawControl to MapView
+- [x] Configure basic draw styles (colors, line widths)
+- [x] Test that controls appear and basic interaction works
+- [x] Commit changes
 
 ### Stage 2: Point Creation Tool
 
