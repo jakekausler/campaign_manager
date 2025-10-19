@@ -15,6 +15,8 @@ export { DrawControl } from './DrawControl';
 export type { DrawControlProps } from './DrawControl';
 export { DrawToolbar } from './DrawToolbar';
 export type { DrawToolbarProps } from './DrawToolbar';
+export { UndoRedoControls } from './UndoRedoControls';
+export type { UndoRedoControlsProps } from './UndoRedoControls';
 export { useMapDraw } from './useMapDraw';
 export type {
   DrawMode,

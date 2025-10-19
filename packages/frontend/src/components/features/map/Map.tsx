@@ -15,6 +15,7 @@ import { ErrorMessage } from './ErrorMessage';
 import { LayerControls } from './LayerControls';
 import { LoadingSpinner } from './LoadingSpinner';
 import { TimeScrubber } from './TimeScrubber';
+import { UndoRedoControls } from './UndoRedoControls';
 import { drawStyles } from './draw-styles';
 import type {
   LocationPointProperties,
@@ -476,6 +477,39 @@ export function Map({
     handleStructureClick,
   ]);
 
+  /**
+   * Set up keyboard shortcuts for undo/redo when drawing is enabled
+   */
+  useEffect(() => {
+    if (!enableDrawing) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Ctrl+Z (undo) or Cmd+Z on Mac
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        drawActions.undo();
+      }
+
+      // Check for Ctrl+Shift+Z (redo) or Cmd+Shift+Z on Mac
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        drawActions.redo();
+      }
+
+      // Also support Ctrl+Y (redo) on Windows
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        drawActions.redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [enableDrawing, drawActions]);
+
   // Determine overall loading state
   const isLoading = timeLoading || locationsLoading || settlementsLoading;
 
@@ -633,6 +667,17 @@ export function Map({
             }}
             isSaving={isSaving}
           />
+          {/* Undo/Redo controls (only shown when editing) */}
+          {(drawState.mode === 'edit' ||
+            drawState.mode === 'draw_point' ||
+            drawState.mode === 'draw_polygon') && (
+            <UndoRedoControls
+              canUndo={drawState.canUndo}
+              canRedo={drawState.canRedo}
+              onUndo={drawActions.undo}
+              onRedo={drawActions.redo}
+            />
+          )}
           {/* Error message display */}
           {saveError && (
             <div
