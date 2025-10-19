@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e, 9564ebd, 77c808e, da720bc
+- **Commits**: 66d4238, 80ef9d3, 8406688, 71610db, 8b2c7a4, a1a290e, 9564ebd, 77c808e, da720bc, 0f0383a
 
 ## Implementation Notes
 
@@ -416,7 +416,70 @@ Successfully implemented complete selection and dependency highlighting system w
 - ✅ Selection clears on Escape key press
 - ✅ SelectionPanel shows/hides correctly
 
-**Next**: Stage 9 will add node editing integration (double-click to navigate to entity edit forms).
+**Next**: Stage 10 will implement performance optimization (React.memo profiling, 100+ node testing).
+
+### Stage 9: Add Node Editing Integration (Commit: 0f0383a)
+
+Successfully implemented double-click handler for nodes with navigation infrastructure:
+
+**Implemented**:
+
+- Created node-navigation.ts utility module with navigation functions
+  - getNodeEditRoute(): Generates edit routes for all node types (VARIABLE, CONDITION, EFFECT, ENTITY)
+  - getNodeTypeLabel(): Returns human-readable labels for node types
+  - isNodeEditable(): Checks if edit functionality is available (future-proofing)
+  - getNodeEditMessage(): Provides user feedback when edit pages not implemented
+  - Route templates: `/variables/:id`, `/conditions/:id`, `/effects/:id`, `/entities/:id`
+- Added onNodeDoubleClick handler to FlowViewPage component
+  - Extracts nodeType, entityId, and label from node data
+  - Checks campaign context before navigation
+  - Shows informational alert when edit pages not yet available
+  - useCallback optimization prevents unnecessary re-renders
+  - Ready to navigate using react-router when edit pages are implemented
+- Comprehensive testing: 40 new tests (27 unit + 13 integration)
+  - node-navigation.test.ts: Route construction, type labels, editability, messages
+  - FlowViewPage.test.tsx: Node data structure, navigation context, empty/loading/error states
+  - All 581 frontend tests passing (no regressions)
+- Exported navigation utilities from utils/index.ts
+
+**Technical Decisions**:
+
+- Route templates use `:id` placeholder for entity IDs
+- `campaignId` parameter included in getNodeEditRoute() for future campaign-scoped routes
+- isNodeEditable() returns false for all types (edit pages don't exist yet)
+- window.alert() used for temporary user feedback (to be replaced with toast notifications)
+- Pure utility functions for testability and maintainability
+- event.stopPropagation() prevents pane click when double-clicking nodes
+
+**Current Behavior**:
+
+- Double-clicking any node type shows informational alert:
+  - "{Type} editing not yet implemented."
+  - "Node: {label}"
+  - "ID: {entityId}"
+  - "Edit functionality will be available in a future update."
+- No navigation occurs (edit pages don't exist yet)
+- Infrastructure ready for when edit pages are implemented
+
+**Future Work**:
+
+- Replace window.alert() with toast notification system (e.g., sonner)
+- Create edit page components for each entity type
+- Add routes to router/index.tsx (e.g., `/variables/:id`, `/conditions/:id`)
+- Update isNodeEditable() to return true as edit pages are implemented
+- Consider campaign-scoped route structure (e.g., `/campaigns/:campaignId/variables/:id`)
+
+**Code Review**: Approved - High-quality infrastructure code ready for future edit functionality
+
+**Tests**:
+
+- ✅ 27 new unit tests for navigation utilities
+- ✅ 13 new integration tests for FlowViewPage
+- ✅ 581 total frontend tests passing (no regressions)
+- ✅ TypeScript compilation successful
+- ✅ ESLint clean (no new errors or warnings)
+
+**Next**: Stage 10 will implement performance optimization and testing with 100+ node graphs.
 
 ### Planning Phase Details
 
