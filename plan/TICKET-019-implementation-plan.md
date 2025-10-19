@@ -198,25 +198,25 @@ This plan breaks down the implementation of an interactive map view with MapLibr
 
 **Tasks**:
 
-- [ ] Create popup component or use MapLibre Popup API
-- [ ] Implement click handlers for Location layer
-- [ ] Implement click handlers for Settlement layer
-- [ ] Implement click handlers for Structure layer
-- [ ] Create LocationPopup component
-- [ ] Create SettlementPopup component showing level and typed variables
-- [ ] Create StructurePopup component showing type, level, and typed variables
-- [ ] Style popups with Tailwind CSS
-- [ ] Handle popup state (current selected entity)
-- [ ] Close popup when clicking elsewhere on map
+- [x] Create popup component or use MapLibre Popup API
+- [x] Implement click handlers for Location layer
+- [x] Implement click handlers for Settlement layer
+- [x] Implement click handlers for Structure layer
+- [x] Create LocationPopup component
+- [x] Create SettlementPopup component showing level and typed variables
+- [x] Create StructurePopup component showing type, level, and typed variables
+- [x] Style popups with Tailwind CSS
+- [x] Handle popup state (current selected entity)
+- [x] Close popup when clicking elsewhere on map
 
 **Tests**:
 
-- [ ] Clicking entity opens popup
-- [ ] Popup shows correct data
-- [ ] Popup closes when clicking elsewhere
-- [ ] Multiple entity types can be selected
+- [x] Clicking entity opens popup
+- [x] Popup shows correct data
+- [x] Popup closes when clicking elsewhere
+- [x] Multiple entity types can be selected
 
-**Status**: Not Started
+**Status**: Completed (Commit: 4d6068b)
 
 ---
 

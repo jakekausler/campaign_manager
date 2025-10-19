@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6), 4d6068b (Stage 7)
 
 ## Description
 
@@ -554,3 +554,112 @@ Testing:
   - useStructureLayers hook is ready to use
   - Requires passing settlementId props to Map component
   - Can be called for specific settlements or iterated through all settlements
+
+### Stage 7: Entity Popups and Tooltips (Commit: 4d6068b)
+
+**What was implemented:**
+
+TypeScript Types (`types.ts`):
+
+- Added popup data interfaces for all entity types (LocationPopupData, SettlementPopupData, StructurePopupData)
+- Discriminated union types for type-safe popup data (PopupData)
+- Coordinates included in all popup data for positioning
+
+Popup Content Components (`EntityPopupContent.tsx`):
+
+- LocationPopupContent: displays name, type (Point/Region), optional description, coordinates
+- SettlementPopupContent: displays name, level, kingdom ID, typed variables, coordinates
+- StructurePopupContent: displays name, structure type, level, settlement ID, typed variables, coordinates
+- Tailwind CSS styling with consistent spacing and typography
+- Typed variables section with border separator
+- Object values JSON.stringified for display
+- Minimum width of 200px for consistent sizing
+
+Popup Hook (`useEntityPopup.tsx`):
+
+- Manages MapLibre Popup lifecycle with React portal rendering
+- Creates React root using createRoot from react-dom/client
+- Renders appropriate popup component based on entity type
+- Proper cleanup of both MapLibre popups and React roots
+- showPopup() closes existing popup before opening new one
+- closePopup() explicitly removes popup and unmounts React root
+- useEffect cleanup ensures no memory leaks on unmount
+- Popup configuration: closeButton=true, closeOnClick=true, maxWidth=400px
+
+Map Component Integration (`Map.tsx`):
+
+- Added useEntityPopup hook integration
+- Four click handler functions (handleLocationPointClick, handleLocationRegionClick, handleSettlementClick, handleStructureClick)
+- Type assertions for feature properties (as unknown as [Type]Properties)
+- Geometry type validation (checks geometry.type === 'Point' for point layers)
+- For polygons, popup positioned at click coordinates (e.lngLat)
+- For points, popup positioned at geometry coordinates
+- useEffect sets up click listeners for all four entity layers
+- Cursor changes to pointer on mouseenter, back to default on mouseleave
+- Named handler functions for proper event listener cleanup
+- All event listeners removed in useEffect cleanup
+
+Testing:
+
+- EntityPopupContent.test.tsx (10 tests):
+  - LocationPopupContent: 3 tests (point data, region data, missing description)
+  - SettlementPopupContent: 4 tests (all fields, missing optionals, empty variables, object values)
+  - StructurePopupContent: 3 tests (all fields, missing optionals, empty variables)
+- useEntityPopup.test.tsx (9 tests):
+  - Hook API and initial state
+  - Showing popups for all three entity types
+  - Closing existing popup when showing new one
+  - Explicit closePopup function
+  - Null map handling
+  - Cleanup on unmount
+- All 241 frontend tests passing (19 new tests)
+- MapLibre and react-dom/client properly mocked
+
+**Design decisions:**
+
+- React portal rendering:
+  - MapLibre Popup API accepts DOM elements via setDOMContent()
+  - Created React root on popup container div for React component rendering
+  - Allows using React components while integrating with MapLibre's native popups
+  - Proper cleanup prevents memory leaks
+
+- Popup positioning strategy:
+  - Points: use geometry coordinates for precise positioning
+  - Polygons: use click coordinates (e.lngLat) since polygon center may not be intuitive
+  - Settlements/Structures always use Point geometry so positioned at exact coordinates
+
+- Type assertions necessary:
+  - MapLibre feature.properties is dynamically typed (MapLibre doesn't know our schema)
+  - Backend GraphQL ensures data matches types
+  - Safe to assert since we control both sides (GraphQL schema and frontend types)
+
+- Typed variables display:
+  - Object values JSON.stringified for visibility
+  - Primitive values converted to String
+  - Only shown when typedVariables exists and has entries
+  - Separate section with visual separator for clarity
+
+- Event listener cleanup:
+  - Anonymous arrow functions extracted to named functions
+  - Allows proper cleanup with mapInstance.off(event, handler)
+  - TypeScript requires exact same function reference for removal
+
+- Cursor pointer UX:
+  - Indicates clickable entities on hover
+  - Applied to all four entity layers
+  - Improves discoverability of interactive elements
+
+**Code quality:**
+
+- All TypeScript type-check and ESLint checks pass (0 errors)
+- TypeScript Fixer subagent fixed:
+  - File extension issues (.ts → .tsx for JSX content)
+  - Import ordering violations
+  - Event listener cleanup with proper function references
+- TypeScript Tester subagent verified:
+  - All 241 tests passing (19 new tests)
+  - Fixed test assertions to be more precise (used within() for scoped queries)
+- Code Reviewer subagent approved with no critical issues
+- Follows project conventions (barrel exports, Tailwind styling, hook patterns)
+- No security vulnerabilities detected
+- Performance conscious (memoized callbacks, proper cleanup)
