@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1), 79d7a03 (Stage 2), 6324d6c (Stage 3), e89ca81 (Stage 4), 58f6550 (Stage 5), c42f706 (Stage 6)
 
 ## Description
 
@@ -428,3 +428,129 @@ Testing:
 - No security vulnerabilities detected
 - Follows project conventions (barrel exports, component structure, lazy loading)
 - Import ordering fixed per ESLint rules
+
+### Stage 6: Structure Layer Rendering (Commit: c42f706)
+
+**What was implemented:**
+
+Backend:
+
+- Added `settlement` field to Structure GraphQL type (packages/api/src/graphql/types/structure.type.ts)
+  - Nullable Settlement return type with "Settlement this structure belongs to" description
+- Created SettlementDataLoader (packages/api/src/graphql/dataloaders/settlement.dataloader.ts)
+  - Batches settlement queries to prevent N+1 problems
+  - Uses SettlementWithLocation type (Prisma payload with location relation)
+- Added `findByIds` method to SettlementService (packages/api/src/graphql/services/settlement.service.ts:182-216)
+  - Batch operation for DataLoader
+  - Includes location relation in Prisma query
+  - Returns settlements in same order as input IDs (critical for DataLoader contract)
+  - No authorization (world-scoped data, auth enforced at resolver level)
+- Registered SettlementDataLoader in GraphQL module and context
+  - Added to providers in graphql.module.ts
+  - Added settlementLoader to DataLoaders interface in graphql-context.ts
+  - Exported SettlementWithLocation type from context
+- Added settlement field resolver in StructureResolver (packages/api/src/graphql/resolvers/structure.resolver.ts:247-261)
+  - Uses DataLoader pattern: `context.dataloaders.settlementLoader.load(structure.settlementId)`
+  - Type assertion handles Prisma/GraphQL null/undefined differences
+  - Comment explains GraphQL handles null->undefined conversion
+
+Frontend:
+
+- Created GET_STRUCTURES_FOR_MAP query (packages/frontend/src/services/api/hooks/structures.ts:138-163)
+  - Queries structuresBySettlement with settlement and location data
+  - Includes settlement.location.geojson for rendering
+  - Uses settlementId parameter (structures scoped to settlement)
+- Implemented useStructuresForMap hook (packages/frontend/src/services/api/hooks/structures.ts:316-342)
+  - Follows useSettlementsForMap pattern
+  - cache-and-network fetch policy for fresh data
+  - Returns structures array, loading, error, refetch, networkStatus
+  - Exported from hooks index (packages/frontend/src/services/api/hooks/index.ts)
+- Created useStructureLayers hook (packages/frontend/src/components/features/map/useStructureLayers.ts)
+  - Manages structure layer rendering on map
+  - Fetches structures with settlement and location via useStructuresForMap
+  - Validates GeoJSON type is 'Point' (prevents Polygon confusion)
+  - Validates coordinates with Number.isFinite
+  - Validates structure type and level fields before rendering
+  - Creates structure GeoJSON features using createStructureFeature utility
+  - Structures rendered at settlement's location coordinates (no direct structure location)
+  - Layer ID: 'structure' (consistent with settlement/location naming)
+  - Returns loading, error, structureCount
+  - Exported from map index (packages/frontend/src/components/features/map/index.ts)
+- Added Structure type fields (packages/frontend/src/services/api/hooks/structures.ts:55-57)
+  - Added optional `type` and `level` fields to Structure type
+  - Needed for GET_STRUCTURES_FOR_MAP query compatibility
+
+Testing:
+
+- 5 new tests for useStructureLayers hook (packages/frontend/src/components/features/map/useStructureLayers.test.ts)
+  - Should not fetch structures when disabled
+  - Should fetch structures when enabled
+  - Should return loading state
+  - Should return error state
+  - Should return structure count
+- All 5 tests passing (100%)
+- Fixed 3 pre-existing test failures in useMapLayers (mock consistency issues)
+- 222/222 frontend tests passing
+- Backend tests unchanged (SettlementDataLoader follows LocationDataLoader pattern)
+
+**Design decisions:**
+
+- Structures don't have direct locations - they use Settlement's location coordinates:
+  - Structures belong to settlements (not locations directly)
+  - Structure markers rendered at parent settlement's location
+  - Requires querying settlement with location to get coordinates
+  - GET_STRUCTURES_FOR_MAP requires settlementId parameter (not kingdomId)
+
+- DataLoader includes location relation for efficiency:
+  - SettlementDataLoader fetches settlement with location in single query
+  - Prevents additional N+1 when resolving settlement.location field in GraphQL
+  - Uses Prisma `include: { location: true }` for optimal query performance
+  - SettlementWithLocation type exported from context for type safety
+
+- No authorization in findByIds (world-scoped data):
+  - Settlements are world-scoped (accessible to all users with campaign access)
+  - Follows LocationDataLoader pattern (also no authorization)
+  - Authorization enforced at GraphQL resolver level where user context available
+  - Documented in JSDoc comment explaining authorization strategy
+
+- GeoJSON type validation prevents confusion:
+  - Validates `geojson.type === 'Point'` before rendering
+  - Prevents attempting to render Polygon or other geometry types as Point
+  - Returns null for invalid geometry (filtered out by filterValidFeatures)
+  - Code Reviewer feedback implemented
+
+- Structure layer styling:
+  - Amber color (#f59e0b) distinct from settlements (green) and locations (blue)
+  - 6px circle size (smaller than settlements at 8px, same as location points)
+  - Layer name 'structure' follows existing naming convention
+
+**Code quality:**
+
+- All TypeScript type-check and ESLint checks pass (0 errors)
+- TypeScript Fixer subagent resolved all type errors:
+  - Added type/level fields to Structure type
+  - Fixed MapLibre layer types (CircleLayerSpecification, FillLayerSpecification)
+  - Updated useMapLayers type definitions
+  - Added structure field validations
+- TypeScript Tester subagent verified all tests pass:
+  - 222/222 frontend tests passing
+  - Fixed 3 pre-existing useMapLayers test failures
+  - 5 new useStructureLayers tests all passing
+- Code Reviewer subagent approved with recommendations implemented:
+  - Added authorization documentation to findByIds JSDoc
+  - Added GeoJSON type validation in useStructureLayers
+- Follows project conventions (barrel exports, component structure, DataLoader patterns)
+- No security vulnerabilities detected
+
+**Limitations/Future work:**
+
+- Map component integration not completed:
+  - Current design requires settlementId to query structures
+  - Would need to iterate through all settlements to render all structures
+  - More efficient approach: query all structures by kingdomId (requires new backend query)
+- Structure layer toggles not implemented (deferred to Stage 8)
+- Structure popups not implemented (deferred to Stage 7)
+- No integration into Map component or MapPage yet:
+  - useStructureLayers hook is ready to use
+  - Requires passing settlementId props to Map component
+  - Can be called for specific settlements or iterated through all settlements

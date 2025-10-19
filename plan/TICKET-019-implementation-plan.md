@@ -166,21 +166,21 @@ This plan breaks down the implementation of an interactive map view with MapLibr
 
 **Tasks**:
 
-- [ ] Create `useStructuresForMap` query/hook (include Location relationship)
-- [ ] Create Structure GeoJSON features from Structure + Location/Settlement data
-- [ ] Create Structure marker layer with type-based styling
-- [ ] Implement icon or color variation by structure type
-- [ ] Display structure level visually (size, opacity, or label)
-- [ ] Handle structures without location
+- [x] Create `useStructuresForMap` query/hook (include Location relationship)
+- [x] Create Structure GeoJSON features from Structure + Location/Settlement data
+- [x] Create Structure marker layer with type-based styling
+- [x] Implement icon or color variation by structure type
+- [x] Display structure level visually (size, opacity, or label)
+- [x] Handle structures without location
 
 **Tests**:
 
-- [ ] Structure query returns correct data
-- [ ] Structures render on map
-- [ ] Structure type affects appearance
-- [ ] Structure level affects appearance
+- [x] Structure query returns correct data
+- [x] Structures render on map
+- [x] Structure type affects appearance
+- [x] Structure level affects appearance
 
-**Status**: Not Started
+**Status**: Completed (Commit: c42f706)
 
 ---
 
