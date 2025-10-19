@@ -32,14 +32,27 @@ export function MainLayout() {
               </Link>
 
               {isAuthenticated && (
-                <Link
-                  to="/dashboard"
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    location.pathname === '/dashboard' ? 'text-foreground' : 'text-muted-foreground'
-                  }`}
-                >
-                  Dashboard
-                </Link>
+                <>
+                  <Link
+                    to="/dashboard"
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      location.pathname === '/dashboard'
+                        ? 'text-foreground'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    Dashboard
+                  </Link>
+
+                  <Link
+                    to="/map"
+                    className={`text-sm font-medium transition-colors hover:text-primary ${
+                      location.pathname === '/map' ? 'text-foreground' : 'text-muted-foreground'
+                    }`}
+                  >
+                    Map
+                  </Link>
+                </>
               )}
             </nav>
           </div>
