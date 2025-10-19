@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**: 9d4a967 (implementation plan)
+- **Commits**: 9d4a967 (implementation plan), 069050c (Stage 1)
 
 ## Description
 
@@ -49,3 +49,34 @@ Implement interactive map view using MapLibre GL JS with GeoJSON layers, viewpor
 ## Estimated Effort
 
 4-5 days
+
+## Implementation Notes
+
+### Stage 1: Install Dependencies and Basic Setup (Commit: 069050c)
+
+**What was implemented:**
+
+- Installed maplibre-gl (^5.9.0) and @types/maplibre-gl for TypeScript support
+- Created basic Map component in `packages/frontend/src/components/features/map/Map.tsx`
+- Map component includes:
+  - Proper initialization with useRef to persist map instance
+  - Navigation controls (zoom buttons)
+  - Clean cleanup on unmount to prevent memory leaks
+  - Empty map style (basemap tiles deferred to later stages)
+  - TypeScript interfaces with JSDoc documentation
+  - data-testid attribute for future testing
+
+**Design decisions:**
+
+- Map CSS imported at component level rather than globally for better encapsulation
+- Map initializes once on mount and doesn't re-initialize when props change (useEffect with empty dependency array)
+- Fixed React Hook dependency array issue flagged by Code Reviewer (changed from `[initialCenter, initialZoom]` to `[]`)
+- Added comment explaining empty map style is intentional for Stage 1
+- Deferred optional geocoder package installation (not needed for MVP)
+
+**Code quality:**
+
+- All TypeScript type-check and ESLint checks pass
+- Code reviewed by specialized Code Reviewer subagent
+- Follows project conventions (barrel exports, component structure)
+- Proper use of React hooks and cleanup patterns

@@ -14,13 +14,13 @@ This plan breaks down the implementation of an interactive map view with MapLibr
 
 **Tasks**:
 
-- [ ] Install `maplibre-gl` package
-- [ ] Install `@types/maplibre-gl` for TypeScript support
-- [ ] Install `@maplibre/maplibre-gl-geocoder` for search functionality (optional)
-- [ ] Create basic Map component structure in `packages/frontend/src/components/features/map/`
-- [ ] Import MapLibre CSS in component or global styles
+- [x] Install `maplibre-gl` package
+- [x] Install `@types/maplibre-gl` for TypeScript support
+- [ ] Install `@maplibre/maplibre-gl-geocoder` for search functionality (optional - deferred)
+- [x] Create basic Map component structure in `packages/frontend/src/components/features/map/`
+- [x] Import MapLibre CSS in component or global styles
 
-**Status**: Not Started
+**Status**: Completed (Commit: 069050c)
 
 ---
 
