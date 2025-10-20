@@ -359,7 +359,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
             </div>
           ) : (
             <Tabs defaultValue="overview" className="mt-6">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="links">Links</TabsTrigger>
