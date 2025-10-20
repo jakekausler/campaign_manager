@@ -13,6 +13,8 @@ import {
   mockEvents,
   mockEncounters,
   mockDependencyGraph,
+  mockConditions,
+  mockEffects,
 } from './data';
 
 export const graphqlHandlers = [
@@ -301,6 +303,109 @@ export const graphqlHandlers = [
     };
     return HttpResponse.json({
       data: { restoreStructure: restored },
+    });
+  }),
+
+  // Condition Queries
+  graphql.query('GetConditionsForEntity', ({ variables }) => {
+    const { entityType, entityId, field } = variables as {
+      entityType: string;
+      entityId: string;
+      field?: string | null;
+    };
+
+    let conditions = mockConditions.filter(
+      (c) => c.entityType === entityType && (c.entityId === entityId || c.entityId === null) // Include type-level conditions
+    );
+
+    // Filter by field if provided
+    if (field) {
+      conditions = conditions.filter((c) => c.field === field);
+    }
+
+    return HttpResponse.json({
+      data: { getConditionsForEntity: conditions },
+    });
+  }),
+
+  graphql.query('EvaluateFieldCondition', ({ variables }) => {
+    const { input } = variables as {
+      input: {
+        conditionId: string;
+        context: Record<string, unknown>;
+      };
+    };
+
+    const condition = mockConditions.find((c) => c.id === input.conditionId);
+    if (!condition) {
+      return HttpResponse.json({
+        errors: [{ message: 'Condition not found' }],
+      });
+    }
+
+    // Mock evaluation result
+    // For simplicity, we'll just return a success result with mock trace
+    const result = {
+      value: true,
+      success: true,
+      trace: [
+        {
+          step: 1,
+          operation: '>=',
+          input: { left: input.context.level, right: 3 },
+          output: true,
+          description: 'Compare level >= 3',
+        },
+      ],
+      error: null,
+    };
+
+    return HttpResponse.json({
+      data: { evaluateFieldCondition: result },
+    });
+  }),
+
+  // Effect Queries
+  graphql.query('GetEffectsForEntity', ({ variables }) => {
+    const { entityType, entityId, timing } = variables as {
+      entityType: string;
+      entityId: string;
+      timing: string;
+    };
+
+    const effects = mockEffects.filter(
+      (e) => e.entityType === entityType && e.entityId === entityId && e.timing === timing
+    );
+
+    return HttpResponse.json({
+      data: { getEffectsForEntity: effects },
+    });
+  }),
+
+  graphql.query('GetAllEffectsForEntity', ({ variables }) => {
+    const { entityType, entityId } = variables as {
+      entityType: string;
+      entityId: string;
+    };
+
+    const preEffects = mockEffects.filter(
+      (e) => e.entityType === entityType && e.entityId === entityId && e.timing === 'PRE'
+    );
+
+    const onResolveEffects = mockEffects.filter(
+      (e) => e.entityType === entityType && e.entityId === entityId && e.timing === 'ON_RESOLVE'
+    );
+
+    const postEffects = mockEffects.filter(
+      (e) => e.entityType === entityType && e.entityId === entityId && e.timing === 'POST'
+    );
+
+    return HttpResponse.json({
+      data: {
+        getEffectsForEntity: preEffects,
+        onResolve: onResolveEffects,
+        post: postEffects,
+      },
     });
   }),
 ];

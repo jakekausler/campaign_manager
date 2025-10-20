@@ -63,5 +63,22 @@ export {
   type DependencyGraphResult,
 } from './dependency-graph';
 
+// Condition hooks
+export {
+  useConditionsForEntity,
+  useEvaluateCondition,
+  GET_CONDITIONS_FOR_ENTITY,
+  EVALUATE_FIELD_CONDITION,
+} from './conditions';
+
+// Effect hooks
+export {
+  useEffectsForEntity,
+  useAllEffectsForEntity,
+  GET_EFFECTS_FOR_ENTITY,
+  GET_ALL_EFFECTS_FOR_ENTITY,
+  EffectTiming,
+} from './effects';
+
 // Mutation hooks (Stage 8)
 export * from '../mutations';
