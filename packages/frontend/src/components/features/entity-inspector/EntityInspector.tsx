@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSettlementDetails, useStructureDetails } from '@/services/api/hooks';
 
+import { OverviewTab } from './OverviewTab';
+
 export type EntityType = 'settlement' | 'structure';
 
 export interface EntityInspectorProps {
@@ -96,24 +98,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
-              <div className="text-sm text-slate-500">
-                Overview tab content will be implemented in Stage 4
-              </div>
-              {/* Display basic entity info for now */}
-              <div className="mt-4 space-y-2">
-                <div className="text-xs text-slate-500">
-                  <strong>ID:</strong> {entity.id}
-                </div>
-                <div className="text-xs text-slate-500">
-                  <strong>Name:</strong> {entity.name}
-                </div>
-                <div className="text-xs text-slate-500">
-                  <strong>Created:</strong> {new Date(entity.createdAt).toLocaleString()}
-                </div>
-                <div className="text-xs text-slate-500">
-                  <strong>Updated:</strong> {new Date(entity.updatedAt).toLocaleString()}
-                </div>
-              </div>
+              <OverviewTab entity={entity} entityType={entityType} />
             </TabsContent>
 
             <TabsContent value="links" className="space-y-4">
