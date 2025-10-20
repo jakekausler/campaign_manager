@@ -67,6 +67,7 @@ describe('Effect System E2E Tests', () => {
     difficulty: 10,
     isResolved: false,
     resolvedAt: null,
+    scheduledAt: null,
     variables: {
       enemyCount: 1,
       dragonType: 'red',
