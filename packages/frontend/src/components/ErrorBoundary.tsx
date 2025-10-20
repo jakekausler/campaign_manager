@@ -125,11 +125,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     const { hasError, error, errorInfo } = this.state;
     const { children, fallback, boundaryName } = this.props;
 
-    if (hasError && error && errorInfo) {
+    if (hasError && error) {
       // Custom fallback provided
       if (fallback) {
         if (typeof fallback === 'function') {
-          return fallback(error, errorInfo, this.resetError);
+          return fallback(error, errorInfo!, this.resetError);
         }
         return fallback;
       }
@@ -161,7 +161,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                     {error.stack}
                   </pre>
                 </div>
-                {errorInfo.componentStack && (
+                {errorInfo?.componentStack && (
                   <div>
                     <strong>Component Stack:</strong>
                     <pre className="mt-1 p-2 bg-muted rounded overflow-auto text-xs">
