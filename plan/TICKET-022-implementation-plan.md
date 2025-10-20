@@ -144,25 +144,59 @@ From the GraphQL types analysis:
 **Goal**: Transform GraphQL event/encounter data into vis-timeline item format
 **Success Criteria**:
 
-- [ ] `transformEventToTimelineItem()` function works correctly
-- [ ] `transformEncounterToTimelineItem()` function works correctly
-- [ ] Items have correct start/end times based on scheduledAt/occurredAt
-- [ ] Items have type-based styling (colors, icons)
-- [ ] Handles null/undefined dates gracefully
+- [x] `transformEventToTimelineItem()` function works correctly
+- [x] `transformEncounterToTimelineItem()` function works correctly
+- [x] Items have correct start/end times based on scheduledAt/occurredAt
+- [x] Items have type-based styling (colors, icons)
+- [x] Handles null/undefined dates gracefully
 
 **Tests**:
 
-- Unit test: Transform completed event with occurredAt
-- Unit test: Transform scheduled event without occurredAt
-- Unit test: Transform encounter (handle missing scheduling fields)
-- Unit test: Handle null dates
+- Unit test: Transform completed event with occurredAt ✓
+- Unit test: Transform scheduled event without occurredAt ✓
+- Unit test: Transform encounter (handle missing scheduling fields) ✓
+- Unit test: Handle null dates ✓
 
-**Files to create**:
+**Files created**:
 
 - `packages/frontend/src/utils/timeline-transforms.ts`
 - `packages/frontend/src/utils/timeline-transforms.test.ts`
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: 0e8b1ef
+
+**Implementation Notes**:
+
+- Created comprehensive transformation utilities to convert GraphQL data to vis-timeline format
+- Three main transformation functions:
+  - `transformEventToTimelineItem()` - Transforms events using scheduledAt or occurredAt dates
+  - `transformEncounterToTimelineItem()` - Transforms encounters using resolvedAt date
+  - `transformToTimelineItems()` - Batch transformation combining events and encounters
+- Color-coded status visualization matching implementation plan:
+  - Completed events: #10b981 (green-500)
+  - Scheduled events: #3b82f6 (blue-500)
+  - Overdue events: #ef4444 (red-500) - past scheduledAt but not completed
+  - Resolved encounters: #059669 (green-600)
+  - Unresolved encounters: #f97316 (orange-500)
+- Graceful null/undefined date handling - returns null when no valid date available
+- Type-safe with placeholder interfaces (will be replaced by codegen in Stage 4)
+- Rich tooltips with event/encounter details (name, type, status, description, difficulty)
+- Editable flag prevents rescheduling completed/resolved items
+- Overdue detection using optional currentWorldTime parameter
+- 19 comprehensive unit tests covering:
+  - Completed events with occurredAt
+  - Scheduled events with scheduledAt
+  - Overdue events (past scheduledAt, not completed)
+  - Resolved encounters with resolvedAt
+  - Unresolved encounters (returns null - scheduledAt field to be added in Stage 9)
+  - Null/undefined date handling
+  - Optional field handling (description, difficulty)
+  - Combined transformations with filtering
+  - Edge cases (empty arrays, current world time)
+- All tests passing (19/19)
+- Code reviewed and approved - no critical issues
+- TypeScript and ESLint checks passing
 
 ---
 
