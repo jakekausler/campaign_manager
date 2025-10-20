@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 import { Timeline } from '@/components/features/timeline';
 import { useTimelineData } from '@/hooks';
+import { useCurrentWorldTime } from '@/services/api/hooks/world-time';
 import { useCurrentCampaignId } from '@/stores';
 
 import TimelinePage from './TimelinePage';
@@ -12,8 +13,9 @@ import TimelinePage from './TimelinePage';
 /**
  * Test suite for TimelinePage component
  *
- * Tests TICKET-022 Stage 5 implementation:
+ * Tests TICKET-022 Stage 5 and Stage 6 implementation:
  * - Timeline renders with event/encounter data
+ * - Current world time marker integration
  * - Loading state displays during data fetch
  * - Error state displays on fetch failure
  * - Empty states for no campaign or no data
@@ -28,6 +30,11 @@ vi.mock('@/stores', () => ({
 // Mock useTimelineData hook
 vi.mock('@/hooks', () => ({
   useTimelineData: vi.fn(),
+}));
+
+// Mock useCurrentWorldTime hook
+vi.mock('@/services/api/hooks/world-time', () => ({
+  useCurrentWorldTime: vi.fn(),
 }));
 
 // Mock Timeline component
@@ -45,6 +52,14 @@ describe('TimelinePage', () => {
     vi.clearAllMocks();
     // Set default campaign ID
     vi.mocked(useCurrentCampaignId).mockReturnValue('test-campaign-123');
+    // Set default current world time (null)
+    vi.mocked(useCurrentWorldTime).mockReturnValue({
+      currentTime: null,
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+      networkStatus: 7,
+    });
   });
 
   describe('Loading State', () => {
@@ -302,7 +317,16 @@ describe('TimelinePage', () => {
   });
 
   describe('Data Fetching', () => {
-    it('should call useTimelineData with campaign ID', () => {
+    it('should call useTimelineData with campaign ID and currentTime', () => {
+      const currentTime = new Date('2024-01-15T12:00:00Z');
+      vi.mocked(useCurrentWorldTime).mockReturnValue({
+        currentTime,
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
       vi.mocked(useTimelineData).mockReturnValue({
         items: [],
         loading: false,
@@ -312,7 +336,28 @@ describe('TimelinePage', () => {
 
       renderWithApollo(<TimelinePage />);
 
-      expect(useTimelineData).toHaveBeenCalledWith('test-campaign-123');
+      expect(useTimelineData).toHaveBeenCalledWith('test-campaign-123', currentTime);
+    });
+
+    it('should call useTimelineData with undefined when currentTime is null', () => {
+      vi.mocked(useCurrentWorldTime).mockReturnValue({
+        currentTime: null,
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      vi.mocked(useTimelineData).mockReturnValue({
+        items: [],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      expect(useTimelineData).toHaveBeenCalledWith('test-campaign-123', undefined);
     });
 
     it('should handle empty string campaign ID gracefully', () => {
@@ -327,7 +372,118 @@ describe('TimelinePage', () => {
 
       renderWithApollo(<TimelinePage />);
 
-      expect(useTimelineData).toHaveBeenCalledWith('');
+      expect(useTimelineData).toHaveBeenCalledWith('', undefined);
+    });
+  });
+
+  describe('Current World Time Display', () => {
+    it('should display current world time in header when available', () => {
+      const currentTime = new Date('2024-01-15T12:00:00Z');
+      vi.mocked(useCurrentWorldTime).mockReturnValue({
+        currentTime,
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      const mockItems = [
+        {
+          id: 'event-1',
+          content: 'Festival',
+          start: new Date('2024-06-15'),
+          type: 'point' as const,
+          className: 'timeline-event-completed',
+          title: 'Festival',
+          editable: false,
+        },
+      ];
+
+      vi.mocked(useTimelineData).mockReturnValue({
+        items: mockItems,
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      expect(screen.getByText(/Current Time:/)).toBeInTheDocument();
+      expect(screen.getByText(/Current Time:/)).toHaveTextContent(
+        `Current Time: ${currentTime.toLocaleDateString()}`
+      );
+    });
+
+    it('should not display current time when null', () => {
+      vi.mocked(useCurrentWorldTime).mockReturnValue({
+        currentTime: null,
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      const mockItems = [
+        {
+          id: 'event-1',
+          content: 'Festival',
+          start: new Date('2024-06-15'),
+          type: 'point' as const,
+          className: 'timeline-event-completed',
+          title: 'Festival',
+          editable: false,
+        },
+      ];
+
+      vi.mocked(useTimelineData).mockReturnValue({
+        items: mockItems,
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      expect(screen.queryByText(/Current Time:/)).not.toBeInTheDocument();
+    });
+
+    it('should pass currentTime to Timeline component', () => {
+      const currentTime = new Date('2024-01-15T12:00:00Z');
+      vi.mocked(useCurrentWorldTime).mockReturnValue({
+        currentTime,
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      const mockItems = [
+        {
+          id: 'event-1',
+          content: 'Festival',
+          start: new Date('2024-06-15'),
+          type: 'point' as const,
+          className: 'timeline-event-completed',
+          title: 'Festival',
+          editable: false,
+        },
+      ];
+
+      vi.mocked(useTimelineData).mockReturnValue({
+        items: mockItems,
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      expect(Timeline).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentTime,
+        }),
+        expect.anything()
+      );
     });
   });
 

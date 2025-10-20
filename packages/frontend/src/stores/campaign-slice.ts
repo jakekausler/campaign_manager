@@ -39,6 +39,7 @@ export interface Campaign {
   id: string;
   name: string;
   description?: string;
+  currentWorldTime?: string; // ISO 8601 date string for current world time
   createdAt?: string;
   updatedAt?: string;
   // Additional fields will be added based on generated GraphQL types

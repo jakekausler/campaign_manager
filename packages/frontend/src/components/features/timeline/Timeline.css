@@ -1,0 +1,30 @@
+/**
+ * Timeline component custom styles
+ *
+ * Customizes vis-timeline appearance for campaign timeline view.
+ * Part of TICKET-022 Stage 6: Current World Time Marker implementation.
+ */
+
+/**
+ * Current world time marker styling
+ * Makes the marker visually distinct with red color and proper width
+ */
+.vis-custom-time.current-world-time {
+  background-color: hsl(var(--destructive)) !important;
+  width: 2px !important;
+  cursor: default !important;
+  z-index: 10;
+}
+
+/**
+ * Current world time marker tooltip
+ * Styles the tooltip shown on hover
+ */
+.vis-custom-time.current-world-time .vis-custom-time-marker {
+  background-color: hsl(var(--destructive)) !important;
+  color: hsl(var(--destructive-foreground)) !important;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}

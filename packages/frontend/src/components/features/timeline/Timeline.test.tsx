@@ -9,13 +9,24 @@ vi.mock('react-vis-timeline', () => ({
   default: ({
     initialItems,
     initialGroups,
+    customTimes,
   }: {
     initialItems?: TimelineItem[];
     initialGroups?: unknown[];
+    customTimes?: Array<{ id: string; datetime: Date }>;
   }) => (
     <div data-testid="mock-timeline">
       <div data-testid="timeline-items-count">{initialItems?.length || 0}</div>
       <div data-testid="timeline-groups-count">{initialGroups?.length || 0}</div>
+      {customTimes && customTimes.length > 0 && (
+        <div data-testid="custom-times">
+          {customTimes.map((ct) => (
+            <div key={ct.id} data-testid={`custom-time-${ct.id}`}>
+              {ct.datetime.toISOString()}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   ),
 }));
@@ -231,6 +242,106 @@ describe('Timeline', () => {
 
       const groupsCount = screen.getByTestId('timeline-groups-count');
       expect(groupsCount).toHaveTextContent('2');
+    });
+  });
+
+  describe('Current World Time Marker', () => {
+    it('should not render custom time marker when currentTime is null', () => {
+      const mockItems: TimelineItem[] = [
+        {
+          id: '1',
+          content: 'Event 1',
+          start: new Date('2024-01-01'),
+          type: 'box',
+        },
+      ];
+
+      render(<Timeline items={mockItems} currentTime={null} />);
+
+      const customTimes = screen.queryByTestId('custom-times');
+      expect(customTimes).not.toBeInTheDocument();
+    });
+
+    it('should not render custom time marker when currentTime is undefined', () => {
+      const mockItems: TimelineItem[] = [
+        {
+          id: '1',
+          content: 'Event 1',
+          start: new Date('2024-01-01'),
+          type: 'box',
+        },
+      ];
+
+      render(<Timeline items={mockItems} />);
+
+      const customTimes = screen.queryByTestId('custom-times');
+      expect(customTimes).not.toBeInTheDocument();
+    });
+
+    it('should render custom time marker when currentTime is provided', () => {
+      const mockItems: TimelineItem[] = [
+        {
+          id: '1',
+          content: 'Event 1',
+          start: new Date('2024-01-01'),
+          type: 'box',
+        },
+      ];
+      const currentTime = new Date('2024-01-15T12:00:00Z');
+
+      render(<Timeline items={mockItems} currentTime={currentTime} />);
+
+      const customTimes = screen.getByTestId('custom-times');
+      expect(customTimes).toBeInTheDocument();
+
+      const customTime = screen.getByTestId('custom-time-current-world-time');
+      expect(customTime).toBeInTheDocument();
+      expect(customTime).toHaveTextContent(currentTime.toISOString());
+    });
+
+    it('should update custom time marker when currentTime changes', () => {
+      const mockItems: TimelineItem[] = [
+        {
+          id: '1',
+          content: 'Event 1',
+          start: new Date('2024-01-01'),
+          type: 'box',
+        },
+      ];
+      const initialTime = new Date('2024-01-15T12:00:00Z');
+      const updatedTime = new Date('2024-02-01T12:00:00Z');
+
+      const { rerender } = render(<Timeline items={mockItems} currentTime={initialTime} />);
+
+      let customTime = screen.getByTestId('custom-time-current-world-time');
+      expect(customTime).toHaveTextContent(initialTime.toISOString());
+
+      rerender(<Timeline items={mockItems} currentTime={updatedTime} />);
+
+      customTime = screen.getByTestId('custom-time-current-world-time');
+      expect(customTime).toHaveTextContent(updatedTime.toISOString());
+    });
+
+    it('should remove custom time marker when currentTime changes from defined to null', () => {
+      const mockItems: TimelineItem[] = [
+        {
+          id: '1',
+          content: 'Event 1',
+          start: new Date('2024-01-01'),
+          type: 'box',
+        },
+      ];
+      const initialTime = new Date('2024-01-15T12:00:00Z');
+
+      const { rerender } = render(<Timeline items={mockItems} currentTime={initialTime} />);
+
+      const customTimes = screen.getByTestId('custom-times');
+      expect(customTimes).toBeInTheDocument();
+
+      rerender(<Timeline items={mockItems} currentTime={null} />);
+
+      const updatedCustomTimes = screen.queryByTestId('custom-times');
+      expect(updatedCustomTimes).not.toBeInTheDocument();
     });
   });
 });

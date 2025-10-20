@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import VisTimeline from 'react-vis-timeline';
 import type { TimelineItem, TimelineGroup, TimelineOptions } from 'vis-timeline/types';
 import 'vis-timeline/styles/vis-timeline-graph2d.css';
+import './Timeline.css';
 
 /**
  * Default timeline options following vis-timeline configuration
@@ -43,6 +44,11 @@ export interface TimelineProps {
   options?: Partial<TimelineOptions>;
 
   /**
+   * Current world time marker (displayed as vertical line)
+   */
+  currentTime?: Date | null;
+
+  /**
    * Handler called when an item is moved (drag-to-reschedule)
    */
   onItemMove?: (item: TimelineItem, callback: (item: TimelineItem | null) => void) => void;
@@ -66,26 +72,28 @@ export interface TimelineProps {
  * - Color-coded availability states
  * - Zoom and pan controls
  * - Lane grouping (by type, location, etc.)
- * - Current world time marker
+ * - Current world time marker (red vertical line)
  *
  * Uses vis-timeline library wrapped in React component.
  * Memoized to prevent unnecessary re-renders.
  *
- * Part of TICKET-022 Stage 1 implementation.
+ * Part of TICKET-022 Stage 1 and Stage 6 implementation.
  *
  * @example
  * ```tsx
  * const items = [
  *   { id: '1', content: 'Event Name', start: new Date(), type: 'box' },
  * ];
+ * const currentTime = new Date('2024-01-15T12:00:00Z');
  *
- * <Timeline items={items} onItemMove={handleMove} />
+ * <Timeline items={items} currentTime={currentTime} onItemMove={handleMove} />
  * ```
  */
 function TimelineComponent({
   items,
   groups,
   options = {},
+  currentTime,
   onItemMove,
   onSelect,
   className = '',
@@ -99,12 +107,24 @@ function TimelineComponent({
     [options]
   );
 
+  // Memoize custom times for current world time marker
+  const customTimes = useMemo(() => {
+    if (!currentTime) return undefined;
+    return [
+      {
+        id: 'current-world-time',
+        datetime: currentTime,
+      },
+    ];
+  }, [currentTime]);
+
   return (
     <div className={className ? `timeline-container ${className}` : 'timeline-container'}>
       <VisTimeline
         initialItems={items}
         initialGroups={groups}
         options={mergedOptions}
+        customTimes={customTimes}
         timechangeHandler={onItemMove}
         selectHandler={onSelect}
       />
