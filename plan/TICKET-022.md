@@ -36,3 +36,29 @@ Implement timeline view showing events and encounters over world-time with avail
 ## Estimated Effort
 
 4-5 days
+
+## Implementation Notes
+
+### Stage 8: Availability Color Coding (Completed Proactively)
+
+**Status**: Completed in Stage 3 (commit 0e8b1ef)
+
+Stage 8 was completed proactively during Stage 3 when the timeline transformation utilities were created. All color coding logic was implemented in `getEventColor()` and `getEncounterColor()` functions in `timeline-transforms.ts`.
+
+**Color Scheme Implemented**:
+
+- Completed events: #10b981 (green-500)
+- Scheduled events: #3b82f6 (blue-500)
+- Overdue events: #ef4444 (red-500)
+- Resolved encounters: #059669 (green-600)
+- Unresolved encounters: #f97316 (orange-500)
+
+**Test Coverage**: 19/19 tests passing in timeline-transforms.test.ts, including:
+
+- Completed event color test (line 33)
+- Scheduled event color test (line 59)
+- Overdue event color test (line 79)
+- Resolved encounter color test (line 167)
+- Status tooltips for all states
+
+Documentation updated in commit 2a2cefb.
