@@ -52,6 +52,16 @@ export const graphqlHandlers = [
 
   graphql.query('GetSettlementStructures', ({ variables }) => {
     const { id } = variables as { id: string };
+
+    // Simulate structures query error for specific test case
+    if (id === 'settlement-error-structures') {
+      const settlement = mockSettlements.find((s) => s.id === 'settlement-1');
+      return HttpResponse.json({
+        errors: [{ message: 'Failed to fetch structures' }],
+        data: { settlement }, // Return settlement but with error for structures
+      });
+    }
+
     const settlement = mockSettlements.find((s) => s.id === id);
     if (!settlement) {
       return HttpResponse.json({

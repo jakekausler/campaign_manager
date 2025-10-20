@@ -36,6 +36,7 @@ type Settlement = {
   z: number;
   campaignId: string;
   kingdomId: string;
+  locationId: string;
   ownerId: string;
   isArchived: boolean;
   archivedAt?: string | null;

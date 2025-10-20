@@ -1,3 +1,7 @@
+import { ChevronLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
@@ -11,6 +15,7 @@ import { useSettlementDetails, useStructureDetails } from '@/services/api/hooks'
 
 import { ConditionsTab } from './ConditionsTab';
 import { EffectsTab } from './EffectsTab';
+import { LinksTab, type EntityLink } from './LinksTab';
 import { OverviewTab } from './OverviewTab';
 import { SettlementPanel } from './SettlementPanel';
 import { StructurePanel } from './StructurePanel';
@@ -29,40 +34,133 @@ export interface EntityInspectorProps {
 }
 
 /**
+ * Navigation history item
+ */
+interface NavigationHistoryItem {
+  entityType: EntityType;
+  entityId: string;
+  entityName: string;
+}
+
+/**
  * EntityInspector component displays detailed information about an entity
  * in a side panel (Sheet) with tabbed navigation for different aspects
  * of the entity (Overview, Links, Conditions, Effects, Versions).
+ *
+ * Features:
+ * - Navigation stack for browsing related entities
+ * - Breadcrumb navigation showing entity history
+ * - Back button to return to previous entity
  */
 export function EntityInspector({ entityType, entityId, isOpen, onClose }: EntityInspectorProps) {
+  // Navigation state: stack of visited entities
+  const [navigationStack, setNavigationStack] = useState<NavigationHistoryItem[]>([]);
+
+  // Current entity being viewed (defaults to props, but can be overridden by navigation)
+  const [currentEntityType, setCurrentEntityType] = useState<EntityType>(entityType);
+  const [currentEntityId, setCurrentEntityId] = useState<string>(entityId);
+
+  // Reset navigation when inspector opens with new entity
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentEntityType(entityType);
+      setCurrentEntityId(entityId);
+      setNavigationStack([]);
+    }
+  }, [isOpen, entityType, entityId]);
+
   // Conditionally fetch entity data based on type
-  const settlementQuery = useSettlementDetails(entityId, {
-    skip: entityType !== 'settlement',
+  const settlementQuery = useSettlementDetails(currentEntityId, {
+    skip: currentEntityType !== 'settlement',
   });
-  const structureQuery = useStructureDetails(entityId, {
-    skip: entityType !== 'structure',
+  const structureQuery = useStructureDetails(currentEntityId, {
+    skip: currentEntityType !== 'structure',
   });
 
   // Determine which query to use based on entity type
-  const query = entityType === 'settlement' ? settlementQuery : structureQuery;
+  const query = currentEntityType === 'settlement' ? settlementQuery : structureQuery;
   const entity =
-    entityType === 'settlement' ? settlementQuery.settlement : structureQuery.structure;
+    currentEntityType === 'settlement' ? settlementQuery.settlement : structureQuery.structure;
+
+  /**
+   * Navigate to a related entity
+   */
+  const handleNavigate = (link: EntityLink) => {
+    // Only navigate to settlement or structure (skip kingdom, location, campaign for now)
+    if (link.type !== 'settlement' && link.type !== 'structure') {
+      // TODO: Implement navigation for Kingdom, Location, Campaign in future tickets
+      console.warn(`Navigation to ${link.type} not yet implemented`);
+      return;
+    }
+
+    // Push current entity onto navigation stack
+    if (entity) {
+      setNavigationStack((prev) => [
+        ...prev,
+        {
+          entityType: currentEntityType,
+          entityId: currentEntityId,
+          entityName: entity.name,
+        },
+      ]);
+    }
+
+    // Navigate to new entity
+    setCurrentEntityType(link.type as EntityType);
+    setCurrentEntityId(link.id);
+  };
+
+  /**
+   * Navigate back to previous entity
+   */
+  const handleGoBack = () => {
+    if (navigationStack.length === 0) return;
+
+    const previous = navigationStack[navigationStack.length - 1];
+    setCurrentEntityType(previous.entityType);
+    setCurrentEntityId(previous.entityId);
+    setNavigationStack((prev) => prev.slice(0, -1));
+  };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader>
+          {/* Back button and breadcrumb navigation */}
+          {navigationStack.length > 0 && (
+            <div className="mb-2 flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGoBack}
+                className="h-8 px-2"
+                title="Go back to previous entity"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="text-sm">Back</span>
+              </Button>
+              <div className="flex items-center gap-1 text-xs text-slate-500">
+                {navigationStack.map((item, index) => (
+                  <span key={index}>
+                    {item.entityName} <span className="text-slate-400">›</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <SheetTitle>
-            {entityType === 'settlement' ? 'Settlement' : 'Structure'} Inspector
+            {currentEntityType === 'settlement' ? 'Settlement' : 'Structure'} Inspector
           </SheetTitle>
           <SheetDescription>
             {query.loading ? (
               <span className="inline-block h-4 w-64 animate-pulse rounded-md bg-slate-100" />
             ) : query.error ? (
-              <span className="text-red-500">Error loading {entityType}</span>
+              <span className="text-red-500">Error loading {currentEntityType}</span>
             ) : entity ? (
-              <>Viewing details for this {entityType}</>
+              <>Viewing details for {entity.name}</>
             ) : (
-              <>No {entityType} found</>
+              <>No {currentEntityType} found</>
             )}
           </SheetDescription>
         </SheetHeader>
@@ -103,11 +201,11 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
-              <OverviewTab entity={entity} entityType={entityType} />
+              <OverviewTab entity={entity} entityType={currentEntityType} />
             </TabsContent>
 
             <TabsContent value="details" className="space-y-4">
-              {entityType === 'settlement' ? (
+              {currentEntityType === 'settlement' ? (
                 <SettlementPanel
                   settlement={entity as NonNullable<typeof settlementQuery.settlement>}
                 />
@@ -119,22 +217,24 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
             </TabsContent>
 
             <TabsContent value="links" className="space-y-4">
-              <div className="text-sm text-slate-500">
-                Links tab content will be implemented in Stage 8
-              </div>
+              <LinksTab
+                entityType={currentEntityType}
+                entityId={currentEntityId}
+                onNavigate={handleNavigate}
+              />
             </TabsContent>
 
             <TabsContent value="conditions" className="space-y-4">
               <ConditionsTab
-                entityType={entityType === 'settlement' ? 'Settlement' : 'Structure'}
-                entityId={entityId}
+                entityType={currentEntityType === 'settlement' ? 'Settlement' : 'Structure'}
+                entityId={currentEntityId}
               />
             </TabsContent>
 
             <TabsContent value="effects" className="space-y-4">
               <EffectsTab
-                entityType={entityType === 'settlement' ? 'Settlement' : 'Structure'}
-                entityId={entityId}
+                entityType={currentEntityType === 'settlement' ? 'Settlement' : 'Structure'}
+                entityId={currentEntityId}
               />
             </TabsContent>
 

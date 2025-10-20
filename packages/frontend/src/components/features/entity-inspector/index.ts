@@ -8,6 +8,8 @@ export { EffectsTab } from './EffectsTab';
 export type { EffectsTabProps, Effect, EffectExecution, EffectTiming } from './EffectsTab';
 export { EntityInspector } from './EntityInspector';
 export type { EntityInspectorProps, EntityType } from './EntityInspector';
+export { LinksTab } from './LinksTab';
+export type { LinksTabProps, EntityLink } from './LinksTab';
 export { OverviewTab } from './OverviewTab';
 export type { OverviewTabProps, Entity } from './OverviewTab';
 export { SettlementPanel } from './SettlementPanel';
