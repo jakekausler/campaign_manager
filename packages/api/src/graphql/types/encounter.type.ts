@@ -28,6 +28,9 @@ export class Encounter {
   @Field(() => Int, { nullable: true, description: 'Challenge rating or difficulty' })
   difficulty?: number;
 
+  @Field({ nullable: true, description: 'When the encounter is scheduled to occur' })
+  scheduledAt?: Date;
+
   @Field({ description: 'Whether the encounter has been resolved' })
   isResolved!: boolean;
 

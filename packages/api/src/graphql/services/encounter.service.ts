@@ -117,6 +117,7 @@ export class EncounterService {
         name: input.name,
         description: input.description ?? null,
         difficulty: input.difficulty ?? null,
+        scheduledAt: input.scheduledAt ?? null,
         variables: (input.variables ?? {}) as Prisma.InputJsonValue,
       },
     });
@@ -128,6 +129,7 @@ export class EncounterService {
       name: encounter.name,
       description: encounter.description,
       difficulty: encounter.difficulty,
+      scheduledAt: encounter.scheduledAt,
       variables: encounter.variables,
     });
 
@@ -183,6 +185,7 @@ export class EncounterService {
     if (input.name !== undefined) updateData.name = input.name;
     if (input.description !== undefined) updateData.description = input.description;
     if (input.difficulty !== undefined) updateData.difficulty = input.difficulty;
+    if (input.scheduledAt !== undefined) updateData.scheduledAt = input.scheduledAt;
     if (input.isResolved !== undefined) {
       updateData.isResolved = input.isResolved;
       if (input.isResolved) {

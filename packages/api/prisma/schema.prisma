@@ -406,6 +406,7 @@ model Encounter {
   name        String
   description String?
   difficulty  Int? // Challenge Rating or similar
+  scheduledAt DateTime? // When encounter is scheduled to occur
   isResolved  Boolean   @default(false)
   resolvedAt  DateTime?
   variables   Json      @default("{}") // Custom data
@@ -425,6 +426,7 @@ model Encounter {
   @@index([deletedAt])
   @@index([archivedAt])
   @@index([isResolved])
+  @@index([scheduledAt])
 }
 
 model Event {

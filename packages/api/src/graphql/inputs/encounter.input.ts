@@ -45,6 +45,12 @@ export class CreateEncounterInput {
   @IsOptional()
   difficulty?: number;
 
+  @Field({ nullable: true })
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  scheduledAt?: Date;
+
   @Field(() => GraphQLJSON, { nullable: true, defaultValue: {} })
   @IsOptional()
   variables?: Record<string, unknown>;
@@ -58,6 +64,7 @@ export interface UpdateEncounterData {
   name?: string;
   description?: string;
   difficulty?: number;
+  scheduledAt?: Date;
   isResolved?: boolean;
   variables?: Record<string, unknown>;
 }
@@ -84,6 +91,12 @@ export class UpdateEncounterInput implements UpdateEncounterData {
   @Min(0)
   @IsOptional()
   difficulty?: number;
+
+  @Field({ nullable: true })
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  scheduledAt?: Date;
 
   @Field({ nullable: true })
   @IsBoolean()

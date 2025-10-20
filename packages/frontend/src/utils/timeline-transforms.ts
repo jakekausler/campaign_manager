@@ -32,6 +32,7 @@ export interface Encounter {
   name: string;
   description?: string | null;
   difficulty?: number | null;
+  scheduledAt?: string | null;
   isResolved: boolean;
   resolvedAt?: string | null;
   locationId?: string | null;
@@ -158,8 +159,7 @@ export function transformEventToTimelineItem(
  *
  * Handles both resolved and unresolved encounters:
  * - Resolved encounters use resolvedAt as the timeline point
- * - Unresolved encounters don't have a specific timeline date yet
- *   (will be enhanced in Stage 9 with scheduledAt field)
+ * - Scheduled encounters use scheduledAt as the timeline point
  * - If no valid date is available, the item is not created (returns null)
  *
  * @param encounter - The encounter from GraphQL
@@ -179,14 +179,14 @@ export function transformEventToTimelineItem(
  * ```
  */
 export function transformEncounterToTimelineItem(encounter: Encounter): TimelineItem | null {
-  // Currently, encounters only have resolvedAt timestamp
-  // In Stage 9, we'll add scheduledAt field to Encounter model
   let start: Date | null = null;
 
+  // Prioritize resolvedAt for resolved encounters, otherwise use scheduledAt
   if (encounter.isResolved && encounter.resolvedAt) {
     start = new Date(encounter.resolvedAt);
+  } else if (encounter.scheduledAt) {
+    start = new Date(encounter.scheduledAt);
   }
-  // TODO (Stage 9): Add support for encounter.scheduledAt when field is added to backend
 
   // If no valid date, cannot create timeline item
   if (!start) {

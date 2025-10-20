@@ -16,6 +16,7 @@ type Encounter = {
   name: string;
   description?: string | null;
   difficulty?: number | null;
+  scheduledAt?: string | null;
   isResolved: boolean;
   resolvedAt?: string | null;
   variables: Record<string, unknown>;
@@ -51,6 +52,7 @@ export const GET_ENCOUNTERS_BY_CAMPAIGN = gql`
       name
       description
       difficulty
+      scheduledAt
       isResolved
       resolvedAt
       variables
