@@ -205,24 +205,74 @@ From the GraphQL types analysis:
 **Goal**: Create React hook to fetch and combine events/encounters data
 **Success Criteria**:
 
-- [ ] Hook fetches both events and encounters
-- [ ] Combines data into single timeline items array
-- [ ] Handles loading and error states
-- [ ] Supports filtering by campaign ID
-- [ ] Memoizes transformed data
+- [x] Hook fetches both events and encounters
+- [x] Combines data into single timeline items array
+- [x] Handles loading and error states
+- [x] Supports filtering by campaign ID
+- [x] Memoizes transformed data
 
 **Tests**:
 
-- Integration test: Hook combines events and encounters
-- Integration test: Hook handles loading state
-- Integration test: Hook handles GraphQL errors
+- Integration test: Hook combines events and encounters ✓
+- Integration test: Hook handles loading state ✓
+- Integration test: Hook handles GraphQL errors ✓
+- Integration test: Hook transforms events/encounters to timeline items ✓
+- Integration test: Hook detects overdue events with currentWorldTime ✓
+- Integration test: Hook provides refetch function ✓
+- Integration test: Hook memoizes items correctly ✓
+- Integration test: Hook updates when currentWorldTime changes ✓
 
-**Files to create**:
+**Files created**:
 
 - `packages/frontend/src/hooks/useTimelineData.ts`
 - `packages/frontend/src/hooks/useTimelineData.test.tsx`
 
-**Status**: Not Started
+**Files modified**:
+
+- `packages/frontend/src/hooks/index.ts` (exported new hook)
+- `packages/frontend/src/__tests__/mocks/data.ts` (corrected mock data)
+- `packages/frontend/src/services/api/hooks/events.test.tsx` (updated assertions)
+- `packages/frontend/src/services/api/hooks/encounters.test.tsx` (updated assertions)
+
+**Status**: ✅ Complete
+
+**Commit**: 0673f47
+
+**Implementation Notes**:
+
+- Created useTimelineData hook that combines useEventsByCampaign and useEncountersByCampaign
+- Fetches both data sources in parallel using existing GraphQL hooks
+- Transforms combined data using transformToTimelineItems utility from Stage 3
+- Smart loading state logic:
+  - Only shows loading when no cached data exists (not during refetch)
+  - Prevents flashing loading state when data is already available
+- Combined error handling returns first error encountered from either query
+- Memoization strategy:
+  - Items memoized with useMemo based on events, encounters, currentWorldTime
+  - Refetch function wrapped in useCallback to stabilize reference
+  - Return object memoized to prevent unnecessary re-renders
+- Support for optional currentWorldTime parameter for overdue detection
+- Parallel refetch using Promise.all for optimal performance
+- 10 comprehensive integration tests (all passing):
+  - Combining events and encounters into timeline items
+  - Handling campaign with only events
+  - Handling campaign with no data
+  - Event transformation with correct properties (completed/scheduled)
+  - Encounter transformation with correct properties (resolved)
+  - Overdue event detection with currentWorldTime
+  - Refetch functionality
+  - Loading state handling
+  - Memoization behavior (reference stability)
+  - Dynamic updates when currentWorldTime changes
+- Corrected mock data for realistic test scenarios:
+  - event-2 scheduledAt changed to 2024-08-20 (enables overdue detection)
+  - encounter-1 changed to "Dragon Attack" with difficulty 15
+- All 695 frontend tests passing
+- TypeScript type-check passing
+- ESLint checks passing
+- Code review approved with no issues
+- Follows exact patterns from settlement/structure hooks
+- Comprehensive JSDoc documentation with usage examples
 
 ---
 
