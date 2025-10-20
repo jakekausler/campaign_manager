@@ -150,6 +150,7 @@ export function transformEventToTimelineItem(
     ...({
       type: 'event',
       isCompleted: event.isCompleted,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any satisfies Record<string, unknown>),
     type: 'point', // vis-timeline type (must come AFTER metadata to avoid being overwritten)
     className: 'timeline-item-event',
@@ -210,6 +211,7 @@ export function transformEncounterToTimelineItem(encounter: Encounter): Timeline
     ...({
       type: 'encounter',
       isResolved: encounter.isResolved,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any satisfies Record<string, unknown>),
     type: 'point', // vis-timeline type (must come AFTER metadata to avoid being overwritten)
     className: 'timeline-item-encounter',

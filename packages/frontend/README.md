@@ -465,6 +465,105 @@ Client-side filtering approach using createdAt, deletedAt, and archivedAt timest
 
 See `src/components/features/map/README.md` for complete documentation.
 
+## Timeline View
+
+Interactive timeline visualization of campaign events and encounters over world-time using vis-timeline.
+
+### Features
+
+- **Event/Encounter Visualization**: Display scheduled and occurred events/encounters on timeline
+- **Color-Coded Status**: Visual status indicators (completed, scheduled, overdue, resolved, unresolved)
+- **Current Time Marker**: Red vertical line showing campaign's current world time
+- **Drag-to-Reschedule**: Drag items to new dates with validation (no past scheduling, locked completed items)
+- **Zoom & Pan Controls**: Navigate through time with buttons or keyboard shortcuts (+/-, 0, T)
+- **Filtering**: Filter by event type (story, kingdom, party, world) and status with URL persistence
+- **Lane Grouping**: Group items by type (Events/Encounters) or location
+- **Error Boundaries**: Graceful error handling with custom fallback UI
+- **Performance Optimized**: Handles 500+ items with <5s rendering time
+
+### Usage
+
+```tsx
+import { Timeline, TimelineControls, TimelineFilters } from '@/components/features/timeline';
+
+function TimelinePage() {
+  const timelineRef = useRef<TimelineHandle>(null);
+  const { items } = useTimelineData(campaignId);
+
+  return (
+    <>
+      <TimelineControls timelineRef={timelineRef} currentTime={currentTime} />
+      <Timeline
+        ref={timelineRef}
+        items={items}
+        currentTime={currentTime}
+        onItemMove={handleReschedule}
+      />
+    </>
+  );
+}
+```
+
+### Components and Hooks
+
+**Core Components:**
+
+- `Timeline` - Main timeline wrapper for vis-timeline with React-friendly API
+- `TimelineControls` - Zoom/pan control panel with keyboard shortcuts
+- `TimelineFilters` - Filter panel for event types, status, and grouping
+- `ErrorBoundary` - Reusable error boundary for catching rendering errors
+
+**Hooks:**
+
+- `useTimelineReschedule` - Handle drag-to-reschedule with validation and mutations
+- `useEventsByCampaign` - Fetch events for campaign
+- `useEncountersByCampaign` - Fetch encounters for campaign
+- `useCurrentWorldTime` - Fetch current world time for marker
+
+**Utilities:**
+
+- `timeline-transforms.ts` - Transform GraphQL data to vis-timeline format with colors
+- `timeline-validation.ts` - Validate reschedule operations
+- `timeline-filters.ts` - Filter and group timeline items with URL serialization
+
+### Architecture
+
+**Data Flow:**
+
+1. Fetch events and encounters from GraphQL
+2. Apply client-side filters (event type, status)
+3. Transform to vis-timeline format with color-coding
+4. Apply lane grouping strategy
+5. Render on timeline with current time marker
+
+**Validation Rules:**
+
+- Completed events cannot be rescheduled
+- Resolved encounters cannot be rescheduled
+- Items cannot be scheduled before current world time
+- Validation occurs before GraphQL mutation
+
+**Color Scheme:**
+
+- Completed events: Green (#10b981)
+- Scheduled events: Blue (#3b82f6)
+- Overdue events: Red (#ef4444)
+- Resolved encounters: Dark Green (#059669)
+- Unresolved encounters: Orange (#f97316)
+
+### Testing
+
+192 comprehensive tests covering all timeline functionality:
+
+- Transformation utilities (19 tests)
+- Validation logic (11 tests)
+- Filtering and grouping (51 tests)
+- Reschedule hook (8 tests)
+- GraphQL mutations (8 tests)
+- Components (113 tests)
+
+See `docs/features/timeline-view.md` for complete documentation.
+
 ## Styling
 
 ### Tailwind CSS

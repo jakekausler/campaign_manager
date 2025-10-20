@@ -2,6 +2,7 @@ import { useRef, useCallback, useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { TimelineItem } from 'vis-timeline/types';
 
+import { ErrorBoundary } from '@/components';
 import {
   Timeline,
   TimelineControls,
@@ -249,12 +250,49 @@ export default function TimelinePage() {
 
         {/* Timeline visualization */}
         <div className="flex-1 p-6">
-          <Timeline
-            ref={timelineRef}
-            items={items}
-            currentTime={currentTime}
-            onItemMove={handleItemMove}
-          />
+          <ErrorBoundary
+            boundaryName="Timeline"
+            fallback={(error, _errorInfo, reset) => (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center max-w-lg">
+                  <h2 className="text-xl font-semibold text-destructive mb-2">
+                    Timeline Rendering Error
+                  </h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    The timeline failed to render. This may be due to invalid data or a rendering
+                    issue.
+                  </p>
+                  <details className="text-left bg-card border rounded p-4 mb-4">
+                    <summary className="cursor-pointer font-medium text-sm mb-2">
+                      Error Details
+                    </summary>
+                    <pre className="text-xs p-2 bg-muted rounded overflow-auto">
+                      {error.message}
+                    </pre>
+                  </details>
+                  <button
+                    type="button"
+                    onClick={reset}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                    aria-label="Retry rendering timeline"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            )}
+            onError={(error, errorInfo) => {
+              console.error('Timeline rendering error:', error);
+              console.error('Component stack:', errorInfo.componentStack);
+            }}
+          >
+            <Timeline
+              ref={timelineRef}
+              items={items}
+              currentTime={currentTime}
+              onItemMove={handleItemMove}
+            />
+          </ErrorBoundary>
           {rescheduling && (
             <div className="fixed bottom-4 right-4 bg-card border rounded-lg shadow-lg px-4 py-3">
               <div className="text-sm font-medium">Rescheduling...</div>

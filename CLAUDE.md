@@ -1260,6 +1260,41 @@ Interactive flowchart visualization for exploring dependency graphs. See [detail
 
 See `plan/TICKET-021.md` for detailed implementation notes and commit hashes.
 
+## Timeline View
+
+Interactive timeline visualization for events and encounters over campaign world-time. See [detailed documentation](docs/features/timeline-view.md).
+
+**Quick Reference:**
+
+- Page: `TimelinePage` at `/timeline` route in `packages/frontend/src/pages/`
+- Components: `Timeline`, `TimelineControls`, `TimelineFilters`, `ErrorBoundary` in `packages/frontend/src/components/`
+- Hooks: `useTimelineReschedule`, `useEventsByCampaign`, `useEncountersByCampaign` in `packages/frontend/src/hooks/` and `services/api/hooks/`
+- Utilities: `timeline-transforms.ts`, `timeline-validation.ts`, `timeline-filters.ts` in `packages/frontend/src/utils/`
+- GraphQL: `GET_EVENTS_BY_CAMPAIGN`, `GET_ENCOUNTERS_BY_CAMPAIGN` queries; `updateEvent`, `updateEncounter` mutations
+- Key Features: Drag-to-reschedule, color-coded status (completed, scheduled, overdue, resolved), current time marker, zoom/pan controls, keyboard shortcuts (+/-, 0, T)
+- Filtering: Event types (story, kingdom, party, world), status filters, lane grouping (type, location), URL persistence
+- Validation: No past scheduling, completed/resolved items locked, optimistic UI with rollback
+- Performance: <2.5s for 100 items, <3s for 200 items, <5s for 500 items
+- Integration: vis-timeline library, GraphQL mutations with cache invalidation, error boundaries
+- Implementation: TICKET-022 (12 stages, commits: 3273623 - [Stage 12 commit])
+
+**TICKET-022: Timeline View Implementation** (12 stages):
+
+1. Install vis-timeline and create Timeline wrapper component
+2. Create GraphQL hooks for events and encounters
+3. Create data transformation utilities (events/encounters → timeline items)
+4. Implement useTimelineData hook for fetching and combining data
+5. Create TimelinePage with basic visualization
+6. Add current world time marker (red vertical line)
+7. Implement zoom and pan controls with keyboard shortcuts
+8. Add availability color coding (completed proactively in Stage 3)
+9. Implement backend support for encounter scheduling (scheduledAt field)
+10. Implement drag-to-reschedule functionality with validation
+11. Add filtering and lane grouping with URL persistence
+12. Testing, Documentation, and Polish (accessibility audit, error boundaries, performance threshold adjustment)
+
+See `plan/TICKET-022.md` for detailed implementation notes and commit hashes.
+
 ## World Time System
 
 Campaign-specific time tracking with custom calendars. See [detailed documentation](docs/features/world-time-system.md).

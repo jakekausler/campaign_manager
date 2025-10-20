@@ -7,6 +7,7 @@ A full-stack campaign management tool for tabletop RPGs that unifies map, flowch
 - **Multi-View System**: Integrated map, flowchart, and timeline views
 - **Interactive Map**: MapLibre GL-based map rendering with drawing and editing tools for points and polygons
 - **Dependency Graph Visualization**: React Flow-powered flowchart view with auto-layout, filtering, and interactive selection
+- **Timeline View**: vis-timeline-powered event and encounter visualization with drag-to-reschedule, color-coded status, filtering, and zoom/pan controls
 - **Spatial Data**: PostGIS-powered location and geography management
 - **Party & Kingdom Management**: Support for multiple parties, kingdoms, settlements, and structures with level tracking
 - **Typed Variables**: Define custom typed variables (string, number, boolean, enum) for all entity types
@@ -44,6 +45,7 @@ A full-stack campaign management tool for tabletop RPGs that unifies map, flowch
 - **Vitest + MSW** - Testing infrastructure with API mocking at network level
 - **MapLibre GL JS** - Interactive map rendering with point and polygon editing
 - **React Flow** - Interactive flowchart visualization with auto-layout and filtering
+- **vis-timeline** - Timeline visualization for events and encounters with drag-to-reschedule
 
 ### DevOps
 
