@@ -281,26 +281,60 @@ From the GraphQL types analysis:
 **Goal**: Create page component that renders timeline with real data
 **Success Criteria**:
 
-- [ ] TimelinePage component created and routed at `/timeline`
-- [ ] Timeline displays events/encounters from GraphQL
-- [ ] Loading skeleton shown while fetching
-- [ ] Error state displayed on fetch failure
-- [ ] Timeline is responsive
+- [x] TimelinePage component created and routed at `/timeline`
+- [x] Timeline displays events/encounters from GraphQL
+- [x] Loading skeleton shown while fetching
+- [x] Error state displayed on fetch failure
+- [x] Timeline is responsive
 
 **Tests**:
 
-- Integration test: Page renders timeline with data
-- Integration test: Page shows loading state
-- Integration test: Page shows error state
+- Integration test: Page renders timeline with data ✓
+- Integration test: Page shows loading state ✓
+- Integration test: Page shows error state ✓
 
-**Files to create**:
+**Files created**:
 
 - `packages/frontend/src/pages/TimelinePage.tsx`
 - `packages/frontend/src/pages/TimelinePage.test.tsx`
-- Update: `packages/frontend/src/router/index.tsx` (add route)
-- Update: `packages/frontend/src/pages/index.ts` (export)
 
-**Status**: Not Started
+**Files modified**:
+
+- `packages/frontend/src/router/index.tsx` (added /timeline route)
+- `packages/frontend/src/pages/index.ts` (exported TimelinePage)
+
+**Status**: ✅ Complete
+
+**Commit**: 347b057
+
+**Implementation Notes**:
+
+- Created TimelinePage component with comprehensive state handling
+- Timeline displays events/encounters using useTimelineData hook from Stage 4
+- Loading state shows user-friendly message during data fetch
+- Error state with retry button (accessible with ARIA label and focus ring styles)
+- Empty states for:
+  - No campaign selected
+  - No timeline items exist
+- Responsive full-height layout with header showing item count
+- Protected route at /timeline requiring authentication
+- Lazy-loaded for optimal bundle size
+- 15 comprehensive integration tests (all passing):
+  - Loading state rendering (2 tests)
+  - Error state with retry functionality (3 tests)
+  - Empty states for no campaign and no data (2 tests)
+  - Success state with timeline rendering (4 tests)
+  - Data fetching with campaign ID (2 tests)
+  - Responsive layout structure (2 tests)
+- Code quality improvements based on Code Reviewer feedback:
+  - Removed unnecessary useMemo (identity transformation)
+  - Added accessibility to retry button (type, aria-label, focus ring)
+  - Direct pass-through of items to Timeline component
+- All 710 frontend tests passing (no regressions)
+- TypeScript type-check passing
+- ESLint checks passing
+- Follows existing page patterns (FlowViewPage, MapPage)
+- TODO placeholder for currentWorldTime integration in Stage 6
 
 ---
 
