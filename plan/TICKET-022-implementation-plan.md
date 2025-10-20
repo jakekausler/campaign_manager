@@ -581,32 +581,87 @@ This completes the foundation for drag-to-reschedule functionality in Stage 10.
 **Goal**: Allow dragging timeline items to reschedule events/encounters
 **Success Criteria**:
 
-- [ ] vis-timeline editable mode enabled
-- [ ] Dragging event updates `scheduledAt` via mutation
-- [ ] Dragging encounter updates `scheduledAt` via mutation
-- [ ] Optimistic UI update during drag
-- [ ] Validation prevents scheduling in past (before current world time)
-- [ ] Error handling with rollback on mutation failure
+- [x] vis-timeline editable mode enabled
+- [x] Dragging event updates `scheduledAt` via mutation
+- [x] Dragging encounter updates `scheduledAt` via mutation
+- [x] Optimistic UI update during drag
+- [x] Validation prevents scheduling in past (before current world time)
+- [x] Error handling with rollback on mutation failure
 
 **Tests**:
 
-- Integration test: Dragging event calls updateEvent mutation
-- Integration test: Dragging encounter calls updateEncounter mutation
-- Integration test: Validation prevents past scheduling
-- Integration test: Failed mutation rolls back optimistic update
+- Integration test: Dragging event calls updateEvent mutation ✓
+- Integration test: Dragging encounter calls updateEncounter mutation ✓
+- Integration test: Validation prevents past scheduling ✓
+- Integration test: Failed mutation rolls back optimistic update ✓
 
-**Files to create**:
+**Files created**:
 
 - `packages/frontend/src/hooks/useTimelineReschedule.ts`
-- `packages/frontend/src/hooks/useTimelineReschedule.test.tsx`
+- `packages/frontend/src/hooks/useTimelineReschedule.test.tsx` (8 tests)
 - `packages/frontend/src/utils/timeline-validation.ts`
-- `packages/frontend/src/utils/timeline-validation.test.ts`
+- `packages/frontend/src/utils/timeline-validation.test.ts` (11 tests)
+- `packages/frontend/src/services/api/mutations/events.ts`
+- `packages/frontend/src/services/api/mutations/events.test.tsx` (4 tests)
+- `packages/frontend/src/services/api/mutations/encounters.ts`
+- `packages/frontend/src/services/api/mutations/encounters.test.tsx` (4 tests)
 
-**Files to update**:
+**Files updated**:
 
-- `packages/frontend/src/components/features/timeline/Timeline.tsx` (add drag handlers)
+- `packages/frontend/src/pages/TimelinePage.tsx` (integrated handleItemMove handler)
+- `packages/frontend/src/utils/timeline-transforms.ts` (added metadata to items)
+- `packages/frontend/src/utils/index.ts` (exported validation utilities)
+- `packages/frontend/src/hooks/index.ts` (exported useTimelineReschedule)
+- `packages/frontend/src/services/api/mutations/index.ts` (exported new mutations)
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: c36c371
+
+**Implementation Notes**:
+
+Implemented comprehensive drag-to-reschedule functionality with validation, mutations, and error handling.
+
+**Core Features:**
+
+- Timeline validation utilities (validateScheduledTime, canRescheduleItem)
+- useTimelineReschedule hook composing updateEvent and updateEncounter mutations
+- GraphQL mutations for updateEvent and updateEncounter with refetchQueries
+- Integration with Timeline component via onItemMove handler
+- Loading indicator and error feedback during reschedule operations
+
+**Validation Rules:**
+
+- Prevents rescheduling completed events (editable: false)
+- Prevents rescheduling resolved encounters (editable: false)
+- Validates against scheduling in the past (relative to current world time)
+- Respects item.editable flag for per-item control
+
+**Implementation Details:**
+
+- Timeline items include metadata (type, isCompleted, isResolved) for validation
+- Spread operator ordering ensures vis-timeline type='point' not overwritten by metadata type
+- useTimelineReschedule composes both mutation hooks with unified validation
+- Error messages wrapped with "Failed to reschedule: " prefix for clarity
+- Refetches timeline data on success to show updated state
+- Optimistic UI update via callback (success=confirm, failure=revert)
+- Alert dialogs for error feedback (can be replaced with toast in future)
+
+**Test Coverage:**
+
+- 27 new tests for Stage 10 functionality (all passing)
+- 11 tests for timeline validation utilities
+- 8 tests for useTimelineReschedule hook
+- 4 tests for event mutations
+- 4 tests for encounter mutations
+- 769/770 total frontend tests passing (99.87%)
+
+**Code Quality:**
+
+- TypeScript type-check passing
+- ESLint checks passing (5 new warnings for `any` types, noted in code review)
+- Code review approved with optional suggestions for future improvement
+- Follows project conventions and patterns from existing mutation hooks
 
 ---
 
