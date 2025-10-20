@@ -1,6 +1,6 @@
-import { forwardRef, memo, useImperativeHandle, useMemo, useRef } from 'react';
-import VisTimeline from 'react-vis-timeline';
-import type { Timeline as ReactVisTimeline } from 'react-vis-timeline/build/timeline';
+import { forwardRef, memo, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { DataSet } from 'vis-data';
+import { Timeline as VisTimeline } from 'vis-timeline/standalone';
 import type { TimelineItem, TimelineGroup, TimelineOptions } from 'vis-timeline/types';
 import 'vis-timeline/styles/vis-timeline-graph2d.css';
 import './Timeline.css';
@@ -129,8 +129,17 @@ const TimelineComponent = forwardRef<TimelineHandle, TimelineProps>(function Tim
   { items, groups, options = {}, currentTime, onItemMove, onSelect, className = '' },
   ref
 ) {
-  // Ref to the underlying VisTimeline component
-  const visTimelineRef = useRef<ReactVisTimeline>(null);
+  // Ref to the DOM container element
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Ref to the vis-timeline instance
+  const timelineRef = useRef<VisTimeline | null>(null);
+  // Ref to the items DataSet
+  const itemsDataSetRef = useRef<DataSet<TimelineItem> | null>(null);
+  // Ref to the groups DataSet
+  const groupsDataSetRef = useRef<DataSet<TimelineGroup> | null>(null);
+  // Refs to callback props to avoid stale closures in event listeners
+  const onItemMoveRef = useRef(onItemMove);
+  const onSelectRef = useRef(onSelect);
 
   // Memoize merged options to prevent unnecessary re-renders
   const mergedOptions = useMemo<TimelineOptions>(
@@ -141,15 +150,117 @@ const TimelineComponent = forwardRef<TimelineHandle, TimelineProps>(function Tim
     [options]
   );
 
-  // Memoize custom times for current world time marker
-  const customTimes = useMemo(() => {
-    if (!currentTime) return undefined;
-    return [
-      {
-        id: 'current-world-time',
-        datetime: currentTime,
-      },
-    ];
+  // Keep callback refs in sync with props to avoid stale closures
+  useEffect(() => {
+    onItemMoveRef.current = onItemMove;
+  }, [onItemMove]);
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
+
+  // Initialize timeline instance
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Create DataSets for items and groups
+    itemsDataSetRef.current = new DataSet(items);
+    groupsDataSetRef.current = groups ? new DataSet(groups) : new DataSet([]);
+
+    // Create timeline instance
+    // Note: Type casting required due to vis-timeline/vis-data type incompatibility
+    timelineRef.current = new VisTimeline(
+      containerRef.current,
+      itemsDataSetRef.current as any,
+      groupsDataSetRef.current as any,
+      mergedOptions
+    );
+
+    // Add current world time marker if provided
+    if (currentTime) {
+      timelineRef.current.addCustomTime(currentTime, 'current-world-time');
+    }
+
+    // Attach event listeners (use refs to avoid stale closures)
+    timelineRef.current.on('timechange', (properties: { id: string; time: Date }) => {
+      const item = itemsDataSetRef.current?.get(properties.id);
+      if (item && onItemMoveRef.current) {
+        const updatedItem = { ...item, start: properties.time };
+        onItemMoveRef.current(updatedItem, (result) => {
+          if (result === null) {
+            // Revert the change
+            itemsDataSetRef.current?.update(item);
+          } else {
+            // Accept the change
+            itemsDataSetRef.current?.update(result);
+          }
+        });
+      }
+    });
+
+    timelineRef.current.on('select', (properties: { items: string[]; event: Event }) => {
+      if (onSelectRef.current) {
+        onSelectRef.current(properties);
+      }
+    });
+
+    // Cleanup on unmount
+    return () => {
+      if (timelineRef.current) {
+        timelineRef.current.destroy();
+        timelineRef.current = null;
+      }
+      itemsDataSetRef.current = null;
+      groupsDataSetRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only initialize once. Subsequent updates handled by separate useEffects.
+
+  // Update items when they change
+  useEffect(() => {
+    if (itemsDataSetRef.current) {
+      itemsDataSetRef.current.clear();
+      itemsDataSetRef.current.add(items);
+    }
+  }, [items]);
+
+  // Update groups when they change
+  useEffect(() => {
+    if (groupsDataSetRef.current) {
+      groupsDataSetRef.current.clear();
+      if (groups) {
+        groupsDataSetRef.current.add(groups);
+      }
+    }
+  }, [groups]);
+
+  // Update options when they change
+  useEffect(() => {
+    if (timelineRef.current) {
+      timelineRef.current.setOptions(mergedOptions);
+    }
+  }, [mergedOptions]);
+
+  // Update current time marker when it changes
+  useEffect(() => {
+    if (timelineRef.current) {
+      if (currentTime) {
+        try {
+          // Try to update existing custom time
+          timelineRef.current.setCustomTime(currentTime, 'current-world-time');
+        } catch {
+          // If it doesn't exist, add it
+          timelineRef.current.addCustomTime(currentTime, 'current-world-time');
+        }
+      } else {
+        try {
+          // Remove custom time if currentTime is null/undefined
+          timelineRef.current.removeCustomTime('current-world-time');
+        } catch {
+          // Ignore error if custom time doesn't exist
+        }
+      }
+    }
   }, [currentTime]);
 
   // Expose imperative methods via ref for zoom and pan controls
@@ -157,23 +268,23 @@ const TimelineComponent = forwardRef<TimelineHandle, TimelineProps>(function Tim
     ref,
     () => ({
       zoomIn: () => {
-        if (visTimelineRef.current?.timeline) {
-          visTimelineRef.current.timeline.zoomIn(0.1); // Zoom in by 10%
+        if (timelineRef.current) {
+          timelineRef.current.zoomIn(0.1); // Zoom in by 10%
         }
       },
       zoomOut: () => {
-        if (visTimelineRef.current?.timeline) {
-          visTimelineRef.current.timeline.zoomOut(0.1); // Zoom out by 10%
+        if (timelineRef.current) {
+          timelineRef.current.zoomOut(0.1); // Zoom out by 10%
         }
       },
       fit: () => {
-        if (visTimelineRef.current?.timeline) {
-          visTimelineRef.current.timeline.fit();
+        if (timelineRef.current) {
+          timelineRef.current.fit();
         }
       },
       moveTo: (date: Date) => {
-        if (visTimelineRef.current?.timeline) {
-          visTimelineRef.current.timeline.moveTo(date);
+        if (timelineRef.current) {
+          timelineRef.current.moveTo(date);
         }
       },
     }),
@@ -182,15 +293,7 @@ const TimelineComponent = forwardRef<TimelineHandle, TimelineProps>(function Tim
 
   return (
     <div className={className ? `timeline-container ${className}` : 'timeline-container'}>
-      <VisTimeline
-        ref={visTimelineRef}
-        initialItems={items}
-        initialGroups={groups}
-        options={mergedOptions}
-        customTimes={customTimes}
-        timechangeHandler={onItemMove}
-        selectHandler={onSelect}
-      />
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 });

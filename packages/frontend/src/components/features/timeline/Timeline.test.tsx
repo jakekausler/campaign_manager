@@ -4,31 +4,86 @@ import { describe, it, expect, vi } from 'vitest';
 
 import { Timeline } from './Timeline';
 
-// Mock vis-timeline component
-vi.mock('react-vis-timeline', () => ({
-  default: ({
-    initialItems,
-    initialGroups,
-    customTimes,
-  }: {
-    initialItems?: TimelineItem[];
-    initialGroups?: unknown[];
-    customTimes?: Array<{ id: string; datetime: Date }>;
-  }) => (
-    <div data-testid="mock-timeline">
-      <div data-testid="timeline-items-count">{initialItems?.length || 0}</div>
-      <div data-testid="timeline-groups-count">{initialGroups?.length || 0}</div>
-      {customTimes && customTimes.length > 0 && (
-        <div data-testid="custom-times">
-          {customTimes.map((ct) => (
-            <div key={ct.id} data-testid={`custom-time-${ct.id}`}>
-              {ct.datetime.toISOString()}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  ),
+// Mock vis-timeline and vis-data libraries
+vi.mock('vis-timeline/standalone', () => ({
+  Timeline: vi.fn().mockImplementation(function (
+    this: any,
+    container: any,
+    items: any,
+    groups: any,
+    options: any
+  ) {
+    // Store data for testing
+    this.container = container;
+    this.items = items;
+    this.groups = groups;
+    this.options = options;
+    this.customTimes = new Map();
+    this.eventHandlers = new Map();
+
+    // Mock methods
+    this.setItems = vi.fn((newItems: any) => {
+      this.items = newItems;
+    });
+    this.setGroups = vi.fn((newGroups: any) => {
+      this.groups = newGroups;
+    });
+    this.setOptions = vi.fn((newOptions: any) => {
+      this.options = { ...this.options, ...newOptions };
+    });
+    this.addCustomTime = vi.fn((time: Date, id: string) => {
+      this.customTimes.set(id, time);
+      // Add data attributes to container for testing
+      container.setAttribute(`data-custom-time-${id}`, time.toISOString());
+    });
+    this.setCustomTime = vi.fn((time: Date, id: string) => {
+      this.customTimes.set(id, time);
+      container.setAttribute(`data-custom-time-${id}`, time.toISOString());
+    });
+    this.removeCustomTime = vi.fn((id: string) => {
+      this.customTimes.delete(id);
+      container.removeAttribute(`data-custom-time-${id}`);
+    });
+    this.on = vi.fn((event: string, handler: any) => {
+      this.eventHandlers.set(event, handler);
+    });
+    this.zoomIn = vi.fn();
+    this.zoomOut = vi.fn();
+    this.fit = vi.fn();
+    this.moveTo = vi.fn();
+    this.destroy = vi.fn();
+
+    // Add data attributes for testing
+    container.setAttribute('data-testid', 'mock-timeline');
+    container.setAttribute('data-items-count', items?.length?.toString() || '0');
+    container.setAttribute('data-groups-count', groups?.length?.toString() || '0');
+  }),
+}));
+
+vi.mock('vis-data', () => ({
+  DataSet: vi.fn().mockImplementation(function (this: any, data: any = []) {
+    this.data = Array.isArray(data) ? [...data] : [];
+    this.length = this.data.length;
+
+    this.add = vi.fn((items: any) => {
+      const itemsArray = Array.isArray(items) ? items : [items];
+      this.data.push(...itemsArray);
+      this.length = this.data.length;
+    });
+    this.clear = vi.fn(() => {
+      this.data = [];
+      this.length = 0;
+    });
+    this.update = vi.fn((item: any) => {
+      const index = this.data.findIndex((d: any) => d.id === item.id);
+      if (index !== -1) {
+        this.data[index] = item;
+      }
+    });
+    this.get = vi.fn((id: any) => {
+      return this.data.find((d: any) => d.id === id);
+    });
+  }),
 }));
 
 describe('Timeline', () => {
@@ -38,9 +93,7 @@ describe('Timeline', () => {
 
       const timeline = screen.getByTestId('mock-timeline');
       expect(timeline).toBeInTheDocument();
-
-      const itemsCount = screen.getByTestId('timeline-items-count');
-      expect(itemsCount).toHaveTextContent('0');
+      expect(timeline).toHaveAttribute('data-items-count', '0');
     });
 
     it('should render with mock items', () => {
@@ -69,9 +122,7 @@ describe('Timeline', () => {
 
       const timeline = screen.getByTestId('mock-timeline');
       expect(timeline).toBeInTheDocument();
-
-      const itemsCount = screen.getByTestId('timeline-items-count');
-      expect(itemsCount).toHaveTextContent('3');
+      expect(timeline).toHaveAttribute('data-items-count', '3');
     });
 
     it('should render with groups for lane organization', () => {
@@ -94,9 +145,7 @@ describe('Timeline', () => {
 
       const timeline = screen.getByTestId('mock-timeline');
       expect(timeline).toBeInTheDocument();
-
-      const groupsCount = screen.getByTestId('timeline-groups-count');
-      expect(groupsCount).toHaveTextContent('2');
+      expect(timeline).toHaveAttribute('data-groups-count', '2');
     });
 
     it('should apply custom className', () => {
@@ -190,8 +239,8 @@ describe('Timeline', () => {
 
       render(<Timeline items={mockItems} />);
 
-      const itemsCount = screen.getByTestId('timeline-items-count');
-      expect(itemsCount).toHaveTextContent('3');
+      const timeline = screen.getByTestId('mock-timeline');
+      expect(timeline).toHaveAttribute('data-items-count', '3');
     });
 
     it('should handle items with custom styling', () => {
@@ -237,11 +286,9 @@ describe('Timeline', () => {
 
       render(<Timeline items={mockItems} groups={mockGroups} />);
 
-      const itemsCount = screen.getByTestId('timeline-items-count');
-      expect(itemsCount).toHaveTextContent('2');
-
-      const groupsCount = screen.getByTestId('timeline-groups-count');
-      expect(groupsCount).toHaveTextContent('2');
+      const timeline = screen.getByTestId('mock-timeline');
+      expect(timeline).toHaveAttribute('data-items-count', '2');
+      expect(timeline).toHaveAttribute('data-groups-count', '2');
     });
   });
 
@@ -258,8 +305,8 @@ describe('Timeline', () => {
 
       render(<Timeline items={mockItems} currentTime={null} />);
 
-      const customTimes = screen.queryByTestId('custom-times');
-      expect(customTimes).not.toBeInTheDocument();
+      const timeline = screen.getByTestId('mock-timeline');
+      expect(timeline).not.toHaveAttribute('data-custom-time-current-world-time');
     });
 
     it('should not render custom time marker when currentTime is undefined', () => {
@@ -274,8 +321,8 @@ describe('Timeline', () => {
 
       render(<Timeline items={mockItems} />);
 
-      const customTimes = screen.queryByTestId('custom-times');
-      expect(customTimes).not.toBeInTheDocument();
+      const timeline = screen.getByTestId('mock-timeline');
+      expect(timeline).not.toHaveAttribute('data-custom-time-current-world-time');
     });
 
     it('should render custom time marker when currentTime is provided', () => {
@@ -291,12 +338,11 @@ describe('Timeline', () => {
 
       render(<Timeline items={mockItems} currentTime={currentTime} />);
 
-      const customTimes = screen.getByTestId('custom-times');
-      expect(customTimes).toBeInTheDocument();
-
-      const customTime = screen.getByTestId('custom-time-current-world-time');
-      expect(customTime).toBeInTheDocument();
-      expect(customTime).toHaveTextContent(currentTime.toISOString());
+      const timeline = screen.getByTestId('mock-timeline');
+      expect(timeline).toHaveAttribute(
+        'data-custom-time-current-world-time',
+        currentTime.toISOString()
+      );
     });
 
     it('should update custom time marker when currentTime changes', () => {
@@ -313,13 +359,19 @@ describe('Timeline', () => {
 
       const { rerender } = render(<Timeline items={mockItems} currentTime={initialTime} />);
 
-      let customTime = screen.getByTestId('custom-time-current-world-time');
-      expect(customTime).toHaveTextContent(initialTime.toISOString());
+      let timeline = screen.getByTestId('mock-timeline');
+      expect(timeline).toHaveAttribute(
+        'data-custom-time-current-world-time',
+        initialTime.toISOString()
+      );
 
       rerender(<Timeline items={mockItems} currentTime={updatedTime} />);
 
-      customTime = screen.getByTestId('custom-time-current-world-time');
-      expect(customTime).toHaveTextContent(updatedTime.toISOString());
+      timeline = screen.getByTestId('mock-timeline');
+      expect(timeline).toHaveAttribute(
+        'data-custom-time-current-world-time',
+        updatedTime.toISOString()
+      );
     });
 
     it('should remove custom time marker when currentTime changes from defined to null', () => {
@@ -335,13 +387,16 @@ describe('Timeline', () => {
 
       const { rerender } = render(<Timeline items={mockItems} currentTime={initialTime} />);
 
-      const customTimes = screen.getByTestId('custom-times');
-      expect(customTimes).toBeInTheDocument();
+      let timeline = screen.getByTestId('mock-timeline');
+      expect(timeline).toHaveAttribute(
+        'data-custom-time-current-world-time',
+        initialTime.toISOString()
+      );
 
       rerender(<Timeline items={mockItems} currentTime={null} />);
 
-      const updatedCustomTimes = screen.queryByTestId('custom-times');
-      expect(updatedCustomTimes).not.toBeInTheDocument();
+      timeline = screen.getByTestId('mock-timeline');
+      expect(timeline).not.toHaveAttribute('data-custom-time-current-world-time');
     });
   });
 });
