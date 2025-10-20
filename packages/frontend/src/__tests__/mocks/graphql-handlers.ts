@@ -29,14 +29,18 @@ export const graphqlHandlers = [
 
   graphql.query('GetSettlementDetails', ({ variables }) => {
     const { id } = variables as { id: string };
-    const settlement = mockSettlements.find((s) => s.id === id);
-    if (!settlement) {
+
+    // Simulate server error for "invalid-*" IDs
+    if (id.startsWith('invalid-')) {
       return HttpResponse.json({
-        errors: [{ message: 'Settlement not found' }],
+        errors: [{ message: 'Internal server error' }],
       });
     }
+
+    // Return null data for entities that don't exist (no error)
+    const settlement = mockSettlements.find((s) => s.id === id);
     return HttpResponse.json({
-      data: { settlement },
+      data: { settlement: settlement ?? null },
     });
   }),
 
@@ -57,14 +61,18 @@ export const graphqlHandlers = [
   // Structure Queries
   graphql.query('GetStructureDetails', ({ variables }) => {
     const { id } = variables as { id: string };
-    const structure = mockStructures.find((s) => s.id === id);
-    if (!structure) {
+
+    // Simulate server error for "invalid-*" IDs
+    if (id.startsWith('invalid-')) {
       return HttpResponse.json({
-        errors: [{ message: 'Structure not found' }],
+        errors: [{ message: 'Internal server error' }],
       });
     }
+
+    // Return null data for entities that don't exist (no error)
+    const structure = mockStructures.find((s) => s.id === id);
     return HttpResponse.json({
-      data: { structure },
+      data: { structure: structure ?? null },
     });
   }),
 
