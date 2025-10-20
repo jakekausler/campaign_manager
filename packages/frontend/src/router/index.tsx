@@ -12,6 +12,7 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const MapPage = lazy(() => import('@/pages/MapPage'));
 const FlowViewPage = lazy(() => import('@/pages/FlowViewPage'));
 const TimelinePage = lazy(() => import('@/pages/TimelinePage'));
+const EntityInspectorDemoPage = lazy(() => import('@/pages/EntityInspectorDemoPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 // Loading fallback component
@@ -88,6 +89,16 @@ export const router = createBrowserRouter([
           <ProtectedRoute>
             <LazyPage>
               <TimelinePage />
+            </LazyPage>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'inspector-demo',
+        element: (
+          <ProtectedRoute>
+            <LazyPage>
+              <EntityInspectorDemoPage />
             </LazyPage>
           </ProtectedRoute>
         ),

@@ -15,4 +15,5 @@ export { default as DashboardPage } from './DashboardPage';
 export { default as MapPage } from './MapPage';
 export { default as FlowViewPage } from './FlowViewPage';
 export { default as TimelinePage } from './TimelinePage';
+export { default as EntityInspectorDemoPage } from './EntityInspectorDemoPage';
 export { default as NotFoundPage } from './NotFoundPage';
