@@ -25,18 +25,21 @@ import { SortOrder } from './filter.input';
  */
 @InputType()
 export class CreateEffectInput {
-  @Field({ description: 'Display name for this effect' })
+  @Field(() => String, { description: 'Display name for this effect' })
   @IsString()
   @IsNotEmpty()
   name!: string;
 
-  @Field({ nullable: true, description: 'Human-readable explanation of what this effect does' })
+  @Field(() => String, {
+    nullable: true,
+    description: 'Human-readable explanation of what this effect does',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(500)
   description?: string | null;
 
-  @Field({
+  @Field(() => String, {
     description: 'Type of effect (e.g., "modify_variable", "trigger_event", "create_entity")',
   })
   @IsString()
@@ -50,7 +53,9 @@ export class CreateEffectInput {
   @IsNotEmpty()
   payload!: Record<string, unknown>;
 
-  @Field({ description: 'Type of entity this effect belongs to (e.g., "encounter", "event")' })
+  @Field(() => String, {
+    description: 'Type of entity this effect belongs to (e.g., "encounter", "event")',
+  })
   @IsString()
   @IsNotEmpty()
   entityType!: string;
@@ -85,18 +90,21 @@ export class CreateEffectInput {
  */
 @InputType()
 export class UpdateEffectInput {
-  @Field({ nullable: true, description: 'Display name for this effect' })
+  @Field(() => String, { nullable: true, description: 'Display name for this effect' })
   @IsString()
   @IsOptional()
   name?: string;
 
-  @Field({ nullable: true, description: 'Human-readable explanation of what this effect does' })
+  @Field(() => String, {
+    nullable: true,
+    description: 'Human-readable explanation of what this effect does',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(500)
   description?: string | null;
 
-  @Field({ nullable: true, description: 'Type of effect' })
+  @Field(() => String, { nullable: true, description: 'Type of effect' })
   @IsString()
   @IsOptional()
   effectType?: string;
@@ -167,7 +175,7 @@ export class ExecuteEffectInput {
  */
 @InputType()
 export class ExecuteEffectsForEntityInput {
-  @Field({ description: 'Type of entity (e.g., "encounter", "event")' })
+  @Field(() => String, { description: 'Type of entity (e.g., "encounter", "event")' })
   @IsString()
   @IsNotEmpty()
   entityType!: string;
@@ -197,17 +205,17 @@ export class ExecuteEffectsForEntityInput {
  */
 @InputType()
 export class EffectWhereInput {
-  @Field({ nullable: true, description: 'Filter by effect name (partial match)' })
+  @Field(() => String, { nullable: true, description: 'Filter by effect name (partial match)' })
   @IsString()
   @IsOptional()
   name?: string;
 
-  @Field({ nullable: true, description: 'Filter by effect type' })
+  @Field(() => String, { nullable: true, description: 'Filter by effect type' })
   @IsString()
   @IsOptional()
   effectType?: string;
 
-  @Field({ nullable: true, description: 'Filter by entity type' })
+  @Field(() => String, { nullable: true, description: 'Filter by entity type' })
   @IsString()
   @IsOptional()
   entityType?: string;
@@ -293,7 +301,7 @@ export class EffectExecutionWhereInput {
   @IsOptional()
   effectId?: string;
 
-  @Field({ nullable: true, description: 'Filter by entity type' })
+  @Field(() => String, { nullable: true, description: 'Filter by entity type' })
   @IsString()
   @IsOptional()
   entityType?: string;

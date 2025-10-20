@@ -22,6 +22,6 @@ export class WorldTimeResult {
   @Field(() => Int, { description: 'Count of entities with versions at this time' })
   affectedEntities!: number;
 
-  @Field({ description: 'Human-readable message about the time advancement' })
+  @Field(() => String, { description: 'Human-readable message about the time advancement' })
   message!: string;
 }

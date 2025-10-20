@@ -36,7 +36,7 @@ export class CreateLinkInput {
   @IsIn(['prerequisite', 'blocks', 'triggers', 'related'])
   linkType!: string; // "prerequisite" | "blocks" | "triggers" | "related"
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   description?: string;
@@ -44,13 +44,13 @@ export class CreateLinkInput {
 
 @InputType()
 export class UpdateLinkInput {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   @IsIn(['prerequisite', 'blocks', 'triggers', 'related'])
   linkType?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   description?: string;

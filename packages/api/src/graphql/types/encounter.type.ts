@@ -19,37 +19,37 @@ export class Encounter {
   @Field(() => ID, { nullable: true })
   locationId?: string;
 
-  @Field()
+  @Field(() => Date)
   name!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   description?: string;
 
   @Field(() => Int, { nullable: true, description: 'Challenge rating or difficulty' })
   difficulty?: number;
 
-  @Field({ nullable: true, description: 'When the encounter is scheduled to occur' })
+  @Field(() => String, { nullable: true, description: 'When the encounter is scheduled to occur' })
   scheduledAt?: Date;
 
   @Field({ description: 'Whether the encounter has been resolved' })
   isResolved!: boolean;
 
-  @Field({ nullable: true, description: 'When the encounter was resolved' })
+  @Field(() => String, { nullable: true, description: 'When the encounter was resolved' })
   resolvedAt?: Date;
 
   @Field(() => GraphQLJSON, { description: 'Custom encounter data' })
   variables!: Record<string, unknown>;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   deletedAt?: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   archivedAt?: Date;
 }
 

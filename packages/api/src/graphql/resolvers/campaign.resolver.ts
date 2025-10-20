@@ -11,7 +11,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type {
+import {
   CreateCampaignInput,
   UpdateCampaignInput,
   UpdateCampaignData,
@@ -45,7 +45,7 @@ export class CampaignResolver {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'gm')
   async createCampaign(
-    @Args('input') input: CreateCampaignInput,
+    @Args('input', { type: () => CreateCampaignInput }) input: CreateCampaignInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<Campaign> {
     return this.campaignService.create(input, user) as Promise<Campaign>;

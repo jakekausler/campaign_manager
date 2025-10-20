@@ -11,7 +11,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type { CreateLinkInput, UpdateLinkInput } from '../inputs/link.input';
+import { CreateLinkInput, UpdateLinkInput } from '../inputs/link.input';
 import { LinkService } from '../services/link.service';
 import { Link } from '../types/link.type';
 

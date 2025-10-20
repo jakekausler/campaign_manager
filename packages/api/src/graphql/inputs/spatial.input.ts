@@ -118,7 +118,7 @@ export class UpdateLocationGeometryInput {
   @IsNotEmpty()
   expectedVersion!: number;
 
-  @Field({ nullable: true, description: 'World time for time-travel' })
+  @Field(() => String, { nullable: true, description: 'World time for time-travel' })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

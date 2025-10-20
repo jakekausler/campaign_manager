@@ -23,7 +23,7 @@ export class Settlement {
   @Field(() => Location, { description: 'The location where this settlement is placed' })
   location!: Location;
 
-  @Field()
+  @Field(() => Date)
   name!: string;
 
   @Field(() => Int, { description: 'Settlement level' })
@@ -38,16 +38,16 @@ export class Settlement {
   @Field(() => Int, { description: 'Version for optimistic locking' })
   version!: number;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   deletedAt?: Date | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   archivedAt?: Date | null;
 
   @Field(() => GraphQLJSON, {

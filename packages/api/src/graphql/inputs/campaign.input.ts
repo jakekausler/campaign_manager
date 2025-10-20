@@ -28,7 +28,7 @@ export class CreateCampaignInput {
   @IsNotEmpty()
   worldId!: string;
 
-  @Field(() => GraphQLJSON, { nullable: true, defaultValue: {} })
+  @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
   settings?: Record<string, unknown>;
 
@@ -49,7 +49,7 @@ export interface UpdateCampaignData {
 
 @InputType()
 export class UpdateCampaignInput implements UpdateCampaignData {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
@@ -58,7 +58,7 @@ export class UpdateCampaignInput implements UpdateCampaignData {
   @IsOptional()
   settings?: Record<string, unknown>;
 
-  @Field({ nullable: true })
+  @Field(() => Boolean, { nullable: true })
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
@@ -73,7 +73,7 @@ export class UpdateCampaignInput implements UpdateCampaignData {
   @IsNotEmpty()
   expectedVersion!: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

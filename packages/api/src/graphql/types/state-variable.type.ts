@@ -64,9 +64,7 @@ export class StateVariable {
   })
   scopeId?: string | null;
 
-  @Field({
-    description: 'Variable name/key within the scope',
-  })
+  @Field(() => String, { description: 'Variable name/key within the scope' })
   key!: string;
 
   @Field(() => GraphQLJSON, {
@@ -86,13 +84,13 @@ export class StateVariable {
   })
   formula?: Record<string, unknown> | null;
 
-  @Field({
+  @Field(() => String, {
     nullable: true,
     description: 'Human-readable description of this variable',
   })
   description?: string | null;
 
-  @Field({
+  @Field(() => Boolean, {
     description: 'Whether this variable is currently active',
   })
   isActive!: boolean;
@@ -102,13 +100,13 @@ export class StateVariable {
   })
   version!: number;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   deletedAt?: Date | null;
 
   @Field(() => ID, { description: 'User who created this variable' })
@@ -126,7 +124,7 @@ export class VariableEvaluationResult {
   @Field(() => ID, { description: 'ID of the evaluated variable' })
   variableId!: string;
 
-  @Field({ description: 'Variable key' })
+  @Field(() => String, { description: 'Variable key' })
   key!: string;
 
   @Field(() => VariableScope, { description: 'Variable scope' })
@@ -141,7 +139,7 @@ export class VariableEvaluationResult {
   @Field({ description: 'Whether evaluation succeeded' })
   success!: boolean;
 
-  @Field({ nullable: true, description: 'Error message if evaluation failed' })
+  @Field(() => String, { nullable: true, description: 'Error message if evaluation failed' })
   error?: string | null;
 
   @Field(() => [EvaluationStep], {
@@ -156,10 +154,10 @@ export class VariableEvaluationResult {
  */
 @ObjectType()
 export class EvaluationStep {
-  @Field({ description: 'Step description' })
+  @Field(() => String, { description: 'Step description' })
   step!: string;
 
-  @Field({ nullable: true, description: 'Step details' })
+  @Field(() => String, { nullable: true, description: 'Step details' })
   description?: string | null;
 
   @Field(() => GraphQLJSON, { nullable: true, description: 'Input to this step' })

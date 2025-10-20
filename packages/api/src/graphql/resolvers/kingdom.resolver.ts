@@ -11,11 +11,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type {
-  CreateKingdomInput,
-  UpdateKingdomInput,
-  UpdateKingdomData,
-} from '../inputs/kingdom.input';
+import { CreateKingdomInput, UpdateKingdomInput, UpdateKingdomData } from '../inputs/kingdom.input';
 import { DefineVariableSchemaInput, SetVariableInput } from '../inputs/variable.input';
 import { KingdomService } from '../services/kingdom.service';
 import { VariableSchemaService } from '../services/variable-schema.service';

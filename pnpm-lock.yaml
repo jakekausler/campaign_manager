@@ -57,8 +57,8 @@ importers:
         specifier: ^0.7.15
         version: 0.7.15
       '@nestjs/apollo':
-        specifier: ^13.2.1
-        version: 13.2.1(@apollo/server@4.12.2(graphql@16.11.0))(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(@nestjs/graphql@12.2.2(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(class-transformer@0.5.1)(class-validator@0.14.2)(graphql@16.11.0)(reflect-metadata@0.2.2))(graphql@16.11.0)
+        specifier: ^12.2.2
+        version: 12.2.2(@apollo/server@4.12.2(graphql@16.11.0))(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(@nestjs/graphql@12.2.2(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(class-transformer@0.5.1)(class-validator@0.14.2)(graphql@16.11.0)(reflect-metadata@0.2.2))(graphql@16.11.0)
       '@nestjs/cache-manager':
         specifier: ^3.0.1
         version: 3.0.1(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(cache-manager@7.2.4)(keyv@5.5.3)(rxjs@7.8.2)
@@ -521,8 +521,8 @@ packages:
     peerDependencies:
       graphql: 14.x || 15.x || 16.x
 
-  '@apollo/server-plugin-landing-page-graphql-playground@4.0.1':
-    resolution: {integrity: sha512-tWhQzD7DtiTO/wfbGvasryz7eJSuEh9XJHgRTMZI7+Wu/omylG5gH6K6ksg1Vccg8/Xuglfi2f1M5Nm/IlBBGw==}
+  '@apollo/server-plugin-landing-page-graphql-playground@4.0.0':
+    resolution: {integrity: sha512-PBDtKI/chJ+hHeoJUUH9Kuqu58txQl00vUGuxqiC9XcReulIg7RjsyD0G1u3drX4V709bxkL5S0nTeXfRHD0qA==}
     engines: {node: '>=14.0'}
     deprecated: The use of GraphQL Playground in Apollo Server was supported in previous versions, but this is no longer the case as of December 31, 2022. This package exists for v4 migration purposes only. We do not intend to resolve security issues or other bugs with this package if they arise, so please migrate away from this to [Apollo Server's default Explorer](https://www.apollographql.com/docs/apollo-server/api/plugin/landing-pages) as soon as possible.
     peerDependencies:
@@ -1964,24 +1964,21 @@ packages:
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
 
-  '@nestjs/apollo@13.2.1':
-    resolution: {integrity: sha512-BJPNw8xqs4DfdEEmjaAbI6cIJsHouWjcZN70BKTPl8rZcw4Tf61RonqFRn0F/rr/aiccWGAuXJuWY4dPsgah4Q==}
+  '@nestjs/apollo@12.2.2':
+    resolution: {integrity: sha512-gsDqSfsmTSvF0k3XaRESRgM3uE/YFO+59txCsq7T1EadDOVOuoF3zVQiFmi6D50Rlnqohqs63qjjf46mgiiXgQ==}
     peerDependencies:
       '@apollo/gateway': ^2.0.0
-      '@apollo/server': ^5.0.0
+      '@apollo/server': ^4.3.2
       '@apollo/subgraph': ^2.0.0
-      '@as-integrations/express5': '*'
-      '@as-integrations/fastify': ^2.1.1 || ^3.0.0
-      '@nestjs/common': ^11.0.1
-      '@nestjs/core': ^11.0.1
-      '@nestjs/graphql': ^13.0.0
-      graphql: ^16.10.0
+      '@as-integrations/fastify': ^1.3.0 || ^2.0.0
+      '@nestjs/common': ^9.3.8 || ^10.0.0
+      '@nestjs/core': ^9.3.8 || ^10.0.0
+      '@nestjs/graphql': ^12.0.0
+      graphql: ^16.6.0
     peerDependenciesMeta:
       '@apollo/gateway':
         optional: true
       '@apollo/subgraph':
-        optional: true
-      '@as-integrations/express5':
         optional: true
       '@as-integrations/fastify':
         optional: true
@@ -8093,7 +8090,7 @@ snapshots:
       '@apollo/utils.logger': 2.0.1
       graphql: 16.11.0
 
-  '@apollo/server-plugin-landing-page-graphql-playground@4.0.1(@apollo/server@4.12.2(graphql@16.11.0))':
+  '@apollo/server-plugin-landing-page-graphql-playground@4.0.0(@apollo/server@4.12.2(graphql@16.11.0))':
     dependencies:
       '@apollo/server': 4.12.2(graphql@16.11.0)
       '@apollographql/graphql-playground-html': 1.6.29
@@ -10248,10 +10245,10 @@ snapshots:
       '@tybys/wasm-util': 0.10.1
     optional: true
 
-  '@nestjs/apollo@13.2.1(@apollo/server@4.12.2(graphql@16.11.0))(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(@nestjs/graphql@12.2.2(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(class-transformer@0.5.1)(class-validator@0.14.2)(graphql@16.11.0)(reflect-metadata@0.2.2))(graphql@16.11.0)':
+  '@nestjs/apollo@12.2.2(@apollo/server@4.12.2(graphql@16.11.0))(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(@nestjs/graphql@12.2.2(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(class-transformer@0.5.1)(class-validator@0.14.2)(graphql@16.11.0)(reflect-metadata@0.2.2))(graphql@16.11.0)':
     dependencies:
       '@apollo/server': 4.12.2(graphql@16.11.0)
-      '@apollo/server-plugin-landing-page-graphql-playground': 4.0.1(@apollo/server@4.12.2(graphql@16.11.0))
+      '@apollo/server-plugin-landing-page-graphql-playground': 4.0.0(@apollo/server@4.12.2(graphql@16.11.0))
       '@nestjs/common': 10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core': 10.4.20(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/microservices@10.4.20)(@nestjs/platform-express@10.4.20)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/graphql': 12.2.2(@nestjs/common@10.4.20(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.20)(class-transformer@0.5.1)(class-validator@0.14.2)(graphql@16.11.0)(reflect-metadata@0.2.2)

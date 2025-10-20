@@ -29,7 +29,7 @@ export enum VariableTypeEnum {
 }
 
 registerEnumType(VariableTypeEnum, {
-  name: 'VariableType',
+  name: 'SchemaVariableType',
   description: 'Type of a typed variable',
 });
 

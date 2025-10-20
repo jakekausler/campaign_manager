@@ -14,7 +14,7 @@ export class FieldCondition {
   @Field(() => ID)
   id!: string;
 
-  @Field({
+  @Field(() => String, {
     description: 'Type of entity this condition applies to (e.g., "Settlement", "Structure")',
   })
   entityType!: string;
@@ -25,7 +25,7 @@ export class FieldCondition {
   })
   entityId?: string | null;
 
-  @Field({
+  @Field(() => String, {
     description: 'The field name this condition computes (e.g., "is_trade_hub", "is_operational")',
   })
   field!: string;
@@ -33,7 +33,10 @@ export class FieldCondition {
   @Field(() => GraphQLJSON, { description: 'JSONLogic expression for evaluation' })
   expression!: Record<string, unknown>;
 
-  @Field({ nullable: true, description: 'Human-readable explanation of what this condition does' })
+  @Field(() => String, {
+    nullable: true,
+    description: 'Human-readable explanation of what this condition does',
+  })
   description?: string | null;
 
   @Field({ description: 'Whether this condition is active' })
@@ -45,13 +48,13 @@ export class FieldCondition {
   @Field(() => Int, { description: 'Version for optimistic locking' })
   version!: number;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   deletedAt?: Date | null;
 
   @Field(() => ID, { description: 'User who created this condition' })
@@ -66,7 +69,7 @@ export class FieldCondition {
  */
 @ObjectType()
 export class EvaluationTrace {
-  @Field({ description: 'Description of this evaluation step' })
+  @Field(() => String, { description: 'Description of this evaluation step' })
   step!: string;
 
   @Field(() => GraphQLJSON, { description: 'Input to this step' })
@@ -93,6 +96,6 @@ export class EvaluationResult {
   @Field(() => [EvaluationTrace], { description: 'Trace of evaluation steps for debugging' })
   trace!: EvaluationTrace[];
 
-  @Field({ nullable: true, description: 'Error message if evaluation failed' })
+  @Field(() => String, { nullable: true, description: 'Error message if evaluation failed' })
   error?: string | null;
 }

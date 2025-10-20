@@ -17,16 +17,16 @@ export class Character {
   @Field(() => ID, { nullable: true })
   partyId?: string;
 
-  @Field()
+  @Field(() => Date)
   name!: string;
 
   @Field(() => Int)
   level!: number;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   race?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   class?: string;
 
   @Field({ description: 'Whether this character is an NPC' })
@@ -35,15 +35,15 @@ export class Character {
   @Field(() => GraphQLJSON, { description: 'Character stats, inventory, and custom variables' })
   variables!: Record<string, unknown>;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   deletedAt?: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   archivedAt?: Date;
 }

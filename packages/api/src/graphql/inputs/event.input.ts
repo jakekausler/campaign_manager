@@ -25,7 +25,7 @@ export class CreateEventInput {
   @IsNotEmpty()
   campaignId!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsUUID()
   @IsOptional()
   locationId?: string;
@@ -35,7 +35,7 @@ export class CreateEventInput {
   @IsNotEmpty()
   name!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   description?: string;
@@ -46,12 +46,12 @@ export class CreateEventInput {
   @IsIn(['story', 'kingdom', 'party', 'world'])
   eventType!: string; // "story" | "kingdom" | "party" | "world"
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsDateString()
   @IsOptional()
   scheduledAt?: string;
 
-  @Field(() => GraphQLJSON, { nullable: true, defaultValue: {} })
+  @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
   variables?: Record<string, unknown>;
 }
@@ -72,38 +72,38 @@ export interface UpdateEventData {
 
 @InputType()
 export class UpdateEventInput implements UpdateEventData {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsUUID()
   @IsOptional()
   locationId?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   description?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   @IsIn(['story', 'kingdom', 'party', 'world'])
   eventType?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsDateString()
   @IsOptional()
   scheduledAt?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsDateString()
   @IsOptional()
   occurredAt?: string;
 
-  @Field({ nullable: true })
+  @Field(() => Boolean, { nullable: true })
   @IsBoolean()
   @IsOptional()
   isCompleted?: boolean;
@@ -122,7 +122,7 @@ export class UpdateEventInput implements UpdateEventData {
   @IsNotEmpty()
   expectedVersion!: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

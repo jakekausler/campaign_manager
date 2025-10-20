@@ -15,13 +15,13 @@ export class Location {
   @Field(() => ID)
   worldId!: string;
 
-  @Field({ description: 'Location type: point or region' })
+  @Field(() => String, { description: 'Location type: point or region' })
   type!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   name?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   description?: string;
 
   @Field(() => ID, { nullable: true })
@@ -33,15 +33,15 @@ export class Location {
   })
   geojson?: unknown;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   deletedAt?: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   archivedAt?: Date;
 }

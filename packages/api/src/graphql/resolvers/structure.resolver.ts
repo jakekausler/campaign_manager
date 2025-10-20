@@ -22,7 +22,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser, GraphQLContext } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type { CreateStructureInput, UpdateStructureInput } from '../inputs/structure.input';
+import { CreateStructureInput, UpdateStructureInput } from '../inputs/structure.input';
 import { DefineVariableSchemaInput, SetVariableInput } from '../inputs/variable.input';
 import { StructureService } from '../services/structure.service';
 import { VariableSchemaService } from '../services/variable-schema.service';

@@ -53,8 +53,8 @@ export class SpatialResolver {
   @UseGuards(JwtAuthGuard)
   async mapLayer(
     @Args('worldId', { type: () => ID }) worldId: string,
-    @Args('bbox') bbox: BoundingBoxInput,
-    @Args('filters', { nullable: true }) filters: MapFilterInput | null,
+    @Args('bbox', { type: () => BoundingBoxInput }) bbox: BoundingBoxInput,
+    @Args('filters', { type: () => MapFilterInput, nullable: true }) filters: MapFilterInput | null,
     @CurrentUser() _user: AuthenticatedUser
   ): Promise<GeoJSONFeatureCollection> {
     // Generate cache key

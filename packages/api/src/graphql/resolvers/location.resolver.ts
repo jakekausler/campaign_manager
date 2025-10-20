@@ -21,7 +21,7 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { SpatialService } from '../../common/services/spatial.service';
 import type { AuthenticatedUser, GraphQLContext } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type {
+import {
   CreateLocationInput,
   UpdateLocationInput,
   UpdateLocationData,

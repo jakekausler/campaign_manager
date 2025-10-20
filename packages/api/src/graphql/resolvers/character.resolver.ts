@@ -11,7 +11,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type { CreateCharacterInput, UpdateCharacterInput } from '../inputs/character.input';
+import { CreateCharacterInput, UpdateCharacterInput } from '../inputs/character.input';
 import { CharacterService } from '../services/character.service';
 import { Character } from '../types/character.type';
 

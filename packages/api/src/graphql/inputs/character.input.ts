@@ -40,12 +40,12 @@ export class CreateCharacterInput {
   @IsOptional()
   level?: number;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   race?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   class?: string;
@@ -55,7 +55,7 @@ export class CreateCharacterInput {
   @IsOptional()
   isNPC?: boolean;
 
-  @Field(() => GraphQLJSON, { nullable: true, defaultValue: {} })
+  @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
   variables?: Record<string, unknown>;
 }
@@ -75,7 +75,7 @@ export interface UpdateCharacterData {
 
 @InputType()
 export class UpdateCharacterInput implements UpdateCharacterData {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
@@ -91,17 +91,17 @@ export class UpdateCharacterInput implements UpdateCharacterData {
   @IsOptional()
   level?: number;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   race?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   class?: string;
 
-  @Field({ nullable: true })
+  @Field(() => Boolean, { nullable: true })
   @IsBoolean()
   @IsOptional()
   isNPC?: boolean;
@@ -120,7 +120,7 @@ export class UpdateCharacterInput implements UpdateCharacterData {
   @IsNotEmpty()
   expectedVersion!: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

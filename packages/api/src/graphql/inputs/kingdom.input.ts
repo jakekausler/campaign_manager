@@ -47,7 +47,7 @@ export interface UpdateKingdomData {
 
 @InputType()
 export class UpdateKingdomInput implements UpdateKingdomData {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
@@ -76,7 +76,7 @@ export class UpdateKingdomInput implements UpdateKingdomData {
   @IsNotEmpty()
   expectedVersion!: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

@@ -24,7 +24,7 @@ export class CreateEncounterInput {
   @IsNotEmpty()
   campaignId!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsUUID()
   @IsOptional()
   locationId?: string;
@@ -34,7 +34,7 @@ export class CreateEncounterInput {
   @IsNotEmpty()
   name!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   description?: string;
@@ -45,13 +45,13 @@ export class CreateEncounterInput {
   @IsOptional()
   difficulty?: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)
   scheduledAt?: Date;
 
-  @Field(() => GraphQLJSON, { nullable: true, defaultValue: {} })
+  @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
   variables?: Record<string, unknown>;
 }
@@ -71,17 +71,17 @@ export interface UpdateEncounterData {
 
 @InputType()
 export class UpdateEncounterInput implements UpdateEncounterData {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsUUID()
   @IsOptional()
   locationId?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   description?: string;
@@ -92,13 +92,13 @@ export class UpdateEncounterInput implements UpdateEncounterData {
   @IsOptional()
   difficulty?: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)
   scheduledAt?: Date;
 
-  @Field({ nullable: true })
+  @Field(() => Boolean, { nullable: true })
   @IsBoolean()
   @IsOptional()
   isResolved?: boolean;
@@ -117,7 +117,7 @@ export class UpdateEncounterInput implements UpdateEncounterData {
   @IsNotEmpty()
   expectedVersion!: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

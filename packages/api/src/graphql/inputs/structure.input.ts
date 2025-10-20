@@ -15,7 +15,7 @@ export class CreateStructureInput {
   @IsNotEmpty()
   settlementId!: string;
 
-  @Field({ description: 'Structure type (e.g., temple, barracks, market, library)' })
+  @Field(() => String, { description: 'Structure type (e.g., temple, barracks, market, library)' })
   @IsString()
   @IsNotEmpty()
   type!: string;
@@ -53,12 +53,12 @@ export interface UpdateStructureData {
 
 @InputType()
 export class UpdateStructureInput implements UpdateStructureData {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   type?: string;
@@ -87,7 +87,7 @@ export class UpdateStructureInput implements UpdateStructureData {
   @IsNotEmpty()
   expectedVersion!: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

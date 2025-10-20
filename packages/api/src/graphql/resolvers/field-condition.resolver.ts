@@ -71,14 +71,17 @@ export class FieldConditionResolver {
   })
   @UseGuards(JwtAuthGuard)
   async getConditionsForEntity(
-    @Args('entityType') entityType: string,
+    @Args('entityType', { type: () => String }) entityType: string,
     @Args('entityId', { type: () => ID }) entityId: string,
-    @Args('field', { nullable: true }) field: string | undefined,
+    @Args('field', { type: () => String, nullable: true }) field: string | null | undefined,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<FieldCondition[]> {
-    return this.conditionService.findForEntity(entityType, entityId, field, user) as Promise<
-      FieldCondition[]
-    >;
+    return this.conditionService.findForEntity(
+      entityType,
+      entityId,
+      field ?? undefined,
+      user
+    ) as Promise<FieldCondition[]>;
   }
 
   /**

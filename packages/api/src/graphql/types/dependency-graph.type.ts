@@ -118,9 +118,7 @@ export class CycleInfo {
  */
 @ObjectType()
 export class CycleDetectionResult {
-  @Field({
-    description: 'Whether any cycles were detected in the graph',
-  })
+  @Field({ description: 'Whether any cycles were detected in the graph' })
   hasCycles!: boolean;
 
   @Field(() => [CycleInfo], {
@@ -139,9 +137,7 @@ export class CycleDetectionResult {
  */
 @ObjectType()
 export class TopologicalSortResult {
-  @Field({
-    description: 'Whether the topological sort succeeded (false if cycles detected)',
-  })
+  @Field({ description: 'Whether the topological sort succeeded (false if cycles detected)' })
   success!: boolean;
 
   @Field(() => [ID], {
@@ -217,18 +213,12 @@ export class DependencyGraphResult {
   })
   stats!: DependencyGraphStats;
 
-  @Field({
-    description: 'Campaign ID this graph belongs to',
-  })
+  @Field(() => String, { description: 'Campaign ID this graph belongs to' })
   campaignId!: string;
 
-  @Field({
-    description: 'Branch ID this graph represents',
-  })
+  @Field(() => String, { description: 'Branch ID this graph represents' })
   branchId!: string;
 
-  @Field({
-    description: 'Timestamp when this graph was built or last updated',
-  })
+  @Field({ description: 'Timestamp when this graph was built or last updated' })
   builtAt!: Date;
 }

@@ -11,7 +11,9 @@ export class Version {
   @Field(() => ID)
   id!: string;
 
-  @Field({ description: 'Type of entity being versioned (e.g., "campaign", "character")' })
+  @Field(() => String, {
+    description: 'Type of entity being versioned (e.g., "campaign", "character")',
+  })
   entityType!: string;
 
   @Field(() => ID, { description: 'ID of the entity being versioned' })
@@ -35,7 +37,7 @@ export class Version {
   @Field(() => Int, { description: 'Version number for optimistic locking' })
   version!: number;
 
-  @Field({ nullable: true, description: 'Optional comment describing the change' })
+  @Field(() => String, { nullable: true, description: 'Optional comment describing the change' })
   comment?: string;
 
   @Field(() => ID, { description: 'User who created this version' })
@@ -64,7 +66,7 @@ export class EntityModified {
   @Field(() => ID, { description: 'ID of the entity that was modified' })
   entityId!: string;
 
-  @Field({ description: 'Type of entity that was modified' })
+  @Field(() => String, { description: 'Type of entity that was modified' })
   entityType!: string;
 
   @Field(() => Int, { description: 'New version number after modification' })

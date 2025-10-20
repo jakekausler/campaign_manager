@@ -19,17 +19,17 @@ export class CreateLocationInput {
   @IsNotEmpty()
   type!: string; // "point" | "region"
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   description?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsUUID()
   @IsOptional()
   parentLocationId?: string;
@@ -50,22 +50,22 @@ export interface UpdateLocationData {
 
 @InputType()
 export class UpdateLocationInput implements UpdateLocationData {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   type?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   description?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsUUID()
   @IsOptional()
   parentLocationId?: string | null;
@@ -80,7 +80,7 @@ export class UpdateLocationInput implements UpdateLocationData {
   @IsNotEmpty()
   expectedVersion!: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

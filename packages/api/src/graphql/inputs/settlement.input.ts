@@ -52,7 +52,7 @@ export interface UpdateSettlementData {
 
 @InputType()
 export class UpdateSettlementInput implements UpdateSettlementData {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
@@ -81,7 +81,7 @@ export class UpdateSettlementInput implements UpdateSettlementData {
   @IsNotEmpty()
   expectedVersion!: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

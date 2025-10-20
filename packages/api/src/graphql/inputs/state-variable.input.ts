@@ -40,9 +40,7 @@ export class CreateStateVariableInput {
   @IsOptional()
   scopeId?: string | null;
 
-  @Field({
-    description: 'Variable name/key within the scope',
-  })
+  @Field(() => String, { description: 'Variable name/key within the scope' })
   @IsString()
   @IsNotEmpty()
   key!: string;
@@ -70,7 +68,7 @@ export class CreateStateVariableInput {
   @IsNotEmpty()
   formula?: Record<string, unknown> | null;
 
-  @Field({
+  @Field(() => String, {
     nullable: true,
     description: 'Human-readable description of this variable',
   })
@@ -98,7 +96,7 @@ export class UpdateStateVariableInput {
   @IsOptional()
   formula?: Record<string, unknown> | null;
 
-  @Field({
+  @Field(() => String, {
     nullable: true,
     description: 'Human-readable description of this variable',
   })
@@ -144,10 +142,7 @@ export class StateVariableWhereInput {
   @IsOptional()
   scopeId?: string | null;
 
-  @Field({
-    nullable: true,
-    description: 'Filter by variable key',
-  })
+  @Field(() => String, { nullable: true, description: 'Filter by variable key' })
   @IsString()
   @IsOptional()
   key?: string;

@@ -16,7 +16,7 @@ export class Party {
   @Field(() => ID)
   campaignId!: string;
 
-  @Field()
+  @Field(() => Date)
   name!: string;
 
   @Field(() => Int, { nullable: true, description: 'Computed average party level' })
@@ -31,15 +31,15 @@ export class Party {
   @Field(() => [VariableSchemaType], { description: 'Variable schema definitions for validation' })
   variableSchemas!: VariableSchemaType[];
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   deletedAt?: Date | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   archivedAt?: Date | null;
 }

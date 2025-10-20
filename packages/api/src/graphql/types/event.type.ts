@@ -19,19 +19,22 @@ export class Event {
   @Field(() => ID, { nullable: true })
   locationId?: string;
 
-  @Field()
+  @Field(() => Date)
   name!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   description?: string;
 
-  @Field({ description: 'Event type: story, kingdom, party, or world' })
+  @Field(() => String, { description: 'Event type: story, kingdom, party, or world' })
   eventType!: string;
 
-  @Field({ nullable: true, description: 'When the event is scheduled to occur (world time)' })
+  @Field(() => String, {
+    nullable: true,
+    description: 'When the event is scheduled to occur (world time)',
+  })
   scheduledAt?: Date;
 
-  @Field({ nullable: true, description: 'When the event occurred (world time)' })
+  @Field(() => String, { nullable: true, description: 'When the event occurred (world time)' })
   occurredAt?: Date;
 
   @Field({ description: 'Whether the event has been completed' })
@@ -40,16 +43,16 @@ export class Event {
   @Field(() => GraphQLJSON, { description: 'Custom event data' })
   variables!: Record<string, unknown>;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   deletedAt?: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   archivedAt?: Date;
 }
 

@@ -11,7 +11,7 @@ export class World {
   @Field(() => ID)
   id!: string;
 
-  @Field()
+  @Field(() => Date)
   name!: string;
 
   @Field(() => GraphQLJSON, { description: 'Custom JSON schema for calendar systems' })
@@ -20,15 +20,15 @@ export class World {
   @Field(() => GraphQLJSON, { description: 'World settings and configuration' })
   settings!: Record<string, unknown>;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   deletedAt?: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   archivedAt?: Date;
 }

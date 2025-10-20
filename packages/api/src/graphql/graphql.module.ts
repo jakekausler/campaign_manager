@@ -13,18 +13,8 @@ import type { Response } from 'express';
 import type { DocumentNode, GraphQLSchema } from 'graphql';
 import { fieldExtensionsEstimator, getComplexity, simpleEstimator } from 'graphql-query-complexity';
 
-import { SpatialService } from '../common/services/spatial.service';
-import { TileCacheService } from '../common/services/tile-cache.service';
-import { DatabaseModule } from '../database/database.module';
-import { ExpressionParserService } from '../rules/expression-parser.service';
-
-import { createRedisCache, REDIS_CACHE } from './cache/redis-cache.provider';
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
-import { LocationGeometryDataLoader } from './dataloaders/location-geometry.dataloader';
-import { LocationDataLoader } from './dataloaders/location.dataloader';
-import { SettlementDataLoader } from './dataloaders/settlement.dataloader';
-import { StructureDataLoader } from './dataloaders/structure.dataloader';
-import { createRedisPubSub, REDIS_PUBSUB } from './pubsub/redis-pubsub.provider';
+import { GraphQLCoreModule } from './graphql-core.module';
 import { CampaignResolver } from './resolvers/campaign.resolver';
 import { CharacterResolver } from './resolvers/character.resolver';
 import { DependencyGraphResolver } from './resolvers/dependency-graph.resolver';
@@ -46,42 +36,14 @@ import { WorldTimeResolver } from './resolvers/world-time.resolver';
 import { WorldResolver } from './resolvers/world.resolver';
 import { DateTimeScalar } from './scalars/datetime.scalar';
 import { GeoJSONScalar } from './scalars/geojson.scalar';
-import { JSONScalar } from './scalars/json.scalar';
 import { UploadScalar } from './scalars/upload.scalar';
-import { AuditService } from './services/audit.service';
-import { CampaignContextService } from './services/campaign-context.service';
-import { CampaignService } from './services/campaign.service';
-import { CharacterService } from './services/character.service';
-import { ConditionEvaluationService } from './services/condition-evaluation.service';
-import { ConditionService } from './services/condition.service';
-import { DependencyGraphBuilderService } from './services/dependency-graph-builder.service';
-import { DependencyGraphService } from './services/dependency-graph.service';
-import { EffectExecutionService } from './services/effect-execution.service';
-import { EffectPatchService } from './services/effect-patch.service';
-import { EffectService } from './services/effect.service';
-import { EncounterService } from './services/encounter.service';
-import { EventService } from './services/event.service';
-import { KingdomService } from './services/kingdom.service';
-import { LevelHistoryService } from './services/level-history.service';
-import { LinkService } from './services/link.service';
-import { LocationService } from './services/location.service';
-import { PartyService } from './services/party.service';
-import { SettlementService } from './services/settlement.service';
-import { StateVariableService } from './services/state-variable.service';
-import { StructureService } from './services/structure.service';
-import { VariableEvaluationService } from './services/variable-evaluation.service';
-import { VariableSchemaService } from './services/variable-schema.service';
-import { VersionService } from './services/version.service';
-import { WorldTimeService } from './services/world-time.service';
-import { WorldService } from './services/world.service';
-import { DependencyExtractor } from './utils/dependency-extractor';
 
 @Module({
   imports: [
-    DatabaseModule, // For PrismaService in context factory
+    GraphQLCoreModule, // Provides all services, dataloaders, context factory
     NestGraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
-      imports: [DatabaseModule],
+      imports: [GraphQLCoreModule],
       useFactory: (contextFactory: GraphQLContextFactory) => ({
         // Code-first approach - generate schema from TypeScript classes
         autoSchemaFile: join(process.cwd(), 'packages/api/src/schema.gql'),
@@ -156,54 +118,6 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     }),
   ],
   providers: [
-    // Context factory
-    GraphQLContextFactory,
-    // Redis PubSub for subscriptions
-    {
-      provide: REDIS_PUBSUB,
-      useFactory: createRedisPubSub,
-    },
-    // Redis Cache for caching
-    {
-      provide: REDIS_CACHE,
-      useFactory: createRedisCache,
-    },
-    // Services
-    AuditService,
-    VersionService,
-    WorldService,
-    CampaignService,
-    CampaignContextService,
-    CharacterService,
-    PartyService,
-    KingdomService,
-    SettlementService,
-    StructureService,
-    LocationService,
-    EncounterService,
-    EventService,
-    LinkService,
-    SpatialService,
-    TileCacheService,
-    LevelHistoryService,
-    VariableSchemaService,
-    WorldTimeService,
-    ExpressionParserService,
-    VariableEvaluationService,
-    StateVariableService,
-    ConditionService,
-    ConditionEvaluationService,
-    DependencyExtractor,
-    DependencyGraphBuilderService,
-    DependencyGraphService,
-    EffectPatchService,
-    EffectExecutionService,
-    EffectService,
-    // DataLoaders
-    LocationDataLoader,
-    LocationGeometryDataLoader,
-    SettlementDataLoader,
-    StructureDataLoader,
     // Resolvers
     HealthResolver,
     VersionResolver,
@@ -226,10 +140,9 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     EffectResolver,
     // Register custom scalars,
     DateTimeScalar,
-    JSONScalar,
     GeoJSONScalar,
     UploadScalar,
   ],
-  exports: [NestGraphQLModule, GraphQLContextFactory],
+  exports: [NestGraphQLModule, GraphQLCoreModule],
 })
 export class GraphQLConfigModule {}

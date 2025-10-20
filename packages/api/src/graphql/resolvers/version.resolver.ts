@@ -10,7 +10,7 @@ import type { RedisPubSub } from 'graphql-redis-subscriptions';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type { RestoreVersionInput } from '../inputs/version.input';
+import { RestoreVersionInput } from '../inputs/version.input';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 import { VersionService } from '../services/version.service';
 import type { EntityModified as EntityModifiedType } from '../types/version.type';

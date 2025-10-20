@@ -77,12 +77,15 @@ export class StateVariableResolver {
   async getVariablesForScope(
     @Args('scope', { type: () => VariableScope }) scope: VariableScope,
     @Args('scopeId', { type: () => ID, nullable: true }) scopeId: string | null | undefined,
-    @Args('key', { nullable: true }) key: string | undefined,
+    @Args('key', { type: () => String, nullable: true }) key: string | null | undefined,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<StateVariable[]> {
-    return this.stateVariableService.findByScope(scope, scopeId ?? null, key, user) as Promise<
-      StateVariable[]
-    >;
+    return this.stateVariableService.findByScope(
+      scope,
+      scopeId ?? null,
+      key ?? undefined,
+      user
+    ) as Promise<StateVariable[]>;
   }
 
   /**

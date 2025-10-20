@@ -25,7 +25,7 @@
     "@aws-sdk/s3-request-presigner": "^3.911.0",
     "@grpc/grpc-js": "^1.14.0",
     "@grpc/proto-loader": "^0.7.15",
-    "@nestjs/apollo": "^13.2.1",
+    "@nestjs/apollo": "^12.2.2",
     "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/common": "^10.3.0",
     "@nestjs/core": "^10.3.0",

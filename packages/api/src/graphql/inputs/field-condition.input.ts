@@ -14,7 +14,7 @@ import { SortOrder } from './filter.input';
  */
 @InputType()
 export class CreateFieldConditionInput {
-  @Field({
+  @Field(() => String, {
     description: 'Type of entity this condition applies to (e.g., "Settlement", "Structure")',
   })
   @IsString()
@@ -29,7 +29,7 @@ export class CreateFieldConditionInput {
   @IsOptional()
   entityId?: string | null;
 
-  @Field({
+  @Field(() => String, {
     description: 'The field name this condition computes (e.g., "is_trade_hub", "is_operational")',
   })
   @IsString()
@@ -40,7 +40,10 @@ export class CreateFieldConditionInput {
   @IsNotEmpty()
   expression!: Record<string, unknown>;
 
-  @Field({ nullable: true, description: 'Human-readable explanation of what this condition does' })
+  @Field(() => String, {
+    nullable: true,
+    description: 'Human-readable explanation of what this condition does',
+  })
   @IsString()
   @IsOptional()
   description?: string | null;
@@ -64,7 +67,10 @@ export class UpdateFieldConditionInput {
   @IsOptional()
   expression?: Record<string, unknown>;
 
-  @Field({ nullable: true, description: 'Human-readable explanation of what this condition does' })
+  @Field(() => String, {
+    nullable: true,
+    description: 'Human-readable explanation of what this condition does',
+  })
   @IsString()
   @IsOptional()
   description?: string | null;
@@ -94,7 +100,7 @@ export class UpdateFieldConditionInput {
  */
 @InputType()
 export class FieldConditionWhereInput {
-  @Field({ nullable: true, description: 'Filter by entity type' })
+  @Field(() => String, { nullable: true, description: 'Filter by entity type' })
   @IsString()
   @IsOptional()
   entityType?: string;
@@ -104,7 +110,7 @@ export class FieldConditionWhereInput {
   @IsOptional()
   entityId?: string | null;
 
-  @Field({ nullable: true, description: 'Filter by field name' })
+  @Field(() => String, { nullable: true, description: 'Filter by field name' })
   @IsString()
   @IsOptional()
   field?: string;

@@ -11,7 +11,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type { CreateEncounterInput, UpdateEncounterInput } from '../inputs/encounter.input';
+import { CreateEncounterInput, UpdateEncounterInput } from '../inputs/encounter.input';
 import { EncounterService } from '../services/encounter.service';
 import { Encounter, EncounterResolutionResult } from '../types/encounter.type';
 

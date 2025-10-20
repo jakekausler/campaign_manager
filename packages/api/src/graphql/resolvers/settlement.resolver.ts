@@ -22,7 +22,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser, GraphQLContext } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
-import type {
+import {
   CreateSettlementInput,
   UpdateSettlementInput,
   UpdateSettlementData,

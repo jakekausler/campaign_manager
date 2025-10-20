@@ -16,3 +16,4 @@ dist/
 # IDE
 .vscode/
 .idea/
+schema.gql

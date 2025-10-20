@@ -4,9 +4,9 @@
  */
 
 import { ObjectType, Field, ID, Float } from '@nestjs/graphql';
+import { GraphQLJSON } from 'graphql-type-json';
 
 import { GeoJSONScalar } from '../scalars/geojson.scalar';
-import { JSONScalar } from '../scalars/json.scalar';
 
 /**
  * GeoJSON Feature for map layers
@@ -22,7 +22,7 @@ export class GeoJSONFeature {
   @Field(() => GeoJSONScalar, { description: 'GeoJSON geometry' })
   geometry!: unknown; // Using unknown to accept any GeoJSON geometry type
 
-  @Field(() => JSONScalar, { description: 'Feature properties with entity metadata' })
+  @Field(() => GraphQLJSON, { description: 'Feature properties with entity metadata' })
   properties!: Record<string, unknown>;
 }
 
@@ -49,13 +49,13 @@ export class LocationWithDistance {
   @Field(() => ID)
   worldId!: string;
 
-  @Field()
+  @Field(() => Date)
   type!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   name?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   description?: string;
 
   @Field(() => ID, { nullable: true })
@@ -64,10 +64,10 @@ export class LocationWithDistance {
   @Field(() => Float, { description: 'Distance in meters from query point' })
   distance!: number;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 }
 
@@ -82,7 +82,7 @@ export class SettlementWithDistance {
   @Field(() => ID)
   locationId!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   name?: string;
 
   @Field(() => ID, { nullable: true })
@@ -94,10 +94,10 @@ export class SettlementWithDistance {
   @Field(() => Float, { description: 'Distance in meters from query point' })
   distance!: number;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 }
 

@@ -60,13 +60,16 @@ export class Effect {
   @Field(() => ID)
   id!: string;
 
-  @Field({ description: 'Display name for this effect' })
+  @Field(() => String, { description: 'Display name for this effect' })
   name!: string;
 
-  @Field({ nullable: true, description: 'Human-readable explanation of what this effect does' })
+  @Field(() => String, {
+    nullable: true,
+    description: 'Human-readable explanation of what this effect does',
+  })
   description?: string | null;
 
-  @Field({
+  @Field(() => String, {
     description: 'Type of effect (e.g., "modify_variable", "trigger_event", "create_entity")',
   })
   effectType!: string;
@@ -77,7 +80,9 @@ export class Effect {
   })
   payload!: Record<string, unknown>;
 
-  @Field({ description: 'Type of entity this effect belongs to (e.g., "encounter", "event")' })
+  @Field(() => String, {
+    description: 'Type of entity this effect belongs to (e.g., "encounter", "event")',
+  })
   entityType!: string;
 
   @Field(() => ID, { description: 'ID of the entity this effect belongs to' })
@@ -101,13 +106,13 @@ export class Effect {
   @Field(() => Int, { description: 'Version for optimistic locking' })
   version!: number;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   deletedAt?: Date | null;
 
   // Field resolvers will populate these
@@ -129,7 +134,7 @@ export class EffectExecution {
   @Field(() => ID, { description: 'ID of the effect that was executed' })
   effectId!: string;
 
-  @Field({
+  @Field(() => String, {
     description: 'Type of entity that triggered this execution (e.g., "encounter", "event")',
   })
   entityType!: string;
@@ -137,7 +142,7 @@ export class EffectExecution {
   @Field(() => ID, { description: 'ID of the entity that triggered this execution' })
   entityId!: string;
 
-  @Field({ description: 'When this effect was executed' })
+  @Field(() => Date, { description: 'When this effect was executed' })
   executedAt!: Date;
 
   @Field(() => ID, { description: 'User who triggered this execution' })
@@ -153,7 +158,7 @@ export class EffectExecution {
   })
   result!: Record<string, unknown>;
 
-  @Field({ nullable: true, description: 'Error message if execution failed' })
+  @Field(() => String, { nullable: true, description: 'Error message if execution failed' })
   error?: string | null;
 
   // Field resolver will populate this
@@ -175,7 +180,7 @@ export class EffectExecutionResult {
   })
   patchApplied?: unknown | null;
 
-  @Field({ nullable: true, description: 'Error message if execution failed' })
+  @Field(() => String, { nullable: true, description: 'Error message if execution failed' })
   error?: string | null;
 
   @Field(() => ID, {

@@ -54,7 +54,7 @@ export interface UpdatePartyData {
 
 @InputType()
 export class UpdatePartyInput implements UpdatePartyData {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
@@ -89,7 +89,7 @@ export class UpdatePartyInput implements UpdatePartyData {
   @IsNotEmpty()
   expectedVersion!: number;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsDate()
   @IsOptional()
   @Type(() => Date)

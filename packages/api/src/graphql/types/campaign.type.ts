@@ -11,7 +11,7 @@ export class Campaign {
   @Field(() => ID)
   id!: string;
 
-  @Field()
+  @Field(() => Date)
   name!: string;
 
   @Field(() => ID)
@@ -26,18 +26,18 @@ export class Campaign {
   @Field({ description: 'Whether the campaign is currently active' })
   isActive!: boolean;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   deletedAt?: Date;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   archivedAt?: Date;
 
-  @Field({ nullable: true, description: 'Current world time for this campaign' })
+  @Field(() => String, { nullable: true, description: 'Current world time for this campaign' })
   currentWorldTime?: Date;
 }

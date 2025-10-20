@@ -19,13 +19,16 @@ export class RestoreVersionInput {
   @IsNotEmpty()
   branchId!: string;
 
-  @Field({ nullable: true, description: 'World-time for the restored version (defaults to now)' })
+  @Field(() => String, {
+    nullable: true,
+    description: 'World-time for the restored version (defaults to now)',
+  })
   @IsDate()
   @IsOptional()
   @Type(() => Date)
   worldTime?: Date;
 
-  @Field({ nullable: true, description: 'Optional comment for the restoration' })
+  @Field(() => String, { nullable: true, description: 'Optional comment for the restoration' })
   @IsString()
   @IsOptional()
   comment?: string;

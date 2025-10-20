@@ -18,14 +18,14 @@ export class CreateWorldInput {
   @IsNotEmpty()
   calendars!: Record<string, unknown>;
 
-  @Field(() => GraphQLJSON, { nullable: true, defaultValue: {} })
+  @Field(() => GraphQLJSON, { nullable: true })
   @IsOptional()
   settings?: Record<string, unknown>;
 }
 
 @InputType()
 export class UpdateWorldInput {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsString()
   @IsOptional()
   name?: string;
