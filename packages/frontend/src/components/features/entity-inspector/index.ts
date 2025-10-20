@@ -1,3 +1,7 @@
+export { ConditionExplanation } from './ConditionExplanation';
+export type { ConditionExplanationProps } from './ConditionExplanation';
+export { ConditionsTab } from './ConditionsTab';
+export type { ConditionsTabProps, FieldCondition } from './ConditionsTab';
 export { EntityInspector } from './EntityInspector';
 export type { EntityInspectorProps, EntityType } from './EntityInspector';
 export { OverviewTab } from './OverviewTab';

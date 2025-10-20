@@ -334,6 +334,20 @@ export const graphqlHandlers = [
       field?: string | null;
     };
 
+    // Error case
+    if (entityId.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Failed to fetch conditions' }],
+      });
+    }
+
+    // Empty case
+    if (entityId.endsWith('-empty')) {
+      return HttpResponse.json({
+        data: { getConditionsForEntity: [] },
+      });
+    }
+
     let conditions = mockConditions.filter(
       (c) => c.entityType === entityType && (c.entityId === entityId || c.entityId === null) // Include type-level conditions
     );

@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSettlementDetails, useStructureDetails } from '@/services/api/hooks';
 
+import { ConditionsTab } from './ConditionsTab';
 import { OverviewTab } from './OverviewTab';
 import { SettlementPanel } from './SettlementPanel';
 import { StructurePanel } from './StructurePanel';
@@ -123,9 +124,10 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
             </TabsContent>
 
             <TabsContent value="conditions" className="space-y-4">
-              <div className="text-sm text-slate-500">
-                Conditions tab content will be implemented in Stage 6
-              </div>
+              <ConditionsTab
+                entityType={entityType === 'settlement' ? 'Settlement' : 'Structure'}
+                entityId={entityId}
+              />
             </TabsContent>
 
             <TabsContent value="effects" className="space-y-4">
