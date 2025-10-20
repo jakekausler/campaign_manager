@@ -422,6 +422,24 @@ export const graphqlHandlers = [
       entityId: string;
     };
 
+    // Error case for invalid entity IDs
+    if (entityId.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Failed to fetch effects' }],
+      });
+    }
+
+    // Empty case for entity IDs ending with -empty
+    if (entityId.endsWith('-empty')) {
+      return HttpResponse.json({
+        data: {
+          getEffectsForEntity: [],
+          onResolve: [],
+          post: [],
+        },
+      });
+    }
+
     const preEffects = mockEffects.filter(
       (e) => e.entityType === entityType && e.entityId === entityId && e.timing === 'PRE'
     );
