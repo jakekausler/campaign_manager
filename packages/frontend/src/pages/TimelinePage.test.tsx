@@ -37,13 +37,14 @@ vi.mock('@/services/api/hooks/world-time', () => ({
   useCurrentWorldTime: vi.fn(),
 }));
 
-// Mock Timeline component
+// Mock Timeline component and TimelineControls
 vi.mock('@/components/features/timeline', () => ({
   Timeline: vi.fn(({ items }) => (
     <div data-testid="timeline-component">
       <div>Timeline items: {items.length}</div>
     </div>
   )),
+  TimelineControls: vi.fn(() => <div data-testid="timeline-controls" />),
 }));
 
 describe('TimelinePage', () => {

@@ -1,4 +1,6 @@
-import { Timeline } from '@/components/features/timeline';
+import { useRef } from 'react';
+
+import { Timeline, TimelineControls, TimelineHandle } from '@/components/features/timeline';
 import { useTimelineData } from '@/hooks';
 import { useCurrentWorldTime } from '@/services/api/hooks/world-time';
 import { useCurrentCampaignId } from '@/stores';
@@ -15,13 +17,16 @@ import { useCurrentCampaignId } from '@/stores';
  * - Real-time data from GraphQL API
  * - Current world time marker (red vertical line)
  * - Color-coded status visualization with overdue detection
- * - Zoom and pan controls
+ * - Zoom and pan controls with keyboard shortcuts
  * - Loading skeleton during data fetch
  * - Error handling with user feedback
  *
- * Part of TICKET-022 Stage 5 and Stage 6 implementation.
+ * Part of TICKET-022 Stage 5, Stage 6, and Stage 7 implementation.
  */
 export default function TimelinePage() {
+  // Ref to control the timeline programmatically
+  const timelineRef = useRef<TimelineHandle>(null);
+
   // Get current campaign from store
   const campaignId = useCurrentCampaignId();
 
@@ -108,9 +113,14 @@ export default function TimelinePage() {
         </p>
       </div>
 
+      {/* Timeline controls */}
+      <div className="border-b bg-card px-6 py-3">
+        <TimelineControls timelineRef={timelineRef} currentTime={currentTime} />
+      </div>
+
       {/* Timeline visualization */}
       <div className="flex-1 p-6">
-        <Timeline items={items} currentTime={currentTime} />
+        <Timeline ref={timelineRef} items={items} currentTime={currentTime} />
       </div>
     </div>
   );
