@@ -78,6 +78,12 @@ interface MapProps {
    * @default false
    */
   enableDrawing?: boolean;
+
+  /**
+   * Callback when an entity (settlement or structure) is selected (optional)
+   * Called when user clicks on a settlement or structure marker
+   */
+  onEntitySelect?: (type: 'settlement' | 'structure', id: string) => void;
 }
 
 /**
@@ -106,6 +112,7 @@ export function Map({
   kingdomId,
   campaignId,
   enableDrawing = false,
+  onEntitySelect,
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibre | null>(null);
@@ -379,6 +386,13 @@ export function Map({
 
       if (geometry.type !== 'Point') return;
 
+      // If onEntitySelect callback is provided, use it instead of showing popup
+      // This allows parent components to handle entity selection (e.g., open inspector)
+      if (onEntitySelect) {
+        onEntitySelect('settlement', properties.id);
+        return;
+      }
+
       const popupData: PopupData = {
         type: 'settlement',
         id: properties.id,
@@ -391,7 +405,7 @@ export function Map({
 
       showPopup(popupData);
     },
-    [showPopup]
+    [showPopup, onEntitySelect]
   );
 
   /**
@@ -407,6 +421,13 @@ export function Map({
 
       if (geometry.type !== 'Point') return;
 
+      // If onEntitySelect callback is provided, use it instead of showing popup
+      // This allows parent components to handle entity selection (e.g., open inspector)
+      if (onEntitySelect) {
+        onEntitySelect('structure', properties.id);
+        return;
+      }
+
       const popupData: PopupData = {
         type: 'structure',
         id: properties.id,
@@ -420,7 +441,7 @@ export function Map({
 
       showPopup(popupData);
     },
-    [showPopup]
+    [showPopup, onEntitySelect]
   );
 
   /**

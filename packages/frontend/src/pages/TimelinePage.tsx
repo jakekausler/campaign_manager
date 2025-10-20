@@ -42,8 +42,9 @@ import { transformToTimelineItems } from '@/utils/timeline-transforms';
  * - URL-persisted filter state
  * - Loading skeleton during data fetch
  * - Error handling with user feedback
+ * - Timeline item click handlers (shows "coming soon" message for entity inspector)
  *
- * Part of TICKET-022 Stage 5, Stage 6, Stage 7, Stage 10, and Stage 11 implementation.
+ * Part of TICKET-022 Stage 5, Stage 6, Stage 7, Stage 10, Stage 11, and Stage 12 implementation.
  */
 export default function TimelinePage() {
   // Ref to control the timeline programmatically
@@ -157,6 +158,32 @@ export default function TimelinePage() {
       });
     },
     [reschedule]
+  );
+
+  // Handle timeline item selection (shows "coming soon" message for future entity inspector integration)
+  const handleItemSelect = useCallback(
+    (properties: { items: string[]; event: Event }) => {
+      // Only handle single-item selection
+      if (properties.items.length !== 1) return;
+
+      const selectedItemId = properties.items[0];
+
+      // Find the selected item in our items array
+      const selectedItem = items.find((item) => item.id === selectedItemId);
+      if (!selectedItem) return;
+
+      // Extract item type from metadata
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const itemType = (selectedItem as any).type as 'event' | 'encounter' | undefined;
+      const itemContent = selectedItem.content as string;
+
+      // Show informational message - entity inspector for events/encounters not yet implemented
+      // eslint-disable-next-line no-alert
+      alert(
+        `Entity inspector for ${itemType}s is coming soon!\n\nSelected ${itemType}: ${itemContent} (ID: ${selectedItemId})\n\nIn the future, clicking timeline items will open the entity inspector with detailed information.`
+      );
+    },
+    [items]
   );
 
   // Show loading skeleton while fetching data
@@ -291,6 +318,7 @@ export default function TimelinePage() {
               items={items}
               currentTime={currentTime}
               onItemMove={handleItemMove}
+              onSelect={handleItemSelect}
             />
           </ErrorBoundary>
           {rescheduling && (

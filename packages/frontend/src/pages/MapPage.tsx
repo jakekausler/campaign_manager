@@ -1,11 +1,17 @@
 import { useState } from 'react';
 
+import { EntityInspector } from '@/components/features/entity-inspector';
 import { Map, ViewportState } from '@/components/features/map';
 
 /**
  * Map page component (protected route)
  *
  * Interactive map view for visualizing campaign world, locations, settlements, and structures.
+ *
+ * Features:
+ * - Interactive map with settlements and structures
+ * - Entity inspector for viewing detailed entity information
+ * - Click settlements/structures on map to open inspector
  *
  * TODO: Get worldId from campaign context or route params when available
  */
@@ -15,6 +21,26 @@ export default function MapPage() {
     zoom: 2,
     bounds: null,
   });
+
+  // Entity inspector state
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<{
+    type: 'settlement' | 'structure';
+    id: string;
+  } | null>(null);
+
+  // Handle entity selection from map
+  const handleEntitySelect = (type: 'settlement' | 'structure', id: string) => {
+    setSelectedEntity({ type, id });
+    setInspectorOpen(true);
+  };
+
+  // Handle inspector close
+  const handleInspectorClose = () => {
+    setInspectorOpen(false);
+    // Don't clear selectedEntity immediately to allow smooth close animation
+    setTimeout(() => setSelectedEntity(null), 300);
+  };
 
   // TODO: Replace with actual worldId, kingdomId, and campaignId from campaign context
   // For now, using placeholders to demonstrate layer rendering and time scrubber
@@ -41,6 +67,7 @@ export default function MapPage() {
           worldId={worldId}
           kingdomId={kingdomId}
           campaignId={campaignId}
+          onEntitySelect={handleEntitySelect}
         />
       </main>
 
@@ -49,6 +76,16 @@ export default function MapPage() {
         Viewing: Zoom {viewport.zoom.toFixed(1)} | Center: {viewport.center[0].toFixed(2)},{' '}
         {viewport.center[1].toFixed(2)}
       </footer>
+
+      {/* Entity Inspector */}
+      {selectedEntity && (
+        <EntityInspector
+          entityType={selectedEntity.type}
+          entityId={selectedEntity.id}
+          isOpen={inspectorOpen}
+          onClose={handleInspectorClose}
+        />
+      )}
     </div>
   );
 }

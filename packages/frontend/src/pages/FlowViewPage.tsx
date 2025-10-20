@@ -2,8 +2,8 @@ import type { NodeMouseHandler, SelectionMode } from '@xyflow/react';
 import { ReactFlow, Background, useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
+import { EntityInspector } from '@/components/features/entity-inspector';
 import {
   VariableNode,
   ConditionNode,
@@ -25,9 +25,6 @@ import {
   calculateSelectionState,
   applySelectionStyles,
   applySelectionEdgeStyles,
-  getNodeEditRoute,
-  getNodeEditMessage,
-  isNodeEditable,
   createEmptyFilters,
   hasActiveFilters,
   filterNodes,
@@ -67,14 +64,18 @@ const edgeTypes = {
  * settlements, structures) using React Flow. This is a read-only visualization
  * with selection, highlighting, and navigation features.
  *
+ * Features:
+ * - Interactive dependency graph with auto-layout
+ * - Entity inspector for settlements and structures (double-click to open)
+ * - Selection highlighting with upstream/downstream traversal
+ * - Multi-select with Shift/Ctrl/Cmd keys
+ * - Filtering by node type, edge type, and search query
+ *
  * Part of TICKET-021 implementation.
  */
 export default function FlowViewPage() {
   // Get current campaign from store
   const campaignId = useCurrentCampaignId();
-
-  // Navigation hook for routing to edit pages
-  const navigate = useNavigate();
 
   // Fetch dependency graph for the current campaign
   const { graph, loading, error } = useDependencyGraph(campaignId || '');
@@ -97,6 +98,13 @@ export default function FlowViewPage() {
 
   // Filter state tracking
   const [filters, setFilters] = useState(() => createEmptyFilters());
+
+  // Entity inspector state
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<{
+    type: 'settlement' | 'structure';
+    id: string;
+  } | null>(null);
 
   // Calculate selection state with dependencies
   const selectionState = useMemo(
@@ -219,41 +227,53 @@ export default function FlowViewPage() {
     [edges]
   );
 
-  // Handle node double-click for editing
-  const handleNodeDoubleClick: NodeMouseHandler = useCallback(
-    (event, node) => {
-      event.stopPropagation(); // Prevent pane click event
+  // Handle node double-click to open entity inspector
+  const handleNodeDoubleClick: NodeMouseHandler = useCallback((event, node) => {
+    event.stopPropagation(); // Prevent pane click event
 
-      const { nodeType, entityId, label } = node.data;
+    const { nodeType, metadata } = node.data;
 
-      if (!campaignId) {
-        // eslint-disable-next-line no-alert
-        alert('No campaign selected. Cannot navigate to edit page.');
-        return;
-      }
+    // Import DependencyNodeType and assert the type
+    // node.data.nodeType comes from FlowNodeData which uses the type from dependency-graph
+    const typedNodeType = nodeType as import('@/services/api/hooks').DependencyNodeType;
 
-      // Import DependencyNodeType and assert the type
-      // node.data.nodeType comes from FlowNodeData which uses the type from dependency-graph
-      const typedNodeType = nodeType as import('@/services/api/hooks').DependencyNodeType;
-      const typedEntityId = String(entityId);
-      const typedLabel = String(label);
+    // Check for EFFECT nodes that target settlements or structures
+    // The dependency graph only has VARIABLE, CONDITION, and EFFECT nodes (no ENTITY nodes)
+    if (typedNodeType === 'EFFECT' && metadata) {
+      // Extract entity type and ID from effect metadata (typed as Record<string, unknown>)
+      const metadataRecord = metadata as Record<string, unknown>;
+      const entityType = metadataRecord.entityType as string | undefined;
+      const targetEntityId = metadataRecord.entityId as string | undefined;
 
-      // Check if this node type supports editing
-      if (isNodeEditable(typedNodeType)) {
-        // Navigate to edit page
-        const route = getNodeEditRoute(typedNodeType, typedEntityId, campaignId);
-        if (route) {
-          navigate(route);
-        }
+      // Open inspector for settlement or structure effects
+      if (entityType === 'Settlement' && targetEntityId) {
+        setSelectedEntity({ type: 'settlement', id: targetEntityId });
+        setInspectorOpen(true);
+      } else if (entityType === 'Structure' && targetEntityId) {
+        setSelectedEntity({ type: 'structure', id: targetEntityId });
+        setInspectorOpen(true);
       } else {
-        // Show informational message about edit functionality
-        const message = getNodeEditMessage(typedNodeType, typedEntityId, typedLabel);
+        // Show message for effects that don't target settlements/structures
         // eslint-disable-next-line no-alert
-        alert(message);
+        alert(
+          `Entity inspector for ${entityType || 'this effect type'} is not yet implemented. Only settlements and structures are currently supported.`
+        );
       }
-    },
-    [campaignId, navigate]
-  );
+    } else {
+      // Show informational message for VARIABLE and CONDITION nodes
+      // eslint-disable-next-line no-alert
+      alert(
+        `Double-click to inspect ${typedNodeType.toLowerCase()} nodes is not yet implemented. Only effect nodes that target settlements or structures can open the entity inspector.`
+      );
+    }
+  }, []);
+
+  // Handle inspector close
+  const handleInspectorClose = useCallback(() => {
+    setInspectorOpen(false);
+    // Don't clear selectedEntity immediately to allow smooth close animation
+    setTimeout(() => setSelectedEntity(null), 300);
+  }, []);
 
   // Keyboard shortcut for clearing selection (Escape)
   useEffect(() => {
@@ -386,6 +406,16 @@ export default function FlowViewPage() {
           </div>
         </div>
       </div>
+
+      {/* Entity Inspector */}
+      {selectedEntity && (
+        <EntityInspector
+          entityType={selectedEntity.type}
+          entityId={selectedEntity.id}
+          isOpen={inspectorOpen}
+          onClose={handleInspectorClose}
+        />
+      )}
     </div>
   );
 }
