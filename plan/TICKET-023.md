@@ -125,7 +125,223 @@ data.ts (`packages/frontend/src/__tests__/mocks/data.ts`):
 - **Card Layout**: Consistent with other tabs for visual cohesion across EntityInspector
 - **Color Coding**: Different colors for timing phases (blue/green/purple) and execution status (green/red/yellow)
 
-**Next Steps**: Stage 9 will implement the Versions tab with version history display.
+**Next Steps**: Stage 9 will implement the Versions tab with audit history display.
+
+### Stage 9: Versions Tab Implementation (Commit: beed7fa)
+
+**Completed**: Comprehensive Versions tab displaying audit history timeline with campaign-level authorization and security controls.
+
+**Backend Infrastructure**:
+
+AuditResolver (`packages/api/src/graphql/resolvers/audit.resolver.ts`):
+
+- Created new GraphQL resolver exposing audit log queries
+- `entityAuditHistory` query with campaign-level authorization
+- `userAuditHistory` query for personal audit history
+- EntityType whitelist validation (Settlement, Structure, Character, Event, Encounter)
+- Campaign membership verification (owner or member access only)
+- Nested query resolution for campaignId (Settlement → Kingdom → Campaign, Structure → Settlement → Kingdom → Campaign)
+- Generic error messages prevent user enumeration ("Access denied" instead of "User not found")
+- Result limit capping at 100 entries to prevent excessive data retrieval
+- Timestamp DESC ordering (newest first)
+
+Audit GraphQL Type (`packages/api/src/graphql/types/audit.type.ts`):
+
+- Audit entity with id, entityType, entityId, operation fields
+- userId, changes (JSON), metadata (JSON) fields
+- timestamp field for chronological ordering
+- Comprehensive field descriptions for GraphQL schema
+
+GraphQL Module Integration (`packages/api/src/graphql/graphql.module.ts`):
+
+- Registered AuditResolver in providers list
+- Imported in alphabetical order with other resolvers
+
+**Frontend Components**:
+
+VersionsTab Component (`packages/frontend/src/components/features/entity-inspector/VersionsTab.tsx`):
+
+- Main component displays audit history timeline for entities
+- Operation-specific color coding: CREATE (green), UPDATE (blue), DELETE (red), ARCHIVE (yellow), RESTORE (purple)
+- Most recent entry marked with "LATEST" badge and blue highlight
+- Loading, error, and empty states with user-friendly messaging
+- Error state with retry button for failed queries
+- Relative timestamp formatting ("5 mins ago", "2 days ago", "Nov 20")
+- Before/after change display for UPDATE operations with strikethrough styling
+- Field name conversion from snake_case/camelCase to Title Case
+- Intelligent change display (limited to 10 fields with "...and X more" overflow)
+- User attribution with userId display
+- Card-based layout consistent with other EntityInspector tabs
+- Backend returns pre-sorted data (no redundant frontend sorting)
+
+AuditEntryCard Subcomponent:
+
+- Individual audit entry display with operation badge
+- Timestamp display using relative formatting
+- User ID attribution
+- ChangesSummary integration for detailed change display
+
+ChangesSummary Subcomponent:
+
+- CREATE operations: Display initial values as field list
+- UPDATE operations: Display before/after values with color coding (red strikethrough → green)
+- DELETE/ARCHIVE/RESTORE operations: Display field list
+- Handles null/undefined values gracefully ("N/A" display)
+- Formats objects with JSON.stringify for readability
+- Limits displayed fields to 10 with overflow indicator
+
+Helper Functions:
+
+- `getOperationColor()`: Operation-to-badge-color mapping
+- `formatTimestamp()`: Relative time formatting (mins, hours, days, fallback to date)
+- `formatValue()`: Value-to-string conversion with type handling
+- `toTitleCase()`: snake_case/camelCase to Title Case conversion
+
+**Frontend GraphQL Integration**:
+
+useEntityAuditHistory Hook (`packages/frontend/src/services/api/hooks/audit.ts`):
+
+- Custom hook for fetching entity audit history
+- GET_ENTITY_AUDIT_HISTORY GraphQL query
+- Returns audits array, loading state, error, refetch function
+- Cache-first fetch policy for performance
+- Skip option when required params missing
+- Limit parameter with default 50 entries
+- notifyOnNetworkStatusChange for proper loading state during refetch
+- Comprehensive JSDoc documentation with usage examples
+
+Export Integration (`packages/frontend/src/services/api/hooks/index.ts`):
+
+- Exported useEntityAuditHistory hook
+- Exported AuditEntry type for reuse
+- Organized in Audit hooks section
+
+**EntityInspector Integration**:
+
+EntityInspector Component Updates (`packages/frontend/src/components/features/entity-inspector/EntityInspector.tsx`):
+
+- Imported VersionsTab component
+- Replaced Versions tab placeholder with VersionsTab component
+- Passes entityType and entityId props (already has currentEntityType/currentEntityId from navigation)
+- Versions tab now fully functional alongside Overview, Details, Links, Conditions, and Effects tabs
+
+index.ts Exports (`packages/frontend/src/components/features/entity-inspector/index.ts`):
+
+- Exported VersionsTab component and VersionsTabProps interface
+
+**Test Infrastructure**:
+
+Mock Data (`packages/frontend/src/__tests__/mocks/data.ts`):
+
+- Added mockAudits array with 5 audit entries
+- 3 Settlement audits (1 CREATE, 2 UPDATE operations)
+- 2 Structure audits (1 CREATE, 1 UPDATE operation)
+- Realistic before/after change structure for UPDATE operations
+- Metadata fields (ipAddress, userAgent) for context
+- Chronological timestamps spanning several months
+
+GraphQL Handlers (`packages/frontend/src/__tests__/mocks/graphql-handlers.ts`):
+
+- Added GetEntityAuditHistory query handler
+- Filters audits by entityType and entityId
+- Supports error simulation with "invalid-\*" prefix
+- Supports empty state with "-empty" suffix
+- Returns filtered audit entries sorted by timestamp
+
+Comprehensive Test Suite (`packages/frontend/src/components/features/entity-inspector/VersionsTab.test.tsx`):
+
+- 24 test cases with 100% pass rate (1065 total frontend tests passing)
+- Loading State Tests (1 test):
+  - Loading message display during fetch
+- Error State Tests (3 tests):
+  - Error message display on query failure
+  - Retry button presence and functionality
+  - Error state persistence for persistent errors (invalid IDs)
+- Empty State Tests (2 tests):
+  - Empty state message for entities without history
+  - Helpful messaging about future changes
+- Audit History Display Tests (3 tests):
+  - All audit entries display for Settlement
+  - All audit entries display for Structure
+  - Audit entry count display in header
+  - User ID display for each entry
+- Operation Types Tests (4 tests):
+  - CREATE operation with green badge
+  - UPDATE operation with blue badge
+  - LATEST badge on most recent entry
+  - Blue background highlight on latest entry
+- Changes Display Tests (6 tests):
+  - Initial values for CREATE operations
+  - Before/after values for UPDATE operations
+  - Field name Title Case conversion
+  - Null/undefined value handling
+  - Field limit verification (10 fields max)
+- Timestamp Formatting Tests (1 test):
+  - Relative timestamp display
+- Settlement vs Structure Tests (2 tests):
+  - Settlement entity type handling with capitalization
+  - Structure entity type handling with capitalization
+- Accessibility Tests (2 tests):
+  - Accessible retry button
+  - Operation badge color contrast
+- Uses renderWithApollo helper and MSW for GraphQL mocking
+- Tests use getAllByText() for elements appearing multiple times
+- Comprehensive coverage of all user interactions and edge cases
+
+**Code Quality**:
+
+- TypeScript compilation: ✅ PASSED (0 errors)
+- ESLint: ✅ PASSED (0 errors, only pre-existing warnings in other packages)
+- Tests: ✅ 24/24 passing (1065 total frontend tests passing)
+- Code Review: ✅ APPROVED (critical security issues resolved)
+- Security: Campaign-level authorization, entityType whitelist, generic error messages
+- Performance: Backend pre-sorting, no redundant frontend operations, cache-first policy
+- Type Safety: Proper interfaces with exported types (AuditEntry, VersionsTabProps)
+- Comprehensive JSDoc comments for all exported components, interfaces, and functions
+- Consistent code patterns with existing tabs (ConditionsTab, EffectsTab, LinksTab, OverviewTab)
+
+**Key Features**:
+
+1. **Timeline Visualization**: Chronological audit entries with newest first, LATEST badge on most recent
+2. **Operation Color Coding**: Visual distinction between CREATE, UPDATE, DELETE, ARCHIVE, RESTORE
+3. **Before/After Display**: UPDATE operations show old value (strikethrough) → new value (green)
+4. **Relative Timestamps**: User-friendly time display ("5 mins ago" vs ISO dates)
+5. **Security**: Campaign-level authorization prevents cross-campaign data leaks
+6. **Field Name Formatting**: Automatic snake_case to Title Case conversion
+7. **Overflow Handling**: Limits displayed changes to 10 fields with "...and X more" indicator
+8. **Error Recovery**: Retry button for failed queries with proper error messaging
+9. **Empty States**: User-friendly messaging when no history exists
+10. **Type Safety**: Proper TypeScript interfaces for all data structures
+
+**Security Enhancements**:
+
+1. **Campaign Authorization**: Users can only view audit history for entities in campaigns they own or are members of
+2. **EntityType Whitelist**: Only allows Settlement, Structure, Character, Event, Encounter (prevents arbitrary entity queries)
+3. **Nested Access Control**: Resolves campaignId through entity relationships (Settlement → Kingdom → Campaign, Structure → Settlement → Kingdom → Campaign)
+4. **Generic Error Messages**: Uses "Access denied" instead of revealing entity existence
+5. **Result Capping**: Maximum 100 audit entries per query prevents excessive data retrieval
+6. **User History Protection**: Users can only view their own audit history (unless admin role in future)
+
+**Performance Optimizations**:
+
+1. **Backend Sorting**: Audit entries sorted by timestamp DESC in database query
+2. **No Frontend Re-sorting**: Removed redundant sorting to avoid unnecessary computation
+3. **Cache-First Policy**: Apollo Client uses cached data when available
+4. **Loading State Management**: notifyOnNetworkStatusChange for proper refetch loading indicators
+5. **Limit Parameter**: Configurable result limit (default 50, max 100) controls data transfer
+
+**Design Decisions**:
+
+- **Audit Table vs Version Table**: Used simpler Audit table for change history instead of complex bitemporal Version system
+- **Campaign-Level Authorization**: Verified at entity level rather than audit level for better security
+- **Operation Color Coding**: Consistent with industry standards (green=success/create, blue=info/update, red=danger/delete)
+- **Backend Pre-Sorting**: Guarantees consistent order regardless of database query planner
+- **Generic Error Messages**: Prevents information disclosure about entity existence
+- **10-Field Limit**: Balances detail visibility with UI clutter (most changes have <10 fields)
+- **Relative Timestamps**: Better UX for recent changes ("5 mins ago" vs "2024-01-20T15:30:00Z")
+- **LATEST Badge**: Visual indicator of most recent change helps users identify current state
+
+**Next Steps**: Stage 10 will implement Edit Mode Infrastructure for inline editing across all tabs.
 
 ### Stage 8: Links Tab Implementation (Commit: d95c29e)
 
