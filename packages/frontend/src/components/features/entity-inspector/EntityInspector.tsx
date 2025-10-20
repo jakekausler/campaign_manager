@@ -1,7 +1,15 @@
-import { ChevronLeft } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ChevronLeft, Edit2, Save, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Sheet,
   SheetContent,
@@ -61,12 +69,22 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
   const [currentEntityType, setCurrentEntityType] = useState<EntityType>(entityType);
   const [currentEntityId, setCurrentEntityId] = useState<string>(entityId);
 
-  // Reset navigation when inspector opens with new entity
+  // Edit mode state (managed at inspector level to show controls in header)
+  const [isEditing, setIsEditing] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+
+  // Ref to access tab's save function
+  const tabSaveRef = useRef<(() => Promise<boolean>) | null>(null);
+
+  // Reset navigation and edit state when inspector opens with new entity
   useEffect(() => {
     if (isOpen) {
       setCurrentEntityType(entityType);
       setCurrentEntityId(entityId);
       setNavigationStack([]);
+      setIsEditing(false);
+      setHasUnsavedChanges(false);
     }
   }, [isOpen, entityType, entityId]);
 
@@ -117,134 +135,281 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
   const handleGoBack = () => {
     if (navigationStack.length === 0) return;
 
+    // If there are unsaved changes, show confirmation dialog
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+      return;
+    }
+
     const previous = navigationStack[navigationStack.length - 1];
     setCurrentEntityType(previous.entityType);
     setCurrentEntityId(previous.entityId);
     setNavigationStack((prev) => prev.slice(0, -1));
   };
 
+  /**
+   * Handle closing the inspector
+   */
+  const handleClose = () => {
+    // If there are unsaved changes, show confirmation dialog
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+      return;
+    }
+
+    onClose();
+  };
+
+  /**
+   * Confirm discarding unsaved changes
+   */
+  const handleDiscardChanges = () => {
+    setHasUnsavedChanges(false);
+    setIsEditing(false);
+    setShowUnsavedDialog(false);
+    // Proceed with the original action (close or navigate back)
+    onClose();
+  };
+
+  /**
+   * Enter edit mode
+   */
+  const handleStartEditing = () => {
+    setIsEditing(true);
+  };
+
+  /**
+   * Cancel edit mode
+   */
+  const handleCancelEditing = () => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+      return;
+    }
+    setIsEditing(false);
+  };
+
+  /**
+   * Save changes (triggered by save button, delegated to active tab)
+   */
+  const handleSave = async () => {
+    // Call the tab's save function via ref
+    if (tabSaveRef.current) {
+      const success = await tabSaveRef.current();
+      if (success) {
+        setHasUnsavedChanges(false);
+        setIsEditing(false);
+      }
+    }
+  };
+
+  /**
+   * Handle dirty state changes from tabs
+   */
+  const handleDirtyChange = (isDirty: boolean) => {
+    setHasUnsavedChanges(isDirty);
+  };
+
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          {/* Back button and breadcrumb navigation */}
-          {navigationStack.length > 0 && (
-            <div className="mb-2 flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleGoBack}
-                className="h-8 px-2"
-                title="Go back to previous entity"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="text-sm">Back</span>
-              </Button>
-              <div className="flex items-center gap-1 text-xs text-slate-500">
-                {navigationStack.map((item, index) => (
-                  <span key={index}>
-                    {item.entityName} <span className="text-slate-400">›</span>
-                  </span>
-                ))}
+    <>
+      <Sheet open={isOpen} onOpenChange={handleClose}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            {/* Back button and breadcrumb navigation */}
+            {navigationStack.length > 0 && (
+              <div className="mb-2 flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGoBack}
+                  className="h-8 px-2"
+                  title="Go back to previous entity"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="text-sm">Back</span>
+                </Button>
+                <div className="flex items-center gap-1 text-xs text-slate-500">
+                  {navigationStack.map((item, index) => (
+                    <span key={index}>
+                      {item.entityName} <span className="text-slate-400">›</span>
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-
-          <SheetTitle>
-            {currentEntityType === 'settlement' ? 'Settlement' : 'Structure'} Inspector
-          </SheetTitle>
-          <SheetDescription>
-            {query.loading ? (
-              <span className="inline-block h-4 w-64 animate-pulse rounded-md bg-slate-100" />
-            ) : query.error ? (
-              <span className="text-red-500">Error loading {currentEntityType}</span>
-            ) : entity ? (
-              <>Viewing details for {entity.name}</>
-            ) : (
-              <>No {currentEntityType} found</>
             )}
-          </SheetDescription>
-        </SheetHeader>
 
-        {query.error ? (
-          <div className="mt-6 p-4 border border-red-200 bg-red-50 rounded-md">
-            <h3 className="text-sm font-semibold text-red-800">Error Loading Entity</h3>
-            <p className="text-sm text-red-600 mt-2">{query.error.message}</p>
-            <button
-              onClick={() => query.refetch()}
-              className="mt-3 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Retry
-            </button>
-          </div>
-        ) : query.loading ? (
-          <div className="mt-6 space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
-        ) : !entity ? (
-          <div className="mt-6 p-4 border border-slate-200 bg-slate-50 rounded-md">
-            <p className="text-sm text-slate-600">
-              {entityType === 'settlement' ? 'Settlement' : 'Structure'} not found
-            </p>
-          </div>
-        ) : (
-          <Tabs defaultValue="overview" className="mt-6">
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="links">Links</TabsTrigger>
-              <TabsTrigger value="conditions">Conditions</TabsTrigger>
-              <TabsTrigger value="effects">Effects</TabsTrigger>
-              <TabsTrigger value="versions">Versions</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <SheetTitle>
+                  {currentEntityType === 'settlement' ? 'Settlement' : 'Structure'} Inspector
+                </SheetTitle>
+                <SheetDescription>
+                  {query.loading ? (
+                    <span className="inline-block h-4 w-64 animate-pulse rounded-md bg-slate-100" />
+                  ) : query.error ? (
+                    <span className="text-red-500">Error loading {currentEntityType}</span>
+                  ) : entity ? (
+                    <>Viewing details for {entity.name}</>
+                  ) : (
+                    <>No {currentEntityType} found</>
+                  )}
+                </SheetDescription>
+              </div>
 
-            <TabsContent value="overview" className="space-y-4">
-              <OverviewTab entity={entity} entityType={currentEntityType} />
-            </TabsContent>
-
-            <TabsContent value="details" className="space-y-4">
-              {currentEntityType === 'settlement' ? (
-                <SettlementPanel
-                  settlement={entity as NonNullable<typeof settlementQuery.settlement>}
-                />
-              ) : (
-                <StructurePanel
-                  structure={entity as NonNullable<typeof structureQuery.structure>}
-                />
+              {/* Edit mode controls */}
+              {!query.loading && !query.error && entity && (
+                <div className="flex items-center gap-2">
+                  {isEditing ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelEditing}
+                        className="h-8 px-2"
+                        title="Cancel editing"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        <span className="text-sm">Cancel</span>
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleSave}
+                        className="h-8 px-2"
+                        title="Save changes"
+                      >
+                        <Save className="h-4 w-4 mr-1" />
+                        <span className="text-sm">Save</span>
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleStartEditing}
+                      className="h-8 px-2"
+                      title="Edit entity"
+                    >
+                      <Edit2 className="h-4 w-4 mr-1" />
+                      <span className="text-sm">Edit</span>
+                    </Button>
+                  )}
+                </div>
               )}
-            </TabsContent>
+            </div>
+          </SheetHeader>
 
-            <TabsContent value="links" className="space-y-4">
-              <LinksTab
-                entityType={currentEntityType}
-                entityId={currentEntityId}
-                onNavigate={handleNavigate}
-              />
-            </TabsContent>
+          {query.error ? (
+            <div className="mt-6 p-4 border border-red-200 bg-red-50 rounded-md">
+              <h3 className="text-sm font-semibold text-red-800">Error Loading Entity</h3>
+              <p className="text-sm text-red-600 mt-2">{query.error.message}</p>
+              <button
+                onClick={() => query.refetch()}
+                className="mt-3 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Retry
+              </button>
+            </div>
+          ) : query.loading ? (
+            <div className="mt-6 space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          ) : !entity ? (
+            <div className="mt-6 p-4 border border-slate-200 bg-slate-50 rounded-md">
+              <p className="text-sm text-slate-600">
+                {entityType === 'settlement' ? 'Settlement' : 'Structure'} not found
+              </p>
+            </div>
+          ) : (
+            <Tabs defaultValue="overview" className="mt-6">
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="links">Links</TabsTrigger>
+                <TabsTrigger value="conditions">Conditions</TabsTrigger>
+                <TabsTrigger value="effects">Effects</TabsTrigger>
+                <TabsTrigger value="versions">Versions</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="conditions" className="space-y-4">
-              <ConditionsTab
-                entityType={currentEntityType === 'settlement' ? 'Settlement' : 'Structure'}
-                entityId={currentEntityId}
-              />
-            </TabsContent>
+              <TabsContent value="overview" className="space-y-4">
+                <OverviewTab
+                  entity={entity}
+                  entityType={currentEntityType}
+                  isEditing={isEditing}
+                  saveRef={tabSaveRef}
+                  onSaveComplete={() => {
+                    setHasUnsavedChanges(false);
+                    setIsEditing(false);
+                  }}
+                  onCancel={handleCancelEditing}
+                  onDirtyChange={handleDirtyChange}
+                />
+              </TabsContent>
 
-            <TabsContent value="effects" className="space-y-4">
-              <EffectsTab
-                entityType={currentEntityType === 'settlement' ? 'Settlement' : 'Structure'}
-                entityId={currentEntityId}
-              />
-            </TabsContent>
+              <TabsContent value="details" className="space-y-4">
+                {currentEntityType === 'settlement' ? (
+                  <SettlementPanel
+                    settlement={entity as NonNullable<typeof settlementQuery.settlement>}
+                  />
+                ) : (
+                  <StructurePanel
+                    structure={entity as NonNullable<typeof structureQuery.structure>}
+                  />
+                )}
+              </TabsContent>
 
-            <TabsContent value="versions" className="space-y-4">
-              <VersionsTab entityType={currentEntityType} entityId={currentEntityId} />
-            </TabsContent>
-          </Tabs>
-        )}
-      </SheetContent>
-    </Sheet>
+              <TabsContent value="links" className="space-y-4">
+                <LinksTab
+                  entityType={currentEntityType}
+                  entityId={currentEntityId}
+                  onNavigate={handleNavigate}
+                />
+              </TabsContent>
+
+              <TabsContent value="conditions" className="space-y-4">
+                <ConditionsTab
+                  entityType={currentEntityType === 'settlement' ? 'Settlement' : 'Structure'}
+                  entityId={currentEntityId}
+                />
+              </TabsContent>
+
+              <TabsContent value="effects" className="space-y-4">
+                <EffectsTab
+                  entityType={currentEntityType === 'settlement' ? 'Settlement' : 'Structure'}
+                  entityId={currentEntityId}
+                />
+              </TabsContent>
+
+              <TabsContent value="versions" className="space-y-4">
+                <VersionsTab entityType={currentEntityType} entityId={currentEntityId} />
+              </TabsContent>
+            </Tabs>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Unsaved changes confirmation dialog */}
+      <Dialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. Are you sure you want to discard them?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUnsavedDialog(false)}>
+              Keep Editing
+            </Button>
+            <Button variant="destructive" onClick={handleDiscardChanges}>
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

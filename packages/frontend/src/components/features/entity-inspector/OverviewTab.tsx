@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { Button, Card, Label } from '@/components/ui';
+import { useEditMode } from '@/hooks';
+import { useUpdateSettlement, useUpdateStructure } from '@/services/api/mutations';
+
+import { EditableField } from './EditableField';
 
 export interface Entity {
   id: string;
@@ -19,6 +21,16 @@ export interface OverviewTabProps {
   entity: Entity;
   /** Type of entity (settlement or structure) */
   entityType: 'settlement' | 'structure';
+  /** Whether edit mode is active */
+  isEditing?: boolean;
+  /** Ref to expose save function to parent */
+  saveRef?: React.MutableRefObject<(() => Promise<boolean>) | null>;
+  /** Callback when save completes successfully */
+  onSaveComplete?: () => void;
+  /** Callback when edit mode is cancelled */
+  onCancel?: () => void;
+  /** Callback when dirty state changes */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 /**
@@ -29,9 +41,75 @@ export interface OverviewTabProps {
  * - Optional description field
  * - Computed fields with JSON formatting
  * - Copy-to-clipboard functionality
+ * - Inline editing for name field
  */
-export function OverviewTab({ entity, entityType }: OverviewTabProps) {
+export function OverviewTab({
+  entity,
+  entityType,
+  isEditing = false,
+  saveRef,
+  onSaveComplete,
+  onCancel,
+  onDirtyChange,
+}: OverviewTabProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Mutation hooks based on entity type
+  const { updateSettlement } = useUpdateSettlement();
+  const { updateStructure } = useUpdateStructure();
+
+  // Stable callbacks for useEditMode
+  const handleSave = useCallback(
+    async (data: { name: string }) => {
+      // Call appropriate mutation based on entity type
+      if (entityType === 'settlement') {
+        await updateSettlement(entity.id, { name: data.name });
+      } else {
+        await updateStructure(entity.id, { name: data.name });
+      }
+      onSaveComplete?.();
+    },
+    [entityType, entity.id, updateSettlement, updateStructure, onSaveComplete]
+  );
+
+  const handleCancel = useCallback(() => {
+    onCancel?.();
+  }, [onCancel]);
+
+  const validateField = useCallback((field: string, value: unknown) => {
+    if (field === 'name' && (!value || String(value).trim() === '')) {
+      return 'Name is required';
+    }
+    return undefined;
+  }, []);
+
+  // Edit mode state management
+  const {
+    data: editData,
+    isDirty,
+    updateField,
+    save: saveEditMode,
+    errors,
+  } = useEditMode({
+    initialData: { name: entity.name },
+    onSave: handleSave,
+    onCancel: handleCancel,
+    validate: validateField,
+  });
+
+  // Notify parent of dirty state changes
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDirty]);
+
+  // Expose save function to parent via ref
+  useEffect(() => {
+    if (saveRef) {
+      saveRef.current = saveEditMode;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveEditMode]);
 
   /**
    * Copy text to clipboard and show temporary success indicator
@@ -99,7 +177,22 @@ export function OverviewTab({ entity, entityType }: OverviewTabProps) {
         <h3 className="text-sm font-bold text-slate-900 mb-4">Basic Information</h3>
         <div className="space-y-3">
           {renderField('ID', entity.id, 'id')}
-          {renderField('Name', entity.name, 'name')}
+
+          {/* Editable Name Field */}
+          {isEditing ? (
+            <EditableField
+              label="Name"
+              value={editData.name}
+              isEditing={isEditing}
+              onChange={(value) => updateField('name', value as string)}
+              type="text"
+              error={errors.find((e) => e.field === 'name')?.message}
+              showCopy={false}
+            />
+          ) : (
+            renderField('Name', entity.name, 'name')
+          )}
+
           {renderField('Created', new Date(entity.createdAt).toLocaleString(), 'createdAt')}
           {renderField('Updated', new Date(entity.updatedAt).toLocaleString(), 'updatedAt')}
         </div>

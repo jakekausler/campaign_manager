@@ -2,6 +2,8 @@ export { ConditionExplanation } from './ConditionExplanation';
 export type { ConditionExplanationProps } from './ConditionExplanation';
 export { ConditionsTab } from './ConditionsTab';
 export type { ConditionsTabProps, FieldCondition } from './ConditionsTab';
+export { EditableField } from './EditableField';
+export type { EditableFieldProps, FieldType } from './EditableField';
 export { EffectExecutionHistory } from './EffectExecutionHistory';
 export type { EffectExecutionHistoryProps } from './EffectExecutionHistory';
 export { EffectsTab } from './EffectsTab';

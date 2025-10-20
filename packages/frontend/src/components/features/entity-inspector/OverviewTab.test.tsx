@@ -1,6 +1,8 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+
+import { renderWithApollo } from '@/__tests__/utils/test-utils';
 
 import { OverviewTab, type Entity } from './OverviewTab';
 
@@ -29,7 +31,7 @@ describe('OverviewTab', () => {
 
   describe('Basic Information Section', () => {
     it('should render basic entity information', () => {
-      render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       expect(screen.getByText('Basic Information')).toBeInTheDocument();
       expect(screen.getByText('ID:')).toBeInTheDocument();
@@ -39,7 +41,7 @@ describe('OverviewTab', () => {
     });
 
     it('should format timestamps correctly', () => {
-      render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       // Check that timestamps are formatted as locale strings
       const createdDate = new Date('2024-01-01T00:00:00.000Z').toLocaleString();
@@ -50,7 +52,7 @@ describe('OverviewTab', () => {
     });
 
     it('should render for structure entities', () => {
-      render(<OverviewTab entity={mockStructure} entityType="structure" />);
+      renderWithApollo(<OverviewTab entity={mockStructure} entityType="structure" />);
 
       expect(screen.getByText('structure-1')).toBeInTheDocument();
       expect(screen.getByText('Main Barracks')).toBeInTheDocument();
@@ -64,14 +66,14 @@ describe('OverviewTab', () => {
         description: 'A fortified settlement with strong walls',
       };
 
-      render(<OverviewTab entity={entityWithDescription} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={entityWithDescription} entityType="settlement" />);
 
       expect(screen.getByRole('heading', { name: 'Description' })).toBeInTheDocument();
       expect(screen.getByText('A fortified settlement with strong walls')).toBeInTheDocument();
     });
 
     it('should not render description section when not available', () => {
-      render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       // Should only have "Basic Information" and "Computed Fields" sections
       const headers = screen.getAllByRole('heading', { level: 3 });
@@ -83,7 +85,7 @@ describe('OverviewTab', () => {
 
   describe('Computed Fields Section', () => {
     it('should render computed fields with proper formatting', () => {
-      render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       expect(screen.getByText('Computed Fields')).toBeInTheDocument();
       // Field names should be converted from snake_case to Title Case
@@ -94,7 +96,7 @@ describe('OverviewTab', () => {
     });
 
     it('should convert snake_case field names to Title Case', () => {
-      render(<OverviewTab entity={mockStructure} entityType="structure" />);
+      renderWithApollo(<OverviewTab entity={mockStructure} entityType="structure" />);
 
       expect(screen.getByText('Training Speed:')).toBeInTheDocument();
       expect(screen.getByText('Capacity:')).toBeInTheDocument();
@@ -109,7 +111,7 @@ describe('OverviewTab', () => {
         },
       };
 
-      render(<OverviewTab entity={entityWithComplexFields} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={entityWithComplexFields} entityType="settlement" />);
 
       // Should render JSON stringified version
       expect(screen.getByText(/"health": 100/)).toBeInTheDocument();
@@ -122,7 +124,7 @@ describe('OverviewTab', () => {
         computedFields: {},
       };
 
-      render(<OverviewTab entity={entityWithoutFields} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={entityWithoutFields} entityType="settlement" />);
 
       expect(
         screen.getByText('No computed fields available for this settlement')
@@ -137,7 +139,7 @@ describe('OverviewTab', () => {
         updatedAt: '2024-01-01T00:00:00.000Z',
       };
 
-      render(<OverviewTab entity={entityWithoutFields} entityType="structure" />);
+      renderWithApollo(<OverviewTab entity={entityWithoutFields} entityType="structure" />);
 
       expect(
         screen.getByText('No computed fields available for this structure')
@@ -149,7 +151,7 @@ describe('OverviewTab', () => {
     it('should copy field value to clipboard when copy button is clicked', async () => {
       const user = userEvent.setup();
 
-      render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       // Find the copy button for the ID field (first copy button)
       const copyButtons = screen.getAllByRole('button');
@@ -172,7 +174,7 @@ describe('OverviewTab', () => {
     it('should show checkmark after successful copy', async () => {
       const user = userEvent.setup();
 
-      render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       const copyButtons = screen.getAllByRole('button');
       await user.click(copyButtons[0]);
@@ -186,7 +188,7 @@ describe('OverviewTab', () => {
     it('should reset checkmark after 2 seconds', async () => {
       const user = userEvent.setup();
 
-      render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       const copyButtons = screen.getAllByRole('button');
       const firstButton = copyButtons[0];
@@ -213,7 +215,7 @@ describe('OverviewTab', () => {
       // Since happy-dom provides a working stub, we just verify the copy still works
       const user = userEvent.setup();
 
-      render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       const copyButtons = screen.getAllByRole('button');
       const firstButton = copyButtons[0];
@@ -237,7 +239,7 @@ describe('OverviewTab', () => {
         },
       };
 
-      render(<OverviewTab entity={entityWithComplexFields} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={entityWithComplexFields} entityType="settlement" />);
 
       // Find the copy button for the status field
       const copyButtons = screen.getAllByRole('button');
@@ -266,7 +268,7 @@ describe('OverviewTab', () => {
         },
       };
 
-      render(<OverviewTab entity={entityWithNullValues} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={entityWithNullValues} entityType="settlement" />);
 
       // Both null and undefined should render as "N/A"
       const naElements = screen.getAllByText('N/A');
@@ -282,7 +284,7 @@ describe('OverviewTab', () => {
         },
       };
 
-      render(<OverviewTab entity={entityWithBoolean} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={entityWithBoolean} entityType="settlement" />);
 
       expect(screen.getByText('true')).toBeInTheDocument();
       expect(screen.getByText('false')).toBeInTheDocument();
@@ -299,7 +301,7 @@ describe('OverviewTab', () => {
         },
       };
 
-      render(<OverviewTab entity={entityWithNumbers} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={entityWithNumbers} entityType="settlement" />);
 
       expect(screen.getByText('42')).toBeInTheDocument();
       expect(screen.getByText('3.14159')).toBeInTheDocument();
@@ -310,7 +312,7 @@ describe('OverviewTab', () => {
 
   describe('Accessibility', () => {
     it('should have proper labels for all fields', () => {
-      render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       expect(screen.getByText('ID:')).toBeInTheDocument();
       expect(screen.getByText('Name:')).toBeInTheDocument();
@@ -319,7 +321,7 @@ describe('OverviewTab', () => {
     });
 
     it('should have accessible copy buttons with titles', () => {
-      render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
+      renderWithApollo(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       const copyButtons = screen.getAllByRole('button');
       copyButtons.forEach((button) => {

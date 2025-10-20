@@ -10,6 +10,15 @@ export { useTimelineData } from './useTimelineData';
 export { useTimelineReschedule } from './useTimelineReschedule';
 export type { UseTimelineRescheduleOptions, RescheduleResult } from './useTimelineReschedule';
 
+// Edit mode hooks
+export { useEditMode } from './useEditMode';
+export type {
+  UseEditModeOptions,
+  UseEditModeResult,
+  FieldError,
+  FieldValidator,
+} from './useEditMode';
+
 // Export custom hooks here as they are created
 // Example:
 // export { useAuth } from './useAuth';

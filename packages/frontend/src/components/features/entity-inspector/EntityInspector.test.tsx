@@ -85,9 +85,10 @@ describe('EntityInspector', () => {
         />
       );
 
-      // Wait for settlement name to appear
+      // Wait for settlement name to appear (appears in both header and Overview tab)
       await waitFor(() => {
-        expect(screen.getByText(new RegExp(mockSettlements[0].name))).toBeInTheDocument();
+        const nameElements = screen.getAllByText(new RegExp(mockSettlements[0].name));
+        expect(nameElements.length).toBeGreaterThanOrEqual(1);
       });
 
       // Should show basic entity info in Overview tab
@@ -126,9 +127,10 @@ describe('EntityInspector', () => {
         />
       );
 
-      // Wait for structure name to appear
+      // Wait for structure name to appear (appears in both header and Overview tab)
       await waitFor(() => {
-        expect(screen.getByText(new RegExp(mockStructures[0].name))).toBeInTheDocument();
+        const nameElements = screen.getAllByText(new RegExp(mockStructures[0].name));
+        expect(nameElements.length).toBeGreaterThanOrEqual(1);
       });
 
       // Should show Structure Inspector title
@@ -190,9 +192,10 @@ describe('EntityInspector', () => {
         />
       );
 
-      // Wait for data to load
+      // Wait for data to load (name appears in both header and Overview tab)
       await waitFor(() => {
-        expect(screen.getByText(new RegExp(mockSettlements[0].name))).toBeInTheDocument();
+        const nameElements = screen.getAllByText(new RegExp(mockSettlements[0].name));
+        expect(nameElements.length).toBeGreaterThanOrEqual(1);
       });
 
       // Check all tab triggers are present
@@ -214,9 +217,10 @@ describe('EntityInspector', () => {
         />
       );
 
-      // Wait for data to load
+      // Wait for data to load (name appears in both header and Overview tab)
       await waitFor(() => {
-        expect(screen.getByText(new RegExp(mockSettlements[0].name))).toBeInTheDocument();
+        const nameElements = screen.getAllByText(new RegExp(mockSettlements[0].name));
+        expect(nameElements.length).toBeGreaterThanOrEqual(1);
       });
 
       // Overview tab should be selected by default (has data-state="active")
