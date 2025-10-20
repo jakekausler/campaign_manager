@@ -60,6 +60,7 @@ describe('EncounterService', () => {
     difficulty: 5,
     isResolved: false,
     resolvedAt: null,
+    scheduledAt: null,
     variables: {},
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -255,6 +256,7 @@ describe('EncounterService', () => {
           description: input.description,
           difficulty: input.difficulty,
           variables: input.variables,
+          scheduledAt: null,
         },
       });
       expect(audit.log).toHaveBeenCalledWith('encounter', mockEncounter.id, 'CREATE', mockUser.id, {
@@ -263,6 +265,7 @@ describe('EncounterService', () => {
         name: mockEncounter.name,
         description: mockEncounter.description,
         difficulty: mockEncounter.difficulty,
+        scheduledAt: mockEncounter.scheduledAt,
         variables: mockEncounter.variables,
       });
     });
@@ -289,6 +292,7 @@ describe('EncounterService', () => {
           description: null,
           difficulty: null,
           variables: {},
+          scheduledAt: null,
         },
       });
     });

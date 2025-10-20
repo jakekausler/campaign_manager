@@ -29,6 +29,7 @@ const mockEncounter: Encounter = {
   difficulty: 10,
   isResolved: false,
   resolvedAt: null,
+  scheduledAt: null,
   variables: { enemyCount: 1, dragonType: 'red' },
   version: 1,
   createdAt: new Date('2025-01-01'),
