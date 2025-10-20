@@ -6,8 +6,74 @@
 - **Commits**:
   - 23e8919 - Stage 1: UI Component Setup
   - a943d89 - Stage 2: GraphQL Hooks for Conditions and Effects
+  - b1ad688 - Stage 3: EntityInspector Core Component
 
 ## Implementation Notes
+
+### Stage 3: EntityInspector Core Component (Commit: b1ad688)
+
+**Completed**: Core EntityInspector component with data fetching, loading states, error handling, and comprehensive testing.
+
+**Components Created**:
+
+Skeleton UI Component (`packages/frontend/src/components/ui/skeleton.tsx`):
+
+- Simple, reusable loading skeleton with pulse animation
+- Follows shadcn/ui patterns and Tailwind CSS styling
+- Exported from `components/ui/index.ts`
+
+Enhanced EntityInspector (`packages/frontend/src/components/features/entity-inspector/EntityInspector.tsx`):
+
+- Conditional data fetching using `useSettlementDetails` and `useStructureDetails` hooks
+- `skip` option prevents unnecessary GraphQL queries based on entity type
+- Three distinct UI states: loading (skeleton), error (with retry), not found
+- Error state displays user-friendly message with retry button
+- Loading state shows skeleton placeholders for better perceived performance
+- Basic entity information displayed in Overview tab (ID, name, timestamps)
+- Sheet component includes built-in close button for accessibility
+
+**Test Coverage**:
+
+Comprehensive test suite (`packages/frontend/src/components/features/entity-inspector/EntityInspector.test.tsx`):
+
+- 12 test cases covering all scenarios with 100% pass rate
+- Component rendering tests (open/close states)
+- Settlement and Structure data loading tests
+- Loading skeleton state verification
+- Error handling with GraphQL failures
+- Not found states for nonexistent entities
+- Tab navigation and default tab selection
+- Uses MSW for realistic GraphQL mocking
+- Uses `renderWithApollo` helper for Apollo Client integration
+
+**MSW Handler Improvements** (`packages/frontend/src/__tests__/mocks/graphql-handlers.ts`):
+
+- Distinguish between GraphQL errors (`invalid-*` IDs) and not-found cases (`nonexistent-*` IDs)
+- `invalid-*` IDs return GraphQL errors for testing error state
+- `nonexistent-*` IDs return null data without error for testing not-found state
+- Consistent error handling across settlement and structure queries
+
+**Demo Page Enhancements** (`packages/frontend/src/pages/EntityInspectorDemoPage.tsx`):
+
+- Real entity IDs from mock data (settlement-1, structure-1, etc.)
+- Organized sections: Settlements, Structures, Error Cases
+- Clear button labels showing entity details (e.g., "Ironhold (Level 3)")
+- Test buttons for error and not-found scenarios
+
+**Code Review Fixes**:
+
+- Removed unnecessary wrapper div around Sheet component
+- Fixed test to check for content absence instead of relying on internal `data-state` attribute
+- Verified Sheet component includes built-in close button (SheetContent line 62-65)
+
+**Quality Checks**:
+
+- TypeScript compilation: ✅ PASSED (0 errors)
+- ESLint: ✅ PASSED (0 errors in new code, pre-existing warnings only)
+- Tests: ✅ PASSED (12/12 tests passing)
+- Code Review: ✅ APPROVED (all critical issues resolved)
+
+**Next Steps**: Stage 4 will implement the Overview tab with description and computed fields display.
 
 ### Stage 2: GraphQL Hooks for Conditions and Effects (Commit: a943d89)
 

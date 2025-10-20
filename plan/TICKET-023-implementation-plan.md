@@ -98,23 +98,27 @@ Create a comprehensive entity inspector drawer/panel with tabs for overview, lin
 
 **Tasks**:
 
-- [ ] Create `packages/frontend/src/components/features/entity-inspector/` directory
-- [ ] Create `EntityInspector.tsx` with Sheet and Tabs structure
-- [ ] Add props interface: `entityType`, `entityId`, `isOpen`, `onClose`
-- [ ] Fetch entity data using appropriate hooks based on `entityType`
-- [ ] Create tab structure: Overview, Links, Conditions, Effects, Versions
-- [ ] Add loading skeleton for data fetching
-- [ ] Add error boundary for graceful error handling
-- [ ] Create basic test file for EntityInspector
-- [ ] Export from `packages/frontend/src/components/features/entity-inspector/index.ts`
+- [x] Create `packages/frontend/src/components/features/entity-inspector/` directory
+- [x] Create `EntityInspector.tsx` with Sheet and Tabs structure
+- [x] Add props interface: `entityType`, `entityId`, `isOpen`, `onClose`
+- [x] Fetch entity data using appropriate hooks based on `entityType`
+- [x] Create tab structure: Overview, Links, Conditions, Effects, Versions
+- [x] Add loading skeleton for data fetching
+- [x] Add error boundary for graceful error handling
+- [x] Create basic test file for EntityInspector
+- [x] Export from `packages/frontend/src/components/features/entity-inspector/index.ts`
 
 **Acceptance Criteria**:
 
-- Inspector opens with correct entity data
-- Tabs render and are navigable
-- Loading states show skeleton
-- Errors are handled gracefully
-- Component is properly typed
+- [x] Inspector opens with correct entity data
+- [x] Tabs render and are navigable
+- [x] Loading states show skeleton
+- [x] Errors are handled gracefully
+- [x] Component is properly typed
+
+**Status**: ✅ COMPLETED
+
+**Commit**: b1ad688
 
 ---
 
