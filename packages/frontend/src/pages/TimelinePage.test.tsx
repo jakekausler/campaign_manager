@@ -1,10 +1,13 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useSearchParams } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 import { Timeline } from '@/components/features/timeline';
-import { useTimelineData, useTimelineReschedule } from '@/hooks';
+import { useTimelineReschedule } from '@/hooks';
+import { useEncountersByCampaign } from '@/services/api/hooks/encounters';
+import { useEventsByCampaign } from '@/services/api/hooks/events';
 import { useCurrentWorldTime } from '@/services/api/hooks/world-time';
 import { useCurrentCampaignId } from '@/stores';
 
@@ -13,9 +16,11 @@ import TimelinePage from './TimelinePage';
 /**
  * Test suite for TimelinePage component
  *
- * Tests TICKET-022 Stage 5 and Stage 6 implementation:
+ * Tests TICKET-022 Stage 5, Stage 6, and Stage 11 implementation:
  * - Timeline renders with event/encounter data
  * - Current world time marker integration
+ * - Filtering and lane grouping (Stage 11)
+ * - URL parameter persistence (Stage 11)
  * - Loading state displays during data fetch
  * - Error state displays on fetch failure
  * - Empty states for no campaign or no data
@@ -29,8 +34,16 @@ vi.mock('@/stores', () => ({
 
 // Mock hooks
 vi.mock('@/hooks', () => ({
-  useTimelineData: vi.fn(),
   useTimelineReschedule: vi.fn(),
+}));
+
+// Mock GraphQL hooks for events and encounters (Stage 11 changes)
+vi.mock('@/services/api/hooks/events', () => ({
+  useEventsByCampaign: vi.fn(),
+}));
+
+vi.mock('@/services/api/hooks/encounters', () => ({
+  useEncountersByCampaign: vi.fn(),
 }));
 
 // Mock useCurrentWorldTime hook
@@ -38,7 +51,12 @@ vi.mock('@/services/api/hooks/world-time', () => ({
   useCurrentWorldTime: vi.fn(),
 }));
 
-// Mock Timeline component and TimelineControls
+// Mock React Router hooks (for URL parameter integration in Stage 11)
+vi.mock('react-router-dom', () => ({
+  useSearchParams: vi.fn(),
+}));
+
+// Mock Timeline component, TimelineControls, and TimelineFilters
 vi.mock('@/components/features/timeline', () => ({
   Timeline: vi.fn(({ items }) => (
     <div data-testid="timeline-component">
@@ -46,7 +64,70 @@ vi.mock('@/components/features/timeline', () => ({
     </div>
   )),
   TimelineControls: vi.fn(() => <div data-testid="timeline-controls" />),
+  TimelineFilters: vi.fn(() => <div data-testid="timeline-filters" />),
 }));
+
+// Mock events data
+const mockEvents = [
+  {
+    id: 'event-1',
+    name: 'Festival',
+    description: 'Annual celebration',
+    eventType: 'kingdom',
+    scheduledAt: '2024-06-15T12:00:00.000Z',
+    occurredAt: '2024-06-15T14:00:00.000Z',
+    isCompleted: true,
+    locationId: 'location-1',
+    campaignId: 'test-campaign-123',
+    variables: {},
+    createdAt: '2024-06-01T00:00:00.000Z',
+    updatedAt: '2024-06-15T14:00:00.000Z',
+    version: 1,
+    location: null,
+    notes: null,
+    effects: [],
+  },
+  {
+    id: 'event-2',
+    name: 'Battle',
+    description: 'Epic battle',
+    eventType: 'story',
+    scheduledAt: '2024-06-20T10:00:00.000Z',
+    occurredAt: null,
+    isCompleted: false,
+    locationId: 'location-2',
+    campaignId: 'test-campaign-123',
+    variables: {},
+    createdAt: '2024-06-10T00:00:00.000Z',
+    updatedAt: '2024-06-10T00:00:00.000Z',
+    version: 1,
+    location: null,
+    notes: null,
+    effects: [],
+  },
+];
+
+// Mock encounters data
+const mockEncounters = [
+  {
+    id: 'encounter-1',
+    name: 'Dragon Attack',
+    description: 'Fearsome dragon',
+    difficulty: 15,
+    scheduledAt: null,
+    isResolved: true,
+    resolvedAt: '2024-07-01T16:30:00.000Z',
+    locationId: 'location-3',
+    campaignId: 'test-campaign-123',
+    variables: {},
+    createdAt: '2024-06-25T00:00:00.000Z',
+    updatedAt: '2024-07-01T16:30:00.000Z',
+    version: 1,
+    location: null,
+    outcome: null,
+    effects: [],
+  },
+];
 
 describe('TimelinePage', () => {
   beforeEach(() => {
@@ -68,15 +149,36 @@ describe('TimelinePage', () => {
       loading: false,
       error: undefined,
     });
+    // Mock React Router hooks (Stage 11 URL parameter integration)
+    vi.mocked(useSearchParams).mockReturnValue([
+      new URLSearchParams(),
+      vi.fn(), // setSearchParams
+    ]);
+    // Set default empty data for events and encounters (Stage 11)
+    vi.mocked(useEventsByCampaign).mockReturnValue({
+      events: [],
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+      networkStatus: 7,
+    });
+    vi.mocked(useEncountersByCampaign).mockReturnValue({
+      encounters: [],
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+      networkStatus: 7,
+    });
   });
 
   describe('Loading State', () => {
-    it('should render loading state while fetching data', () => {
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: [],
+    it('should render loading state while fetching events', () => {
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [],
         loading: true,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 1,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -86,11 +188,12 @@ describe('TimelinePage', () => {
     });
 
     it('should not render timeline component while loading', () => {
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: [],
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [],
         loading: true,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 1,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -102,11 +205,12 @@ describe('TimelinePage', () => {
   describe('Error State', () => {
     it('should render error message when fetch fails', () => {
       const errorMessage = 'Network error: Failed to fetch';
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: [],
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [],
         loading: false,
         error: new Error(errorMessage),
         refetch: vi.fn(),
+        networkStatus: 8,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -117,11 +221,12 @@ describe('TimelinePage', () => {
 
     it('should render retry button on error', () => {
       const mockRefetch = vi.fn();
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: [],
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [],
         loading: false,
         error: new Error('Test error'),
         refetch: mockRefetch,
+        networkStatus: 8,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -132,12 +237,23 @@ describe('TimelinePage', () => {
 
     it('should call refetch when retry button is clicked', async () => {
       const user = userEvent.setup();
-      const mockRefetch = vi.fn();
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: [],
+      const mockEventsRefetch = vi.fn();
+      const mockEncountersRefetch = vi.fn();
+
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [],
         loading: false,
         error: new Error('Test error'),
-        refetch: mockRefetch,
+        refetch: mockEventsRefetch,
+        networkStatus: 8,
+      });
+
+      vi.mocked(useEncountersByCampaign).mockReturnValue({
+        encounters: [],
+        loading: false,
+        error: undefined,
+        refetch: mockEncountersRefetch,
+        networkStatus: 7,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -146,7 +262,8 @@ describe('TimelinePage', () => {
       await user.click(retryButton);
 
       await waitFor(() => {
-        expect(mockRefetch).toHaveBeenCalledTimes(1);
+        expect(mockEventsRefetch).toHaveBeenCalledTimes(1);
+        expect(mockEncountersRefetch).toHaveBeenCalledTimes(1);
       });
     });
   });
@@ -156,13 +273,6 @@ describe('TimelinePage', () => {
       // Mock no campaign selected
       vi.mocked(useCurrentCampaignId).mockReturnValueOnce(null);
 
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: [],
-        loading: false,
-        error: undefined,
-        refetch: vi.fn(),
-      });
-
       renderWithApollo(<TimelinePage />);
 
       expect(screen.getByText('No campaign selected')).toBeInTheDocument();
@@ -170,13 +280,6 @@ describe('TimelinePage', () => {
     });
 
     it('should render empty state when no timeline items exist', () => {
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: [],
-        loading: false,
-        error: undefined,
-        refetch: vi.fn(),
-      });
-
       renderWithApollo(<TimelinePage />);
 
       expect(screen.getByText('No timeline items found')).toBeInTheDocument();
@@ -188,58 +291,35 @@ describe('TimelinePage', () => {
 
   describe('Success State', () => {
     it('should render timeline with items when data is loaded', () => {
-      const mockItems = [
-        {
-          id: 'event-1',
-          content: 'Festival',
-          start: new Date('2024-06-15'),
-          type: 'point' as const,
-          className: 'timeline-event-completed',
-          title: 'Festival\nCompleted',
-          editable: false,
-        },
-        {
-          id: 'encounter-1',
-          content: 'Dragon Attack',
-          start: new Date('2024-07-01'),
-          type: 'point' as const,
-          className: 'timeline-encounter-resolved',
-          title: 'Dragon Attack\nResolved',
-          editable: false,
-        },
-      ];
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: mockItems,
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: mockEvents,
         loading: false,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      vi.mocked(useEncountersByCampaign).mockReturnValue({
+        encounters: mockEncounters,
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
       });
 
       renderWithApollo(<TimelinePage />);
 
       expect(screen.getByTestId('timeline-component')).toBeInTheDocument();
-      expect(screen.getByText('Timeline items: 2')).toBeInTheDocument();
+      expect(screen.getByText('Timeline items: 3')).toBeInTheDocument();
     });
 
     it('should render header with item count', () => {
-      const mockItems = [
-        {
-          id: 'event-1',
-          content: 'Festival',
-          start: new Date('2024-06-15'),
-          type: 'point' as const,
-          className: 'timeline-event-completed',
-          title: 'Festival',
-          editable: false,
-        },
-      ];
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: mockItems,
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
         loading: false,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 7,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -249,32 +329,12 @@ describe('TimelinePage', () => {
     });
 
     it('should render plural item count correctly', () => {
-      const mockItems = [
-        {
-          id: 'event-1',
-          content: 'Festival',
-          start: new Date('2024-06-15'),
-          type: 'point' as const,
-          className: 'timeline-event-completed',
-          title: 'Festival',
-          editable: false,
-        },
-        {
-          id: 'event-2',
-          content: 'Battle',
-          start: new Date('2024-06-20'),
-          type: 'point' as const,
-          className: 'timeline-event-scheduled',
-          title: 'Battle',
-          editable: true,
-        },
-      ];
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: mockItems,
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: mockEvents,
         loading: false,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 7,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -283,24 +343,12 @@ describe('TimelinePage', () => {
     });
 
     it('should pass transformed items to Timeline component', () => {
-      const mockItems = [
-        {
-          id: 'event-1',
-          content: 'Festival',
-          start: new Date('2024-06-15'),
-          end: undefined,
-          type: 'point' as const,
-          className: 'timeline-event-completed',
-          title: 'Festival\nCompleted',
-          editable: false,
-        },
-      ];
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: mockItems,
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
         loading: false,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 7,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -309,13 +357,8 @@ describe('TimelinePage', () => {
         expect.objectContaining({
           items: expect.arrayContaining([
             expect.objectContaining({
-              id: 'event-1',
+              id: 'event-event-1',
               content: 'Festival',
-              start: mockItems[0].start,
-              type: 'point',
-              className: 'timeline-event-completed',
-              title: 'Festival\nCompleted',
-              editable: false,
             }),
           ]),
         }),
@@ -325,62 +368,20 @@ describe('TimelinePage', () => {
   });
 
   describe('Data Fetching', () => {
-    it('should call useTimelineData with campaign ID and currentTime', () => {
-      const currentTime = new Date('2024-01-15T12:00:00Z');
-      vi.mocked(useCurrentWorldTime).mockReturnValue({
-        currentTime,
-        loading: false,
-        error: undefined,
-        refetch: vi.fn(),
-        networkStatus: 7,
-      });
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: [],
-        loading: false,
-        error: undefined,
-        refetch: vi.fn(),
-      });
-
+    it('should call GraphQL hooks with campaign ID', () => {
       renderWithApollo(<TimelinePage />);
 
-      expect(useTimelineData).toHaveBeenCalledWith('test-campaign-123', currentTime);
-    });
-
-    it('should call useTimelineData with undefined when currentTime is null', () => {
-      vi.mocked(useCurrentWorldTime).mockReturnValue({
-        currentTime: null,
-        loading: false,
-        error: undefined,
-        refetch: vi.fn(),
-        networkStatus: 7,
-      });
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: [],
-        loading: false,
-        error: undefined,
-        refetch: vi.fn(),
-      });
-
-      renderWithApollo(<TimelinePage />);
-
-      expect(useTimelineData).toHaveBeenCalledWith('test-campaign-123', undefined);
+      expect(useEventsByCampaign).toHaveBeenCalledWith('test-campaign-123');
+      expect(useEncountersByCampaign).toHaveBeenCalledWith('test-campaign-123');
     });
 
     it('should handle empty string campaign ID gracefully', () => {
       vi.mocked(useCurrentCampaignId).mockReturnValueOnce(null);
 
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: [],
-        loading: false,
-        error: undefined,
-        refetch: vi.fn(),
-      });
-
       renderWithApollo(<TimelinePage />);
 
-      expect(useTimelineData).toHaveBeenCalledWith('', undefined);
+      expect(useEventsByCampaign).toHaveBeenCalledWith('');
+      expect(useEncountersByCampaign).toHaveBeenCalledWith('');
     });
   });
 
@@ -395,23 +396,12 @@ describe('TimelinePage', () => {
         networkStatus: 7,
       });
 
-      const mockItems = [
-        {
-          id: 'event-1',
-          content: 'Festival',
-          start: new Date('2024-06-15'),
-          type: 'point' as const,
-          className: 'timeline-event-completed',
-          title: 'Festival',
-          editable: false,
-        },
-      ];
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: mockItems,
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
         loading: false,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 7,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -431,23 +421,12 @@ describe('TimelinePage', () => {
         networkStatus: 7,
       });
 
-      const mockItems = [
-        {
-          id: 'event-1',
-          content: 'Festival',
-          start: new Date('2024-06-15'),
-          type: 'point' as const,
-          className: 'timeline-event-completed',
-          title: 'Festival',
-          editable: false,
-        },
-      ];
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: mockItems,
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
         loading: false,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 7,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -465,23 +444,12 @@ describe('TimelinePage', () => {
         networkStatus: 7,
       });
 
-      const mockItems = [
-        {
-          id: 'event-1',
-          content: 'Festival',
-          start: new Date('2024-06-15'),
-          type: 'point' as const,
-          className: 'timeline-event-completed',
-          title: 'Festival',
-          editable: false,
-        },
-      ];
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: mockItems,
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
         loading: false,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 7,
       });
 
       renderWithApollo(<TimelinePage />);
@@ -497,23 +465,12 @@ describe('TimelinePage', () => {
 
   describe('Responsive Layout', () => {
     it('should render with full-height layout', () => {
-      const mockItems = [
-        {
-          id: 'event-1',
-          content: 'Festival',
-          start: new Date('2024-06-15'),
-          type: 'point' as const,
-          className: 'timeline-event-completed',
-          title: 'Festival',
-          editable: false,
-        },
-      ];
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: mockItems,
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
         loading: false,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 7,
       });
 
       const { container } = renderWithApollo(<TimelinePage />);
@@ -524,23 +481,12 @@ describe('TimelinePage', () => {
     });
 
     it('should render header with border', () => {
-      const mockItems = [
-        {
-          id: 'event-1',
-          content: 'Festival',
-          start: new Date('2024-06-15'),
-          type: 'point' as const,
-          className: 'timeline-event-completed',
-          title: 'Festival',
-          editable: false,
-        },
-      ];
-
-      vi.mocked(useTimelineData).mockReturnValue({
-        items: mockItems,
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
         loading: false,
         error: undefined,
         refetch: vi.fn(),
+        networkStatus: 7,
       });
 
       const { container } = renderWithApollo(<TimelinePage />);
@@ -548,6 +494,36 @@ describe('TimelinePage', () => {
       // Check for border-b class on header
       const header = container.querySelector('.border-b');
       expect(header).toBeInTheDocument();
+    });
+  });
+
+  describe('Stage 11: Filters Integration', () => {
+    it('should render TimelineFilters component', () => {
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      expect(screen.getByTestId('timeline-filters')).toBeInTheDocument();
+    });
+
+    it('should render filter sidebar', () => {
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      expect(screen.getByText('Filters')).toBeInTheDocument();
     });
   });
 });

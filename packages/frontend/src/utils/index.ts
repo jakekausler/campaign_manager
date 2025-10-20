@@ -64,3 +64,23 @@ export {
   type RescheduleableItem,
   type CanRescheduleResult,
 } from './timeline-validation';
+
+// Timeline filtering and grouping utilities
+export {
+  DEFAULT_FILTERS,
+  matchesEventTypeFilter,
+  getEventStatus,
+  getEncounterStatus,
+  matchesEventStatusFilter,
+  matchesEncounterStatusFilter,
+  filterEvents,
+  filterEncounters,
+  assignGroupToItem,
+  applyGrouping,
+  parseFiltersFromURL,
+  serializeFiltersToURL,
+  type EventType,
+  type StatusFilter,
+  type GroupStrategy,
+  type TimelineFilters,
+} from './timeline-filters';

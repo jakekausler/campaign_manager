@@ -1,10 +1,27 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { TimelineItem } from 'vis-timeline/types';
 
-import { Timeline, TimelineControls, TimelineHandle } from '@/components/features/timeline';
-import { useTimelineData, useTimelineReschedule } from '@/hooks';
+import {
+  Timeline,
+  TimelineControls,
+  TimelineHandle,
+  TimelineFilters,
+} from '@/components/features/timeline';
+import { useTimelineReschedule } from '@/hooks';
+import { useEncountersByCampaign } from '@/services/api/hooks/encounters';
+import { useEventsByCampaign } from '@/services/api/hooks/events';
 import { useCurrentWorldTime } from '@/services/api/hooks/world-time';
 import { useCurrentCampaignId } from '@/stores';
+import {
+  parseFiltersFromURL,
+  serializeFiltersToURL,
+  filterEvents,
+  filterEncounters,
+  applyGrouping,
+  type TimelineFilters as FilterConfig,
+} from '@/utils/timeline-filters';
+import { transformToTimelineItems } from '@/utils/timeline-transforms';
 
 /**
  * TimelinePage - Campaign timeline view showing events and encounters
@@ -20,10 +37,12 @@ import { useCurrentCampaignId } from '@/stores';
  * - Color-coded status visualization with overdue detection
  * - Drag-to-reschedule functionality with validation
  * - Zoom and pan controls with keyboard shortcuts
+ * - Filtering by event type, status, and lane grouping
+ * - URL-persisted filter state
  * - Loading skeleton during data fetch
  * - Error handling with user feedback
  *
- * Part of TICKET-022 Stage 5, Stage 6, Stage 7, and Stage 10 implementation.
+ * Part of TICKET-022 Stage 5, Stage 6, Stage 7, Stage 10, and Stage 11 implementation.
  */
 export default function TimelinePage() {
   // Ref to control the timeline programmatically
@@ -35,11 +54,64 @@ export default function TimelinePage() {
   // Fetch current world time for marker and overdue detection
   const { currentTime } = useCurrentWorldTime(campaignId || undefined);
 
-  // Fetch timeline data (events + encounters) with overdue detection
-  const { items, loading, error, refetch } = useTimelineData(
-    campaignId || '',
-    currentTime || undefined
-  );
+  // URL search params for filter persistence
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Parse filters from URL or use defaults
+  const [filters, setFilters] = useState<FilterConfig>(() => parseFiltersFromURL(searchParams));
+
+  // Sync filters to URL when they change
+  useEffect(() => {
+    const params = serializeFiltersToURL(filters);
+    setSearchParams(params, { replace: true });
+  }, [filters, setSearchParams]);
+
+  // Fetch raw events and encounters (not transformed yet)
+  const {
+    events,
+    loading: eventsLoading,
+    error: eventsError,
+    refetch: refetchEvents,
+  } = useEventsByCampaign(campaignId || '');
+
+  const {
+    encounters,
+    loading: encountersLoading,
+    error: encountersError,
+    refetch: refetchEncounters,
+  } = useEncountersByCampaign(campaignId || '');
+
+  // Apply filters and transform to timeline items
+  const items = useMemo<TimelineItem[]>(() => {
+    // Don't transform if either query is still loading initial data
+    if ((eventsLoading && events.length === 0) || (encountersLoading && encounters.length === 0)) {
+      return [];
+    }
+
+    // Apply filters to raw data
+    const filteredEvents = filterEvents(events, filters, currentTime || undefined);
+    const filteredEncounters = filterEncounters(encounters, filters);
+
+    // Transform filtered data to timeline items
+    const timelineItems = transformToTimelineItems(
+      filteredEvents,
+      filteredEncounters,
+      currentTime || undefined
+    );
+
+    // Apply grouping strategy
+    return applyGrouping(timelineItems, filters.groupBy, filteredEvents, filteredEncounters);
+  }, [events, encounters, filters, currentTime, eventsLoading, encountersLoading]);
+
+  // Combined loading and error states
+  const loading =
+    (eventsLoading && events.length === 0) || (encountersLoading && encounters.length === 0);
+  const error = eventsError || encountersError;
+
+  // Combined refetch function
+  const refetch = useCallback(async () => {
+    await Promise.all([refetchEvents(), refetchEncounters()]);
+  }, [refetchEvents, refetchEncounters]);
 
   // Drag-to-reschedule hook with validation
   const { reschedule, loading: rescheduling } = useTimelineReschedule({
@@ -63,8 +135,11 @@ export default function TimelinePage() {
         content: item.content as string,
         start: item.start as Date,
         editable: item.editable !== false,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         type: (item as any).type as 'event' | 'encounter' | undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         isCompleted: (item as any).isCompleted as boolean | undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         isResolved: (item as any).isResolved as boolean | undefined,
       };
 
@@ -162,19 +237,30 @@ export default function TimelinePage() {
         <TimelineControls timelineRef={timelineRef} currentTime={currentTime} />
       </div>
 
-      {/* Timeline visualization */}
-      <div className="flex-1 p-6">
-        <Timeline
-          ref={timelineRef}
-          items={items}
-          currentTime={currentTime}
-          onItemMove={handleItemMove}
-        />
-        {rescheduling && (
-          <div className="fixed bottom-4 right-4 bg-card border rounded-lg shadow-lg px-4 py-3">
-            <div className="text-sm font-medium">Rescheduling...</div>
+      {/* Main content area with sidebar and timeline */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Filter sidebar */}
+        <aside className="w-64 border-r bg-card overflow-y-auto">
+          <div className="p-4">
+            <h2 className="text-lg font-semibold mb-4">Filters</h2>
+            <TimelineFilters filters={filters} onChange={setFilters} />
           </div>
-        )}
+        </aside>
+
+        {/* Timeline visualization */}
+        <div className="flex-1 p-6">
+          <Timeline
+            ref={timelineRef}
+            items={items}
+            currentTime={currentTime}
+            onItemMove={handleItemMove}
+          />
+          {rescheduling && (
+            <div className="fixed bottom-4 right-4 bg-card border rounded-lg shadow-lg px-4 py-3">
+              <div className="text-sm font-medium">Rescheduling...</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
