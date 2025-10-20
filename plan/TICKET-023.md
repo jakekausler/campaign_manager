@@ -9,6 +9,122 @@
   - b1ad688 - Stage 3: EntityInspector Core Component
   - 2aacb46 - Stage 4: Overview Tab Implementation
   - bb3c5df - Stage 5: Settlement and Structure Specific Panels
+  - 3d48d99 - Stage 6: Conditions Tab Implementation
+
+## Implementation Notes
+
+### Stage 6: Conditions Tab Implementation (Commit: 3d48d99)
+
+**Completed**: Comprehensive Conditions tab with field condition display and interactive evaluation trace modal.
+
+**Components Created**:
+
+ConditionsTab Component (`packages/frontend/src/components/features/entity-inspector/ConditionsTab.tsx`):
+
+- Fetches conditions using `useConditionsForEntity` hook with cache-first policy
+- Displays field conditions sorted by priority (highest first)
+- Shows active/inactive status with color-coded badges (green for active, grey for inactive)
+- Displays instance-level vs type-level badges (blue "Instance", purple "Type")
+- Snake_case to Title Case conversion for field names (e.g., "is_trade_hub" → "Is Trade Hub")
+- Formatted JSONLogic expression display with 2-space JSON indentation
+- "Explain" button for each active condition (disabled for inactive conditions)
+- Comprehensive state handling: loading, error (with retry button), empty states
+- Card-based layout with consistent styling and spacing
+- Proper TypeScript interfaces exported (FieldCondition type)
+
+ConditionExplanation Component (`packages/frontend/src/components/features/entity-inspector/ConditionExplanation.tsx`):
+
+- Dialog modal showing detailed condition evaluation trace
+- Fetches entity data (Settlement or Structure) using existing detail hooks
+- Builds evaluation context from entity variables, computed fields, and base attributes
+- Automatically evaluates condition on modal open using `useEvaluateCondition` hook
+- Displays condition details (field, description, priority)
+- Shows JSONLogic expression with formatted JSON
+- Displays evaluation context (all variables passed to JSONLogic)
+- Shows evaluation result with success/failure status and final value
+- Step-by-step evaluation trace with operation names, inputs, outputs, and descriptions
+- Proper type safety with SettlementWithVariables and StructureWithVariables interfaces
+- "Done" button to close modal (avoids conflict with Dialog's X button)
+- Clean Card-based sections for each aspect (details, expression, context, result, trace)
+
+**Integration**:
+
+EntityInspector Updates (`packages/frontend/src/components/features/entity-inspector/EntityInspector.tsx`):
+
+- Imported ConditionsTab component
+- Replaced Conditions tab placeholder with ConditionsTab component
+- Passes entityType and entityId props (converts lowercase to capitalized for GraphQL)
+- Conditions tab now fully functional alongside Overview, Details, Links, Effects, and Versions tabs
+
+index.ts Exports (`packages/frontend/src/components/features/entity-inspector/index.ts`):
+
+- Exported ConditionsTab component and ConditionsTabProps type
+- Exported ConditionExplanation component and ConditionExplanationProps type
+- Exported FieldCondition interface for reuse in other components
+
+**Test Coverage**:
+
+Comprehensive test suite (`packages/frontend/src/components/features/entity-inspector/ConditionsTab.test.tsx`):
+
+- 22 test cases with 100% pass rate (994 total frontend tests, 987 passing)
+- Loading state rendering test
+- Error state with error message and retry button tests
+- Empty state with entity-specific messaging
+- Condition list display tests (field names, descriptions, status badges, priority, JSONLogic)
+- Priority sorting verification (ensures highest priority appears first)
+- Instance vs type-level badge tests
+- Explain button presence and enablement tests
+- Modal opening and closing interaction tests
+- Support for both Settlement and Structure entity types
+- Accessibility tests (button labels, title attributes)
+- Uses MSW for GraphQL mocking with realistic data
+
+**Mock Data Updates**:
+
+graphql-handlers.ts (`packages/frontend/src/__tests__/mocks/graphql-handlers.ts`):
+
+- Added error case handling for `entityId.startsWith('invalid-')` → GraphQL error response
+- Added empty case handling for `entityId.endsWith('-empty')` → empty array response
+- Maintains existing condition filtering logic (by entityType, entityId, field)
+
+data.ts (`packages/frontend/src/__tests__/mocks/data.ts`):
+
+- Updated condition descriptions for better clarity and test readability
+- Removed type-level condition overlap to ensure consistent test expectations
+- Added back type-level condition with field "exists" for integration test compatibility
+
+**Code Quality**:
+
+- TypeScript compilation: ✅ PASSED (0 errors)
+- ESLint: ✅ PASSED (0 errors, only pre-existing warnings in other files)
+- Tests: ✅ 22/22 passing (994 total frontend tests, 987 passing, 7 pre-existing failures)
+- Code Review: ✅ APPROVED (all critical type safety issues resolved)
+- Type Safety: Proper interfaces instead of `any` types (SettlementWithVariables, StructureWithVariables)
+- Comprehensive JSDoc comments for all exported components and interfaces
+- Consistent code patterns with existing tabs (OverviewTab, SettlementPanel, StructurePanel)
+
+**Key Features**:
+
+1. **JSONLogic Expression Display**: Formatted with JSON.stringify for readability, ready for syntax highlighting
+2. **Interactive Evaluation**: "Explain" button triggers modal with step-by-step evaluation trace
+3. **Smart Sorting**: Conditions ordered by priority (highest first) for better UX
+4. **Status Indicators**: Active/inactive badges, instance/type-level badges with color coding
+5. **Type Safety**: Explicit interfaces (SettlementWithVariables, StructureWithVariables) document expected data shape
+6. **Error Handling**: Loading skeletons, error messages with retry, empty state messaging
+7. **Accessibility**: Proper button titles, ARIA roles, disabled state explanations
+8. **Context Building**: Automatically merges entity variables, computed fields, and base attributes for evaluation
+
+**Design Decisions**:
+
+- **Disabled Explain for Inactive**: No point evaluating inactive conditions, provides clear visual feedback
+- **Automatic Evaluation**: Modal evaluates condition on open (no manual "Evaluate" button) for streamlined UX
+- **Dialog Component**: Uses shadcn/ui Dialog for proper focus management and accessibility
+- **Type Casting Strategy**: Used `as unknown as Interface` instead of `as any` to maintain type safety while working around missing GraphQL types
+- **TODO Comments**: Added TODO comments indicating interfaces should be replaced once GraphQL Code Generator runs
+- **Priority Sorting**: Higher priority conditions appear first (more important rules shown prominently)
+- **Card Layout**: Consistent with other tabs for visual cohesion across EntityInspector
+
+**Next Steps**: Stage 7 will implement the Effects tab with effect list display and execution history.
 
 ## Implementation Notes
 
