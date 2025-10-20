@@ -10,6 +10,121 @@
   - 2aacb46 - Stage 4: Overview Tab Implementation
   - bb3c5df - Stage 5: Settlement and Structure Specific Panels
   - 3d48d99 - Stage 6: Conditions Tab Implementation
+  - 2cae265 - Stage 7: Effects Tab Implementation
+
+## Implementation Notes
+
+### Stage 7: Effects Tab Implementation (Commit: 2cae265)
+
+**Completed**: Comprehensive Effects tab with effect list display grouped by timing phase and detailed execution history modal.
+
+**Components Created**:
+
+EffectsTab Component (`packages/frontend/src/components/features/entity-inspector/EffectsTab.tsx`):
+
+- Fetches all effects using `useAllEffectsForEntity` hook with cache-first policy
+- Groups effects by timing phase (PRE/ON_RESOLVE/POST) with dedicated sections
+- Displays effect metadata: name, description, type, priority, active status
+- Shows JSON Patch operations with formatted 2-space JSON indentation
+- Color-coded timing phase badges (blue=PRE, green=ON_RESOLVE, purple=POST)
+- Sorts effects by priority within each phase (lower values execute first)
+- Shows execution count for each effect (e.g., "1 execution", "No executions")
+- "View History" button opens modal (disabled when no execution history)
+- Comprehensive state handling: loading, error (with retry button), empty states
+- Card-based layout consistent with other EntityInspector tabs
+- Proper TypeScript interfaces exported (Effect, EffectExecution, EffectTiming)
+
+EffectExecutionHistory Component (`packages/frontend/src/components/features/entity-inspector/EffectExecutionHistory.tsx`):
+
+- Dialog modal showing detailed execution history for a specific effect
+- Displays effect details section (name, description, type, priority, timing)
+- Shows chronological execution list (most recent first)
+- Each execution displays: timestamp (formatted with locale), status badge, patch applied
+- Color-coded status badges (green=SUCCESS, red=FAILURE/ERROR, yellow=PARTIAL)
+- Error messages shown for failed executions with red alert styling
+- Empty state when effect has no execution history
+- Scrollable content with max-height for long histories
+- Helper functions: `getStatusColor()`, `formatDate()` for consistent presentation
+
+**Integration**:
+
+EntityInspector Updates (`packages/frontend/src/components/features/entity-inspector/EntityInspector.tsx`):
+
+- Imported EffectsTab component
+- Replaced Effects tab placeholder with EffectsTab component
+- Passes entityType and entityId props (converts lowercase to capitalized for GraphQL)
+- Effects tab now fully functional alongside Overview, Details, Links, Conditions, and Versions tabs
+
+index.ts Exports (`packages/frontend/src/components/features/entity-inspector/index.ts`):
+
+- Exported EffectsTab component and EffectsTabProps type
+- Exported EffectExecutionHistory component and EffectExecutionHistoryProps type
+- Exported Effect, EffectExecution, EffectTiming types for reuse
+
+**Test Coverage**:
+
+Comprehensive test suite (`packages/frontend/src/components/features/entity-inspector/EffectsTab.test.tsx`):
+
+- 23 test cases with 100% pass rate (1017 total frontend tests passing)
+- Loading state rendering test
+- Error state with error message and retry button tests
+- Empty state with entity-specific messaging
+- Effect list display tests (names, descriptions, status badges, priority, type, JSON Patch)
+- Priority sorting verification (lower values execute first)
+- Timing phase grouping and labeling tests (PRE/ON_RESOLVE/POST)
+- Execution history count display tests
+- View History button presence and enablement tests
+- Modal opening interaction test
+- Support for Event and Encounter entity types
+- Accessibility tests (button labels, title attributes)
+- Uses MSW for GraphQL mocking with realistic data
+
+**Mock Data Updates**:
+
+graphql-handlers.ts (`packages/frontend/src/__tests__/mocks/graphql-handlers.ts`):
+
+- Added error case handling for `entityId.startsWith('invalid-')` → GraphQL error response
+- Added empty case handling for `entityId.endsWith('-empty')` → empty arrays response
+- Maintains existing effect filtering logic (by entityType, entityId, timing)
+
+data.ts (`packages/frontend/src/__tests__/mocks/data.ts`):
+
+- Updated effect entityType from lowercase to capitalized (Event/Encounter for consistency)
+- Changed effect-2 timing from POST to ON_RESOLVE for better test coverage
+- Maintained realistic JSON Patch payloads and execution history
+
+**Code Quality**:
+
+- TypeScript compilation: ✅ PASSED (0 errors)
+- ESLint: ✅ PASSED (0 errors, only pre-existing warnings in other packages)
+- Tests: ✅ 23/23 passing (1017 total frontend tests passing)
+- Code Review: ✅ APPROVED (no critical issues, optional improvements noted for future)
+- Type Safety: Proper interfaces with exported types (Effect, EffectExecution, EffectTiming enum)
+- Comprehensive JSDoc comments for all exported components, interfaces, and utility functions
+- Consistent code patterns with existing tabs (ConditionsTab, OverviewTab)
+
+**Key Features**:
+
+1. **Timing Phase Organization**: Effects grouped by PRE/ON_RESOLVE/POST for clear temporal understanding
+2. **Priority Sorting**: Effects within each phase sorted by priority (lower executes first)
+3. **Execution History**: Modal view shows complete history with timestamps, status, patches, errors
+4. **Interactive History**: "View History" button with disabled state for effects without executions
+5. **Status Visualization**: Color-coded badges for active/inactive effects and SUCCESS/FAILURE executions
+6. **JSON Patch Display**: Formatted JSON with 2-space indentation for readability
+7. **Error Handling**: Loading skeletons, error messages with retry, empty state messaging
+8. **Accessibility**: Proper button titles, disabled state explanations, ARIA roles
+
+**Design Decisions**:
+
+- **Timing Phase Grouping**: Organized by PRE/ON_RESOLVE/POST phases for better understanding of execution order
+- **Priority Display**: Shows priority numbers to make execution order explicit within each phase
+- **Disabled History Button**: No point viewing empty history, provides clear visual feedback
+- **Most Recent First**: Execution history sorted newest-to-oldest for quick access to latest runs
+- **Dialog Component**: Uses shadcn/ui Dialog for proper focus management and accessibility
+- **Card Layout**: Consistent with other tabs for visual cohesion across EntityInspector
+- **Color Coding**: Different colors for timing phases (blue/green/purple) and execution status (green/red/yellow)
+
+**Next Steps**: Stage 8 will implement the Links tab with related entity navigation.
 
 ## Implementation Notes
 
