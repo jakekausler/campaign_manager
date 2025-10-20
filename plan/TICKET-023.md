@@ -5,8 +5,67 @@
 - [ ] Completed
 - **Commits**:
   - 23e8919 - Stage 1: UI Component Setup
+  - a943d89 - Stage 2: GraphQL Hooks for Conditions and Effects
 
 ## Implementation Notes
+
+### Stage 2: GraphQL Hooks for Conditions and Effects (Commit: a943d89)
+
+**Completed**: All GraphQL hooks for fetching conditions and effects with comprehensive testing.
+
+**New Hooks Created**:
+
+Conditions (`packages/frontend/src/services/api/hooks/conditions.ts`):
+
+- `useConditionsForEntity`: Fetches field conditions for an entity
+  - Supports both instance-level and type-level conditions
+  - Optional field filtering parameter
+  - Cache-first fetch policy for performance
+  - Returns conditions with full metadata (expression, priority, active status, version)
+- `useEvaluateCondition`: Evaluates a condition with custom context
+  - Lazy query pattern (doesn't execute until called)
+  - Network-only fetch policy (always fresh evaluation results)
+  - Returns detailed evaluation trace for debugging/explanation
+
+Effects (`packages/frontend/src/services/api/hooks/effects.ts`):
+
+- `useEffectsForEntity`: Fetches effects for a specific timing phase
+  - Filters by entityType, entityId, and timing (PRE/ON_RESOLVE/POST)
+  - Cache-first fetch policy
+  - Returns JSON Patch operations in payload field
+- `useAllEffectsForEntity`: Fetches effects from all timing phases in single query
+  - Uses GraphQL field aliases for efficiency
+  - Returns effects grouped by phase (preEffects, onResolveEffects, postEffects)
+  - Also provides allEffects array combining all phases
+
+**Testing**:
+
+- 25 integration tests using MSW for GraphQL mocking
+- `conditions.test.tsx`: 11 tests covering fetch, filter, evaluate, error handling, trace structure
+- `effects.test.tsx`: 14 tests covering timing phases, grouping, metadata, execution history
+- All tests passing with >80% coverage
+- Mock data includes realistic JSONLogic expressions and JSON Patch payloads
+
+**Mock Data & Handlers**:
+
+- Added `mockConditions` (4 conditions) to `packages/frontend/src/__tests__/mocks/data.ts`
+- Added `mockEffects` (4 effects) to `packages/frontend/src/__tests__/mocks/data.ts`
+- Added GraphQL handlers for `GetConditionsForEntity`, `EvaluateFieldCondition`, `GetEffectsForEntity`, `GetAllEffectsForEntity`
+- Handlers properly filter by entity type/ID and support field filtering
+
+**Type Safety**:
+
+- Placeholder TypeScript types defined until code generation runs
+- Proper nullability for optional fields
+- `EffectTiming` enum exported to prevent invalid values
+- All functions fully typed with comprehensive JSDoc documentation
+
+**Quality Checks**:
+
+- TypeScript compilation: ✅ PASSED (0 errors)
+- ESLint: ✅ PASSED (0 errors, pre-existing warnings in other files only)
+- Tests: ✅ PASSED (25/25 tests passing)
+- Code Review: ✅ APPROVED (no critical issues)
 
 ### Stage 1: UI Component Setup (Commit: 23e8919)
 
