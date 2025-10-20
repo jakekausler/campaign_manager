@@ -11,6 +11,7 @@
   - bb3c5df - Stage 5: Settlement and Structure Specific Panels
   - 3d48d99 - Stage 6: Conditions Tab Implementation
   - 2cae265 - Stage 7: Effects Tab Implementation
+  - d95c29e - Stage 8: Links Tab Implementation
 
 ## Implementation Notes
 
@@ -124,7 +125,154 @@ data.ts (`packages/frontend/src/__tests__/mocks/data.ts`):
 - **Card Layout**: Consistent with other tabs for visual cohesion across EntityInspector
 - **Color Coding**: Different colors for timing phases (blue/green/purple) and execution status (green/red/yellow)
 
-**Next Steps**: Stage 8 will implement the Links tab with related entity navigation.
+**Next Steps**: Stage 9 will implement the Versions tab with version history display.
+
+### Stage 8: Links Tab Implementation (Commit: d95c29e)
+
+**Completed**: Comprehensive Links tab with clickable entity navigation, navigation history tracking, and breadcrumb UI.
+
+**Components Created**:
+
+LinksTab Component (`packages/frontend/src/components/features/entity-inspector/LinksTab.tsx`):
+
+- Main component displays related entities based on entity type (Settlement or Structure)
+- Settlement links: Kingdom, Location, Campaign (parent entities), Structures (child entities with count)
+- Structure links: Settlement (parent entity only)
+- Clickable links trigger navigation via `onNavigate` callback with EntityLink data
+- SettlementLinks subcomponent handles Settlement-specific related entities
+- StructureLinks subcomponent handles Structure-specific related entities
+- LinkRow component renders individual entity link with click/keyboard handlers
+- Loading states with "Loading related entities..." message
+- Error states with entity-specific error messages (Settlement or Structure)
+- Not found states with entity-specific "not found" messages
+- Empty state for settlements with no structures ("No structures in this settlement")
+- Structures query error handling with separate error display
+- Proper keyboard navigation support (Enter/Space keys) with `onKeyDown` handler
+- ARIA roles (`role="button"`, `tabIndex={0}`) for accessibility
+- Title attributes on all links ("Navigate to [entity]") for screen readers
+- ChevronRight icon indicates clickable navigation
+- Card-based layout consistent with other EntityInspector tabs
+- Uses existing hooks: `useSettlementDetails`, `useStructureDetails`, `useStructuresBySettlement`
+
+**EntityInspector Updates** (`packages/frontend/src/components/features/entity-inspector/EntityInspector.tsx`):
+
+Navigation State Management:
+
+- `NavigationHistoryItem` interface: entityType, entityId, entityName
+- `navigationStack` state (array of NavigationHistoryItem) tracks visited entities
+- `currentEntityType` and `currentEntityId` state track active entity being viewed
+- useEffect resets navigation when inspector opens with new entity (prevents stale history)
+- `handleNavigate()` function pushes current entity to stack and navigates to EntityLink
+- `handleGoBack()` function pops from stack and navigates to previous entity
+- Only Settlement/Structure navigation supported (Kingdom/Location/Campaign log TODO warning)
+
+Breadcrumb Navigation UI:
+
+- Conditional render of breadcrumb bar when `navigationStack.length > 0`
+- Back button with ChevronLeft icon and "Back" text (variant="ghost", size="sm")
+- Breadcrumb trail shows entity names from navigation stack with "›" separators
+- Breadcrumb displayed as text-xs text-slate-500 for subtle visual hierarchy
+- Back button has title="Go back to previous entity" for accessibility
+
+Tab Integration:
+
+- LinksTab integrated in "links" TabsContent with `onNavigate={handleNavigate}`
+- All tabs updated to use `currentEntityType` and `currentEntityId` for data fetching
+- Overview, Details, Conditions, Effects tabs now respond to navigation state changes
+- Sheet title updates to show "Settlement" or "Structure" based on currentEntityType
+- Sheet description shows entity name when loaded (e.g., "Viewing details for Ironhold")
+
+**Test Coverage**:
+
+Comprehensive test suite (`packages/frontend/src/components/features/entity-inspector/LinksTab.test.tsx`):
+
+- 24 test cases with 100% pass rate (1041 total frontend tests passing)
+- Settlement Links Tests (16 tests):
+  - Loading state rendering test
+  - Error state with error message display
+  - Not found state with "settlement not found" message
+  - Parent entity display (Kingdom, Location, Campaign with IDs)
+  - Structures count display ("Structures (2)")
+  - Structure names display ("Main Barracks", "Central Market")
+  - Empty state with "No structures in this settlement" message
+  - Structures query error with "Error loading structures" message
+  - Navigation callbacks: Click events for Kingdom, Location, Campaign, Structure
+  - Keyboard navigation: Enter key and Space key support
+- Structure Links Tests (4 tests):
+  - Loading state rendering test
+  - Error state with error message display
+  - Not found state with "structure not found" message
+  - Parent entity display (Settlement with ID)
+  - Navigation callback: Click event for Settlement
+- Accessibility Tests (4 tests):
+  - ARIA role="button" for all clickable links
+  - Title attributes for screen reader support ("Navigate to kingdom", etc.)
+  - tabIndex={0} for keyboard navigation
+- Uses `renderWithApollo` helper and MSW for GraphQL mocking
+- Tests use `getByTitle()` for specific element selection (avoids ambiguous text queries)
+- Navigation callback tests verify correct EntityLink shape (id, name, type)
+
+**Mock Data Updates**:
+
+data.ts (`packages/frontend/src/__tests__/mocks/data.ts`):
+
+- Added `settlement-empty` mock with empty structures array for empty state test
+- Added `settlement-error-structures` mock for structures query error test (mapped to settlement-1 data)
+
+graphql-handlers.ts (`packages/frontend/src/__tests__/mocks/graphql-handlers.ts`):
+
+- GetSettlementStructures handler supports `settlement-error-structures` test case
+- Returns settlement data with GraphQL error message "Failed to fetch structures"
+- Maintains existing logic for not-found and normal cases
+
+**Type Updates**:
+
+settlements.ts (`packages/frontend/src/services/api/hooks/settlements.ts`):
+
+- Added missing `locationId: string` field to Settlement type (line 39)
+- Field was being fetched by GET_SETTLEMENT_DETAILS query but missing from type definition
+- Fixes TypeScript compilation error in LinksTab component
+
+**Export Updates**:
+
+index.ts (`packages/frontend/src/components/features/entity-inspector/index.ts`):
+
+- Exported LinksTab component and LinksTabProps interface
+- Exported EntityLink interface for reuse in other components
+
+**Code Quality**:
+
+- TypeScript compilation: ✅ PASSED (0 errors)
+- ESLint: ✅ PASSED (0 errors, only pre-existing warnings in other packages)
+- Tests: ✅ 24/24 passing (1041 total frontend tests passing)
+- Code Review: ✅ APPROVED (removed unused SettlementRelations and StructureRelations interfaces per feedback)
+- Type Safety: Proper interfaces with exported EntityLink type
+- Comprehensive JSDoc comments for all exported components and interfaces
+- Consistent code patterns with existing tabs (ConditionsTab, EffectsTab, OverviewTab)
+
+**Key Features**:
+
+1. **Entity Navigation**: Click links to browse related entities (Settlement ↔ Structure)
+2. **Navigation Stack**: Track visited entities for back navigation and breadcrumb history
+3. **Breadcrumb UI**: Visual history showing entity path with "›" separators
+4. **Back Button**: Return to previous entity in navigation stack with single click
+5. **Keyboard Accessible**: Full keyboard navigation with Enter/Space keys and tabIndex
+6. **Comprehensive Testing**: 24 tests covering all scenarios and edge cases
+7. **Loading/Error States**: Proper handling for async data fetching with user-friendly messages
+8. **Empty States**: User-friendly messaging when no related entities exist
+
+**Design Decisions**:
+
+- **Navigation Limited to Settlement/Structure**: Kingdom/Location/Campaign navigation deferred to future tickets (log TODO warning with console.warn)
+- **Navigation Stack Resets on Open**: Prevents stale history when inspector opens with new entity (useEffect with isOpen/entityType/entityId deps)
+- **Breadcrumb Shows Full Path**: No truncation needed for typical usage patterns (2-3 deep max)
+- **LinkRow Component**: Extracted for consistent click/keyboard handling with proper ARIA attributes
+- **Separate Subcomponents**: SettlementLinks and StructureLinks for type-specific logic (avoids complex conditionals)
+- **Card Layout**: Consistent with other tabs for visual cohesion across EntityInspector
+- **Entity Name in Stack**: Stored for breadcrumb display (avoids re-querying for names)
+- **console.warn for Unsupported Navigation**: Logs TODO warning but doesn't break user flow
+
+**Next Steps**: Stage 9 will implement the Versions tab with version history and audit trail display.
 
 ## Implementation Notes
 
