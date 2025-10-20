@@ -55,7 +55,7 @@ async function bootstrap() {
   logger.log(`gRPC server listening on ${grpcUrl}`);
 
   // Start HTTP health check endpoint
-  const httpPort = process.env.HTTP_PORT || 3001;
+  const httpPort = process.env.HTTP_PORT || 9265;
   await app.listen(httpPort);
 
   logger.log(`HTTP health check endpoint listening on port ${httpPort}`);

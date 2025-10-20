@@ -69,7 +69,7 @@ USER worker
 # Start Period: Wait 20 seconds before first check (for initialization)
 # Retries: Mark unhealthy after 3 consecutive failures
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${HTTP_PORT:-3001}/health/live || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${HTTP_PORT:-9265}/health/live || exit 1
 
 # Start the worker
 CMD ["node", "packages/rules-engine/dist/main.js"]

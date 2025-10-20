@@ -389,7 +389,7 @@ GitHub Actions workflow runs on every push and pull request:
 │PostgreSQL │   │  Redis   │   │ Rules Engine   │   │  MinIO   │
 │+ PostGIS  │   │          │   │    Worker      │   │ (S3 API) │
 │           │   │          │   │ :50051 (gRPC)  │   │          │
-│:5432      │   │:6379     │   │ :3001 (HTTP)   │   │:9000     │
+│:5432      │   │:6379     │   │ :9265 (HTTP)   │   │:9000     │
 └───────────┘   └────┬─────┘   └────────┬───────┘   └──────────┘
                      │                  │
                      │ Redis Pub/Sub    │ PostgreSQL (read-only)
@@ -422,7 +422,7 @@ GitHub Actions workflow runs on every push and pull request:
 - **Dependency Graphs**: Tracks relationships between conditions and variables per campaign/branch
 - **Caching**: In-memory result caching with TTL (default 300s)
 - **Incremental Recomputation**: Only recalculates affected nodes on state changes
-- **Health Checks**: HTTP endpoint (`:3001/health/*`) for liveness and readiness probes
+- **Health Checks**: HTTP endpoint (`:9265/health/*`) for liveness and readiness probes
 
 **Fallback Strategy**:
 
@@ -438,7 +438,7 @@ GitHub Actions workflow runs on every push and pull request:
 |              | 8080 (prod)    | Nginx serving production build   |
 | api          | 9264           | NestJS GraphQL API + WebSocket   |
 |              | 9229 (dev)     | Node.js debugger                 |
-| rules-engine | 3001           | HTTP health checks               |
+| rules-engine | 9265           | HTTP health checks               |
 |              | 50051          | gRPC evaluation server           |
 |              | 9230 (dev)     | Node.js debugger                 |
 | postgres     | 5432           | PostgreSQL 16 + PostGIS 3.4      |
@@ -551,7 +551,7 @@ The Rules Engine provides a comprehensive system for dynamic content evaluation 
   - Automatic cache invalidation on condition/variable changes
 - **Rules Engine Worker** (TICKET-015): Dedicated NestJS microservice for high-performance evaluation
   - **gRPC Server** (`:50051`) for synchronous evaluation requests (<50ms p95 latency)
-  - **HTTP Health Checks** (`:3001`) for container orchestration
+  - **HTTP Health Checks** (`:9265`) for container orchestration
   - **Redis Pub/Sub** for asynchronous cache invalidation
   - **In-Memory Caching** with TTL (default 300s, <5ms p95 for cached results)
   - **Circuit Breaker** pattern in API service for graceful degradation

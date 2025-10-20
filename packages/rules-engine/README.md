@@ -46,7 +46,7 @@ Copy `.env.example` to `.env` and configure:
 DATABASE_URL="postgresql://campaign_user:campaign_pass@localhost:5432/campaign_db?schema=public"
 
 # Server Configuration
-HTTP_PORT=3001
+HTTP_PORT=9265
 NODE_ENV=development
 
 # gRPC Configuration
@@ -163,14 +163,14 @@ Key variables:
 - `DATABASE_URL` - Auto-configured to use the `postgres` container
 - `REDIS_HOST` - Set to `redis` container hostname
 - `REDIS_PORT` - Defaults to 6379
-- `HTTP_PORT` - Health check endpoint port (default: 3001)
+- `HTTP_PORT` - Health check endpoint port (default: 9265)
 - `GRPC_PORT` - gRPC server port (default: 50051)
 - `CACHE_TTL_SECONDS` - Cache entry lifetime (default: 300)
 - `CACHE_MAX_KEYS` - Maximum cache entries (default: 10000)
 
 **Exposed Ports**:
 
-- `3001` - HTTP health check endpoint
+- `9265` - HTTP health check endpoint
 - `50051` - gRPC server for evaluation requests
 - `9230` - Node.js debugger (development mode only)
 
@@ -181,7 +181,7 @@ The container includes a health check that monitors the HTTP liveness endpoint:
 ```yaml
 healthcheck:
   test:
-    ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3001/health/live']
+    ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:9265/health/live']
   interval: 30s
   timeout: 3s
   retries: 3
@@ -421,7 +421,7 @@ The Dockerfile includes a HEALTHCHECK directive that uses the liveness endpoint:
 
 ```dockerfile
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${HTTP_PORT:-3001}/health/live || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${HTTP_PORT:-9265}/health/live || exit 1
 ```
 
 ### Logging

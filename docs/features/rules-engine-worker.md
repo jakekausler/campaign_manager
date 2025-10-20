@@ -120,7 +120,7 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/campaign_db
 GRPC_PORT=50051
 
 # HTTP Server (health checks)
-HTTP_PORT=3001
+HTTP_PORT=9265
 
 # Redis Connection
 REDIS_HOST=localhost

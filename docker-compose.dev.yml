@@ -60,7 +60,7 @@ services:
       - /app/packages/rules-engine/node_modules
       - /app/packages/shared/node_modules
     ports:
-      - '3001:3001' # HTTP health check endpoint
+      - '9265:9265' # HTTP health check endpoint
       - '50051:50051' # gRPC server
       - '9230:9229' # Node.js debugger
 
