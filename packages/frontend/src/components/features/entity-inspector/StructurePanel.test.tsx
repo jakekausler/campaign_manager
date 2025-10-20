@@ -1,22 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { StructurePanel } from './StructurePanel';
 import type { StructureData } from './StructurePanel';
 
 describe('StructurePanel', () => {
-  let writeTextSpy: MockInstance<[data: string], Promise<void>>;
-
-  beforeEach(() => {
-    // Spy on the clipboard API provided by happy-dom
-    writeTextSpy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
-  });
-
-  afterEach(() => {
-    writeTextSpy.mockRestore();
-  });
-
   const mockStructure: StructureData = {
     id: 'structure-1',
     name: 'Main Barracks',
@@ -166,12 +155,24 @@ describe('StructurePanel', () => {
       const user = userEvent.setup();
       render(<StructurePanel structure={mockStructure} />);
 
+      // Spy on clipboard AFTER render
+      const writeTextSpy = vi.spyOn(navigator.clipboard, 'writeText');
+
       const copyButtons = screen.getAllByTitle('Copy to clipboard');
+      expect(copyButtons.length).toBeGreaterThan(0);
+
       await user.click(copyButtons[0]); // Click first copy button (Type)
 
-      await waitFor(() => {
-        expect(writeTextSpy).toHaveBeenCalledWith('barracks');
-      });
+      // Wait for the clipboard API to be called
+      await waitFor(
+        () => {
+          expect(writeTextSpy).toHaveBeenCalled();
+        },
+        { timeout: 1000 }
+      );
+      expect(writeTextSpy).toHaveBeenCalledWith('barracks');
+
+      writeTextSpy.mockRestore();
     });
 
     it('should show checkmark after successful copy', async () => {
@@ -181,48 +182,64 @@ describe('StructurePanel', () => {
       const copyButtons = screen.getAllByTitle('Copy to clipboard');
       await user.click(copyButtons[0]);
 
-      await waitFor(() => {
-        expect(screen.getByText('✓')).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByText('✓')).toBeInTheDocument();
+        },
+        { timeout: 1000 }
+      );
     });
 
     it('should reset checkmark after 2 seconds', async () => {
-      const user = userEvent.setup();
       vi.useFakeTimers();
-      render(<StructurePanel structure={mockStructure} />);
+      try {
+        render(<StructurePanel structure={mockStructure} />);
 
-      const copyButtons = screen.getAllByTitle('Copy to clipboard');
-      await user.click(copyButtons[0]);
+        const copyButtons = screen.getAllByTitle('Copy to clipboard');
+        // Use fireEvent instead of userEvent with fake timers
+        fireEvent.click(copyButtons[0]);
 
-      expect(screen.getByText('✓')).toBeInTheDocument();
+        // Wait for async state update
+        await vi.waitFor(() => {
+          expect(screen.getByText('✓')).toBeInTheDocument();
+        });
 
-      // Fast-forward 2 seconds
-      vi.advanceTimersByTime(2000);
+        // Fast-forward 2 seconds and flush effects
+        act(() => {
+          vi.advanceTimersByTime(2000);
+        });
 
-      await waitFor(() => {
+        // Checkmark should be gone
         expect(screen.queryByText('✓')).not.toBeInTheDocument();
-      });
-
-      vi.useRealTimers();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should handle clipboard errors gracefully', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      writeTextSpy.mockRejectedValueOnce(new Error('Clipboard error'));
-
       const user = userEvent.setup();
       render(<StructurePanel structure={mockStructure} />);
+
+      // Mock clipboard to reject AFTER render
+      const writeTextSpy = vi
+        .spyOn(navigator.clipboard, 'writeText')
+        .mockRejectedValueOnce(new Error('Clipboard error'));
 
       const copyButtons = screen.getAllByTitle('Copy to clipboard');
       await user.click(copyButtons[0]);
 
-      await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
-          'Failed to copy to clipboard:',
-          expect.any(Error)
-        );
-      });
+      await waitFor(
+        () => {
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            'Failed to copy to clipboard:',
+            expect.any(Error)
+          );
+        },
+        { timeout: 1000 }
+      );
 
+      writeTextSpy.mockRestore();
       consoleErrorSpy.mockRestore();
     });
   });
