@@ -45,6 +45,12 @@ export {
 // World Time hooks
 export { useCurrentWorldTime, GET_CURRENT_WORLD_TIME } from './world-time';
 
+// Event hooks
+export { useEventsByCampaign, GET_EVENTS_BY_CAMPAIGN } from './events';
+
+// Encounter hooks
+export { useEncountersByCampaign, GET_ENCOUNTERS_BY_CAMPAIGN } from './encounters';
+
 // Dependency Graph hooks
 export {
   useDependencyGraph,

@@ -7,7 +7,13 @@
 
 import { graphql, HttpResponse } from 'msw';
 
-import { mockSettlements, mockStructures, mockDependencyGraph } from './data';
+import {
+  mockSettlements,
+  mockStructures,
+  mockEvents,
+  mockEncounters,
+  mockDependencyGraph,
+} from './data';
 
 export const graphqlHandlers = [
   // Settlement Queries
@@ -97,6 +103,24 @@ export const graphqlHandlers = [
           builtAt: new Date().toISOString(),
         },
       },
+    });
+  }),
+
+  // Event Queries
+  graphql.query('GetEventsByCampaign', ({ variables }) => {
+    const { campaignId } = variables as { campaignId: string };
+    const events = mockEvents.filter((e) => e.campaignId === campaignId);
+    return HttpResponse.json({
+      data: { eventsByCampaign: events },
+    });
+  }),
+
+  // Encounter Queries
+  graphql.query('GetEncountersByCampaign', ({ variables }) => {
+    const { campaignId } = variables as { campaignId: string };
+    const encounters = mockEncounters.filter((e) => e.campaignId === campaignId);
+    return HttpResponse.json({
+      data: { encountersByCampaign: encounters },
     });
   }),
 
