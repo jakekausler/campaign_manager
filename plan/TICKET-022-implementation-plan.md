@@ -395,24 +395,64 @@ From the GraphQL types analysis:
 **Goal**: Add controls for navigating timeline (zoom in/out, fit to window)
 **Success Criteria**:
 
-- [ ] TimelineControls component with zoom buttons
-- [ ] Zoom in/out functions work
-- [ ] "Fit to window" button shows all items
-- [ ] "Jump to current time" button
-- [ ] Keyboard shortcuts (+ / -, 0 for fit)
+- [x] TimelineControls component with zoom buttons
+- [x] Zoom in/out functions work
+- [x] "Fit to window" button shows all items
+- [x] "Jump to current time" button
+- [x] Keyboard shortcuts (+ / -, 0 for fit, T for jump to current time)
 
 **Tests**:
 
-- Unit test: Zoom in/out buttons update timeline
-- Unit test: Fit to window shows all items
-- Unit test: Jump to current time centers marker
+- Unit test: Zoom in/out buttons update timeline ✓
+- Unit test: Fit to window shows all items ✓
+- Unit test: Jump to current time centers marker ✓
+- Unit test: Keyboard shortcuts work (24 total tests) ✓
 
-**Files to create**:
+**Files created**:
 
 - `packages/frontend/src/components/features/timeline/TimelineControls.tsx`
 - `packages/frontend/src/components/features/timeline/TimelineControls.test.tsx`
 
-**Status**: Not Started
+**Files modified**:
+
+- `packages/frontend/src/components/features/timeline/Timeline.tsx` (added forwardRef and TimelineHandle)
+- `packages/frontend/src/components/features/timeline/index.ts` (added exports)
+- `packages/frontend/src/pages/TimelinePage.tsx` (integrated TimelineControls)
+- `packages/frontend/src/pages/TimelinePage.test.tsx` (updated mock)
+
+**Status**: ✅ Complete
+
+**Commit**: 5f7a863
+
+**Implementation Notes**:
+
+- Converted Timeline component to use forwardRef pattern for imperative control
+- Created TimelineHandle interface exposing zoomIn(), zoomOut(), fit(), moveTo() methods
+- Implemented TimelineControls with four buttons:
+  - Zoom In/Out: Adjust scale by 10% increments via vis-timeline API
+  - Fit View: Auto-scale to show all items using timeline.fit()
+  - Jump to Now: Center on current world time (conditional rendering)
+- Comprehensive keyboard shortcut support:
+  - '+' or '=': Zoom in
+  - '-' or '\_': Zoom out
+  - '0': Fit all items
+  - 'T' or 't': Jump to current time
+- Smart input field detection prevents shortcuts during typing in text fields
+- Event cleanup in useEffect prevents memory leaks
+- 24 unit tests covering all scenarios (743 total frontend tests passing):
+  - Rendering with/without current time (4 tests)
+  - Button interactions (4 tests)
+  - Keyboard shortcuts (+/-, 0, T keys) (9 tests)
+  - Input field detection (2 tests)
+  - preventDefault behavior (1 test)
+  - Accessibility (2 tests)
+  - Edge cases (null refs, unmounting, custom className) (2 tests)
+- Full accessibility with ARIA labels and title attributes
+- Responsive design with mobile-friendly hints
+- Memoization with memo() and useCallback for performance
+- All TypeScript type-check and ESLint passing
+- Code review approved with no critical issues
+- Follows shadcn/ui button patterns and project conventions
 
 ---
 
