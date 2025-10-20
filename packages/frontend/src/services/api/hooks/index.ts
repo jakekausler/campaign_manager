@@ -80,5 +80,8 @@ export {
   EffectTiming,
 } from './effects';
 
+// Audit hooks
+export { useEntityAuditHistory, type AuditEntry } from './audit';
+
 // Mutation hooks (Stage 8)
 export * from '../mutations';

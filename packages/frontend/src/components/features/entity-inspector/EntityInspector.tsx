@@ -19,6 +19,7 @@ import { LinksTab, type EntityLink } from './LinksTab';
 import { OverviewTab } from './OverviewTab';
 import { SettlementPanel } from './SettlementPanel';
 import { StructurePanel } from './StructurePanel';
+import { VersionsTab } from './VersionsTab';
 
 export type EntityType = 'settlement' | 'structure';
 
@@ -239,9 +240,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
             </TabsContent>
 
             <TabsContent value="versions" className="space-y-4">
-              <div className="text-sm text-slate-500">
-                Versions tab content will be implemented in Stage 9
-              </div>
+              <VersionsTab entityType={currentEntityType} entityId={currentEntityId} />
             </TabsContent>
           </Tabs>
         )}

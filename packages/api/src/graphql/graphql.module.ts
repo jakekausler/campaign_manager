@@ -15,6 +15,7 @@ import { fieldExtensionsEstimator, getComplexity, simpleEstimator } from 'graphq
 
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
 import { GraphQLCoreModule } from './graphql-core.module';
+import { AuditResolver } from './resolvers/audit.resolver';
 import { CampaignResolver } from './resolvers/campaign.resolver';
 import { CharacterResolver } from './resolvers/character.resolver';
 import { DependencyGraphResolver } from './resolvers/dependency-graph.resolver';
@@ -121,6 +122,7 @@ import { UploadScalar } from './scalars/upload.scalar';
     // Resolvers
     HealthResolver,
     VersionResolver,
+    AuditResolver,
     WorldResolver,
     CampaignResolver,
     CharacterResolver,

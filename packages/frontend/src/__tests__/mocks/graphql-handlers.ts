@@ -15,6 +15,7 @@ import {
   mockDependencyGraph,
   mockConditions,
   mockEffects,
+  mockAudits,
 } from './data';
 
 export const graphqlHandlers = [
@@ -468,6 +469,36 @@ export const graphqlHandlers = [
         onResolve: onResolveEffects,
         post: postEffects,
       },
+    });
+  }),
+
+  // Audit Queries
+  graphql.query('GetEntityAuditHistory', ({ variables }) => {
+    const { entityType, entityId } = variables as {
+      entityType: string;
+      entityId: string;
+      limit?: number;
+    };
+
+    // Simulate server error for "invalid-*" IDs
+    if (entityId.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Failed to fetch audit history' }],
+      });
+    }
+
+    // Return empty array for "-empty" suffix
+    if (entityId.endsWith('-empty')) {
+      return HttpResponse.json({
+        data: { entityAuditHistory: [] },
+      });
+    }
+
+    // Filter audits by entityType and entityId
+    const audits = mockAudits.filter((a) => a.entityType === entityType && a.entityId === entityId);
+
+    return HttpResponse.json({
+      data: { entityAuditHistory: audits },
     });
   }),
 ];

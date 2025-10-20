@@ -674,3 +674,102 @@ export const mockEffects = [
     executions: [],
   },
 ];
+
+export const mockAudits = [
+  {
+    id: 'audit-1',
+    entityType: 'Settlement',
+    entityId: 'settlement-1',
+    operation: 'CREATE',
+    userId: 'user-1',
+    changes: {
+      name: 'Ironhold',
+      level: 3,
+      kingdomId: 'kingdom-1',
+      locationId: 'location-1',
+    },
+    metadata: {
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0',
+    },
+    timestamp: '2024-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'audit-2',
+    entityType: 'Settlement',
+    entityId: 'settlement-1',
+    operation: 'UPDATE',
+    userId: 'user-1',
+    changes: {
+      level: {
+        before: 3,
+        after: 4,
+      },
+      variables: {
+        before: { prosperity: 75, morale: 80 },
+        after: { prosperity: 80, morale: 85, has_walls: true },
+      },
+    },
+    metadata: {
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0',
+    },
+    timestamp: '2024-06-15T10:30:00.000Z',
+  },
+  {
+    id: 'audit-3',
+    entityType: 'Settlement',
+    entityId: 'settlement-1',
+    operation: 'UPDATE',
+    userId: 'user-2',
+    changes: {
+      name: {
+        before: 'Ironhold',
+        after: 'Ironhold Fortress',
+      },
+    },
+    metadata: {
+      ipAddress: '10.0.0.5',
+      userAgent: 'Chrome/120.0',
+    },
+    timestamp: '2024-11-20T14:15:00.000Z',
+  },
+  {
+    id: 'audit-4',
+    entityType: 'Structure',
+    entityId: 'structure-1',
+    operation: 'CREATE',
+    userId: 'user-1',
+    changes: {
+      name: 'Main Barracks',
+      type: 'barracks',
+      level: 2,
+      settlementId: 'settlement-1',
+    },
+    metadata: {
+      ipAddress: '192.168.1.1',
+    },
+    timestamp: '2024-03-10T08:45:00.000Z',
+  },
+  {
+    id: 'audit-5',
+    entityType: 'Structure',
+    entityId: 'structure-1',
+    operation: 'UPDATE',
+    userId: 'user-1',
+    changes: {
+      level: {
+        before: 2,
+        after: 3,
+      },
+      variables: {
+        before: { garrison_size: 50, is_upgraded: false },
+        after: { garrison_size: 75, is_upgraded: true, maintenance_cost: 30 },
+      },
+    },
+    metadata: {
+      ipAddress: '192.168.1.1',
+    },
+    timestamp: '2024-07-25T16:20:00.000Z',
+  },
+];
