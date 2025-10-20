@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] Completed
+- [ ] Completed (12/13 stages complete, Stage 13 pending)
 - **Commits**:
   - 23e8919 - Stage 1: UI Component Setup
   - a943d89 - Stage 2: GraphQL Hooks for Conditions and Effects
@@ -15,6 +15,7 @@
   - beed7fa - Stage 9: Versions Tab Implementation
   - 5975b50 - Stage 10: Edit Mode Infrastructure (Minimal Implementation)
   - 97d9a7d - Stage 11: Complete Edit Mode (Keyboard Shortcuts & Loading States)
+  - 43bcbd0 - Stage 12: Integration with Map and Other Views
 
 ## Implementation Notes
 
@@ -1190,6 +1191,75 @@ Effects (`packages/frontend/src/services/api/hooks/effects.ts`):
 - Code Review: ✅ APPROVED
 - All components properly typed with forwardRef and displayName
 - Accessibility features: ARIA labels, sr-only text, keyboard navigation
+
+---
+
+### Stage 12: Integration with Map and Other Views (Commit: 43bcbd0)
+
+**Completed**: EntityInspector integration with MapPage, FlowViewPage, and TimelinePage for entity inspection from different contexts.
+
+**MapPage Integration** (`packages/frontend/src/pages/MapPage.tsx`):
+
+- Added state management for EntityInspector (inspectorOpen, selectedEntity)
+- Created handleEntitySelect callback to open inspector with entity type and ID
+- Created handleInspectorClose with delayed state cleanup for smooth animations
+- Passes onEntitySelect callback to Map component
+- Renders EntityInspector component with conditional rendering based on selectedEntity
+
+**FlowViewPage Integration** (`packages/frontend/src/pages/FlowViewPage.tsx`):
+
+- Updated handleNodeDoubleClick to open inspector for EFFECT nodes
+- Checks nodeType === 'EFFECT' (dependency graph has VARIABLE/CONDITION/EFFECT, no ENTITY nodes)
+- Extracts entityType and entityId from effect metadata (Record<string, unknown>)
+- Opens inspector for Settlement/Structure EFFECT node targets only
+- Shows informational alerts for VARIABLE/CONDITION nodes and non-Settlement/Structure effects
+- Added state management for EntityInspector (inspectorOpen, selectedEntity)
+- Removed unused navigation utilities (getNodeEditRoute, getNodeEditMessage, isNodeEditable)
+
+**TimelinePage Integration** (`packages/frontend/src/pages/TimelinePage.tsx`):
+
+- Added handleItemSelect callback for timeline onSelect event
+- Shows "coming soon" alert for Event/Encounter inspection (not yet supported by EntityInspector)
+- Single-item selection only (multi-select ignored)
+- Extracts item type and metadata from TimelineItem
+- Placeholder implementation ready for TICKET-025 (Event/Encounter inspector support)
+
+**Map Component Updates** (`packages/frontend/src/components/features/map/Map.tsx`):
+
+- Added optional onEntitySelect prop: `(type: 'settlement' | 'structure', id: string) => void`
+- Updated handleSettlementClick to call onEntitySelect when provided, otherwise shows popup
+- Updated handleStructureClick to call onEntitySelect when provided, otherwise shows popup
+- Backward compatible: falls back to existing popup behavior when callback not provided
+- Added inline comments explaining callback vs popup behavior
+- Type-safe with proper TypeScript interface updates
+
+**Code Quality**:
+
+- TypeScript compilation: ✅ PASSED (0 errors)
+- ESLint: ✅ PASSED (0 new errors, 18 pre-existing warnings in Timeline files)
+- Tests: ✅ 1048/1065 passing (17 pre-existing failures, 0 new failures introduced)
+- Code Review: ✅ APPROVED after addressing critical issues
+  - Fixed critical logic error: check EFFECT nodes with metadata instead of non-existent ENTITY nodes
+  - Removed unused TimelinePage scaffolding code (no dead state variables)
+  - Added explanatory inline comments for callback behavior in Map component
+  - Proper TypeScript type assertions for Record<string, unknown> metadata
+
+**Key Implementation Details**:
+
+1. **Map Integration**: Optional callback pattern maintains backward compatibility while enabling new inspector behavior
+2. **Flow Integration**: Correctly handles dependency graph structure (EFFECT nodes only, no ENTITY nodes)
+3. **Timeline Integration**: Placeholder implementation with "coming soon" alert, ready for TICKET-025 expansion
+4. **State Management**: Component-level state (not global context) for inspector open/close and selected entity
+5. **Animation Support**: Delayed state cleanup (300ms timeout) allows smooth Sheet close animation
+6. **Type Safety**: Proper handling of metadata as Record<string, unknown> with bracket notation access
+
+**Integration Summary**:
+
+- ✅ MapPage: Settlement/structure clicks open inspector (fully functional)
+- ✅ FlowViewPage: EFFECT node double-clicks open inspector for Settlement/Structure targets
+- ⏳ TimelinePage: Timeline item clicks show "coming soon" alert (inspector support pending in TICKET-025)
+
+---
 
 ## Description
 
