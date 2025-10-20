@@ -53,3 +53,13 @@ export type { CreateStructureInput, UpdateStructureInput, Structure } from './st
 export { UPDATE_LOCATION_GEOMETRY, useUpdateLocationGeometry } from './locations';
 
 export type { UpdateLocationGeometryInput, Location } from './locations';
+
+// Event mutations
+export { UPDATE_EVENT, useUpdateEvent } from './events';
+
+export type { UpdateEventInput, Event } from './events';
+
+// Encounter mutations
+export { UPDATE_ENCOUNTER, useUpdateEncounter } from './encounters';
+
+export type { UpdateEncounterInput, Encounter } from './encounters';

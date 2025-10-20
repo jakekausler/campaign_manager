@@ -146,7 +146,12 @@ export function transformEventToTimelineItem(
     id: `event-${event.id}`,
     content: event.name,
     start,
-    type: 'point',
+    // Metadata for drag-to-reschedule validation (must come BEFORE type: 'point')
+    ...({
+      type: 'event',
+      isCompleted: event.isCompleted,
+    } as any satisfies Record<string, unknown>),
+    type: 'point', // vis-timeline type (must come AFTER metadata to avoid being overwritten)
     className: 'timeline-item-event',
     style: `background-color: ${color}; border-color: ${color};`,
     title: `Event: ${event.name}\nType: ${event.eventType}\nStatus: ${status}${event.description ? `\n${event.description}` : ''}`,
@@ -201,7 +206,12 @@ export function transformEncounterToTimelineItem(encounter: Encounter): Timeline
     id: `encounter-${encounter.id}`,
     content: encounter.name,
     start,
-    type: 'point',
+    // Metadata for drag-to-reschedule validation (must come BEFORE type: 'point')
+    ...({
+      type: 'encounter',
+      isResolved: encounter.isResolved,
+    } as any satisfies Record<string, unknown>),
+    type: 'point', // vis-timeline type (must come AFTER metadata to avoid being overwritten)
     className: 'timeline-item-encounter',
     style: `background-color: ${color}; border-color: ${color};`,
     title: `Encounter: ${encounter.name}\nStatus: ${status}${difficultyLabel}${encounter.description ? `\n${encounter.description}` : ''}`,

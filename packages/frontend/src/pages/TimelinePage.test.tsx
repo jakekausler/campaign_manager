@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 import { Timeline } from '@/components/features/timeline';
-import { useTimelineData } from '@/hooks';
+import { useTimelineData, useTimelineReschedule } from '@/hooks';
 import { useCurrentWorldTime } from '@/services/api/hooks/world-time';
 import { useCurrentCampaignId } from '@/stores';
 
@@ -27,9 +27,10 @@ vi.mock('@/stores', () => ({
   useCurrentCampaignId: vi.fn(),
 }));
 
-// Mock useTimelineData hook
+// Mock hooks
 vi.mock('@/hooks', () => ({
   useTimelineData: vi.fn(),
+  useTimelineReschedule: vi.fn(),
 }));
 
 // Mock useCurrentWorldTime hook
@@ -60,6 +61,12 @@ describe('TimelinePage', () => {
       error: undefined,
       refetch: vi.fn(),
       networkStatus: 7,
+    });
+    // Set default useTimelineReschedule mock
+    vi.mocked(useTimelineReschedule).mockReturnValue({
+      reschedule: vi.fn(),
+      loading: false,
+      error: undefined,
     });
   });
 

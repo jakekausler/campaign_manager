@@ -55,3 +55,12 @@ export {
   getEdgeTypeCount,
   type GraphFilters,
 } from './graph-filters';
+
+// Timeline validation utilities for drag-to-reschedule operations
+export {
+  validateScheduledTime,
+  canRescheduleItem,
+  type ValidationResult,
+  type RescheduleableItem,
+  type CanRescheduleResult,
+} from './timeline-validation';

@@ -7,6 +7,8 @@
 
 // Timeline hooks
 export { useTimelineData } from './useTimelineData';
+export { useTimelineReschedule } from './useTimelineReschedule';
+export type { UseTimelineRescheduleOptions, RescheduleResult } from './useTimelineReschedule';
 
 // Export custom hooks here as they are created
 // Example:
