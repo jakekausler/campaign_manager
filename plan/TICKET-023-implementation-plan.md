@@ -47,18 +47,22 @@ Create a comprehensive entity inspector drawer/panel with tabs for overview, lin
 
 **Tasks**:
 
-- [ ] Add Sheet component from shadcn/ui to `packages/frontend/src/components/ui/`
-- [ ] Add Tabs component from shadcn/ui to `packages/frontend/src/components/ui/`
-- [ ] Add Label component from shadcn/ui if not already present
-- [ ] Export new components from `packages/frontend/src/components/ui/index.ts`
-- [ ] Create basic EntityInspector component structure with Sheet wrapper
-- [ ] Add basic styling and test that Sheet opens/closes
+- [x] Add Sheet component from shadcn/ui to `packages/frontend/src/components/ui/`
+- [x] Add Tabs component from shadcn/ui to `packages/frontend/src/components/ui/`
+- [x] Add Label component from shadcn/ui if not already present
+- [x] Export new components from `packages/frontend/src/components/ui/index.ts`
+- [x] Create basic EntityInspector component structure with Sheet wrapper
+- [x] Add basic styling and test that Sheet opens/closes
 
 **Acceptance Criteria**:
 
-- Sheet component renders and can open/close
-- Tabs component renders with basic tab navigation
-- Components follow project styling conventions
+- [x] Sheet component renders and can open/close
+- [x] Tabs component renders with basic tab navigation
+- [x] Components follow project styling conventions
+
+**Status**: ✅ COMPLETED
+
+**Commit**: 23e8919
 
 ---
 
