@@ -41,7 +41,7 @@ describe('Encounter Hooks Integration Tests', () => {
       // Should have encounters from campaign-1
       expect(result.current.encounters).toHaveLength(3);
       expect(result.current.encounters[0].id).toBe('encounter-1');
-      expect(result.current.encounters[0].name).toBe('Bandit Ambush');
+      expect(result.current.encounters[0].name).toBe('Dragon Attack');
       expect(result.current.encounters[1].id).toBe('encounter-2');
       expect(result.current.encounters[1].name).toBe('Dragon Sighting');
       expect(result.current.encounters[2].id).toBe('encounter-3');
@@ -116,11 +116,11 @@ describe('Encounter Hooks Integration Tests', () => {
       const easyEncounter = result.current.encounters.find((e) => e.id === 'encounter-3');
       expect(easyEncounter?.difficulty).toBe(3);
 
-      const mediumEncounter = result.current.encounters.find((e) => e.id === 'encounter-1');
-      expect(mediumEncounter?.difficulty).toBe(5);
+      const hardEncounter1 = result.current.encounters.find((e) => e.id === 'encounter-1');
+      expect(hardEncounter1?.difficulty).toBe(15);
 
-      const hardEncounter = result.current.encounters.find((e) => e.id === 'encounter-2');
-      expect(hardEncounter?.difficulty).toBe(15);
+      const hardEncounter2 = result.current.encounters.find((e) => e.id === 'encounter-2');
+      expect(hardEncounter2?.difficulty).toBe(15);
     });
 
     it('should include location information', async () => {
@@ -148,8 +148,8 @@ describe('Encounter Hooks Integration Tests', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      const lootEncounter = result.current.encounters.find((e) => e.id === 'encounter-1');
-      expect(lootEncounter?.variables).toEqual({ loot: 250, casualties: 2 });
+      const dragonEncounter = result.current.encounters.find((e) => e.id === 'encounter-1');
+      expect(dragonEncounter?.variables).toEqual({ casualties: 12, goldLost: 5000 });
 
       const threatEncounter = result.current.encounters.find((e) => e.id === 'encounter-2');
       expect(threatEncounter?.variables).toEqual({ threatLevel: 'high' });

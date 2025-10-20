@@ -5,6 +5,9 @@
  * Import from this file to use hooks throughout the app.
  */
 
+// Timeline hooks
+export { useTimelineData } from './useTimelineData';
+
 // Export custom hooks here as they are created
 // Example:
 // export { useAuth } from './useAuth';

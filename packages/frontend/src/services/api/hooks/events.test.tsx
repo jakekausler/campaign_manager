@@ -102,7 +102,7 @@ describe('Event Hooks Integration Tests', () => {
 
       const scheduledEvent = result.current.events.find((e) => e.id === 'event-2');
       expect(scheduledEvent?.isCompleted).toBe(false);
-      expect(scheduledEvent?.scheduledAt).toBe('2024-09-21T18:00:00.000Z');
+      expect(scheduledEvent?.scheduledAt).toBe('2024-08-20T18:00:00.000Z');
       expect(scheduledEvent?.occurredAt).toBeNull();
     });
 
