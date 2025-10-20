@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const MapPage = lazy(() => import('@/pages/MapPage'));
 const FlowViewPage = lazy(() => import('@/pages/FlowViewPage'));
+const TimelinePage = lazy(() => import('@/pages/TimelinePage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 // Loading fallback component
@@ -77,6 +78,16 @@ export const router = createBrowserRouter([
           <ProtectedRoute>
             <LazyPage>
               <FlowViewPage />
+            </LazyPage>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'timeline',
+        element: (
+          <ProtectedRoute>
+            <LazyPage>
+              <TimelinePage />
             </LazyPage>
           </ProtectedRoute>
         ),
