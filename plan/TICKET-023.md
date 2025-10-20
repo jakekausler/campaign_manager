@@ -14,6 +14,7 @@
   - d95c29e - Stage 8: Links Tab Implementation
   - beed7fa - Stage 9: Versions Tab Implementation
   - 5975b50 - Stage 10: Edit Mode Infrastructure (Minimal Implementation)
+  - 97d9a7d - Stage 11: Complete Edit Mode (Keyboard Shortcuts & Loading States)
 
 ## Implementation Notes
 
@@ -478,6 +479,102 @@ EntityInspector.test.tsx:
 - Comprehensive tests for all edit scenarios
 
 **Next Steps**: Stage 11 will complete edit mode implementation across all editable fields and tabs with keyboard shortcuts and optimistic updates.
+
+### Stage 11: Complete Edit Mode (Keyboard Shortcuts & Loading States) (Commit: 97d9a7d)
+
+**Completed**: Enhanced edit mode with keyboard shortcuts and loading states for better UX.
+
+**Infrastructure Enhanced**:
+
+EditableField Component (`packages/frontend/src/components/features/entity-inspector/EditableField.tsx`):
+
+- Added 'textarea' field type support for multi-line text inputs
+- Extended handleInputChange to accept HTMLTextAreaElement events
+- Textarea renders with 4 rows by default, resizable vertically
+- Consistent styling with other input types (error states, focus rings)
+- Proper TypeScript typing for textarea events
+
+EntityInspector Component (`packages/frontend/src/components/features/entity-inspector/EntityInspector.tsx`):
+
+- **Keyboard Shortcuts** (lines 118-136):
+  - Ctrl+S/Cmd+S to save changes (prevents default browser save)
+  - Esc to cancel editing and discard changes
+  - Scoped to when inspector is open AND in edit mode
+  - Proper cleanup on unmount to prevent memory leaks
+  - Function declarations reordered before useEffect to satisfy TypeScript
+- **Loading State Management**:
+  - New `isSaving` state tracks save operation status
+  - New `handleSavingChange` callback receives updates from OverviewTab
+  - Save button disabled during save operation (line 311)
+  - Cancel button disabled during save operation (line 300)
+  - "Saving..." text feedback on Save button (line 316)
+  - Tooltip updates during save ("Saving..." vs "Save changes")
+- **useCallback Optimization**: All event handlers memoized with correct dependencies
+
+OverviewTab Component (`packages/frontend/src/components/features/entity-inspector/OverviewTab.tsx`):
+
+- **Performance Fix**: Memoized initialData using useMemo to prevent infinite re-renders (lines 97-103)
+- **Saving State Propagation**: Extracts isSaving from useEditMode, reports to parent via onSavingChange callback (lines 121-124)
+- **Bug Fix**: Added useMemo import, stabilized object reference in initialData dependencies
+- **Integration**: onSavingChange callback properly wired to EntityInspector
+
+**Architecture Decisions**:
+
+- **Keyboard Shortcuts at Window Level**: Registered on `window` but scoped to `isOpen && isEditing` state, allows shortcuts to work regardless of active tab
+- **Function Declaration Order**: Moved handleSave and handleCancelEditing before keyboard shortcuts useEffect to satisfy TypeScript dependency requirements
+- **Loading State Flow**: useEditMode (isSaving) → OverviewTab (onSavingChange callback) → EntityInspector (button disabled states)
+- **Memoization Strategy**: useMemo with primitive dependencies (entity.name) prevents re-render loops from object reference changes
+
+**Scope Adjustments**:
+
+Description Field Editing Removed:
+
+- Initial implementation included description field editing with textarea input
+- Code review discovered description field doesn't exist in backend Prisma schema
+- Settlement and Structure models have no description field in schema or GraphQL types
+- Removed all description editing functionality to prevent runtime failures
+- Only name field is editable (matches backend capabilities from Stage 10)
+
+Deferred Features:
+
+- **Typed Variables Editing**: Complex feature requiring variable schema validation and type-specific input components (deferred to future enhancement)
+- **Optimistic Updates**: Can be added in future without breaking changes (deferred)
+- **SettlementPanel/StructurePanel Edit Integration**: Would require coordination with typed variables system (deferred)
+
+**Code Quality**:
+
+- TypeScript compilation: ✅ PASSED (0 errors)
+- ESLint: ✅ PASSED (0 errors, only pre-existing warnings in Timeline files)
+- Tests: ✅ 1048/1065 passing (0 new failures, 17 pre-existing failures unrelated to Stage 11)
+- Code Review: ✅ APPROVED (production-ready, no critical issues)
+- EntityInspector.test.tsx: 12/12 tests passing
+- OverviewTab.test.tsx: 20/20 tests passing
+
+**Key Features**:
+
+1. **Keyboard Shortcuts**: Ctrl+S/Cmd+S to save, Esc to cancel (improves accessibility and power user experience)
+2. **Loading Feedback**: Disabled buttons and "Saving..." text during save operations (prevents double-submission, clear user feedback)
+3. **Textarea Support**: Multi-line text input type for future use (4 rows, resizable)
+4. **Performance**: useMemo prevents infinite re-renders from unstable object references
+5. **Type Safety**: Proper TypeScript typing for all new functionality
+6. **Function Declaration Order**: Satisfied TypeScript dependency requirements by moving function definitions before useEffect
+
+**Testing**:
+
+- All EntityInspector tests passing (keyboard shortcuts, loading states, edit mode coordination)
+- All OverviewTab tests passing (memoization, callbacks, edit workflow)
+- No test regressions introduced by Stage 11 changes
+- Pre-existing test failures (17) are in SettlementPanel, StructurePanel, and hook tests (unrelated to Stage 11)
+
+**Design Decisions**:
+
+- **Window-Level Shortcuts**: Allows shortcuts to work in any tab, browser behavior (Ctrl+S) prevented
+- **Memoization with Primitive Dependencies**: `[entity.name]` instead of `[entity]` ensures stable reference
+- **Callback Pattern for Loading State**: Parent-child communication via onSavingChange callback maintains single source of truth
+- **Textarea Rows Default**: 4 rows balances visibility with space efficiency
+- **Description Field Removed**: Code review prevented runtime failures from schema mismatch
+
+**Next Steps**: Stage 12 will integrate EntityInspector with MapPage, FlowViewPage, and TimelinePage for entity selection workflows.
 
 ### Stage 8: Links Tab Implementation (Commit: d95c29e)
 
