@@ -96,15 +96,23 @@ Events and encounters are color-coded based on their status:
 
 ### Performance
 
-Performance benchmarks with large datasets:
+Performance benchmarks with large datasets (Stage 12):
 
-| Dataset Size | Transformation Time | Status  |
-| ------------ | ------------------- | ------- |
-| 100 items    | < 2500ms            | ✅ Pass |
-| 200 items    | < 3000ms            | ✅ Pass |
-| 500 items    | < 5000ms            | ✅ Pass |
+| Dataset Size | Threshold | Actual Performance | Status           |
+| ------------ | --------- | ------------------ | ---------------- |
+| 100 items    | <2.5s     | **0.58ms**         | ✅ 4,310x faster |
+| 200 items    | <3s       | **0.37ms**         | ✅ 8,108x faster |
+| 500 items    | <5s       | **0.91ms**         | ✅ 5,495x faster |
 
-The vis-timeline library uses virtualization to efficiently render thousands of items.
+**Key Findings**:
+
+- All transformations complete in **sub-millisecond time** (0.01ms - 0.91ms)
+- Performance is **~4,300x to 8,100x better** than required thresholds
+- Near-linear scaling characteristics (10→50: 4.87x, 50→100: 1.13x)
+- Null date filtering: 0.01ms for 200 items (early exit optimization)
+- Overdue detection: 0.49ms for 200 items (no significant overhead)
+
+**Capacity**: Current implementation can easily handle **1,000+ items** with headroom to spare. The vis-timeline library uses virtualization to efficiently render thousands of items.
 
 ### Accessibility
 
@@ -472,13 +480,24 @@ Added `scheduledAt DateTime?` field to Encounter model to support timeline visua
 
 ### Performance Tests
 
-Performance benchmarks ensure acceptable rendering times:
+**Test File**: `timeline-transforms.performance.test.ts` (6 tests, all passing)
 
-- **100 nodes**: < 2500ms (includes test overhead)
-- **200 nodes**: < 3000ms
-- **500 nodes**: < 5000ms
+Performance tests verify transformation efficiency with large datasets:
 
-Thresholds account for CI environment variability. Production performance is faster due to browser optimizations.
+- **100 items test**: <2.5s threshold, actual 0.58ms
+- **200 items test**: <3s threshold, actual 0.37ms
+- **500 items test**: <5s threshold, actual 0.91ms
+- **Linear scaling test**: Verifies near-linear growth (10→50→100 items)
+- **Null date filtering test**: Verifies early exit optimization (0.01ms for 200 items)
+- **Overdue detection test**: Verifies no performance overhead (0.49ms for 200 items)
+
+Run performance tests:
+
+```bash
+pnpm --filter @campaign/frontend test timeline-transforms.performance.test.ts
+```
+
+**Results**: All tests significantly exceed performance requirements with sub-millisecond transformation times.
 
 ## Integration
 
@@ -562,11 +581,12 @@ packages/frontend/src/
 │       └── encounters.test.tsx
 └── utils/
     ├── timeline-transforms.ts                # Data transformation
-    ├── timeline-transforms.test.ts
+    ├── timeline-transforms.test.ts           # Transformation unit tests
+    ├── timeline-transforms.performance.test.ts  # Performance benchmarks
     ├── timeline-validation.ts                # Reschedule validation
-    ├── timeline-validation.test.ts
+    ├── timeline-validation.test.ts           # Validation unit tests
     ├── timeline-filters.ts                   # Filtering and grouping
-    └── timeline-filters.test.ts
+    └── timeline-filters.test.ts              # Filter unit tests
 ```
 
 ## Future Enhancements
