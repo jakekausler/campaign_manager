@@ -21,7 +21,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS with restricted origins
-  const corsOrigins = process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173'];
+  const corsOrigins = process.env.CORS_ORIGIN?.split(',') || ['http://localhost:9263'];
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
@@ -36,7 +36,7 @@ async function bootstrap() {
     })
   );
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 9264;
   await app.listen(port);
 
   console.log(`API server running on http://localhost:${port}`);

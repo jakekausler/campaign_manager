@@ -897,10 +897,10 @@ packages/frontend/
 pnpm --filter @campaign/frontend dev
 ```
 
-The dev server runs on http://localhost:3000 with:
+The dev server runs on http://localhost:9263 (configurable via VITE_PORT) with:
 
 - Hot module replacement (HMR) for instant updates
-- Vite proxy forwarding `/graphql` to backend on port 4000
+- Vite proxy forwarding `/graphql` to backend on port 9264 (configurable via VITE_BACKEND_PORT)
 - Mock authentication for development
 
 **Environment Variables:**
@@ -912,9 +912,13 @@ Frontend uses Vite's environment system (variables must start with `VITE_`):
 cp packages/frontend/.env.example packages/frontend/.env
 
 # Edit environment variables
+# Port configuration (defaults: frontend=9263, backend=9264)
+VITE_PORT=9263
+VITE_BACKEND_PORT=9264
+
 # Development uses relative URLs (proxied by Vite)
 VITE_API_URL=/graphql
-VITE_API_WS_URL=ws://localhost:3000/graphql
+VITE_API_WS_URL=ws://localhost:9263/graphql
 
 # Production uses absolute HTTPS URLs
 VITE_API_URL=https://api.yourdomain.com/graphql
@@ -961,14 +965,14 @@ VITE_API_WS_URL=wss://api.yourdomain.com/graphql
 **Code Generation:**
 
 - GraphQL Code Generator produces TypeScript types from schema
-- Requires backend running on port 4000
+- Requires backend running on port 9264 (or set GRAPHQL_SCHEMA_URL)
 - Generated files in `src/__generated__/graphql.ts`
 - Custom scalar mappings (DateTime→string, JSON→Record, UUID→string)
 
 **Development Proxy:**
 
 - Vite proxy eliminates CORS issues in development
-- `/graphql` proxied to `http://localhost:4000`
+- `/graphql` proxied to `http://localhost:9264` (configurable via VITE_BACKEND_PORT)
 - WebSocket proxying enabled for GraphQL subscriptions
 - Production uses absolute URLs (no proxy)
 
@@ -1122,13 +1126,13 @@ Frontend uses Vitest (Vite-native test runner) instead of Jest.
 
 **Dev server won't start:**
 
-- Check that port 3000 is available
+- Check that port 9263 is available (or set VITE_PORT to a different port)
 - Verify `.env` file exists with required variables
 - Run `pnpm install` from project root
 
 **GraphQL requests fail:**
 
-- Verify backend API is running on port 4000
+- Verify backend API is running on port 9264 (or configured VITE_BACKEND_PORT)
 - Check proxy configuration in `vite.config.ts`
 - Verify `VITE_API_URL` environment variable
 

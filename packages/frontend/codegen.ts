@@ -9,7 +9,7 @@ import type { CodegenConfig } from '@graphql-codegen/cli';
  * Generated files are written to src/__generated__/ and should not be
  * edited manually. They are regenerated when you run `pnpm codegen`.
  *
- * IMPORTANT: The backend API must be running on http://localhost:4000
+ * IMPORTANT: The backend API must be running on http://localhost:9264
  * before running code generation. Start it with: pnpm --filter @campaign/api dev
  *
  * @see https://the-guild.dev/graphql/codegen/docs/getting-started
@@ -19,10 +19,10 @@ const config: CodegenConfig = {
   overwrite: true,
 
   // Schema source: Backend GraphQL API endpoint
-  // In development: Use localhost:4000 directly (bypasses Vite proxy for introspection)
+  // In development: Use localhost:9264 directly (bypasses Vite proxy for introspection)
   // IMPORTANT: Backend API must be running before code generation
   // Can be overridden via GRAPHQL_SCHEMA_URL environment variable
-  schema: process.env.GRAPHQL_SCHEMA_URL || 'http://localhost:4000/graphql',
+  schema: process.env.GRAPHQL_SCHEMA_URL || 'http://localhost:9264/graphql',
 
   // Documents: Where to find GraphQL operations (queries, mutations, subscriptions)
   // These are the .graphql files or inline gql`` tags you write

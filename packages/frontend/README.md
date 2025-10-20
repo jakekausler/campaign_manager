@@ -38,7 +38,7 @@ pnpm --filter @campaign/frontend dev
 pnpm run dev
 ```
 
-The dev server will start at http://localhost:3000
+The dev server will start at http://localhost:9263 (configurable via VITE_PORT)
 
 ### Development Commands
 
@@ -94,11 +94,13 @@ All environment variables must be prefixed with `VITE_` to be exposed to the cli
 
 #### Required Variables
 
+- `VITE_PORT` - Frontend dev server port (default: 9263)
+- `VITE_BACKEND_PORT` - Backend API port for proxy (default: 9264)
 - `VITE_API_URL` - GraphQL API endpoint
   - Development: `/graphql` (proxied to backend)
   - Production: `https://api.example.com/graphql`
 - `VITE_API_WS_URL` - WebSocket endpoint for subscriptions
-  - Development: `ws://localhost:3000/graphql` (proxied to backend)
+  - Development: `ws://localhost:9263/graphql` (proxied to backend)
   - Production: `wss://api.example.com/graphql`
 - `VITE_APP_NAME` - Application name displayed in UI
 - `VITE_ENVIRONMENT` - Current environment (development, staging, production)
@@ -158,9 +160,11 @@ See `src/stores/README.md` for comprehensive documentation.
 
 In development, Vite automatically proxies API requests to the backend:
 
-- **GraphQL HTTP**: `http://localhost:3000/graphql` → `http://localhost:4000/graphql`
-- **GraphQL WebSocket**: `ws://localhost:3000/graphql` → `ws://localhost:4000/graphql`
-- **REST API** (if any): `http://localhost:3000/api` → `http://localhost:4000/api`
+- **GraphQL HTTP**: `http://localhost:9263/graphql` → `http://localhost:9264/graphql`
+- **GraphQL WebSocket**: `ws://localhost:9263/graphql` → `ws://localhost:9264/graphql`
+- **REST API** (if any): `http://localhost:9263/api` → `http://localhost:9264/api`
+
+Ports are configurable via `VITE_PORT` and `VITE_BACKEND_PORT` environment variables.
 
 **Benefits:**
 
@@ -171,10 +175,13 @@ In development, Vite automatically proxies API requests to the backend:
 **Configuration** in `vite.config.ts`:
 
 ```typescript
+// Reads VITE_BACKEND_PORT from .env (default: 9264)
+const BACKEND_PORT = parseInt(process.env.VITE_BACKEND_PORT || '9264', 10);
+
 server: {
   proxy: {
     '/graphql': {
-      target: 'http://localhost:4000',
+      target: `http://localhost:${BACKEND_PORT}`,
       ws: true, // Enable WebSocket proxying
     },
   },
@@ -286,7 +293,7 @@ TypeScript types and React hooks are automatically generated from the backend Gr
 **Setup commands:**
 
 ```bash
-# Generate types and hooks (requires backend running on port 4000)
+# Generate types and hooks (requires backend running on port 9264)
 pnpm --filter @campaign/frontend codegen
 
 # Watch mode - auto-regenerate on schema changes
@@ -296,7 +303,7 @@ pnpm --filter @campaign/frontend codegen:watch
 **Prerequisites:**
 
 1. Backend API must be running: `pnpm --filter @campaign/api dev`
-2. Backend must be accessible at `http://localhost:4000/graphql`
+2. Backend must be accessible at `http://localhost:9264/graphql` (or set GRAPHQL_SCHEMA_URL)
 3. PostgreSQL database must be running
 
 **Generated files** (in `src/__generated__/`):
@@ -724,7 +731,7 @@ See `/storage/programs/campaign_manager/CLAUDE.md` for complete development guid
 
 ### Dev server won't start
 
-1. Check port 3000 is available
+1. Check port 9263 is available (or set VITE_PORT to a different port)
 2. Verify environment variables are set
 3. Try cleaning and reinstalling: `pnpm run clean && pnpm install`
 

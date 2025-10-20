@@ -2,6 +2,10 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+// Read port configuration from environment variables
+const FRONTEND_PORT = parseInt(process.env.VITE_PORT || process.env.PORT || '9263', 10);
+const BACKEND_PORT = parseInt(process.env.VITE_BACKEND_PORT || '9264', 10);
+
 export default defineConfig({
   plugins: [react()],
 
@@ -12,20 +16,20 @@ export default defineConfig({
   },
 
   server: {
-    port: 3000,
+    port: FRONTEND_PORT,
     host: true,
     strictPort: false,
     proxy: {
       // Proxy GraphQL requests to backend API
       '/graphql': {
-        target: 'http://localhost:4000',
+        target: `http://localhost:${BACKEND_PORT}`,
         changeOrigin: true,
         secure: false,
         ws: true, // Enable WebSocket proxying for GraphQL subscriptions
       },
       // Proxy API requests (if any REST endpoints exist)
       '/api': {
-        target: 'http://localhost:4000',
+        target: `http://localhost:${BACKEND_PORT}`,
         changeOrigin: true,
         secure: false,
       },
@@ -45,7 +49,7 @@ export default defineConfig({
   },
 
   preview: {
-    port: 3000,
+    port: FRONTEND_PORT,
     host: true,
   },
 

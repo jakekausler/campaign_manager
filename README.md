@@ -122,9 +122,9 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 5. Access the application:
 
-- **Frontend**: http://localhost:3000 (dev) or http://localhost:8080 (prod)
-- **API/GraphQL**: http://localhost:4000
-- **GraphQL Playground**: http://localhost:4000/graphql (dev only)
+- **Frontend**: http://localhost:9263 (dev) or http://localhost:8080 (prod)
+- **API/GraphQL**: http://localhost:9264
+- **GraphQL Playground**: http://localhost:9264/graphql (dev only)
 - **MinIO Console**: http://localhost:9001
 
 6. Stop all services:
@@ -188,9 +188,13 @@ cp packages/frontend/.env.example packages/frontend/.env
 2. Update environment variables in `packages/frontend/.env`:
 
 ```bash
+# Port Configuration
+VITE_PORT=9263
+VITE_BACKEND_PORT=9264
+
 # API Configuration (proxied in development)
 VITE_API_URL=/graphql
-VITE_API_WS_URL=ws://localhost:3000/graphql
+VITE_API_WS_URL=ws://localhost:9263/graphql
 
 # Application Configuration
 VITE_APP_NAME=Campaign Manager
@@ -207,10 +211,10 @@ VITE_ENABLE_MOCK_AUTH=true
 pnpm --filter @campaign/frontend dev
 ```
 
-The frontend will be available at http://localhost:3000 with:
+The frontend will be available at http://localhost:9263 with:
 
 - Hot module replacement (HMR) for instant updates
-- Vite proxy forwarding `/graphql` to backend on port 4000
+- Vite proxy forwarding `/graphql` to backend on port 9264
 - Mock authentication for development (login with any email/password)
 - Route-based code splitting for optimal performance
 
@@ -366,13 +370,13 @@ GitHub Actions workflow runs on every push and pull request:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                       Frontend (React)                      │
-│                    http://localhost:3000                     │
+│                    http://localhost:9263                     │
 └────────────────────────┬────────────────────────────────────┘
                          │ GraphQL / WebSocket
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                   API Server (NestJS)                       │
-│                    http://localhost:4000                     │
+│                    http://localhost:9264                     │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │ • GraphQL API • Authentication • Business Logic     │   │
 │  │ • Versioning  • Audit Logging  • Real-time Events   │   │
@@ -430,9 +434,9 @@ GitHub Actions workflow runs on every push and pull request:
 
 | Service      | Port(s)        | Description                      |
 | ------------ | -------------- | -------------------------------- |
-| frontend     | 3000 (dev)     | React + Vite development server  |
+| frontend     | 9263 (dev)     | React + Vite development server  |
 |              | 8080 (prod)    | Nginx serving production build   |
-| api          | 4000           | NestJS GraphQL API + WebSocket   |
+| api          | 9264           | NestJS GraphQL API + WebSocket   |
 |              | 9229 (dev)     | Node.js debugger                 |
 | rules-engine | 3001           | HTTP health checks               |
 |              | 50051          | gRPC evaluation server           |

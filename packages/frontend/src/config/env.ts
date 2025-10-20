@@ -88,7 +88,7 @@ function validateApiUrl(url: string, environment: string): string {
       `Invalid API URL: ${url}\n` +
         `API URLs must be:\n` +
         `  - Relative path (e.g., /graphql) for proxied development\n` +
-        `  - Full HTTP/HTTPS URL (e.g., http://localhost:4000/graphql or https://api.example.com/graphql)`
+        `  - Full HTTP/HTTPS URL (e.g., http://localhost:9264/graphql or https://api.example.com/graphql)`
     );
   }
 
