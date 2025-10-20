@@ -6,7 +6,7 @@ import { Button, Input, Label } from '@/components/ui';
 /**
  * Type of field for rendering different input types.
  */
-export type FieldType = 'text' | 'number' | 'boolean' | 'json';
+export type FieldType = 'text' | 'number' | 'boolean' | 'json' | 'textarea';
 
 /**
  * Props for the EditableField component.
@@ -161,7 +161,7 @@ export function EditableField({
   /**
    * Handle input change.
    */
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (!onChange) return;
     const parsedValue = parseInputValue(e.target.value, type);
     onChange(parsedValue);
@@ -199,6 +199,13 @@ export function EditableField({
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
+          ) : type === 'textarea' ? (
+            <textarea
+              value={inputValue}
+              onChange={handleInputChange}
+              rows={4}
+              className={`flex w-full rounded-md border ${error ? 'border-red-500' : 'border-slate-200'} bg-white px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950 resize-y`}
+            />
           ) : (
             <Input
               type={type === 'number' ? 'number' : 'text'}

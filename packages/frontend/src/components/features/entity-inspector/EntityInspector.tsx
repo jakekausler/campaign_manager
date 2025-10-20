@@ -1,5 +1,5 @@
 import { ChevronLeft, Edit2, Save, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -72,6 +72,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
   // Edit mode state (managed at inspector level to show controls in header)
   const [isEditing, setIsEditing] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
 
   // Ref to access tab's save function
@@ -87,6 +88,52 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
       setHasUnsavedChanges(false);
     }
   }, [isOpen, entityType, entityId]);
+
+  /**
+   * Cancel edit mode
+   */
+  const handleCancelEditing = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+      return;
+    }
+    setIsEditing(false);
+  }, [hasUnsavedChanges]);
+
+  /**
+   * Save changes (triggered by save button, delegated to active tab)
+   */
+  const handleSave = useCallback(async () => {
+    // Call the tab's save function via ref
+    if (tabSaveRef.current) {
+      const success = await tabSaveRef.current();
+      if (success) {
+        setHasUnsavedChanges(false);
+        setIsEditing(false);
+      }
+    }
+  }, []);
+
+  // Keyboard shortcuts (Ctrl+S to save, Esc to cancel)
+  useEffect(() => {
+    if (!isOpen || !isEditing) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+S or Cmd+S to save
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+      // Esc to cancel
+      else if (e.key === 'Escape') {
+        e.preventDefault();
+        handleCancelEditing();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isEditing, handleSave, handleCancelEditing]);
 
   // Conditionally fetch entity data based on type
   const settlementQuery = useSettlementDetails(currentEntityId, {
@@ -104,35 +151,38 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
   /**
    * Navigate to a related entity
    */
-  const handleNavigate = (link: EntityLink) => {
-    // Only navigate to settlement or structure (skip kingdom, location, campaign for now)
-    if (link.type !== 'settlement' && link.type !== 'structure') {
-      // TODO: Implement navigation for Kingdom, Location, Campaign in future tickets
-      console.warn(`Navigation to ${link.type} not yet implemented`);
-      return;
-    }
+  const handleNavigate = useCallback(
+    (link: EntityLink) => {
+      // Only navigate to settlement or structure (skip kingdom, location, campaign for now)
+      if (link.type !== 'settlement' && link.type !== 'structure') {
+        // TODO: Implement navigation for Kingdom, Location, Campaign in future tickets
+        console.warn(`Navigation to ${link.type} not yet implemented`);
+        return;
+      }
 
-    // Push current entity onto navigation stack
-    if (entity) {
-      setNavigationStack((prev) => [
-        ...prev,
-        {
-          entityType: currentEntityType,
-          entityId: currentEntityId,
-          entityName: entity.name,
-        },
-      ]);
-    }
+      // Push current entity onto navigation stack
+      if (entity) {
+        setNavigationStack((prev) => [
+          ...prev,
+          {
+            entityType: currentEntityType,
+            entityId: currentEntityId,
+            entityName: entity.name,
+          },
+        ]);
+      }
 
-    // Navigate to new entity
-    setCurrentEntityType(link.type as EntityType);
-    setCurrentEntityId(link.id);
-  };
+      // Navigate to new entity
+      setCurrentEntityType(link.type as EntityType);
+      setCurrentEntityId(link.id);
+    },
+    [entity, currentEntityType, currentEntityId]
+  );
 
   /**
    * Navigate back to previous entity
    */
-  const handleGoBack = () => {
+  const handleGoBack = useCallback(() => {
     if (navigationStack.length === 0) return;
 
     // If there are unsaved changes, show confirmation dialog
@@ -145,12 +195,12 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
     setCurrentEntityType(previous.entityType);
     setCurrentEntityId(previous.entityId);
     setNavigationStack((prev) => prev.slice(0, -1));
-  };
+  }, [navigationStack, hasUnsavedChanges]);
 
   /**
    * Handle closing the inspector
    */
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     // If there are unsaved changes, show confirmation dialog
     if (hasUnsavedChanges) {
       setShowUnsavedDialog(true);
@@ -158,57 +208,39 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
     }
 
     onClose();
-  };
+  }, [hasUnsavedChanges, onClose]);
 
   /**
    * Confirm discarding unsaved changes
    */
-  const handleDiscardChanges = () => {
+  const handleDiscardChanges = useCallback(() => {
     setHasUnsavedChanges(false);
     setIsEditing(false);
     setShowUnsavedDialog(false);
     // Proceed with the original action (close or navigate back)
     onClose();
-  };
+  }, [onClose]);
 
   /**
    * Enter edit mode
    */
-  const handleStartEditing = () => {
+  const handleStartEditing = useCallback(() => {
     setIsEditing(true);
-  };
-
-  /**
-   * Cancel edit mode
-   */
-  const handleCancelEditing = () => {
-    if (hasUnsavedChanges) {
-      setShowUnsavedDialog(true);
-      return;
-    }
-    setIsEditing(false);
-  };
-
-  /**
-   * Save changes (triggered by save button, delegated to active tab)
-   */
-  const handleSave = async () => {
-    // Call the tab's save function via ref
-    if (tabSaveRef.current) {
-      const success = await tabSaveRef.current();
-      if (success) {
-        setHasUnsavedChanges(false);
-        setIsEditing(false);
-      }
-    }
-  };
+  }, []);
 
   /**
    * Handle dirty state changes from tabs
    */
-  const handleDirtyChange = (isDirty: boolean) => {
+  const handleDirtyChange = useCallback((isDirty: boolean) => {
     setHasUnsavedChanges(isDirty);
-  };
+  }, []);
+
+  /**
+   * Handle saving state changes from tabs
+   */
+  const handleSavingChange = useCallback((saving: boolean) => {
+    setIsSaving(saving);
+  }, []);
 
   return (
     <>
@@ -265,6 +297,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
                         variant="ghost"
                         size="sm"
                         onClick={handleCancelEditing}
+                        disabled={isSaving}
                         className="h-8 px-2"
                         title="Cancel editing"
                       >
@@ -275,11 +308,12 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
                         variant="default"
                         size="sm"
                         onClick={handleSave}
+                        disabled={isSaving}
                         className="h-8 px-2"
-                        title="Save changes"
+                        title={isSaving ? 'Saving...' : 'Save changes'}
                       >
                         <Save className="h-4 w-4 mr-1" />
-                        <span className="text-sm">Save</span>
+                        <span className="text-sm">{isSaving ? 'Saving...' : 'Save'}</span>
                       </Button>
                     </>
                   ) : (
@@ -346,6 +380,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
                   }}
                   onCancel={handleCancelEditing}
                   onDirtyChange={handleDirtyChange}
+                  onSavingChange={handleSavingChange}
                 />
               </TabsContent>
 

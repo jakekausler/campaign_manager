@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button, Card, Label } from '@/components/ui';
 import { useEditMode } from '@/hooks';
@@ -31,6 +31,8 @@ export interface OverviewTabProps {
   onCancel?: () => void;
   /** Callback when dirty state changes */
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Callback when saving state changes */
+  onSavingChange?: (isSaving: boolean) => void;
 }
 
 /**
@@ -51,6 +53,7 @@ export function OverviewTab({
   onSaveComplete,
   onCancel,
   onDirtyChange,
+  onSavingChange,
 }: OverviewTabProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -83,15 +86,24 @@ export function OverviewTab({
     return undefined;
   }, []);
 
+  // Memoize initialData to prevent infinite re-renders
+  const initialData = useMemo(
+    () => ({
+      name: entity.name,
+    }),
+    [entity.name]
+  );
+
   // Edit mode state management
   const {
     data: editData,
     isDirty,
+    isSaving,
     updateField,
     save: saveEditMode,
     errors,
   } = useEditMode({
-    initialData: { name: entity.name },
+    initialData,
     onSave: handleSave,
     onCancel: handleCancel,
     validate: validateField,
@@ -102,6 +114,12 @@ export function OverviewTab({
     onDirtyChange?.(isDirty);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDirty]);
+
+  // Notify parent of saving state changes
+  useEffect(() => {
+    onSavingChange?.(isSaving);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSaving]);
 
   // Expose save function to parent via ref
   useEffect(() => {
