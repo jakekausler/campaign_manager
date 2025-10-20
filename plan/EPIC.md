@@ -63,7 +63,7 @@ Gateway API → Rules Engine + Scheduler → PostgreSQL/PostGIS + Redis + MinIO 
 - [x] [TICKET-022](TICKET-022.md) - Timeline View Implementation
 - [ ] [TICKET-023](TICKET-023.md) - Entity Inspector Component
 - [ ] [TICKET-024](TICKET-024.md) - Cross-View Synchronization
-- [ ] [TICKET-025](TICKET-025.md) - Event & Encounter Resolution System
+- [ ] [TICKET-025](TICKET-025.md) - Event & Encounter Inspector & Resolution System
 - [ ] [TICKET-026](TICKET-026.md) - Scheduler Service Worker
 - [ ] [TICKET-036](TICKET-036.md) - Settlement & Structure Hierarchical UI
 - [ ] [TICKET-037](TICKET-037.md) - Settlement & Structure Rules Integration
@@ -132,6 +132,7 @@ graph TD
     T022 --> T024
     T010 --> T025[TICKET-025: Event Resolution]
     T016 --> T025
+    T023 --> T025
     T010 --> T026[TICKET-026: Scheduler Worker]
     T025 --> T026
     T023 --> T036[TICKET-036: Settlement/Structure UI]
