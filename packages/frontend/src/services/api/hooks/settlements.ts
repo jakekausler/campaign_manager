@@ -141,12 +141,14 @@ export const GET_SETTLEMENT_DETAILS = gql`
       z
       campaignId
       kingdomId
+      locationId
       ownerId
       isArchived
       archivedAt
       createdAt
       updatedAt
       computedFields
+      variables
     }
   }
 `;

@@ -156,6 +156,11 @@ export const mockSettlements = [
       population: 1500,
       defense: 25,
     },
+    variables: {
+      prosperity: 75,
+      morale: 80,
+      has_walls: true,
+    },
   },
   {
     id: 'settlement-2',
@@ -223,6 +228,11 @@ export const mockStructures = [
     computedFields: {
       capacity: 100,
       training_speed: 1.2,
+    },
+    variables: {
+      garrison_size: 50,
+      is_upgraded: false,
+      maintenance_cost: 25,
     },
   },
   {

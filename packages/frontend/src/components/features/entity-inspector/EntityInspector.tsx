@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSettlementDetails, useStructureDetails } from '@/services/api/hooks';
 
 import { OverviewTab } from './OverviewTab';
+import { SettlementPanel } from './SettlementPanel';
+import { StructurePanel } from './StructurePanel';
 
 export type EntityType = 'settlement' | 'structure';
 
@@ -89,8 +91,9 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
           </div>
         ) : (
           <Tabs defaultValue="overview" className="mt-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="links">Links</TabsTrigger>
               <TabsTrigger value="conditions">Conditions</TabsTrigger>
               <TabsTrigger value="effects">Effects</TabsTrigger>
@@ -99,6 +102,18 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
 
             <TabsContent value="overview" className="space-y-4">
               <OverviewTab entity={entity} entityType={entityType} />
+            </TabsContent>
+
+            <TabsContent value="details" className="space-y-4">
+              {entityType === 'settlement' ? (
+                <SettlementPanel
+                  settlement={entity as NonNullable<typeof settlementQuery.settlement>}
+                />
+              ) : (
+                <StructurePanel
+                  structure={entity as NonNullable<typeof structureQuery.structure>}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="links" className="space-y-4">

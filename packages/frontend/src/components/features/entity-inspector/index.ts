@@ -2,3 +2,7 @@ export { EntityInspector } from './EntityInspector';
 export type { EntityInspectorProps, EntityType } from './EntityInspector';
 export { OverviewTab } from './OverviewTab';
 export type { OverviewTabProps, Entity } from './OverviewTab';
+export { SettlementPanel } from './SettlementPanel';
+export type { SettlementPanelProps, SettlementData } from './SettlementPanel';
+export { StructurePanel } from './StructurePanel';
+export type { StructurePanelProps, StructureData } from './StructurePanel';

@@ -69,7 +69,7 @@ export function OverviewTab({ entity, entityType }: OverviewTabProps) {
 
     return (
       <div key={fieldKey} className="flex flex-col gap-1">
-        <Label className="text-xs font-semibold text-slate-700">{label}</Label>
+        <Label className="text-xs font-semibold text-slate-700">{label}:</Label>
         <div className="flex items-start gap-2">
           <div className="flex-1 p-2 rounded-md bg-slate-50 border border-slate-200 text-sm text-slate-900 font-mono break-all">
             {formattedValue}
@@ -100,8 +100,8 @@ export function OverviewTab({ entity, entityType }: OverviewTabProps) {
         <div className="space-y-3">
           {renderField('ID', entity.id, 'id')}
           {renderField('Name', entity.name, 'name')}
-          {renderField('Created At', new Date(entity.createdAt).toLocaleString(), 'createdAt')}
-          {renderField('Updated At', new Date(entity.updatedAt).toLocaleString(), 'updatedAt')}
+          {renderField('Created', new Date(entity.createdAt).toLocaleString(), 'createdAt')}
+          {renderField('Updated', new Date(entity.updatedAt).toLocaleString(), 'updatedAt')}
         </div>
       </Card>
 

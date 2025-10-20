@@ -37,10 +37,16 @@ export const graphqlHandlers = [
       });
     }
 
-    // Return null data for entities that don't exist (no error)
+    // Return error for entities that don't exist
     const settlement = mockSettlements.find((s) => s.id === id);
+    if (!settlement) {
+      return HttpResponse.json({
+        errors: [{ message: 'Settlement not found' }],
+      });
+    }
+
     return HttpResponse.json({
-      data: { settlement: settlement ?? null },
+      data: { settlement },
     });
   }),
 
@@ -69,10 +75,16 @@ export const graphqlHandlers = [
       });
     }
 
-    // Return null data for entities that don't exist (no error)
+    // Return error for entities that don't exist
     const structure = mockStructures.find((s) => s.id === id);
+    if (!structure) {
+      return HttpResponse.json({
+        errors: [{ message: 'Structure not found' }],
+      });
+    }
+
     return HttpResponse.json({
-      data: { structure: structure ?? null },
+      data: { structure },
     });
   }),
 

@@ -32,9 +32,9 @@ describe('OverviewTab', () => {
       render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
       expect(screen.getByText('Basic Information')).toBeInTheDocument();
-      expect(screen.getByText('ID')).toBeInTheDocument();
+      expect(screen.getByText('ID:')).toBeInTheDocument();
       expect(screen.getByText('settlement-1')).toBeInTheDocument();
-      expect(screen.getByText('Name')).toBeInTheDocument();
+      expect(screen.getByText('Name:')).toBeInTheDocument();
       expect(screen.getByText('Ironhold')).toBeInTheDocument();
     });
 
@@ -87,8 +87,8 @@ describe('OverviewTab', () => {
 
       expect(screen.getByText('Computed Fields')).toBeInTheDocument();
       // Field names should be converted from snake_case to Title Case
-      expect(screen.getByText('Population')).toBeInTheDocument();
-      expect(screen.getByText('Defense')).toBeInTheDocument();
+      expect(screen.getByText('Population:')).toBeInTheDocument();
+      expect(screen.getByText('Defense:')).toBeInTheDocument();
       expect(screen.getByText('1500')).toBeInTheDocument();
       expect(screen.getByText('25')).toBeInTheDocument();
     });
@@ -96,8 +96,8 @@ describe('OverviewTab', () => {
     it('should convert snake_case field names to Title Case', () => {
       render(<OverviewTab entity={mockStructure} entityType="structure" />);
 
-      expect(screen.getByText('Training Speed')).toBeInTheDocument();
-      expect(screen.getByText('Capacity')).toBeInTheDocument();
+      expect(screen.getByText('Training Speed:')).toBeInTheDocument();
+      expect(screen.getByText('Capacity:')).toBeInTheDocument();
     });
 
     it('should handle complex JSON objects in computed fields', () => {
@@ -312,10 +312,10 @@ describe('OverviewTab', () => {
     it('should have proper labels for all fields', () => {
       render(<OverviewTab entity={mockSettlement} entityType="settlement" />);
 
-      expect(screen.getByText('ID')).toBeInTheDocument();
-      expect(screen.getByText('Name')).toBeInTheDocument();
-      expect(screen.getByText('Created At')).toBeInTheDocument();
-      expect(screen.getByText('Updated At')).toBeInTheDocument();
+      expect(screen.getByText('ID:')).toBeInTheDocument();
+      expect(screen.getByText('Name:')).toBeInTheDocument();
+      expect(screen.getByText('Created:')).toBeInTheDocument();
+      expect(screen.getByText('Updated:')).toBeInTheDocument();
     });
 
     it('should have accessible copy buttons with titles', () => {

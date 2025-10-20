@@ -96,7 +96,9 @@ export const GET_STRUCTURE_DETAILS = gql`
       id
       name
       typeId
+      type
       settlementId
+      level
       x
       y
       orientation
@@ -105,6 +107,7 @@ export const GET_STRUCTURE_DETAILS = gql`
       createdAt
       updatedAt
       computedFields
+      variables
     }
   }
 `;

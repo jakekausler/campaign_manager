@@ -197,6 +197,7 @@ describe('EntityInspector', () => {
 
       // Check all tab triggers are present
       expect(screen.getByRole('tab', { name: /overview/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /details/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /links/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /conditions/i })).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: /effects/i })).toBeInTheDocument();
