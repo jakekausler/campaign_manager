@@ -13,7 +13,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "lint": "eslint src --ext .ts,.tsx",
     "start": "vite preview",
-    "test": "vitest run --passWithNoTests",
+    "test": "NODE_OPTIONS='--max-old-space-size=8192' vitest run --passWithNoTests",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },

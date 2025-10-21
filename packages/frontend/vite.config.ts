@@ -57,6 +57,25 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: './src/__tests__/setup.ts',
+    // Run tests in fork processes with memory limits
+    // Using multiple forks to distribute memory load
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: false, // Use multiple forks to avoid accumulating memory
+        minForks: 1,
+        maxForks: 2, // Limit concurrent forks to 2
+        // Pass memory limit to each fork process
+        execArgv: ['--max-old-space-size=4096'],
+      },
+    },
+    // Ensure proper cleanup between tests
+    clearMocks: true,
+    mockReset: true,
+    restoreMocks: true,
+    // Increase timeout for slow tests
+    testTimeout: 15000,
+    hookTimeout: 15000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

@@ -19,9 +19,18 @@ beforeAll(() => {
 });
 
 // Reset handlers after each test to ensure test isolation
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   server.resetHandlers();
+
+  // Wait a tick to allow async cleanup to complete
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  // Force garbage collection hint (if --expose-gc is enabled)
+  // This helps prevent memory accumulation in large test suites
+  if (global.gc) {
+    global.gc();
+  }
 });
 
 // Stop MSW server after all tests
