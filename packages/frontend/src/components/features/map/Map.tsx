@@ -689,11 +689,18 @@ export function Map({
     // Extract coordinates from locations
     const coordinates: [number, number][] = [];
     selectedLocations.forEach((loc) => {
-      if (loc.geoJson.type === 'Point') {
-        coordinates.push(loc.geoJson.coordinates as [number, number]);
-      } else if (loc.geoJson.type === 'Polygon') {
+      if (!loc.geojson) return;
+
+      const geojson = loc.geojson as {
+        type: string;
+        coordinates: number[] | number[][] | number[][][];
+      };
+
+      if (geojson.type === 'Point') {
+        coordinates.push(geojson.coordinates as [number, number]);
+      } else if (geojson.type === 'Polygon') {
         // For polygons, use the centroid (first coordinate of first ring)
-        const coords = loc.geoJson.coordinates[0];
+        const coords = (geojson.coordinates as number[][][])[0];
         if (coords && coords.length > 0) {
           coordinates.push(coords[0] as [number, number]);
         }

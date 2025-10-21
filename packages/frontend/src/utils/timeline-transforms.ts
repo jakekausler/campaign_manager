@@ -146,17 +146,17 @@ export function transformEventToTimelineItem(
     id: `event-${event.id}`,
     content: event.name,
     start,
-    // Metadata for drag-to-reschedule validation (must come BEFORE type: 'point')
-    ...({
-      type: 'event',
-      isCompleted: event.isCompleted,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any satisfies Record<string, unknown>),
-    type: 'point', // vis-timeline type (must come AFTER metadata to avoid being overwritten)
+    type: 'point', // vis-timeline display type
     className: 'timeline-item-event',
     style: `background-color: ${color}; border-color: ${color};`,
     title: `Event: ${event.name}\nType: ${event.eventType}\nStatus: ${status}${event.description ? `\n${event.description}` : ''}`,
     editable: !event.isCompleted, // Can't reschedule completed events
+    // Custom metadata for drag-to-reschedule validation and selection
+    ...({
+      entityType: 'event',
+      isCompleted: event.isCompleted,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any satisfies Record<string, unknown>),
   };
 }
 
@@ -207,17 +207,17 @@ export function transformEncounterToTimelineItem(encounter: Encounter): Timeline
     id: `encounter-${encounter.id}`,
     content: encounter.name,
     start,
-    // Metadata for drag-to-reschedule validation (must come BEFORE type: 'point')
-    ...({
-      type: 'encounter',
-      isResolved: encounter.isResolved,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any satisfies Record<string, unknown>),
-    type: 'point', // vis-timeline type (must come AFTER metadata to avoid being overwritten)
+    type: 'point', // vis-timeline display type
     className: 'timeline-item-encounter',
     style: `background-color: ${color}; border-color: ${color};`,
     title: `Encounter: ${encounter.name}\nStatus: ${status}${difficultyLabel}${encounter.description ? `\n${encounter.description}` : ''}`,
     editable: !encounter.isResolved, // Can't reschedule resolved encounters
+    // Custom metadata for drag-to-reschedule validation and selection
+    ...({
+      entityType: 'encounter',
+      isResolved: encounter.isResolved,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any satisfies Record<string, unknown>),
   };
 }
 

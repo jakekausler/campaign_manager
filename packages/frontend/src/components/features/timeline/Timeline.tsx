@@ -49,6 +49,18 @@ export interface TimelineHandle {
    * @param date - The date to move to
    */
   moveTo: (date: Date) => void;
+
+  /**
+   * Set the selected items programmatically
+   * @param itemIds - Array of item IDs to select
+   */
+  setSelection: (itemIds: string[]) => void;
+
+  /**
+   * Get the currently selected item IDs
+   * @returns Array of selected item IDs
+   */
+  getSelection: () => string[];
 }
 
 /**
@@ -286,6 +298,18 @@ const TimelineComponent = forwardRef<TimelineHandle, TimelineProps>(function Tim
         if (timelineRef.current) {
           timelineRef.current.moveTo(date);
         }
+      },
+      setSelection: (itemIds: string[]) => {
+        if (timelineRef.current) {
+          timelineRef.current.setSelection(itemIds);
+        }
+      },
+      getSelection: () => {
+        if (timelineRef.current) {
+          // vis-timeline returns IdType[] (string | number), but we only use string IDs
+          return timelineRef.current.getSelection() as string[];
+        }
+        return [];
       },
     }),
     []

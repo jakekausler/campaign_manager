@@ -15,6 +15,8 @@ describe('TimelineControls', () => {
       zoomOut: vi.fn(),
       fit: vi.fn(),
       moveTo: vi.fn(),
+      setSelection: vi.fn(),
+      getSelection: vi.fn(() => []),
     };
 
     mockTimelineRef = createRef<TimelineHandle>();

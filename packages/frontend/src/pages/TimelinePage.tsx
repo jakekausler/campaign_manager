@@ -13,7 +13,8 @@ import { useTimelineReschedule } from '@/hooks';
 import { useEncountersByCampaign } from '@/services/api/hooks/encounters';
 import { useEventsByCampaign } from '@/services/api/hooks/events';
 import { useCurrentWorldTime } from '@/services/api/hooks/world-time';
-import { useCurrentCampaignId } from '@/stores';
+import { useCurrentCampaignId, useSelectionStore, EntityType } from '@/stores';
+import type { SelectedEntity } from '@/stores';
 import {
   parseFiltersFromURL,
   serializeFiltersToURL,
@@ -23,6 +24,57 @@ import {
   type TimelineFilters as FilterConfig,
 } from '@/utils/timeline-filters';
 import { transformToTimelineItems } from '@/utils/timeline-transforms';
+
+/**
+ * Maps a timeline item to a SelectedEntity for cross-view selection.
+ *
+ * Timeline items represent events or encounters with IDs in format "event-{id}" or "encounter-{id}".
+ * This function extracts the entity type and ID from the timeline item.
+ *
+ * @param item - The vis-timeline item with metadata
+ * @returns SelectedEntity for EVENT or ENCOUNTER, null otherwise
+ */
+function timelineItemToSelectedEntity(item: TimelineItem): SelectedEntity | null {
+  const itemId = item.id as string;
+  const itemContent = item.content as string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const entityType = (item as any).entityType as 'event' | 'encounter' | undefined;
+
+  if (!entityType || !itemId) return null;
+
+  // Extract the actual entity ID from the timeline item ID
+  // Timeline IDs are in format "event-{entityId}" or "encounter-{entityId}"
+  let entityId: string;
+  if (itemId.startsWith('event-')) {
+    entityId = itemId.substring('event-'.length);
+  } else if (itemId.startsWith('encounter-')) {
+    entityId = itemId.substring('encounter-'.length);
+  } else {
+    return null;
+  }
+
+  if (entityType === 'event') {
+    return {
+      id: entityId,
+      type: EntityType.EVENT,
+      name: itemContent,
+      metadata: {
+        scheduledAt: item.start?.toString(),
+      },
+    };
+  } else if (entityType === 'encounter') {
+    return {
+      id: entityId,
+      type: EntityType.ENCOUNTER,
+      name: itemContent,
+      metadata: {
+        scheduledAt: item.start?.toString(),
+      },
+    };
+  }
+
+  return null;
+}
 
 /**
  * TimelinePage - Campaign timeline view showing events and encounters
@@ -52,6 +104,12 @@ export default function TimelinePage() {
 
   // Get current campaign from store
   const campaignId = useCurrentCampaignId();
+
+  // Get selection store for cross-view synchronization
+  const { selectedEntities, selectEntity, toggleSelection, clearSelection } = useSelectionStore();
+
+  // Track if selection change is coming from this view (to prevent loops)
+  const isLocalSelectionChange = useRef(false);
 
   // Fetch current world time for marker and overdue detection
   const { currentTime } = useCurrentWorldTime(campaignId || undefined);
@@ -85,10 +143,8 @@ export default function TimelinePage() {
 
   // Apply filters and transform to timeline items
   const items = useMemo<TimelineItem[]>(() => {
-    // Don't transform if either query is still loading initial data
-    if ((eventsLoading && events.length === 0) || (encountersLoading && encounters.length === 0)) {
-      return [];
-    }
+    // Always transform available data, even if one query is still loading
+    // This allows showing events while encounters are loading, and vice versa
 
     // Apply filters to raw data
     const filteredEvents = filterEvents(events, filters, currentTime || undefined);
@@ -103,9 +159,10 @@ export default function TimelinePage() {
 
     // Apply grouping strategy
     return applyGrouping(timelineItems, filters.groupBy, filteredEvents, filteredEncounters);
-  }, [events, encounters, filters, currentTime, eventsLoading, encountersLoading]);
+  }, [events, encounters, filters, currentTime]);
 
   // Combined loading and error states
+  // Show loading if we're waiting for initial data from either source
   const loading =
     (eventsLoading && events.length === 0) || (encountersLoading && encounters.length === 0);
   const error = eventsError || encountersError;
@@ -138,7 +195,7 @@ export default function TimelinePage() {
         start: item.start as Date,
         editable: item.editable !== false,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        type: (item as any).type as 'event' | 'encounter' | undefined,
+        type: (item as any).entityType as 'event' | 'encounter' | undefined,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         isCompleted: (item as any).isCompleted as boolean | undefined,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -160,31 +217,92 @@ export default function TimelinePage() {
     [reschedule]
   );
 
-  // Handle timeline item selection (shows "coming soon" message for future entity inspector integration)
+  // Handle timeline item selection with cross-view synchronization
   const handleItemSelect = useCallback(
     (properties: { items: string[]; event: Event }) => {
-      // Only handle single-item selection
-      if (properties.items.length !== 1) return;
+      // Check if Ctrl/Cmd key is pressed for multi-select
+      const nativeEvent = properties.event as MouseEvent;
+      const isMultiSelect = nativeEvent.ctrlKey || nativeEvent.metaKey;
 
-      const selectedItemId = properties.items[0];
+      // Mark this as a local selection change to prevent echo effect
+      isLocalSelectionChange.current = true;
 
-      // Find the selected item in our items array
-      const selectedItem = items.find((item) => item.id === selectedItemId);
-      if (!selectedItem) return;
+      // Handle selection based on number of items
+      if (properties.items.length === 0) {
+        // Empty selection - clear global selection
+        clearSelection();
+        return;
+      }
 
-      // Extract item type from metadata
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const itemType = (selectedItem as any).type as 'event' | 'encounter' | undefined;
-      const itemContent = selectedItem.content as string;
+      // Find selected items and convert to entities
+      const selectedEntities = properties.items
+        .map((itemId) => {
+          const item = items.find((i) => i.id === itemId);
+          return item ? timelineItemToSelectedEntity(item) : null;
+        })
+        .filter((entity): entity is SelectedEntity => entity !== null);
 
-      // Show informational message - entity inspector for events/encounters not yet implemented
-      // eslint-disable-next-line no-alert
-      alert(
-        `Entity inspector for ${itemType}s is coming soon!\n\nSelected ${itemType}: ${itemContent} (ID: ${selectedItemId})\n\nIn the future, clicking timeline items will open the entity inspector with detailed information.`
-      );
+      if (selectedEntities.length === 0) return;
+
+      if (isMultiSelect && selectedEntities.length === 1) {
+        // Ctrl+click: toggle the entity in selection
+        toggleSelection(selectedEntities[0]);
+      } else if (selectedEntities.length === 1) {
+        // Single-click: replace selection with this entity
+        selectEntity(selectedEntities[0]);
+      }
+      // Note: vis-timeline handles multi-select with Ctrl+click automatically
+      // and provides all selected items in properties.items array
     },
-    [items]
+    [items, selectEntity, toggleSelection, clearSelection]
   );
+
+  // Subscribe to global selection changes from other views
+  // and sync with local timeline selection
+  useEffect(() => {
+    // Skip if the selection change originated from this view
+    if (isLocalSelectionChange.current) {
+      isLocalSelectionChange.current = false;
+      return;
+    }
+
+    // Map global selected entities to timeline item IDs
+    const itemIdsToSelect: string[] = [];
+
+    selectedEntities.forEach((entity) => {
+      // Only EVENT and ENCOUNTER entities are shown in timeline
+      if (entity.type === EntityType.EVENT) {
+        const itemId = `event-${entity.id}`;
+        // Check if this item exists in current timeline
+        if (items.find((item) => item.id === itemId)) {
+          itemIdsToSelect.push(itemId);
+        }
+      } else if (entity.type === EntityType.ENCOUNTER) {
+        const itemId = `encounter-${entity.id}`;
+        // Check if this item exists in current timeline
+        if (items.find((item) => item.id === itemId)) {
+          itemIdsToSelect.push(itemId);
+        }
+      }
+      // Note: SETTLEMENT and STRUCTURE entities are not directly shown in timeline
+      // They could potentially be used to highlight related events/encounters in the future
+    });
+
+    // Update timeline selection programmatically
+    if (timelineRef.current) {
+      timelineRef.current.setSelection(itemIdsToSelect);
+
+      // Auto-scroll to selected items when selection comes from other views
+      if (itemIdsToSelect.length > 0) {
+        // Focus on the first selected item
+        // If there are multiple items, vis-timeline will show them all if possible
+        const firstItem = items.find((item) => item.id === itemIdsToSelect[0]);
+        if (firstItem && firstItem.start) {
+          timelineRef.current.moveTo(firstItem.start as Date);
+        }
+      }
+    }
+  }, [selectedEntities, items]);
 
   // Show loading skeleton while fetching data
   if (loading) {

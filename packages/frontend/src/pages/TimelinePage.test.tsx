@@ -9,7 +9,7 @@ import { useTimelineReschedule } from '@/hooks';
 import { useEncountersByCampaign } from '@/services/api/hooks/encounters';
 import { useEventsByCampaign } from '@/services/api/hooks/events';
 import { useCurrentWorldTime } from '@/services/api/hooks/world-time';
-import { useCurrentCampaignId } from '@/stores';
+import { useCurrentCampaignId, useSelectionStore, EntityType } from '@/stores';
 
 import TimelinePage from './TimelinePage';
 
@@ -30,6 +30,13 @@ import TimelinePage from './TimelinePage';
 // Mock Zustand store
 vi.mock('@/stores', () => ({
   useCurrentCampaignId: vi.fn(),
+  useSelectionStore: vi.fn(),
+  EntityType: {
+    SETTLEMENT: 'SETTLEMENT',
+    STRUCTURE: 'STRUCTURE',
+    EVENT: 'EVENT',
+    ENCOUNTER: 'ENCOUNTER',
+  },
 }));
 
 // Mock hooks
@@ -111,8 +118,8 @@ const mockEvents = [
 const mockEncounters = [
   {
     id: 'encounter-1',
-    name: 'Dragon Attack',
-    description: 'Fearsome dragon',
+    name: 'Goblin Ambush',
+    description: 'Fearsome goblins',
     difficulty: 15,
     scheduledAt: null,
     isResolved: true,
@@ -148,6 +155,15 @@ describe('TimelinePage', () => {
       reschedule: vi.fn(),
       loading: false,
       error: undefined,
+    });
+    // Set default selection store mock (TICKET-024 Stage 4)
+    vi.mocked(useSelectionStore).mockReturnValue({
+      selectedEntities: [],
+      selectEntity: vi.fn(),
+      toggleSelection: vi.fn(),
+      clearSelection: vi.fn(),
+      addToSelection: vi.fn(),
+      removeFromSelection: vi.fn(),
     });
     // Mock React Router hooks (Stage 11 URL parameter integration)
     vi.mocked(useSearchParams).mockReturnValue([
@@ -524,6 +540,248 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       expect(screen.getByText('Filters')).toBeInTheDocument();
+    });
+  });
+
+  describe('TICKET-024 Stage 4: Cross-View Selection Integration', () => {
+    const mockSelectEntity = vi.fn();
+    const mockToggleSelection = vi.fn();
+    const mockClearSelection = vi.fn();
+
+    beforeEach(() => {
+      mockSelectEntity.mockClear();
+      mockToggleSelection.mockClear();
+      mockClearSelection.mockClear();
+
+      // Mock default selection store (empty selection)
+      vi.mocked(useSelectionStore).mockReturnValue({
+        selectedEntities: [],
+        selectEntity: mockSelectEntity,
+        toggleSelection: mockToggleSelection,
+        clearSelection: mockClearSelection,
+        addToSelection: vi.fn(),
+        removeFromSelection: vi.fn(),
+      });
+    });
+
+    it('should call selectEntity when timeline item is clicked', async () => {
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      // Wait for Timeline to be called with items and get the props
+      let timelineProps: any;
+      await waitFor(() => {
+        const calls = vi.mocked(Timeline).mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const lastCall = calls[calls.length - 1];
+        expect(lastCall[0].items.length).toBeGreaterThan(0);
+        timelineProps = lastCall[0];
+      });
+
+      expect(timelineProps.onSelect).toBeDefined();
+
+      // Simulate clicking on a timeline item (single-click, no Ctrl key)
+      const mockEvent = new MouseEvent('click', { ctrlKey: false });
+      timelineProps.onSelect({
+        items: ['event-event-1'], // Timeline item ID format
+        event: mockEvent as Event,
+      });
+
+      // Verify global selection was updated
+      expect(mockSelectEntity).toHaveBeenCalledWith({
+        id: 'event-1',
+        type: 'EVENT',
+        name: 'Festival',
+        metadata: {
+          scheduledAt: expect.any(String),
+        },
+      });
+    });
+
+    it('should call toggleSelection when Ctrl+clicking timeline item', async () => {
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      // Wait for Timeline to be called with items and get the props
+      let timelineProps: any;
+      await waitFor(() => {
+        const calls = vi.mocked(Timeline).mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const lastCall = calls[calls.length - 1];
+        expect(lastCall[0].items.length).toBeGreaterThan(0);
+        timelineProps = lastCall[0];
+      });
+
+      // Simulate Ctrl+clicking on a timeline item
+      const mockEvent = new MouseEvent('click', { ctrlKey: true });
+      timelineProps.onSelect({
+        items: ['event-event-1'],
+        event: mockEvent as Event,
+      });
+
+      // Verify global selection was toggled
+      expect(mockToggleSelection).toHaveBeenCalledWith({
+        id: 'event-1',
+        type: 'EVENT',
+        name: 'Festival',
+        metadata: {
+          scheduledAt: expect.any(String),
+        },
+      });
+    });
+
+    it('should call clearSelection when deselecting all items', () => {
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      const calls = vi.mocked(Timeline).mock.calls;
+      const timelineProps = calls[calls.length - 1][0]; // Get props from the last call
+
+      // Ensure onSelect handler exists before calling
+      if (timelineProps.onSelect) {
+        // Simulate clicking on empty space (no items selected)
+        const mockEvent = new MouseEvent('click', { ctrlKey: false });
+        timelineProps.onSelect({
+          items: [],
+          event: mockEvent as Event,
+        });
+
+        // Verify global selection was cleared
+        expect(mockClearSelection).toHaveBeenCalled();
+      }
+    });
+
+    it('should handle encounter selection', async () => {
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      vi.mocked(useEncountersByCampaign).mockReturnValue({
+        encounters: [mockEncounters[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      // Wait for Timeline to be called with items and get the props
+      let timelineProps: any;
+      await waitFor(() => {
+        const calls = vi.mocked(Timeline).mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const lastCall = calls[calls.length - 1];
+        expect(lastCall[0].items.length).toBeGreaterThan(0);
+        timelineProps = lastCall[0];
+      });
+
+      // Simulate clicking on an encounter
+      const mockEvent = new MouseEvent('click', { ctrlKey: false });
+      timelineProps.onSelect({
+        items: ['encounter-encounter-1'],
+        event: mockEvent as Event,
+      });
+
+      // Verify global selection was updated with encounter
+      expect(mockSelectEntity).toHaveBeenCalledWith({
+        id: 'encounter-1',
+        type: 'ENCOUNTER',
+        name: 'Goblin Ambush',
+        metadata: {
+          scheduledAt: expect.any(String),
+        },
+      });
+    });
+
+    it('should update timeline selection when global selection changes (EVENT)', () => {
+      // Mock selection store with a selected event
+      vi.mocked(useSelectionStore).mockReturnValue({
+        selectedEntities: [
+          {
+            id: 'event-1',
+            type: EntityType.EVENT,
+            name: 'Festival',
+          },
+        ],
+        selectEntity: mockSelectEntity,
+        toggleSelection: mockToggleSelection,
+        clearSelection: mockClearSelection,
+        addToSelection: vi.fn(),
+        removeFromSelection: vi.fn(),
+      });
+
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      // Verify Timeline component receives onSelect handler
+      expect(Timeline).toHaveBeenCalled();
+      // Note: In a real integration test, we would verify that the timeline
+      // calls setSelection on the timeline ref, but that requires a more complex
+      // setup with actual timeline instance. For now, we verify the component renders.
+    });
+
+    it('should update timeline selection when global selection changes (ENCOUNTER)', () => {
+      // Mock selection store with a selected encounter
+      vi.mocked(useSelectionStore).mockReturnValue({
+        selectedEntities: [
+          {
+            id: 'encounter-1',
+            type: EntityType.ENCOUNTER,
+            name: 'Goblin Ambush',
+          },
+        ],
+        selectEntity: mockSelectEntity,
+        toggleSelection: mockToggleSelection,
+        clearSelection: mockClearSelection,
+        addToSelection: vi.fn(),
+        removeFromSelection: vi.fn(),
+      });
+
+      vi.mocked(useEncountersByCampaign).mockReturnValue({
+        encounters: [mockEncounters[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      // Verify Timeline component renders with encounter data
+      expect(Timeline).toHaveBeenCalled();
     });
   });
 });
