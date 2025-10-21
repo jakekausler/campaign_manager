@@ -318,38 +318,52 @@ Implement synchronized selection and highlighting across Map, Flow, and Timeline
 
 ---
 
-### Stage 7: Structure Parent Settlement Highlighting ✅
+### Stage 7: Structure Parent Settlement Highlighting ✅ COMPLETE
 
 **Goal**: When Structure selected, show parent Settlement location on map
 
 **Tasks**:
 
-- [ ] Query parent Settlement for selected Structure:
-  - Use existing GraphQL hook `useStructureDetails()`
-  - Extract parent Settlement ID and location
-- [ ] Add secondary highlighting on Map for parent Settlement:
-  - Different visual style from primary selection (e.g., dashed border)
-  - Label showing "Parent of [Structure Name]"
-- [ ] Update Map auto-pan to show both Structure and parent Settlement:
-  - Calculate bounding box containing both
-  - Zoom to fit both in viewport with padding
-- [ ] Add parent Settlement info to SelectionInfo component
-- [ ] Write tests for parent Settlement highlighting
+- [x] Query parent Settlement for selected Structure:
+  - Use existing GraphQL hook `useSettlementDetails()` (used instead of `useStructureDetails()`)
+  - Extract parent Settlement ID from Structure metadata
+  - Skip query if parent is already directly selected (optimization)
+- [x] Add secondary highlighting on Map for parent Settlement:
+  - Purple border (#a855f7) with 60% opacity for visual distinction
+  - Slightly larger than default (9px vs 8px radius)
+  - No label (kept UI clean, SelectionInfo shows relationship instead)
+- [x] Update Map auto-pan to show both Structure and parent Settlement:
+  - Calculate bounding box containing both locations
+  - Use fitBounds() with 50px padding to show both entities
+- [x] Add parent Settlement info to SelectionInfo component:
+  - Display "in [Settlement Name]" below Structure entries
+  - ArrowUpFromLine icon for visual indicator
+  - Query parent Settlement details for first selected Structure only
+- [x] Write tests for parent Settlement highlighting:
+  - Added 3 comprehensive tests to SelectionInfo.test.tsx
+  - Updated MapPage.test.tsx to use renderWithApollo
+  - All 1,132 frontend tests passing
 
 **Success Criteria**:
 
-- Selecting Structure highlights parent Settlement on Map
-- Visual distinction between primary and parent highlighting
-- Map zooms to show both Structure and parent Settlement
-- SelectionInfo shows parent relationship
-- Tests verify GraphQL query and highlighting
+- ✅ Selecting Structure highlights parent Settlement on Map
+- ✅ Visual distinction between primary and parent highlighting (blue vs purple)
+- ✅ Map zooms to show both Structure and parent Settlement
+- ✅ SelectionInfo shows parent relationship
+- ✅ Tests verify GraphQL query and highlighting
 
-**Notes**:
+**Implementation Notes**:
 
-- Parent highlighting should be subtle but visible
-- Handle case where parent Settlement location not available
-- Consider showing breadcrumb: "Settlement > Structure"
-- Test with Structures at different locations from parent
+- **Visual Design**: Purple (#a855f7) for parent vs Blue (#3b82f6) for primary selection
+- **Opacity Distinction**: 60% opacity for parent vs 80% for primary (MapLibre doesn't support dashed circles)
+- **Performance**: Only queries first parent Settlement to avoid excessive GraphQL requests
+- **Smart Skip**: Skips parent query if parent is already directly selected in the selection
+- **Metadata Flow**: settlementId stored in metadata during Structure click → used to query parent
+- **Auto-pan Logic**: Single entity uses flyTo(), multiple entities (including parent) use fitBounds()
+- **SelectionInfo Enhancement**: Shows hierarchical relationship with icon and italicized text
+- **Test Coverage**: 3 new tests cover display, skip when no metadata, skip when parent selected
+
+**Commit**: 126c265
 
 ---
 
