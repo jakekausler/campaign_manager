@@ -15,75 +15,89 @@ Implement synchronized selection and highlighting across Map, Flow, and Timeline
 
 ## Stages
 
-### Stage 1: Create Selection State Slice ✅
+### Stage 1: Create Selection State Slice ✅ COMPLETE
 
 **Goal**: Create Zustand slice for managing cross-view selection state
 
 **Tasks**:
 
-- [ ] Create `packages/frontend/src/stores/selection-slice.ts`
-- [ ] Define `EntityType` enum (SETTLEMENT, STRUCTURE, EVENT, ENCOUNTER)
-- [ ] Define `SelectedEntity` interface with id, type, and metadata
-- [ ] Implement state: `selectedEntities: SelectedEntity[]`
-- [ ] Implement actions:
+- [x] Create `packages/frontend/src/stores/selection-slice.ts`
+- [x] Define `EntityType` enum (SETTLEMENT, STRUCTURE, EVENT, ENCOUNTER)
+- [x] Define `SelectedEntity` interface with id, type, and metadata
+- [x] Implement state: `selectedEntities: SelectedEntity[]`
+- [x] Implement actions:
   - `selectEntity(entity: SelectedEntity)` - Replace current selection
   - `addToSelection(entity: SelectedEntity)` - Add to multi-select
   - `removeFromSelection(entityId: string)` - Remove from multi-select
   - `clearSelection()` - Clear all selections
   - `toggleSelection(entity: SelectedEntity)` - Toggle entity in selection
-- [ ] Add selection slice to root store in `packages/frontend/src/stores/index.ts`
-- [ ] Export `useSelectionStore()` hook with optimized selectors
-- [ ] Write unit tests in `packages/frontend/src/stores/selection-slice.test.ts`
+- [x] Add selection slice to root store in `packages/frontend/src/stores/index.ts`
+- [x] Export `useSelectionStore()` hook with optimized selectors
+- [x] Write unit tests in `packages/frontend/src/stores/selection-slice.test.ts`
 
 **Success Criteria**:
 
-- Selection slice integrates with root store
-- All actions update state correctly
-- Unit tests pass with >90% coverage
-- Type safety enforced for entity types
+- ✅ Selection slice integrates with root store
+- ✅ All actions update state correctly
+- ✅ Unit tests pass with >90% coverage (49 tests, all passing)
+- ✅ Type safety enforced for entity types
 
-**Notes**:
+**Implementation Notes**:
 
-- Don't persist selection state (ephemeral session state)
-- Follow existing slice pattern from auth-slice and campaign-slice
-- Use optimized selectors to prevent unnecessary re-renders
+- State is ephemeral (not persisted to localStorage) as expected
+- Followed existing slice pattern from auth-slice and campaign-slice
+- Used optimized selectors to prevent unnecessary re-renders
+- Exported EntityType as value (not type) since enums are runtime values
+- Used get() in addToSelection/toggleSelection for conditional logic
+- Duplicate prevention via ID checking prevents multiple selections of same entity
+- Flexible metadata field allows view-specific data without coupling
+- Comprehensive test coverage: all actions, all entity types, edge cases (duplicates, large multi-select, interleaved operations)
+
+**Commit**: 4fb08aa
 
 ---
 
-### Stage 2: Map View Selection Integration ✅
+### Stage 2: Map View Selection Integration ✅ COMPLETE
 
 **Goal**: Integrate selection state with MapPage for settlements and structures
 
 **Tasks**:
 
-- [ ] Read current MapPage implementation to understand map click handlers
-- [ ] Add `useSelectionStore()` hook to MapPage component
-- [ ] Implement click handlers for settlements:
+- [x] Read current MapPage implementation to understand map click handlers
+- [x] Add `useSelectionStore()` hook to MapPage component
+- [x] Implement click handlers for settlements:
   - Single-click: select settlement (update selection state)
   - Ctrl+click: toggle settlement in multi-select
-- [ ] Implement click handlers for structures:
+- [x] Implement click handlers for structures:
   - Single-click: select structure (update selection state)
   - Ctrl+click: toggle structure in multi-select
-- [ ] Add highlighting for selected settlements (e.g., border color change)
-- [ ] Add highlighting for selected structures (e.g., icon color change)
-- [ ] Subscribe to selection state changes from other views
-- [ ] Implement auto-pan to selected entity when selection changes externally
-- [ ] Write integration tests for map selection with MSW handlers
+- [x] Add highlighting for selected settlements (blue border, larger radius)
+- [x] Add highlighting for selected structures (blue border, larger radius)
+- [x] Subscribe to selection state changes from other views
+- [x] Implement auto-pan to selected entity when selection changes externally
+- [x] Write integration tests for map selection with MSW handlers
 
 **Success Criteria**:
 
-- Clicking settlement/structure updates global selection state
-- Map highlights selected entities with visual indicators
-- Map pans to entity when selected from another view
-- Multi-select works with Ctrl+click
-- Tests verify selection state updates
+- ✅ Clicking settlement/structure updates global selection state
+- ✅ Map highlights selected entities with visual indicators
+- ✅ Map pans to entity when selected from another view
+- ✅ Multi-select works with Ctrl+click
+- ✅ Tests verify selection state updates
 
-**Notes**:
+**Implementation Notes**:
 
-- Use MapLibre GL event handlers for click events
-- Consider using map.flyTo() for smooth panning animation
-- Highlight style should be consistent with existing map styling
-- Test with multiple settlements and structures
+- MapPage: Dual-mode click handling (single-click opens inspector, Ctrl+click toggles multi-select)
+- Map component: Enhanced onEntitySelect callback with event data and metadata
+- Highlighting: MapLibre setPaintProperty for dynamic styling (blue border #3b82f6, larger radius)
+- Auto-pan: flyTo() for single entity (zoom 12, 500ms), fitBounds() for multiple (50px padding)
+- Metadata: locationId for settlements, settlementId for structures
+- Tests: 6 new integration tests covering single/multi-select for both entity types
+- All 1120 tests pass (69 test files)
+- Code Reviewer approved with optional improvements deferred
+- Polygon centroid uses first coordinate (could improve with Turf.js in future)
+
+**Commit**: a97f37b
 
 ---
 
