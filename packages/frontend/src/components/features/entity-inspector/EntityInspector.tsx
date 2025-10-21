@@ -20,6 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  useAllEffectsForEntity,
   useEncounterDetails,
   useEventDetails,
   useSettlementDetails,
@@ -32,6 +33,8 @@ import { EncounterPanel } from './EncounterPanel';
 import { EventPanel } from './EventPanel';
 import { LinksTab, type EntityLink } from './LinksTab';
 import { OverviewTab } from './OverviewTab';
+import { ResolutionButton } from './ResolutionButton';
+import { ResolutionDialog } from './ResolutionDialog';
 import { SettlementPanel } from './SettlementPanel';
 import { StructurePanel } from './StructurePanel';
 import { VersionsTab } from './VersionsTab';
@@ -81,6 +84,9 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+
+  // Resolution dialog state
+  const [showResolutionDialog, setShowResolutionDialog] = useState(false);
 
   // Ref to access tab's save function
   const tabSaveRef = useRef<(() => Promise<boolean>) | null>(null);
@@ -156,6 +162,26 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
     skip: currentEntityType !== 'encounter',
   });
 
+  // Helper function to get display name for entity type
+  const getEntityTypeName = (type: EntityType): string => {
+    switch (type) {
+      case 'settlement':
+        return 'Settlement';
+      case 'structure':
+        return 'Structure';
+      case 'event':
+        return 'Event';
+      case 'encounter':
+        return 'Encounter';
+    }
+  };
+
+  // Fetch effects for resolution dialog (only for Event/Encounter)
+  const { allEffects } = useAllEffectsForEntity(
+    getEntityTypeName(currentEntityType),
+    currentEntityId
+  );
+
   // Helper function to get the appropriate query based on entity type
   const getQuery = () => {
     switch (currentEntityType) {
@@ -186,20 +212,6 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
 
   const query = getQuery();
   const entity = getEntity();
-
-  // Helper function to get display name for entity type
-  const getEntityTypeName = (type: EntityType): string => {
-    switch (type) {
-      case 'settlement':
-        return 'Settlement';
-      case 'structure':
-        return 'Structure';
-      case 'event':
-        return 'Event';
-      case 'encounter':
-        return 'Encounter';
-    }
-  };
 
   /**
    * Navigate to a related entity
@@ -344,9 +356,25 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
                 </SheetDescription>
               </div>
 
-              {/* Edit mode controls */}
+              {/* Edit mode controls and resolution button */}
               {!query.loading && !query.error && entity && (
                 <div className="flex items-center gap-2">
+                  {/* Resolution button (only for Event and Encounter entities) */}
+                  {(currentEntityType === 'event' || currentEntityType === 'encounter') && (
+                    <ResolutionButton
+                      entityType={currentEntityType}
+                      isResolved={
+                        currentEntityType === 'event'
+                          ? (entity as { isCompleted: boolean }).isCompleted
+                          : (entity as { isResolved: boolean }).isResolved
+                      }
+                      loading={false}
+                      onClick={() => setShowResolutionDialog(true)}
+                      className="h-8 px-2"
+                    />
+                  )}
+
+                  {/* Edit mode controls */}
                   {isEditing ? (
                     <>
                       <Button
@@ -507,6 +535,26 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Resolution dialog (for Event/Encounter entities) */}
+      {entity && (currentEntityType === 'event' || currentEntityType === 'encounter') && (
+        <ResolutionDialog
+          entityType={currentEntityType}
+          entityName={entity.name}
+          effects={allEffects || []}
+          validation={{ isValid: true, errors: [], warnings: [] }}
+          loading={false}
+          error={null}
+          success={false}
+          isOpen={showResolutionDialog}
+          onConfirm={() => {
+            // TODO: Will be implemented in Stage 6-7 with mutation hooks
+            console.log('Resolution confirmed - mutation will be added in Stage 6-7');
+            setShowResolutionDialog(false);
+          }}
+          onCancel={() => setShowResolutionDialog(false)}
+        />
+      )}
     </>
   );
 }
