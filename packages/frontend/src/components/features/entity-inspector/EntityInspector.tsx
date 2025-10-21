@@ -19,17 +19,24 @@ import {
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useSettlementDetails, useStructureDetails } from '@/services/api/hooks';
+import {
+  useEncounterDetails,
+  useEventDetails,
+  useSettlementDetails,
+  useStructureDetails,
+} from '@/services/api/hooks';
 
 import { ConditionsTab } from './ConditionsTab';
 import { EffectsTab } from './EffectsTab';
+import { EncounterPanel } from './EncounterPanel';
+import { EventPanel } from './EventPanel';
 import { LinksTab, type EntityLink } from './LinksTab';
 import { OverviewTab } from './OverviewTab';
 import { SettlementPanel } from './SettlementPanel';
 import { StructurePanel } from './StructurePanel';
 import { VersionsTab } from './VersionsTab';
 
-export type EntityType = 'settlement' | 'structure';
+export type EntityType = 'settlement' | 'structure' | 'event' | 'encounter';
 
 export interface EntityInspectorProps {
   /** Type of entity being inspected */
@@ -142,19 +149,70 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
   const structureQuery = useStructureDetails(currentEntityId, {
     skip: currentEntityType !== 'structure',
   });
+  const eventQuery = useEventDetails(currentEntityId, {
+    skip: currentEntityType !== 'event',
+  });
+  const encounterQuery = useEncounterDetails(currentEntityId, {
+    skip: currentEntityType !== 'encounter',
+  });
 
-  // Determine which query to use based on entity type
-  const query = currentEntityType === 'settlement' ? settlementQuery : structureQuery;
-  const entity =
-    currentEntityType === 'settlement' ? settlementQuery.settlement : structureQuery.structure;
+  // Helper function to get the appropriate query based on entity type
+  const getQuery = () => {
+    switch (currentEntityType) {
+      case 'settlement':
+        return settlementQuery;
+      case 'structure':
+        return structureQuery;
+      case 'event':
+        return eventQuery;
+      case 'encounter':
+        return encounterQuery;
+    }
+  };
+
+  // Helper function to get the entity from the appropriate query
+  const getEntity = () => {
+    switch (currentEntityType) {
+      case 'settlement':
+        return settlementQuery.settlement;
+      case 'structure':
+        return structureQuery.structure;
+      case 'event':
+        return eventQuery.event;
+      case 'encounter':
+        return encounterQuery.encounter;
+    }
+  };
+
+  const query = getQuery();
+  const entity = getEntity();
+
+  // Helper function to get display name for entity type
+  const getEntityTypeName = (type: EntityType): string => {
+    switch (type) {
+      case 'settlement':
+        return 'Settlement';
+      case 'structure':
+        return 'Structure';
+      case 'event':
+        return 'Event';
+      case 'encounter':
+        return 'Encounter';
+    }
+  };
 
   /**
    * Navigate to a related entity
    */
   const handleNavigate = useCallback(
     (link: EntityLink) => {
-      // Only navigate to settlement or structure (skip kingdom, location, campaign for now)
-      if (link.type !== 'settlement' && link.type !== 'structure') {
+      // Only navigate to settlement, structure, event, or encounter (skip kingdom, location, campaign for now)
+      if (
+        link.type !== 'settlement' &&
+        link.type !== 'structure' &&
+        link.type !== 'event' &&
+        link.type !== 'encounter'
+      ) {
         // TODO: Implement navigation for Kingdom, Location, Campaign in future tickets
         console.warn(`Navigation to ${link.type} not yet implemented`);
         return;
@@ -272,9 +330,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
 
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <SheetTitle>
-                  {currentEntityType === 'settlement' ? 'Settlement' : 'Structure'} Inspector
-                </SheetTitle>
+                <SheetTitle>{getEntityTypeName(currentEntityType)} Inspector</SheetTitle>
                 <SheetDescription>
                   {query.loading ? (
                     <span className="inline-block h-4 w-64 animate-pulse rounded-md bg-slate-100" />
@@ -354,7 +410,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
           ) : !entity ? (
             <div className="mt-6 p-4 border border-slate-200 bg-slate-50 rounded-md">
               <p className="text-sm text-slate-600">
-                {entityType === 'settlement' ? 'Settlement' : 'Structure'} not found
+                {getEntityTypeName(currentEntityType)} not found
               </p>
             </div>
           ) : (
@@ -389,9 +445,15 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
                   <SettlementPanel
                     settlement={entity as NonNullable<typeof settlementQuery.settlement>}
                   />
-                ) : (
+                ) : currentEntityType === 'structure' ? (
                   <StructurePanel
                     structure={entity as NonNullable<typeof structureQuery.structure>}
+                  />
+                ) : currentEntityType === 'event' ? (
+                  <EventPanel event={entity as NonNullable<typeof eventQuery.event>} />
+                ) : (
+                  <EncounterPanel
+                    encounter={entity as NonNullable<typeof encounterQuery.encounter>}
                   />
                 )}
               </TabsContent>
@@ -406,14 +468,14 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
 
               <TabsContent value="conditions" className="space-y-4">
                 <ConditionsTab
-                  entityType={currentEntityType === 'settlement' ? 'Settlement' : 'Structure'}
+                  entityType={getEntityTypeName(currentEntityType)}
                   entityId={currentEntityId}
                 />
               </TabsContent>
 
               <TabsContent value="effects" className="space-y-4">
                 <EffectsTab
-                  entityType={currentEntityType === 'settlement' ? 'Settlement' : 'Structure'}
+                  entityType={getEntityTypeName(currentEntityType)}
                   entityId={currentEntityId}
                 />
               </TabsContent>

@@ -46,10 +46,20 @@ export {
 export { useCurrentWorldTime, GET_CURRENT_WORLD_TIME } from './world-time';
 
 // Event hooks
-export { useEventsByCampaign, GET_EVENTS_BY_CAMPAIGN } from './events';
+export {
+  useEventsByCampaign,
+  useEventDetails,
+  GET_EVENTS_BY_CAMPAIGN,
+  GET_EVENT_BY_ID,
+} from './events';
 
 // Encounter hooks
-export { useEncountersByCampaign, GET_ENCOUNTERS_BY_CAMPAIGN } from './encounters';
+export {
+  useEncountersByCampaign,
+  useEncounterDetails,
+  GET_ENCOUNTERS_BY_CAMPAIGN,
+  GET_ENCOUNTER_BY_ID,
+} from './encounters';
 
 // Dependency Graph hooks
 export {

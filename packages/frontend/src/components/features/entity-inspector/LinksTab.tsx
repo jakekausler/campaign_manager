@@ -3,6 +3,8 @@ import { ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
+  useEncounterDetails,
+  useEventDetails,
   useSettlementDetails,
   useStructuresBySettlement,
   useStructureDetails,
@@ -14,14 +16,14 @@ import {
 export interface EntityLink {
   id: string;
   name: string;
-  type: 'settlement' | 'structure' | 'kingdom' | 'location' | 'campaign';
+  type: 'settlement' | 'structure' | 'event' | 'encounter' | 'kingdom' | 'location' | 'campaign';
 }
 
 export interface LinksTabProps {
   /** The ID of the current entity */
   entityId: string;
-  /** Type of entity (settlement or structure) */
-  entityType: 'settlement' | 'structure';
+  /** Type of entity (settlement, structure, event, or encounter) */
+  entityType: 'settlement' | 'structure' | 'event' | 'encounter';
   /** Callback when a related entity is clicked for navigation */
   onNavigate?: (entity: EntityLink) => void;
 }
@@ -33,14 +35,20 @@ export interface LinksTabProps {
  * - Displays all related entities based on entity type
  * - Settlement: Kingdom, Location, Campaign, Structures
  * - Structure: Settlement
+ * - Event: Location (if locationId present)
+ * - Encounter: Location (if locationId present)
  * - Clickable links trigger navigation via callback
  * - Loading and error states for async data
  */
 export function LinksTab({ entityId, entityType, onNavigate }: LinksTabProps) {
   if (entityType === 'settlement') {
     return <SettlementLinks entityId={entityId} onNavigate={onNavigate} />;
-  } else {
+  } else if (entityType === 'structure') {
     return <StructureLinks entityId={entityId} onNavigate={onNavigate} />;
+  } else if (entityType === 'event') {
+    return <EventLinks entityId={entityId} onNavigate={onNavigate} />;
+  } else {
+    return <EncounterLinks entityId={entityId} onNavigate={onNavigate} />;
   }
 }
 
@@ -203,6 +211,132 @@ function StructureLinks({
 }
 
 /**
+ * EventLinks component displays Event's related entities
+ */
+function EventLinks({
+  entityId,
+  onNavigate,
+}: {
+  entityId: string;
+  onNavigate?: (entity: EntityLink) => void;
+}) {
+  const { event, loading, error } = useEventDetails(entityId);
+
+  if (loading) {
+    return (
+      <div className="p-4">
+        <p className="text-sm text-slate-500">Loading related entities...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <p className="text-sm text-red-600">Error loading event: {error.message}</p>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="p-4">
+        <p className="text-sm text-slate-500">Event not found</p>
+      </div>
+    );
+  }
+
+  // Events may have optional locationId
+  const hasLocation = event.locationId !== null && event.locationId !== undefined;
+
+  return (
+    <div className="p-4 space-y-4">
+      {hasLocation ? (
+        <Card className="p-4">
+          <h3 className="text-sm font-semibold text-slate-900 mb-3">Location</h3>
+          <div className="space-y-2">
+            <LinkRow
+              label="Location"
+              entityId={event.locationId!}
+              entityType="location"
+              onClick={onNavigate}
+            />
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-4">
+          <p className="text-sm text-slate-500 italic">No location associated with this event</p>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/**
+ * EncounterLinks component displays Encounter's related entities
+ */
+function EncounterLinks({
+  entityId,
+  onNavigate,
+}: {
+  entityId: string;
+  onNavigate?: (entity: EntityLink) => void;
+}) {
+  const { encounter, loading, error } = useEncounterDetails(entityId);
+
+  if (loading) {
+    return (
+      <div className="p-4">
+        <p className="text-sm text-slate-500">Loading related entities...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <p className="text-sm text-red-600">Error loading encounter: {error.message}</p>
+      </div>
+    );
+  }
+
+  if (!encounter) {
+    return (
+      <div className="p-4">
+        <p className="text-sm text-slate-500">Encounter not found</p>
+      </div>
+    );
+  }
+
+  // Encounters may have optional locationId
+  const hasLocation = encounter.locationId !== null && encounter.locationId !== undefined;
+
+  return (
+    <div className="p-4 space-y-4">
+      {hasLocation ? (
+        <Card className="p-4">
+          <h3 className="text-sm font-semibold text-slate-900 mb-3">Location</h3>
+          <div className="space-y-2">
+            <LinkRow
+              label="Location"
+              entityId={encounter.locationId!}
+              entityType="location"
+              onClick={onNavigate}
+            />
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-4">
+          <p className="text-sm text-slate-500 italic">
+            No location associated with this encounter
+          </p>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/**
  * LinkRow component displays a single entity link with click handler
  */
 function LinkRow({
@@ -213,7 +347,14 @@ function LinkRow({
 }: {
   label: string;
   entityId: string;
-  entityType: 'settlement' | 'structure' | 'kingdom' | 'location' | 'campaign';
+  entityType:
+    | 'settlement'
+    | 'structure'
+    | 'event'
+    | 'encounter'
+    | 'kingdom'
+    | 'location'
+    | 'campaign';
   onClick?: (entity: EntityLink) => void;
 }) {
   const handleClick = () => {

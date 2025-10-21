@@ -162,7 +162,7 @@ export const graphqlHandlers = [
     const event = mockEvents.find((e) => e.id === id);
     if (!event) {
       return HttpResponse.json({
-        errors: [{ message: `Event with ID "${id}" not found` }],
+        errors: [{ message: 'Event not found' }],
       });
     }
 
@@ -194,7 +194,7 @@ export const graphqlHandlers = [
     const encounter = mockEncounters.find((e) => e.id === id);
     if (!encounter) {
       return HttpResponse.json({
-        errors: [{ message: `Encounter with ID "${id}" not found` }],
+        errors: [{ message: 'Encounter not found' }],
       });
     }
 

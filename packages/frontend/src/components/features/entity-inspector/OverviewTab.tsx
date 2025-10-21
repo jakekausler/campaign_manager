@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import { Button, Card, Label } from '@/components/ui';
 import { useEditMode } from '@/hooks';
@@ -12,15 +13,15 @@ export interface Entity {
   createdAt: string;
   updatedAt: string;
   computedFields?: Record<string, unknown>;
-  description?: string;
+  description?: string | null;
   [key: string]: unknown;
 }
 
 export interface OverviewTabProps {
   /** The entity to display */
   entity: Entity;
-  /** Type of entity (settlement or structure) */
-  entityType: 'settlement' | 'structure';
+  /** Type of entity (settlement, structure, event, or encounter) */
+  entityType: 'settlement' | 'structure' | 'event' | 'encounter';
   /** Whether edit mode is active */
   isEditing?: boolean;
   /** Ref to expose save function to parent */
@@ -159,7 +160,7 @@ export function OverviewTab({
   /**
    * Render a field row with label, value, and copy button
    */
-  const renderField = (label: string, value: unknown, fieldKey: string) => {
+  const renderField = (label: string, value: unknown, fieldKey: string): ReactNode => {
     const formattedValue = formatValue(value);
     const isCopied = copiedField === fieldKey;
 
@@ -215,6 +216,62 @@ export function OverviewTab({
           {renderField('Updated', new Date(entity.updatedAt).toLocaleString(), 'updatedAt')}
         </div>
       </Card>
+
+      {/* Event-specific fields */}
+      {entityType === 'event' && (
+        <Card className="p-4">
+          <h3 className="text-sm font-bold text-slate-900 mb-4">Event Information</h3>
+          <div className="space-y-3">
+            {entity.eventType ? renderField('Event Type', entity.eventType, 'eventType') : null}
+            {entity.scheduledAt
+              ? renderField(
+                  'Scheduled At',
+                  new Date(entity.scheduledAt as string).toLocaleString(),
+                  'scheduledAt'
+                )
+              : null}
+            {entity.occurredAt
+              ? renderField(
+                  'Occurred At',
+                  new Date(entity.occurredAt as string).toLocaleString(),
+                  'occurredAt'
+                )
+              : null}
+            {entity.isCompleted !== undefined
+              ? renderField('Status', entity.isCompleted ? 'Completed' : 'Pending', 'isCompleted')
+              : null}
+          </div>
+        </Card>
+      )}
+
+      {/* Encounter-specific fields */}
+      {entityType === 'encounter' && (
+        <Card className="p-4">
+          <h3 className="text-sm font-bold text-slate-900 mb-4">Encounter Information</h3>
+          <div className="space-y-3">
+            {entity.difficulty !== undefined
+              ? renderField('Difficulty', entity.difficulty, 'difficulty')
+              : null}
+            {entity.scheduledAt
+              ? renderField(
+                  'Scheduled At',
+                  new Date(entity.scheduledAt as string).toLocaleString(),
+                  'scheduledAt'
+                )
+              : null}
+            {entity.resolvedAt
+              ? renderField(
+                  'Resolved At',
+                  new Date(entity.resolvedAt as string).toLocaleString(),
+                  'resolvedAt'
+                )
+              : null}
+            {entity.isResolved !== undefined
+              ? renderField('Status', entity.isResolved ? 'Resolved' : 'Unresolved', 'isResolved')
+              : null}
+          </div>
+        </Card>
+      )}
 
       {/* Description Section (if available) */}
       {entity.description && (

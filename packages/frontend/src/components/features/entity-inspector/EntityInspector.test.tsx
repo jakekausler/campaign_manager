@@ -2,7 +2,12 @@ import { ApolloProvider } from '@apollo/client/react';
 import { screen, waitFor, render } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 
-import { mockSettlements, mockStructures } from '@/__tests__/mocks/data';
+import {
+  mockEncounters,
+  mockEvents,
+  mockSettlements,
+  mockStructures,
+} from '@/__tests__/mocks/data';
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 
 import { EntityInspector } from './EntityInspector';
@@ -263,6 +268,156 @@ describe('EntityInspector', () => {
       await waitFor(
         () => {
           expect(screen.getByText(/Structure not found/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+    });
+  });
+
+  describe('Event Data Loading', () => {
+    it('should show loading skeleton while fetching event', () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="event"
+          entityId="event-1"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Should show skeleton elements
+      const skeletons = document.querySelectorAll('.animate-pulse');
+      expect(skeletons.length).toBeGreaterThan(0);
+    });
+
+    it('should display event data after loading', async () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="event"
+          entityId="event-1"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for event name to appear (appears in both header and Overview tab)
+      await waitFor(() => {
+        const nameElements = screen.getAllByText(new RegExp(mockEvents[0].name));
+        expect(nameElements.length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Should show Event Inspector title
+      expect(screen.getByText('Event Inspector')).toBeInTheDocument();
+    });
+
+    it('should show error state for event fetch failure', async () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="event"
+          entityId="invalid-event"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for error message to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText(/Error Loading Entity/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+    });
+
+    it('should show not found message when event does not exist', async () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="event"
+          entityId="nonexistent-event"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // MSW handler returns null for nonexistent entities
+      await waitFor(
+        () => {
+          expect(screen.getByText(/Event not found/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+    });
+  });
+
+  describe('Encounter Data Loading', () => {
+    it('should show loading skeleton while fetching encounter', () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="encounter"
+          entityId="encounter-1"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Should show skeleton elements
+      const skeletons = document.querySelectorAll('.animate-pulse');
+      expect(skeletons.length).toBeGreaterThan(0);
+    });
+
+    it('should display encounter data after loading', async () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="encounter"
+          entityId="encounter-1"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for encounter name to appear (appears in both header and Overview tab)
+      await waitFor(() => {
+        const nameElements = screen.getAllByText(new RegExp(mockEncounters[0].name));
+        expect(nameElements.length).toBeGreaterThanOrEqual(1);
+      });
+
+      // Should show Encounter Inspector title
+      expect(screen.getByText('Encounter Inspector')).toBeInTheDocument();
+    });
+
+    it('should show error state for encounter fetch failure', async () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="encounter"
+          entityId="invalid-encounter"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for error message to appear
+      await waitFor(
+        () => {
+          expect(screen.getByText(/Error Loading Entity/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+    });
+
+    it('should show not found message when encounter does not exist', async () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="encounter"
+          entityId="nonexistent-encounter"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // MSW handler returns null for nonexistent entities
+      await waitFor(
+        () => {
+          expect(screen.getByText(/Encounter not found/i)).toBeInTheDocument();
         },
         { timeout: 3000 }
       );
