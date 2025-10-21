@@ -8,6 +8,8 @@
   - Stage 2: 449d0e9 (GraphQL hooks for Event and Encounter detail queries)
   - Stage 3: e1daa41 (EntityInspector extension for Event/Encounter types)
   - Stage 4: 4edfcfe (EntityInspector integration with TimelinePage)
+  - Stage 5: c39c099 (Resolution Workflow UI components)
+  - Stage 6: 6506eca (GraphQL mutation hooks for resolution)
 
 ## Description
 
