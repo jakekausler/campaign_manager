@@ -571,6 +571,136 @@ function TimelinePage() {
 
 See `docs/features/timeline-view.md` for complete documentation.
 
+## Entity Inspector
+
+Comprehensive drawer component for inspecting and editing Settlement and Structure entities with tabbed interface.
+
+### Features
+
+- **6-Tab Interface**: Overview, Details, Links, Conditions, Effects, and Versions tabs
+- **Overview Tab**: Basic entity info, computed fields, copy-to-clipboard functionality
+- **Details Tab**: Entity-specific panels (SettlementPanel/StructurePanel) with typed variables
+- **Links Tab**: Navigate between related entities with breadcrumb history
+- **Conditions Tab**: View JSONLogic expressions with interactive evaluation trace modal
+- **Effects Tab**: Grouped by timing phase (PRE/ON_RESOLVE/POST) with execution history
+- **Versions Tab**: Audit trail timeline with before/after changes and operation badges
+- **Inline Editing**: Edit entity names with keyboard shortcuts (Ctrl+S to save, Esc to cancel)
+- **Entity Navigation**: Click related entities to navigate with breadcrumb trail and back button
+- **Accessibility**: WCAG 2.1 Level AA compliant with full keyboard navigation
+- **Responsive Design**: Mobile (3-column tabs) and desktop (6-column tabs) layouts
+
+### Usage
+
+```tsx
+import { EntityInspector } from '@/components/features/entity-inspector';
+
+function MapPage() {
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<{ type: string; id: string } | null>(null);
+
+  const handleEntitySelect = (type: 'settlement' | 'structure', id: string) => {
+    setSelectedEntity({ type, id });
+    setInspectorOpen(true);
+  };
+
+  return (
+    <>
+      <Map onEntitySelect={handleEntitySelect} />
+      <EntityInspector
+        entityType={selectedEntity?.type}
+        entityId={selectedEntity?.id}
+        isOpen={inspectorOpen}
+        onClose={() => setInspectorOpen(false)}
+      />
+    </>
+  );
+}
+```
+
+### Components and Hooks
+
+**Tab Components:**
+
+- `OverviewTab` - Display basic info, computed fields, and name editing
+- `SettlementPanel` - Settlement-specific attributes (kingdom, campaign, level) and typed variables
+- `StructurePanel` - Structure-specific attributes (type, settlement, position, orientation) and typed variables
+- `LinksTab` - Related entity navigation with breadcrumb UI
+- `ConditionsTab` - Field conditions with JSONLogic expressions and priority sorting
+- `EffectsTab` - Effects grouped by timing phase with execution history modal
+- `VersionsTab` - Audit trail timeline with campaign-level authorization
+
+**Supporting Components:**
+
+- `ConditionExplanation` - Modal showing step-by-step condition evaluation trace
+- `EffectExecutionHistory` - Modal displaying past effect executions with status and errors
+- `EditableField` - Inline editing component supporting text, number, boolean, textarea types
+
+**Hooks:**
+
+- `useConditionsForEntity` - Fetch field conditions for an entity (instance and type-level)
+- `useEvaluateCondition` - Evaluate condition with custom context and get trace
+- `useAllEffectsForEntity` - Fetch effects from all timing phases in single query
+- `useEntityAuditHistory` - Fetch audit trail for entity with campaign authorization
+- `useEditMode` - Manage edit state, validation, dirty checking, and save operations
+
+**GraphQL Queries:**
+
+- `GET_CONDITIONS_FOR_ENTITY` - Fetch conditions with filtering
+- `GET_EFFECTS_FOR_ENTITY` - Fetch effects by timing phase
+- `EVALUATE_FIELD_CONDITION` - Evaluate condition with trace
+- `GET_ENTITY_AUDIT_HISTORY` - Fetch audit trail (max 100 entries)
+
+**GraphQL Mutations:**
+
+- `updateSettlement` - Update settlement fields
+- `updateStructure` - Update structure fields
+
+### Architecture
+
+**Edit Mode Infrastructure:**
+
+- `useEditMode` hook manages edit state, validation, dirty checking, and auto-sync
+- `EditableField` component provides type-specific inline editing (text, number, boolean, textarea)
+- Ref-based save coordination between EntityInspector and tabs
+- Unsaved changes protection with confirmation dialog
+- Keyboard shortcuts (Ctrl+S to save, Esc to cancel)
+
+**Navigation System:**
+
+- Navigation stack tracks visited entities for back navigation
+- Breadcrumb UI shows entity path with "›" separators
+- Currently supports Settlement ↔ Structure navigation
+- Kingdom/Location/Campaign navigation logged as TODO for future implementation
+
+**Security:**
+
+- Campaign-level authorization for audit history (owner/member only)
+- EntityType whitelist (Settlement, Structure, Character, Event, Encounter)
+- Generic error messages prevent user enumeration
+- Protected fields (id, timestamps, ownership) in edit mode
+
+**Performance:**
+
+- React.memo optimization for tab components
+- Cache-first GraphQL policies for details queries
+- Lazy tab loading (only fetch data when tab is active)
+- Loading skeletons for better perceived performance
+
+### Testing
+
+172 comprehensive tests covering all entity inspector functionality:
+
+- EntityInspector core (12 tests) - Loading, error, tabs, navigation
+- OverviewTab (20 tests) - Display, editing, clipboard, validation
+- SettlementPanel (24 tests) - Attributes, variables, clipboard, formatting
+- StructurePanel (25 tests) - Attributes, variables, clipboard, type fallback
+- ConditionsTab (22 tests) - Display, sorting, badges, explain modal
+- EffectsTab (23 tests) - Timing phases, priority, history modal
+- VersionsTab (24 tests) - Timeline, operations, changes, security
+- LinksTab (24 tests) - Navigation, keyboard, accessibility
+
+See `docs/features/entity-inspector.md` and `src/components/features/entity-inspector/README.md` for complete documentation.
+
 ## Styling
 
 ### Tailwind CSS

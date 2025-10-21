@@ -1299,6 +1299,47 @@ Interactive timeline visualization for events and encounters over campaign world
 
 See `plan/TICKET-022.md` for detailed implementation notes and commit hashes.
 
+## Entity Inspector
+
+Comprehensive drawer component for inspecting and editing Settlement and Structure entities. See [detailed documentation](docs/features/entity-inspector.md).
+
+**Quick Reference:**
+
+- Components: `EntityInspector`, `OverviewTab`, `SettlementPanel`, `StructurePanel`, `LinksTab`, `ConditionsTab`, `EffectsTab`, `VersionsTab` in `packages/frontend/src/components/features/entity-inspector/`
+- Hooks: `useConditionsForEntity`, `useEvaluateCondition`, `useAllEffectsForEntity`, `useEntityAuditHistory`, `useEditMode` in `packages/frontend/src/services/api/hooks/` and `packages/frontend/src/hooks/`
+- GraphQL: `GET_CONDITIONS_FOR_ENTITY`, `GET_EFFECTS_FOR_ENTITY`, `EVALUATE_FIELD_CONDITION`, `GET_ENTITY_AUDIT_HISTORY` queries; `updateSettlement`, `updateStructure` mutations
+- Key Features: 6-tab interface (Overview, Details, Links, Conditions, Effects, Versions), inline editing with keyboard shortcuts (Ctrl+S, Esc), copy-to-clipboard, entity navigation with breadcrumbs
+- Tabs:
+  - **Overview**: Basic info, computed fields, name editing
+  - **Details**: Entity-specific attributes (SettlementPanel/StructurePanel), typed variables with auto-formatting
+  - **Links**: Related entities with clickable navigation, breadcrumb history
+  - **Conditions**: JSONLogic expressions, priority sorting, interactive evaluation trace modal
+  - **Effects**: Timing phase grouping (PRE/ON_RESOLVE/POST), execution history modal
+  - **Versions**: Audit trail timeline, before/after changes, operation badges (CREATE/UPDATE/DELETE)
+- Edit Mode: Inline editing infrastructure with `EditableField` component, unsaved changes protection, keyboard shortcuts, loading states
+- Accessibility: WCAG 2.1 Level AA compliant, full keyboard navigation, screen reader support, 4.5:1 color contrast
+- Integration: MapPage (click settlement/structure), FlowViewPage (double-click EFFECT node), TimelinePage (placeholder for events/encounters)
+- Performance: React.memo optimization, cache-first GraphQL policies, lazy tab loading
+- Implementation: TICKET-023 (13 stages, commits: 23e8919 - 8665034)
+
+**TICKET-023: Entity Inspector Component** (13 stages):
+
+1. UI Component Setup (Sheet, Tabs, Label from shadcn/ui)
+2. GraphQL Hooks for Conditions and Effects (useConditionsForEntity, useEvaluateCondition, useEffectsForEntity, useAllEffectsForEntity)
+3. EntityInspector Core Component (data fetching, loading states, error handling, tab structure)
+4. Overview Tab Implementation (basic info, computed fields, copy-to-clipboard)
+5. Settlement and Structure Specific Panels (typed variables, entity-specific attributes)
+6. Conditions Tab Implementation (JSONLogic display, ConditionExplanation modal with evaluation trace)
+7. Effects Tab Implementation (timing phase grouping, EffectExecutionHistory modal)
+8. Links Tab Implementation (entity navigation, breadcrumb UI, navigation stack)
+9. Versions Tab Implementation (audit trail timeline, before/after changes, campaign-level authorization)
+10. Edit Mode Infrastructure (useEditMode hook, EditableField component, name field editing)
+11. Complete Edit Mode (keyboard shortcuts Ctrl+S/Esc, loading states, textarea support)
+12. Integration with Map and Other Views (MapPage, FlowViewPage, TimelinePage)
+13. Polish, Testing, and Documentation (accessibility audit, responsive design, 172 tests, 1,444 lines of docs)
+
+See `plan/TICKET-023.md` for detailed implementation notes and commit hashes.
+
 ## World Time System
 
 Campaign-specific time tracking with custom calendars. See [detailed documentation](docs/features/world-time-system.md).
