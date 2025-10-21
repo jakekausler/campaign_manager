@@ -279,4 +279,141 @@ describe('VersionsTab', () => {
       expect(updateBadges[0]).toHaveClass('bg-blue-100', 'text-blue-700');
     });
   });
+
+  describe('Resolution History Display', () => {
+    it('should highlight Event completion entries with green styling', async () => {
+      renderWithApollo(<VersionsTab entityType="event" entityId="event-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('EVENT COMPLETED')).toBeInTheDocument();
+      });
+
+      const completedBadge = screen.getByText('EVENT COMPLETED');
+      expect(completedBadge).toHaveClass('bg-green-200', 'text-green-900');
+    });
+
+    it('should highlight Encounter resolution entries with green styling', async () => {
+      renderWithApollo(<VersionsTab entityType="encounter" entityId="encounter-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('ENCOUNTER RESOLVED')).toBeInTheDocument();
+      });
+
+      const resolvedBadge = screen.getByText('ENCOUNTER RESOLVED');
+      expect(resolvedBadge).toHaveClass('bg-green-200', 'text-green-900');
+    });
+
+    it('should display event completion resolution entry with left border', async () => {
+      renderWithApollo(<VersionsTab entityType="event" entityId="event-1" />);
+
+      await waitFor(() => {
+        const badge = screen.getByText('EVENT COMPLETED');
+        const card = badge.closest('.p-4');
+        expect(card).toHaveClass('border-l-4', 'border-l-green-500');
+      });
+    });
+
+    it('should display effect execution summary for resolution entries', async () => {
+      renderWithApollo(<VersionsTab entityType="event" entityId="event-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Effect Execution Summary')).toBeInTheDocument();
+      });
+
+      // Check for phase labels
+      expect(screen.getByText('Pre-Resolution')).toBeInTheDocument();
+      expect(screen.getByText('On Resolution')).toBeInTheDocument();
+      expect(screen.getByText('Post-Resolution')).toBeInTheDocument();
+    });
+
+    it('should display effect counts for each timing phase', async () => {
+      renderWithApollo(<VersionsTab entityType="event" entityId="event-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Effect Execution Summary')).toBeInTheDocument();
+      });
+
+      // Check for effect counts in summary
+      expect(screen.getByText('2 effects')).toBeInTheDocument(); // PRE
+      expect(screen.getByText('3 effects')).toBeInTheDocument(); // ON_RESOLVE
+      expect(screen.getByText('1 effect')).toBeInTheDocument(); // POST
+    });
+
+    it('should display success/failure indicators for effects', async () => {
+      renderWithApollo(<VersionsTab entityType="encounter" entityId="encounter-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Effect Execution Summary')).toBeInTheDocument();
+      });
+
+      // Check for success indicator (✓)
+      const successIndicators = screen.getAllByText(/✓/);
+      expect(successIndicators.length).toBeGreaterThan(0);
+
+      // Check for failure indicator (✗)
+      expect(screen.getByText(/✗ 1/)).toBeInTheDocument();
+    });
+
+    it('should display total effect execution count', async () => {
+      renderWithApollo(<VersionsTab entityType="event" entityId="event-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('6 of 6 effects executed')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle resolution without effect execution summary', async () => {
+      renderWithApollo(<VersionsTab entityType="event" entityId="event-2" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('EVENT COMPLETED')).toBeInTheDocument();
+      });
+
+      // Should show message when no effects were executed
+      expect(screen.getByText('No effects were executed during resolution.')).toBeInTheDocument();
+    });
+
+    it('should not show effect summary for non-resolution UPDATE entries', async () => {
+      renderWithApollo(<VersionsTab entityType="settlement" entityId="settlement-1" />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('UPDATE')).toHaveLength(2);
+      });
+
+      // No "Effect Execution Summary" should appear
+      expect(screen.queryByText('Effect Execution Summary')).not.toBeInTheDocument();
+    });
+
+    it('should display resolution changes alongside effect summary', async () => {
+      renderWithApollo(<VersionsTab entityType="event" entityId="event-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('EVENT COMPLETED')).toBeInTheDocument();
+      });
+
+      // Should show the changes (isCompleted, occurredAt)
+      expect(screen.getByText(/is completed:/i)).toBeInTheDocument();
+      expect(screen.getByText(/occurred at:/i)).toBeInTheDocument();
+
+      // And also show effect summary
+      expect(screen.getByText('Effect Execution Summary')).toBeInTheDocument();
+    });
+
+    it('should handle partial effect failures correctly', async () => {
+      renderWithApollo(<VersionsTab entityType="encounter" entityId="encounter-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('3 of 4 effects executed')).toBeInTheDocument();
+      });
+
+      // Should show both succeeded and failed counts across all phases
+      const successCounts = screen.getAllByText(/✓ 1/);
+      const failureCounts = screen.getAllByText(/✗ 1/);
+
+      // PRE: 1 succeeded, ON_RESOLVE: 1 succeeded, POST: 1 succeeded = 3 total
+      expect(successCounts).toHaveLength(3);
+      // ON_RESOLVE: 1 failed = 1 total
+      expect(failureCounts).toHaveLength(1);
+    });
+  });
 });

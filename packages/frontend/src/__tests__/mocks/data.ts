@@ -776,4 +776,68 @@ export const mockAudits = [
     },
     timestamp: '2024-07-25T16:20:00.000Z',
   },
+  // Event completion audit entry (resolution)
+  {
+    id: 'audit-6',
+    entityType: 'Event',
+    entityId: 'event-1',
+    operation: 'UPDATE',
+    userId: 'user-1',
+    changes: {
+      isCompleted: true,
+      occurredAt: '2024-08-01T14:30:00.000Z',
+    },
+    metadata: {
+      ipAddress: '192.168.1.1',
+      effectExecutionSummary: {
+        pre: { total: 2, succeeded: 2, failed: 0 },
+        onResolve: { total: 3, succeeded: 3, failed: 0 },
+        post: { total: 1, succeeded: 1, failed: 0 },
+      },
+      effectsExecuted: 6,
+      totalEffects: 6,
+    },
+    timestamp: '2024-08-01T14:30:00.000Z',
+  },
+  // Encounter resolution audit entry (resolution)
+  {
+    id: 'audit-7',
+    entityType: 'Encounter',
+    entityId: 'encounter-1',
+    operation: 'UPDATE',
+    userId: 'user-2',
+    changes: {
+      isResolved: true,
+      resolvedAt: '2024-08-05T16:45:00.000Z',
+    },
+    metadata: {
+      ipAddress: '192.168.1.2',
+      effectExecutionSummary: {
+        pre: { total: 1, succeeded: 1, failed: 0 },
+        onResolve: { total: 2, succeeded: 1, failed: 1 },
+        post: { total: 1, succeeded: 1, failed: 0 },
+      },
+      effectsExecuted: 3,
+      totalEffects: 4,
+    },
+    timestamp: '2024-08-05T16:45:00.000Z',
+  },
+  // Event completion without effect execution summary (edge case)
+  {
+    id: 'audit-8',
+    entityType: 'Event',
+    entityId: 'event-2',
+    operation: 'UPDATE',
+    userId: 'user-1',
+    changes: {
+      isCompleted: true,
+      occurredAt: '2024-08-10T10:00:00.000Z',
+    },
+    metadata: {
+      ipAddress: '192.168.1.1',
+      effectsExecuted: 0,
+      totalEffects: 0,
+    },
+    timestamp: '2024-08-10T10:00:00.000Z',
+  },
 ];

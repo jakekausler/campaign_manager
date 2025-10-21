@@ -103,16 +103,26 @@ interface AuditEntryCardProps {
  * @param props.isFirst - Whether this is the most recent entry
  */
 function AuditEntryCard({ audit, isFirst }: AuditEntryCardProps) {
-  const operationColor = getOperationColor(audit.operation);
+  const isResolutionEntry = isResolutionOperation(audit);
+  const operationColor = isResolutionEntry
+    ? 'bg-green-100 text-green-800 border border-green-300'
+    : getOperationColor(audit.operation);
   const timestamp = new Date(audit.timestamp);
 
   return (
-    <Card className={`p-4 ${isFirst ? 'border-blue-200 bg-blue-50' : ''}`}>
+    <Card
+      className={`p-4 ${isFirst ? 'border-blue-200 bg-blue-50' : ''} ${isResolutionEntry ? 'border-l-4 border-l-green-500' : ''}`}
+    >
       <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className={`px-2 py-0.5 text-xs font-medium rounded ${operationColor}`}>
             {audit.operation}
           </span>
+          {isResolutionEntry && (
+            <span className="px-2 py-0.5 text-xs font-medium rounded bg-green-200 text-green-900 border border-green-400">
+              {getResolutionLabel(audit)}
+            </span>
+          )}
           {isFirst && (
             <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-700">
               LATEST
@@ -127,6 +137,10 @@ function AuditEntryCard({ audit, isFirst }: AuditEntryCardProps) {
       </div>
 
       <ChangesSummary changes={audit.changes} operation={audit.operation} />
+
+      {isResolutionEntry && audit.metadata && hasEffectExecutionMetadata(audit.metadata) && (
+        <ResolutionEffectsSummary metadata={audit.metadata} />
+      )}
     </Card>
   );
 }
@@ -296,4 +310,163 @@ function toTitleCase(str: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ')
     .trim();
+}
+
+/**
+ * Check if an audit entry represents a resolution operation
+ * (Event completion or Encounter resolution)
+ */
+function isResolutionOperation(audit: AuditEntry): boolean {
+  if (audit.operation !== 'UPDATE') {
+    return false;
+  }
+
+  const changes = audit.changes;
+
+  // Check for Event completion (isCompleted: true)
+  if ('isCompleted' in changes) {
+    const value = changes.isCompleted;
+    // Handle both direct value and before/after structure
+    if (typeof value === 'boolean' && value === true) {
+      return true;
+    }
+    if (typeof value === 'object' && value !== null && 'after' in value && value.after === true) {
+      return true;
+    }
+  }
+
+  // Check for Encounter resolution (isResolved: true)
+  if ('isResolved' in changes) {
+    const value = changes.isResolved;
+    // Handle both direct value and before/after structure
+    if (typeof value === 'boolean' && value === true) {
+      return true;
+    }
+    if (typeof value === 'object' && value !== null && 'after' in value && value.after === true) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Get human-readable label for resolution type
+ */
+function getResolutionLabel(audit: AuditEntry): string {
+  if ('isCompleted' in audit.changes) {
+    return 'EVENT COMPLETED';
+  }
+  if ('isResolved' in audit.changes) {
+    return 'ENCOUNTER RESOLVED';
+  }
+  return 'RESOLVED';
+}
+
+/**
+ * Check if metadata contains effect execution information
+ */
+function hasEffectExecutionMetadata(metadata: Record<string, unknown>): boolean {
+  return (
+    'effectExecutionSummary' in metadata ||
+    'effectsExecuted' in metadata ||
+    'totalEffects' in metadata
+  );
+}
+
+/**
+ * ResolutionEffectsSummary component - displays effect execution summary
+ */
+interface ResolutionEffectsSummaryProps {
+  metadata: Record<string, unknown>;
+}
+
+function ResolutionEffectsSummary({ metadata }: ResolutionEffectsSummaryProps) {
+  // Extract effect execution data from metadata
+  const effectsExecuted = metadata.effectsExecuted as number | undefined;
+  const totalEffects = metadata.totalEffects as number | undefined;
+  const effectExecutionSummary = metadata.effectExecutionSummary as
+    | {
+        pre?: { total: number; succeeded: number; failed: number };
+        onResolve?: { total: number; succeeded: number; failed: number };
+        post?: { total: number; succeeded: number; failed: number };
+      }
+    | undefined;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-slate-200">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-green-800">Effect Execution Summary</p>
+        {effectsExecuted !== undefined && totalEffects !== undefined && (
+          <span className="text-xs text-slate-600">
+            {effectsExecuted} of {totalEffects} effects executed
+          </span>
+        )}
+      </div>
+
+      {effectExecutionSummary && (
+        <div className="space-y-1.5">
+          {effectExecutionSummary.pre && effectExecutionSummary.pre.total > 0 && (
+            <EffectPhaseSummary
+              phase="PRE"
+              label="Pre-Resolution"
+              summary={effectExecutionSummary.pre}
+              color="bg-blue-100 text-blue-800"
+            />
+          )}
+          {effectExecutionSummary.onResolve && effectExecutionSummary.onResolve.total > 0 && (
+            <EffectPhaseSummary
+              phase="ON_RESOLVE"
+              label="On Resolution"
+              summary={effectExecutionSummary.onResolve}
+              color="bg-green-100 text-green-800"
+            />
+          )}
+          {effectExecutionSummary.post && effectExecutionSummary.post.total > 0 && (
+            <EffectPhaseSummary
+              phase="POST"
+              label="Post-Resolution"
+              summary={effectExecutionSummary.post}
+              color="bg-purple-100 text-purple-800"
+            />
+          )}
+        </div>
+      )}
+
+      {!effectExecutionSummary && effectsExecuted !== undefined && (
+        <p className="text-xs text-slate-500 italic">
+          {effectsExecuted === 0
+            ? 'No effects were executed during resolution.'
+            : 'Effect execution details not available.'}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * EffectPhaseSummary component - displays summary for a single timing phase
+ */
+interface EffectPhaseSummaryProps {
+  phase: string;
+  label: string;
+  summary: { total: number; succeeded: number; failed: number };
+  color: string;
+}
+
+function EffectPhaseSummary({ label, summary, color }: EffectPhaseSummaryProps) {
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center gap-2">
+        <span className={`px-2 py-0.5 rounded font-medium ${color}`}>{label}</span>
+        <span className="text-slate-600">
+          {summary.total} effect{summary.total !== 1 ? 's' : ''}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        {summary.succeeded > 0 && <span className="text-green-700">✓ {summary.succeeded}</span>}
+        {summary.failed > 0 && <span className="text-red-700">✗ {summary.failed}</span>}
+      </div>
+    </div>
+  );
 }
