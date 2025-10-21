@@ -92,49 +92,67 @@ This ticket implements a comprehensive system for inspecting, resolving, and man
 
 ---
 
-### Stage 2: Create GraphQL Hooks for Event and Encounter Detail Queries
+### Stage 2: Create GraphQL Hooks for Event and Encounter Detail Queries ✅
+
+**Status**: COMPLETE (Commit: 449d0e9)
 
 **Goal**: Create hooks to fetch individual Event and Encounter entities by ID, following the pattern of `useSettlementDetails` and `useStructureDetails`.
 
 **Tasks**:
 
-- [ ] Add `GET_EVENT_BY_ID` query to `packages/frontend/src/services/api/hooks/events.ts`
+- [x] Add `GET_EVENT_BY_ID` query to `packages/frontend/src/services/api/hooks/events.ts`
   - Include all fields: id, campaignId, locationId, name, description, eventType, scheduledAt, occurredAt, isCompleted, variables
   - Use cache-first fetch policy
-- [ ] Add `useEventDetails(eventId: string)` hook to `packages/frontend/src/services/api/hooks/events.ts`
-  - Return { event, loading, error, refetch }
+- [x] Add `useEventDetails(eventId: string)` hook to `packages/frontend/src/services/api/hooks/events.ts`
+  - Return { event, loading, error, refetch, networkStatus }
   - Handle null/undefined cases
-- [ ] Add `GET_ENCOUNTER_BY_ID` query to `packages/frontend/src/services/api/hooks/encounters.ts`
+- [x] Add `GET_ENCOUNTER_BY_ID` query to `packages/frontend/src/services/api/hooks/encounters.ts`
   - Include all fields: id, campaignId, locationId, name, description, difficulty, scheduledAt, isResolved, resolvedAt, variables
   - Use cache-first fetch policy
-- [ ] Add `useEncounterDetails(encounterId: string)` hook to `packages/frontend/src/services/api/hooks/encounters.ts`
-  - Return { encounter, loading, error, refetch }
+- [x] Add `useEncounterDetails(encounterId: string)` hook to `packages/frontend/src/services/api/hooks/encounters.ts`
+  - Return { encounter, loading, error, refetch, networkStatus }
   - Handle null/undefined cases
-- [ ] Write integration tests for `useEventDetails` (following settlement/structure patterns)
-- [ ] Write integration tests for `useEncounterDetails` (following settlement/structure patterns)
-- [ ] Update MSW handlers to support detail queries
+- [x] Write integration tests for `useEventDetails` (following settlement/structure patterns)
+- [x] Write integration tests for `useEncounterDetails` (following settlement/structure patterns)
+- [x] Update MSW handlers to support detail queries
 
-**Files to modify**:
+**Files Modified**:
 
-- `packages/frontend/src/services/api/hooks/events.ts`
-- `packages/frontend/src/services/api/hooks/events.test.tsx`
-- `packages/frontend/src/services/api/hooks/encounters.ts`
-- `packages/frontend/src/services/api/hooks/encounters.test.tsx`
-- `packages/frontend/src/__tests__/mocks/handlers.ts`
+- `packages/frontend/src/services/api/hooks/events.ts` - Added GET_EVENT_BY_ID query and useEventDetails hook
+- `packages/frontend/src/services/api/hooks/events.test.tsx` - Added 5 tests for useEventDetails
+- `packages/frontend/src/services/api/hooks/encounters.ts` - Added GET_ENCOUNTER_BY_ID query and useEncounterDetails hook
+- `packages/frontend/src/services/api/hooks/encounters.test.tsx` - Added 5 tests for useEncounterDetails
+- `packages/frontend/src/__tests__/mocks/graphql-handlers.ts` - Added GetEventById and GetEncounterById handlers
+- `packages/frontend/src/__tests__/mocks/data.ts` - Fixed mock data (added scheduledAt to encounters, fixed event-1 variables)
 
 **Testing**:
 
-- useEventDetails fetches event by ID correctly
-- useEncounterDetails fetches encounter by ID correctly
-- Loading and error states handled properly
-- Cache policies work as expected
+- ✅ useEventDetails fetches event by ID correctly
+- ✅ useEncounterDetails fetches encounter by ID correctly
+- ✅ Loading and error states handled properly
+- ✅ Cache policies work as expected (cache-first)
+- ✅ All 27 tests pass (13 event tests + 14 encounter tests)
 
 **Success Criteria**:
 
-- GraphQL queries return correct data structure
-- Hooks integrate with Apollo Client cache
-- Tests pass with >90% coverage
-- MSW handlers provide realistic test data
+- ✅ GraphQL queries return correct data structure
+- ✅ Hooks integrate with Apollo Client cache
+- ✅ Tests pass with 100% coverage (5 tests per hook)
+- ✅ MSW handlers provide realistic test data with error handling
+
+**Implementation Notes**:
+
+- Both hooks follow the exact same pattern as useSettlementDetails:
+  - cache-first fetch policy for performance
+  - useMemo optimization to prevent unnecessary re-renders
+  - Simplified return shape with named fields
+  - Comprehensive JSDoc documentation with examples
+- MSW handlers include error simulation for invalid-\* IDs and not-found cases
+- TypeScript Tester subagent fixed mock data issues:
+  - Added missing scheduledAt field to all 4 encounter mocks
+  - Fixed event-1 variables to match test expectations (attendees/revenue)
+- Code Reviewer found no critical issues
+- TypeScript and ESLint checks pass (44 pre-existing warnings unrelated to this stage)
 
 ---
 
