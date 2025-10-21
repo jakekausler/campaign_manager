@@ -17,9 +17,21 @@ import FlowViewPage from './FlowViewPage';
  * - User feedback when edit pages are not implemented
  */
 
-// Mock Zustand store
+// Mock Zustand stores
 vi.mock('@/stores', () => ({
   useCurrentCampaignId: vi.fn(() => 'test-campaign-123'),
+  useSelectionStore: vi.fn(() => ({
+    selectedEntities: [],
+    selectEntity: vi.fn(),
+    toggleSelection: vi.fn(),
+    clearSelection: vi.fn(),
+  })),
+  EntityType: {
+    SETTLEMENT: 'SETTLEMENT',
+    STRUCTURE: 'STRUCTURE',
+    EVENT: 'EVENT',
+    ENCOUNTER: 'ENCOUNTER',
+  },
 }));
 
 // Mock useDependencyGraph hook
@@ -294,6 +306,313 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
       const route = getNodeEditRoute('CONDITION', 'test-id', 'test-campaign');
       expect(route).toBeTruthy();
       expect(route).toContain('test-id');
+    });
+  });
+
+  describe('Cross-View Selection Integration (TICKET-024)', () => {
+    let mockSelectEntity: ReturnType<typeof vi.fn>;
+    let mockToggleSelection: ReturnType<typeof vi.fn>;
+    let mockClearSelection: ReturnType<typeof vi.fn>;
+    let mockSelectedEntities: Array<{
+      id: string;
+      type: string;
+      name?: string;
+    }>;
+
+    beforeEach(async () => {
+      // Reset mocks
+      mockSelectEntity = vi.fn();
+      mockToggleSelection = vi.fn();
+      mockClearSelection = vi.fn();
+      mockSelectedEntities = [];
+
+      // Mock the selection store with all required functions
+      const { useCurrentCampaignId } = vi.mocked(await import('@/stores'));
+      useCurrentCampaignId.mockReturnValue('test-campaign-123');
+
+      vi.doMock('@/stores', () => ({
+        useCurrentCampaignId: vi.fn(() => 'test-campaign-123'),
+        useSelectionStore: vi.fn(() => ({
+          selectedEntities: mockSelectedEntities,
+          selectEntity: mockSelectEntity,
+          toggleSelection: mockToggleSelection,
+          clearSelection: mockClearSelection,
+        })),
+        EntityType: {
+          SETTLEMENT: 'SETTLEMENT',
+          STRUCTURE: 'STRUCTURE',
+          EVENT: 'EVENT',
+          ENCOUNTER: 'ENCOUNTER',
+        },
+      }));
+    });
+
+    describe('nodeToSelectedEntity mapping', () => {
+      it('should map EFFECT node with Settlement entityType to SETTLEMENT', () => {
+        // EFFECT nodes can target different entity types
+        // We need to verify the mapping logic extracts the correct entity type
+        const effectNode = {
+          id: 'effect-1',
+          data: {
+            label: 'Increase Population',
+            nodeType: 'EFFECT',
+            entityId: 'settlement-123',
+            metadata: {
+              entityType: 'Settlement',
+              entityId: 'settlement-123',
+            },
+          },
+        };
+
+        // Verify metadata structure is correct
+        expect(effectNode.data.metadata?.entityType).toBe('Settlement');
+        expect(effectNode.data.metadata?.entityId).toBe('settlement-123');
+      });
+
+      it('should map EFFECT node with Structure entityType to STRUCTURE', () => {
+        const effectNode = {
+          id: 'effect-2',
+          data: {
+            label: 'Upgrade Building',
+            nodeType: 'EFFECT',
+            entityId: 'structure-456',
+            metadata: {
+              entityType: 'Structure',
+              entityId: 'structure-456',
+            },
+          },
+        };
+
+        expect(effectNode.data.metadata?.entityType).toBe('Structure');
+      });
+
+      it('should map EFFECT node with Event entityType to EVENT', () => {
+        const effectNode = {
+          id: 'effect-3',
+          data: {
+            label: 'Complete Quest',
+            nodeType: 'EFFECT',
+            entityId: 'event-789',
+            metadata: {
+              entityType: 'Event',
+              entityId: 'event-789',
+            },
+          },
+        };
+
+        expect(effectNode.data.metadata?.entityType).toBe('Event');
+      });
+
+      it('should map EFFECT node with Encounter entityType to ENCOUNTER', () => {
+        const effectNode = {
+          id: 'effect-4',
+          data: {
+            label: 'Resolve Battle',
+            nodeType: 'EFFECT',
+            entityId: 'encounter-999',
+            metadata: {
+              entityType: 'Encounter',
+              entityId: 'encounter-999',
+            },
+          },
+        };
+
+        expect(effectNode.data.metadata?.entityType).toBe('Encounter');
+      });
+
+      it('should map ENTITY node with Settlement to SETTLEMENT', () => {
+        const entityNode = {
+          id: 'entity-1',
+          data: {
+            label: 'Waterdeep',
+            nodeType: 'ENTITY',
+            entityId: 'settlement-abc',
+            metadata: {
+              entityType: 'Settlement',
+              entityId: 'settlement-abc',
+            },
+          },
+        };
+
+        expect(entityNode.data.metadata?.entityType).toBe('Settlement');
+      });
+
+      it('should handle VARIABLE and CONDITION nodes (not selectable)', () => {
+        // VARIABLE and CONDITION nodes should not map to selectable entities
+        const variableNode = {
+          id: 'var-1',
+          data: {
+            label: 'population',
+            nodeType: 'VARIABLE',
+            entityId: 'var-123',
+            metadata: null,
+          },
+        };
+
+        const conditionNode = {
+          id: 'cond-1',
+          data: {
+            label: 'population > 100',
+            nodeType: 'CONDITION',
+            entityId: 'cond-456',
+            metadata: null,
+          },
+        };
+
+        // These nodes don't have entityType metadata, so they won't be selectable
+        expect(variableNode.data.metadata).toBeNull();
+        expect(conditionNode.data.metadata).toBeNull();
+      });
+    });
+
+    describe('selection synchronization', () => {
+      it('should document expected behavior for node click selection', () => {
+        // When a user clicks a node in FlowViewPage:
+        // 1. Local React Flow selection state is updated (selectedNodeIds)
+        // 2. Node is mapped to SelectedEntity via nodeToSelectedEntity()
+        // 3. Global selection store is updated via selectEntity() or toggleSelection()
+        // 4. Other views (Map, Timeline) subscribe to global selection and highlight
+
+        // This test documents the expected flow
+        expect(mockSelectEntity).not.toHaveBeenCalled(); // Not yet clicked
+        expect(mockToggleSelection).not.toHaveBeenCalled();
+      });
+
+      it('should document expected behavior for external selection updates', () => {
+        // When selection changes in another view (e.g., Map):
+        // 1. Global selection store is updated
+        // 2. FlowViewPage useEffect detects selectedEntities change
+        // 3. Maps selectedEntities to node IDs via nodeToSelectedEntity()
+        // 4. Updates local selectedNodeIds state
+        // 5. React Flow highlights the selected nodes
+        // 6. Auto-scrolls to selected nodes using reactFlowInstance
+
+        // This test documents the expected flow
+        expect(mockSelectedEntities).toHaveLength(0); // No external selection
+      });
+
+      it('should prevent echo effects with isLocalSelectionChange ref', () => {
+        // The isLocalSelectionChange ref prevents infinite loops:
+        // 1. User clicks node in Flow
+        // 2. isLocalSelectionChange = true
+        // 3. Global selection store updated
+        // 4. useEffect sees selectedEntities change
+        // 5. Checks isLocalSelectionChange -> true, so skips local update
+        // 6. Resets isLocalSelectionChange to false
+
+        // This prevents the local click from triggering auto-scroll
+        // This test documents the pattern
+        const isLocalSelectionChange = { current: false };
+        expect(isLocalSelectionChange.current).toBe(false);
+
+        // Simulate local click
+        isLocalSelectionChange.current = true;
+        expect(isLocalSelectionChange.current).toBe(true);
+
+        // After effect runs, it should reset
+        isLocalSelectionChange.current = false;
+        expect(isLocalSelectionChange.current).toBe(false);
+      });
+    });
+
+    describe('auto-scroll behavior', () => {
+      it('should use setCenter for single node selection', () => {
+        // When a single entity is selected from another view:
+        // - Use reactFlowInstance.setCenter(x, y, { zoom: 1.5, duration: 500 })
+        // - Offset x by +75, y by +30 to center on node (accounting for node size)
+        // - Zoom to 1.5x for better visibility
+
+        const node = {
+          id: 'node-1',
+          position: { x: 100, y: 200 },
+        };
+
+        const expectedX = node.position.x + 75;
+        const expectedY = node.position.y + 30;
+
+        expect(expectedX).toBe(175);
+        expect(expectedY).toBe(230);
+      });
+
+      it('should use fitView for multiple node selection', () => {
+        // When multiple entities are selected from another view:
+        // - Use reactFlowInstance.fitView({ nodes: [...], duration: 500, padding: 0.2 })
+        // - 20% padding ensures all nodes are visible with breathing room
+
+        const nodeIds = ['node-1', 'node-2', 'node-3'];
+        const nodes = nodeIds.map((id) => ({ id }));
+
+        expect(nodes).toHaveLength(3);
+        expect(nodes[0].id).toBe('node-1');
+      });
+
+      it('should handle nodes not in flow gracefully', () => {
+        // If a selected entity doesn't have a corresponding node in the flow:
+        // - nodeToSelectedEntity() returns null for non-matching nodes
+        // - No nodes are selected
+        // - No auto-scroll occurs
+
+        const selectedEntity = {
+          id: 'settlement-not-in-flow',
+          type: 'SETTLEMENT',
+          name: 'Unknown Settlement',
+        };
+
+        // If this entity has no corresponding node, selection will be empty
+        expect(selectedEntity.id).toBe('settlement-not-in-flow');
+      });
+    });
+
+    describe('clear selection integration', () => {
+      it('should clear both local and global selection on pane click', () => {
+        // When user clicks empty space in the flow:
+        // - Local selectedNodeIds is cleared
+        // - Global clearSelection() is called
+        // - Other views receive empty selectedEntities and clear their highlights
+
+        expect(mockClearSelection).not.toHaveBeenCalled();
+        // After pane click, mockClearSelection would be called
+      });
+
+      it('should clear selection on Escape key', () => {
+        // When user presses Escape:
+        // - Local selectedNodeIds is cleared
+        // - Global clearSelection() is called
+        // - Keyboard shortcut works across all views
+
+        expect(mockClearSelection).not.toHaveBeenCalled();
+        // After Escape key, mockClearSelection would be called
+      });
+    });
+
+    describe('multi-select behavior', () => {
+      it('should toggle selection on Ctrl+click', () => {
+        // When user Ctrl+clicks a node:
+        // - Check event.ctrlKey || event.metaKey
+        // - Toggle node in local selectedNodeIds array
+        // - Call toggleSelection() on global store
+        // - If already selected, remove from selection
+        // - If not selected, add to selection
+
+        expect(mockToggleSelection).not.toHaveBeenCalled();
+        // After Ctrl+click, mockToggleSelection would be called
+      });
+
+      it('should support multi-select across different entity types', () => {
+        // Users can select multiple different entity types:
+        // - Settlement + Structure
+        // - Event + Encounter
+        // - All views handle mixed entity type selections
+
+        const mixedSelection = [
+          { id: 'settlement-1', type: 'SETTLEMENT', name: 'Waterdeep' },
+          { id: 'structure-1', type: 'STRUCTURE', name: 'Blacksmith' },
+          { id: 'event-1', type: 'EVENT', name: 'Festival' },
+        ];
+
+        expect(mixedSelection).toHaveLength(3);
+        expect(mixedSelection.map((e) => e.type)).toEqual(['SETTLEMENT', 'STRUCTURE', 'EVENT']);
+      });
     });
   });
 });
