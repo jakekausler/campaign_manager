@@ -152,39 +152,46 @@ Implement synchronized selection and highlighting across Map, Flow, and Timeline
 
 ---
 
-### Stage 4: Timeline View Selection Integration ✅
+### Stage 4: Timeline View Selection Integration ✅ COMPLETE
 
 **Goal**: Integrate selection state with TimelinePage for events and encounters
 
 **Tasks**:
 
-- [ ] Read current TimelinePage implementation to understand item selection
-- [ ] Add `useSelectionStore()` hook to TimelinePage component
-- [ ] Implement timeline item click handlers:
+- [x] Read current TimelinePage implementation to understand item selection
+- [x] Add `useSelectionStore()` hook to TimelinePage component
+- [x] Implement timeline item click handlers:
   - Single-click: select event/encounter (update selection state)
   - Ctrl+click: toggle item in multi-select
-- [ ] Add item highlighting for selected events/encounters (border/background)
-- [ ] Subscribe to selection state changes from other views
-- [ ] Implement auto-scroll to selected item when selection changes externally
-- [ ] Handle case where selected entity is Settlement/Structure:
-  - Find related events/encounters for that entity
-  - Optionally highlight or filter to show related items
-- [ ] Write integration tests for timeline selection
+- [x] Add item highlighting for selected events/encounters (via vis-timeline's setSelection)
+- [x] Subscribe to selection state changes from other views
+- [x] Implement auto-scroll to selected item when selection changes externally
+- [ ] Handle case where selected entity is Settlement/Structure (deferred - not directly shown in timeline)
+- [x] Write integration tests for timeline selection
 
 **Success Criteria**:
 
-- Clicking timeline item updates global selection state
-- Timeline highlights selected items with visual indicators
-- Timeline auto-scrolls to item when selected from another view
-- Multi-select works with Ctrl+click
-- Related entity filtering works (e.g., show events for selected settlement)
+- ✅ Clicking timeline item updates global selection state
+- ✅ Timeline highlights selected items with visual indicators
+- ✅ Timeline auto-scrolls to item when selected from another view
+- ✅ Multi-select works with Ctrl+click
+- ⏸️ Related entity filtering works (deferred - Settlement/Structure not directly shown in timeline)
 
-**Notes**:
+**Implementation Notes**:
 
-- vis-timeline has `setSelection()` API for programmatic selection
-- Use `timeline.focus()` for auto-scrolling to selected items
-- Consider showing related items when Settlement/Structure selected
-- Test with items at different time ranges
+- TimelinePage: Added `useSelectionStore()` for cross-view synchronization
+- Created `timelineItemToSelectedEntity()` mapper function for EVENT/ENCOUNTER entities
+- Implemented bidirectional sync with `isLocalSelectionChange` ref to prevent loops
+- Enhanced Timeline component with `setSelection()` and `getSelection()` methods
+- Local timeline clicks update global store (selectEntity/toggleSelection/clearSelection)
+- Global selection changes sync to timeline via setSelection() and auto-scroll with moveTo()
+- Fixed property name collision: renamed custom metadata `type` → `entityType` to avoid overwriting vis-timeline's `type: 'point'`
+- Fixed loading state logic: changed AND to OR so timeline shows when either events OR encounters load
+- Added 6 integration tests covering single-click, Ctrl+click, deselection, and EVENT/ENCOUNTER types
+- All 1113 frontend tests passing
+- Settlement/Structure selection handling deferred: these entities aren't directly shown in timeline, could potentially show related events/encounters in future work
+
+**Commit**: e1b4a20
 
 ---
 
