@@ -11,6 +11,7 @@
   - Stage 5: c39c099 (Resolution Workflow UI components)
   - Stage 6: 6506eca (GraphQL mutation hooks for resolution)
   - Stage 7: 0f48d7b (Integrate resolution mutations with UI)
+  - Stage 8: 7645e57 (Resolution history in Versions tab - already implemented proactively)
 
 ## Description
 
