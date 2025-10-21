@@ -7,19 +7,19 @@ import { useEntityPopup } from './useEntityPopup';
 
 // Mock maplibre-gl
 vi.mock('maplibre-gl', () => {
-  const mockPopup = {
-    setLngLat: vi.fn().mockReturnThis(),
-    setDOMContent: vi.fn().mockReturnThis(),
-    addTo: vi.fn().mockReturnThis(),
-    remove: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-  };
-
   return {
     Map: vi.fn(),
     NavigationControl: vi.fn(),
-    Popup: vi.fn(() => mockPopup),
+    Popup: vi.fn(function (this: any) {
+      // Create a fresh mock popup instance for each call
+      this.setLngLat = vi.fn().mockReturnThis();
+      this.setDOMContent = vi.fn().mockReturnThis();
+      this.addTo = vi.fn().mockReturnThis();
+      this.remove = vi.fn();
+      this.on = vi.fn();
+      this.off = vi.fn();
+      return this;
+    }),
   };
 });
 

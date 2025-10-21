@@ -5,86 +5,124 @@ import { describe, it, expect, vi } from 'vitest';
 import { Timeline } from './Timeline';
 
 // Mock vis-timeline and vis-data libraries
-vi.mock('vis-timeline/standalone', () => ({
-  Timeline: vi.fn().mockImplementation(function (
-    this: any,
-    container: any,
-    items: any,
-    groups: any,
-    options: any
-  ) {
-    // Store data for testing
-    this.container = container;
-    this.items = items;
-    this.groups = groups;
-    this.options = options;
-    this.customTimes = new Map();
-    this.eventHandlers = new Map();
+vi.mock('vis-timeline/standalone', () => {
+  class MockTimeline {
+    container: any;
+    items: any;
+    groups: any;
+    options: any;
+    customTimes: Map<string, Date>;
+    eventHandlers: Map<string, any>;
+    setItems: any;
+    setGroups: any;
+    setOptions: any;
+    addCustomTime: any;
+    setCustomTime: any;
+    removeCustomTime: any;
+    on: any;
+    zoomIn: any;
+    zoomOut: any;
+    fit: any;
+    moveTo: any;
+    destroy: any;
+    setSelection: any;
+    getSelection: any;
 
-    // Mock methods
-    this.setItems = vi.fn((newItems: any) => {
-      this.items = newItems;
-    });
-    this.setGroups = vi.fn((newGroups: any) => {
-      this.groups = newGroups;
-    });
-    this.setOptions = vi.fn((newOptions: any) => {
-      this.options = { ...this.options, ...newOptions };
-    });
-    this.addCustomTime = vi.fn((time: Date, id: string) => {
-      this.customTimes.set(id, time);
-      // Add data attributes to container for testing
-      container.setAttribute(`data-custom-time-${id}`, time.toISOString());
-    });
-    this.setCustomTime = vi.fn((time: Date, id: string) => {
-      this.customTimes.set(id, time);
-      container.setAttribute(`data-custom-time-${id}`, time.toISOString());
-    });
-    this.removeCustomTime = vi.fn((id: string) => {
-      this.customTimes.delete(id);
-      container.removeAttribute(`data-custom-time-${id}`);
-    });
-    this.on = vi.fn((event: string, handler: any) => {
-      this.eventHandlers.set(event, handler);
-    });
-    this.zoomIn = vi.fn();
-    this.zoomOut = vi.fn();
-    this.fit = vi.fn();
-    this.moveTo = vi.fn();
-    this.destroy = vi.fn();
+    constructor(container: any, items: any, groups: any, options: any) {
+      this.container = container;
+      this.items = items;
+      this.groups = groups;
+      this.options = options;
+      this.customTimes = new Map();
+      this.eventHandlers = new Map();
 
-    // Add data attributes for testing
-    container.setAttribute('data-testid', 'mock-timeline');
-    container.setAttribute('data-items-count', items?.length?.toString() || '0');
-    container.setAttribute('data-groups-count', groups?.length?.toString() || '0');
-  }),
-}));
+      // Mock methods
+      this.setItems = vi.fn((newItems: any) => {
+        this.items = newItems;
+      });
+      this.setGroups = vi.fn((newGroups: any) => {
+        this.groups = newGroups;
+      });
+      this.setOptions = vi.fn((newOptions: any) => {
+        this.options = { ...this.options, ...newOptions };
+      });
+      this.addCustomTime = vi.fn((time: Date, id: string) => {
+        this.customTimes.set(id, time);
+        if (container?.setAttribute) {
+          container.setAttribute(`data-custom-time-${id}`, time.toISOString());
+        }
+      });
+      this.setCustomTime = vi.fn((time: Date, id: string) => {
+        this.customTimes.set(id, time);
+        if (container?.setAttribute) {
+          container.setAttribute(`data-custom-time-${id}`, time.toISOString());
+        }
+      });
+      this.removeCustomTime = vi.fn((id: string) => {
+        this.customTimes.delete(id);
+        if (container?.removeAttribute) {
+          container.removeAttribute(`data-custom-time-${id}`);
+        }
+      });
+      this.on = vi.fn((event: string, handler: any) => {
+        this.eventHandlers.set(event, handler);
+      });
+      this.zoomIn = vi.fn();
+      this.zoomOut = vi.fn();
+      this.fit = vi.fn();
+      this.moveTo = vi.fn();
+      this.destroy = vi.fn();
+      this.setSelection = vi.fn();
+      this.getSelection = vi.fn(() => []);
 
-vi.mock('vis-data', () => ({
-  DataSet: vi.fn().mockImplementation(function (this: any, data: any = []) {
-    this.data = Array.isArray(data) ? [...data] : [];
-    this.length = this.data.length;
-
-    this.add = vi.fn((items: any) => {
-      const itemsArray = Array.isArray(items) ? items : [items];
-      this.data.push(...itemsArray);
-      this.length = this.data.length;
-    });
-    this.clear = vi.fn(() => {
-      this.data = [];
-      this.length = 0;
-    });
-    this.update = vi.fn((item: any) => {
-      const index = this.data.findIndex((d: any) => d.id === item.id);
-      if (index !== -1) {
-        this.data[index] = item;
+      // Add data attributes for testing
+      if (container?.setAttribute) {
+        container.setAttribute('data-testid', 'mock-timeline');
+        container.setAttribute('data-items-count', items?.length?.toString() || '0');
+        container.setAttribute('data-groups-count', groups?.length?.toString() || '0');
       }
-    });
-    this.get = vi.fn((id: any) => {
-      return this.data.find((d: any) => d.id === id);
-    });
-  }),
-}));
+    }
+  }
+
+  return { Timeline: MockTimeline };
+});
+
+vi.mock('vis-data', () => {
+  class MockDataSet {
+    data: any[];
+    length: number;
+    add: any;
+    clear: any;
+    update: any;
+    get: any;
+
+    constructor(data: any = []) {
+      this.data = Array.isArray(data) ? [...data] : [];
+      this.length = this.data.length;
+
+      this.add = vi.fn((items: any) => {
+        const itemsArray = Array.isArray(items) ? items : [items];
+        this.data.push(...itemsArray);
+        this.length = this.data.length;
+      });
+      this.clear = vi.fn(() => {
+        this.data = [];
+        this.length = 0;
+      });
+      this.update = vi.fn((item: any) => {
+        const index = this.data.findIndex((d: any) => d.id === item.id);
+        if (index !== -1) {
+          this.data[index] = item;
+        }
+      });
+      this.get = vi.fn((id: any) => {
+        return this.data.find((d: any) => d.id === id);
+      });
+    }
+  }
+
+  return { DataSet: MockDataSet };
+});
 
 describe('Timeline', () => {
   describe('Rendering', () => {

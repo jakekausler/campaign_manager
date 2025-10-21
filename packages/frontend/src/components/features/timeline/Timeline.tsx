@@ -162,6 +162,12 @@ const TimelineComponent = forwardRef<TimelineHandle, TimelineProps>(function Tim
     [options]
   );
 
+  // Track previous values to detect changes (skip update on initial render)
+  const prevItemsRef = useRef(items);
+  const prevGroupsRef = useRef(groups);
+  const prevMergedOptionsRef = useRef(mergedOptions);
+  const prevCurrentTimeRef = useRef(currentTime);
+
   // Keep callback refs in sync with props to avoid stale closures
   useEffect(() => {
     onItemMoveRef.current = onItemMove;
@@ -194,27 +200,30 @@ const TimelineComponent = forwardRef<TimelineHandle, TimelineProps>(function Tim
     }
 
     // Attach event listeners (use refs to avoid stale closures)
-    timelineRef.current.on('timechange', (properties: { id: string; time: Date }) => {
-      const item = itemsDataSetRef.current?.get(properties.id);
-      if (item && onItemMoveRef.current) {
-        const updatedItem = { ...item, start: properties.time };
-        onItemMoveRef.current(updatedItem, (result) => {
-          if (result === null) {
-            // Revert the change
-            itemsDataSetRef.current?.update(item);
-          } else {
-            // Accept the change
-            itemsDataSetRef.current?.update(result);
-          }
-        });
-      }
-    });
+    // Check timelineRef.current exists before calling .on()
+    if (timelineRef.current && timelineRef.current.on) {
+      timelineRef.current.on('timechange', (properties: { id: string; time: Date }) => {
+        const item = itemsDataSetRef.current?.get(properties.id);
+        if (item && onItemMoveRef.current) {
+          const updatedItem = { ...item, start: properties.time };
+          onItemMoveRef.current(updatedItem, (result) => {
+            if (result === null) {
+              // Revert the change
+              itemsDataSetRef.current?.update(item);
+            } else {
+              // Accept the change
+              itemsDataSetRef.current?.update(result);
+            }
+          });
+        }
+      });
 
-    timelineRef.current.on('select', (properties: { items: string[]; event: Event }) => {
-      if (onSelectRef.current) {
-        onSelectRef.current(properties);
-      }
-    });
+      timelineRef.current.on('select', (properties: { items: string[]; event: Event }) => {
+        if (onSelectRef.current) {
+          onSelectRef.current(properties);
+        }
+      });
+    }
 
     // Cleanup on unmount
     return () => {
@@ -228,34 +237,37 @@ const TimelineComponent = forwardRef<TimelineHandle, TimelineProps>(function Tim
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only initialize once. Subsequent updates handled by separate useEffects.
 
-  // Update items when they change
+  // Update items when they change (skip on initial render by checking if value actually changed)
   useEffect(() => {
-    if (itemsDataSetRef.current) {
+    if (prevItemsRef.current !== items && itemsDataSetRef.current) {
       itemsDataSetRef.current.clear();
       itemsDataSetRef.current.add(items);
+      prevItemsRef.current = items;
     }
   }, [items]);
 
-  // Update groups when they change
+  // Update groups when they change (skip on initial render by checking if value actually changed)
   useEffect(() => {
-    if (groupsDataSetRef.current) {
+    if (prevGroupsRef.current !== groups && groupsDataSetRef.current) {
       groupsDataSetRef.current.clear();
       if (groups) {
         groupsDataSetRef.current.add(groups);
       }
+      prevGroupsRef.current = groups;
     }
   }, [groups]);
 
-  // Update options when they change
+  // Update options when they change (skip on initial render by checking if value actually changed)
   useEffect(() => {
-    if (timelineRef.current) {
+    if (prevMergedOptionsRef.current !== mergedOptions && timelineRef.current) {
       timelineRef.current.setOptions(mergedOptions);
+      prevMergedOptionsRef.current = mergedOptions;
     }
   }, [mergedOptions]);
 
-  // Update current time marker when it changes
+  // Update current time marker when it changes (skip on initial render by checking if value actually changed)
   useEffect(() => {
-    if (timelineRef.current) {
+    if (prevCurrentTimeRef.current !== currentTime && timelineRef.current) {
       if (currentTime) {
         try {
           // Try to update existing custom time
@@ -272,6 +284,7 @@ const TimelineComponent = forwardRef<TimelineHandle, TimelineProps>(function Tim
           // Ignore error if custom time doesn't exist
         }
       }
+      prevCurrentTimeRef.current = currentTime;
     }
   }, [currentTime]);
 
