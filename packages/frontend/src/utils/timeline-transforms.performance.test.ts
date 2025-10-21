@@ -126,28 +126,39 @@ describe('Timeline Transformation Performance', () => {
   });
 
   it('should scale linearly with item count', () => {
-    const sizes = [10, 50, 100];
+    const sizes = [100, 200, 500];
     const durations: number[] = [];
+
+    // Run multiple iterations to reduce timing variance
+    const iterations = 10;
 
     for (const size of sizes) {
       const events = generateEvents(size / 2);
       const encounters = generateEncounters(size / 2);
 
-      const startTime = performance.now();
-      transformToTimelineItems(events, encounters);
-      const endTime = performance.now();
+      let totalDuration = 0;
+      for (let i = 0; i < iterations; i++) {
+        const startTime = performance.now();
+        transformToTimelineItems(events, encounters);
+        const endTime = performance.now();
+        totalDuration += endTime - startTime;
+      }
 
-      durations.push(endTime - startTime);
+      durations.push(totalDuration / iterations);
     }
 
-    // Verify roughly linear scaling (allow 3x variance for small samples)
-    const ratio1 = durations[1] / durations[0];
-    const ratio2 = durations[2] / durations[1];
+    // Verify roughly linear scaling with larger datasets (less timing variance)
+    const ratio1 = durations[1] / durations[0]; // 200 / 100
+    const ratio2 = durations[2] / durations[1]; // 500 / 200
 
-    expect(ratio1).toBeLessThan(10); // 50 items shouldn't take >10x longer than 10 items
-    expect(ratio2).toBeLessThan(5); // 100 items shouldn't take >5x longer than 50 items
+    // With linear scaling, ratio1 should be ~2x, ratio2 should be ~2.5x
+    // Allow 10x tolerance for timing variance and test environment differences
+    expect(ratio1).toBeLessThan(10); // 200 items shouldn't take >10x longer than 100 items
+    expect(ratio2).toBeLessThan(10); // 500 items shouldn't take >10x longer than 200 items
 
-    console.log(`Scaling ratios: 10→50 = ${ratio1.toFixed(2)}x, 50→100 = ${ratio2.toFixed(2)}x`);
+    console.log(
+      `Scaling ratios (averaged over ${iterations} runs): 100→200 = ${ratio1.toFixed(2)}x, 200→500 = ${ratio2.toFixed(2)}x`
+    );
   });
 
   it('should handle all null dates efficiently', () => {

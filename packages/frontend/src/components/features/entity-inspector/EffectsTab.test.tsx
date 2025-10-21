@@ -120,8 +120,11 @@ describe('EffectsTab', () => {
       renderWithApollo(<EffectsTab entityType="Event" entityId="event-1" />);
 
       await waitFor(() => {
-        expect(screen.getByText(/on resolution \(2\)/i)).toBeInTheDocument();
+        // event-1 has 1 ON_RESOLVE effect and 1 POST effect
+        expect(screen.getByText(/on resolution \(1\)/i)).toBeInTheDocument();
       });
+
+      expect(screen.getByText(/post-resolution \(1\)/i)).toBeInTheDocument();
     });
 
     it('should display timing phase labels correctly', async () => {

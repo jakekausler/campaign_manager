@@ -419,7 +419,10 @@ export const graphqlHandlers = [
     };
 
     const effects = mockEffects.filter(
-      (e) => e.entityType === entityType && e.entityId === entityId && e.timing === timing
+      (e) =>
+        e.entityType.toLowerCase() === entityType.toLowerCase() &&
+        e.entityId === entityId &&
+        e.timing === timing
     );
 
     return HttpResponse.json({
@@ -451,16 +454,36 @@ export const graphqlHandlers = [
       });
     }
 
+    // Return empty for non-existent entities
+    if (entityId === 'event-999') {
+      return HttpResponse.json({
+        data: {
+          getEffectsForEntity: [],
+          onResolve: [],
+          post: [],
+        },
+      });
+    }
+
     const preEffects = mockEffects.filter(
-      (e) => e.entityType === entityType && e.entityId === entityId && e.timing === 'PRE'
+      (e) =>
+        e.entityType.toLowerCase() === entityType.toLowerCase() &&
+        e.entityId === entityId &&
+        e.timing === 'PRE'
     );
 
     const onResolveEffects = mockEffects.filter(
-      (e) => e.entityType === entityType && e.entityId === entityId && e.timing === 'ON_RESOLVE'
+      (e) =>
+        e.entityType.toLowerCase() === entityType.toLowerCase() &&
+        e.entityId === entityId &&
+        e.timing === 'ON_RESOLVE'
     );
 
     const postEffects = mockEffects.filter(
-      (e) => e.entityType === entityType && e.entityId === entityId && e.timing === 'POST'
+      (e) =>
+        e.entityType.toLowerCase() === entityType.toLowerCase() &&
+        e.entityId === entityId &&
+        e.timing === 'POST'
     );
 
     return HttpResponse.json({
