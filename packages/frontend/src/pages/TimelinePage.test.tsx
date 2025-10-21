@@ -74,6 +74,20 @@ vi.mock('@/components/features/timeline', () => ({
   TimelineFilters: vi.fn(() => <div data-testid="timeline-filters" />),
 }));
 
+// Mock EntityInspector component
+vi.mock('@/components/features/entity-inspector', () => ({
+  EntityInspector: vi.fn(({ entityType, entityId, isOpen, onClose }) => {
+    if (!isOpen) return null;
+    return (
+      <div data-testid="entity-inspector">
+        <div>Entity Type: {entityType}</div>
+        <div>Entity ID: {entityId}</div>
+        <button onClick={onClose}>Close</button>
+      </div>
+    );
+  }),
+}));
+
 // Mock events data
 const mockEvents = [
   {
@@ -803,5 +817,173 @@ describe('TimelinePage', () => {
      * The implementation has been manually verified to work correctly across all views.
      * See Stage 4 implementation notes (commit e1b4a20) for details.
      */
+  });
+
+  describe('TICKET-025 Stage 4: EntityInspector Integration', () => {
+    it('should not render EntityInspector initially', () => {
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      expect(screen.queryByTestId('entity-inspector')).not.toBeInTheDocument();
+    });
+
+    it('should open EntityInspector for Event when timeline item is clicked', async () => {
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      // Wait for Timeline to be called with items and get the props
+      let timelineProps: any;
+      await waitFor(() => {
+        const calls = vi.mocked(Timeline).mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const lastCall = calls[calls.length - 1];
+        expect(lastCall[0].items.length).toBeGreaterThan(0);
+        timelineProps = lastCall[0];
+      });
+
+      // Simulate clicking on an event (single-click, no Ctrl key)
+      const mockEvent = new MouseEvent('click', { ctrlKey: false });
+      timelineProps.onSelect({
+        items: ['event-event-1'],
+        event: mockEvent as Event,
+      });
+
+      // Wait for EntityInspector to appear
+      await waitFor(() => {
+        expect(screen.getByTestId('entity-inspector')).toBeInTheDocument();
+      });
+
+      // Verify EntityInspector has correct props
+      expect(screen.getByText('Entity Type: event')).toBeInTheDocument();
+      expect(screen.getByText('Entity ID: event-1')).toBeInTheDocument();
+    });
+
+    it('should open EntityInspector for Encounter when timeline item is clicked', async () => {
+      vi.mocked(useEncountersByCampaign).mockReturnValue({
+        encounters: [mockEncounters[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      // Wait for Timeline to be called with items and get the props
+      let timelineProps: any;
+      await waitFor(() => {
+        const calls = vi.mocked(Timeline).mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const lastCall = calls[calls.length - 1];
+        expect(lastCall[0].items.length).toBeGreaterThan(0);
+        timelineProps = lastCall[0];
+      });
+
+      // Simulate clicking on an encounter
+      const mockEvent = new MouseEvent('click', { ctrlKey: false });
+      timelineProps.onSelect({
+        items: ['encounter-encounter-1'],
+        event: mockEvent as Event,
+      });
+
+      // Wait for EntityInspector to appear
+      await waitFor(() => {
+        expect(screen.getByTestId('entity-inspector')).toBeInTheDocument();
+      });
+
+      // Verify EntityInspector has correct props
+      expect(screen.getByText('Entity Type: encounter')).toBeInTheDocument();
+      expect(screen.getByText('Entity ID: encounter-1')).toBeInTheDocument();
+    });
+
+    it('should not open EntityInspector for Ctrl+click (multi-select)', async () => {
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      // Wait for Timeline to be called with items and get the props
+      let timelineProps: any;
+      await waitFor(() => {
+        const calls = vi.mocked(Timeline).mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const lastCall = calls[calls.length - 1];
+        expect(lastCall[0].items.length).toBeGreaterThan(0);
+        timelineProps = lastCall[0];
+      });
+
+      // Simulate Ctrl+clicking on an event
+      const mockEvent = new MouseEvent('click', { ctrlKey: true });
+      timelineProps.onSelect({
+        items: ['event-event-1'],
+        event: mockEvent as Event,
+      });
+
+      // EntityInspector should not open for Ctrl+click
+      expect(screen.queryByTestId('entity-inspector')).not.toBeInTheDocument();
+    });
+
+    it('should close EntityInspector when onClose is called', async () => {
+      const user = userEvent.setup();
+      vi.mocked(useEventsByCampaign).mockReturnValue({
+        events: [mockEvents[0]],
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      renderWithApollo(<TimelinePage />);
+
+      // Wait for Timeline to be called with items and get the props
+      let timelineProps: any;
+      await waitFor(() => {
+        const calls = vi.mocked(Timeline).mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const lastCall = calls[calls.length - 1];
+        expect(lastCall[0].items.length).toBeGreaterThan(0);
+        timelineProps = lastCall[0];
+      });
+
+      // Open EntityInspector
+      const mockEvent = new MouseEvent('click', { ctrlKey: false });
+      timelineProps.onSelect({
+        items: ['event-event-1'],
+        event: mockEvent as Event,
+      });
+
+      // Wait for EntityInspector to appear
+      await waitFor(() => {
+        expect(screen.getByTestId('entity-inspector')).toBeInTheDocument();
+      });
+
+      // Click close button
+      const closeButton = screen.getByText('Close');
+      await user.click(closeButton);
+
+      // EntityInspector should be hidden
+      await waitFor(() => {
+        expect(screen.queryByTestId('entity-inspector')).not.toBeInTheDocument();
+      });
+    });
   });
 });

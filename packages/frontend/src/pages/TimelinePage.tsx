@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import type { TimelineItem } from 'vis-timeline/types';
 
 import { ErrorBoundary, SelectionInfo } from '@/components';
+import { EntityInspector } from '@/components/features/entity-inspector';
 import {
   Timeline,
   TimelineControls,
@@ -94,9 +95,10 @@ function timelineItemToSelectedEntity(item: TimelineItem): SelectedEntity | null
  * - URL-persisted filter state
  * - Loading skeleton during data fetch
  * - Error handling with user feedback
- * - Timeline item click handlers (shows "coming soon" message for entity inspector)
+ * - Timeline item click handlers to open EntityInspector for Event/Encounter
  *
  * Part of TICKET-022 Stage 5, Stage 6, Stage 7, Stage 10, Stage 11, and Stage 12 implementation.
+ * Part of TICKET-025 Stage 4 implementation (EntityInspector integration).
  */
 export default function TimelinePage() {
   // Ref to control the timeline programmatically
@@ -104,6 +106,13 @@ export default function TimelinePage() {
 
   // Get current campaign from store
   const campaignId = useCurrentCampaignId();
+
+  // Entity inspector state
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<{
+    type: 'event' | 'encounter';
+    id: string;
+  } | null>(null);
 
   // Get selection store for cross-view synchronization
   const { selectedEntities, selectEntity, toggleSelection, clearSelection } = useSelectionStore();
@@ -248,14 +257,29 @@ export default function TimelinePage() {
         // Ctrl+click: toggle the entity in selection
         toggleSelection(selectedEntities[0]);
       } else if (selectedEntities.length === 1) {
-        // Single-click: replace selection with this entity
+        // Single-click: replace selection with this entity and open inspector
         selectEntity(selectedEntities[0]);
+
+        // Open EntityInspector for Event or Encounter entities
+        const entity = selectedEntities[0];
+        if (entity.type === EntityType.EVENT || entity.type === EntityType.ENCOUNTER) {
+          setSelectedEntity({
+            type: entity.type === EntityType.EVENT ? 'event' : 'encounter',
+            id: entity.id,
+          });
+          setInspectorOpen(true);
+        }
       }
       // Note: vis-timeline handles multi-select with Ctrl+click automatically
       // and provides all selected items in properties.items array
     },
     [items, selectEntity, toggleSelection, clearSelection]
   );
+
+  // Handle inspector close
+  const handleInspectorClose = useCallback(() => {
+    setInspectorOpen(false);
+  }, []);
 
   // Subscribe to global selection changes from other views
   // and sync with local timeline selection
@@ -466,6 +490,16 @@ export default function TimelinePage() {
           <SelectionInfo />
         </div>
       </div>
+
+      {/* Entity Inspector */}
+      {selectedEntity && (
+        <EntityInspector
+          entityType={selectedEntity.type}
+          entityId={selectedEntity.id}
+          isOpen={inspectorOpen}
+          onClose={handleInspectorClose}
+        />
+      )}
     </div>
   );
 }
