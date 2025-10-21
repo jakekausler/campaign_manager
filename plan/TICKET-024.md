@@ -2,8 +2,8 @@
 
 ## Status
 
-- [ ] Completed
-- **Commits**: 4fb08aa, a97f37b, fce9730, e1b4a20
+- [x] Completed
+- **Commits**: 4fb08aa, a97f37b, fce9730, e1b4a20, cb11034, 134e0cc, 126c265, 8dff5cc
 
 ## Description
 
@@ -24,14 +24,14 @@ Implement synchronized selection and highlighting across Map, Flow, and Timeline
 
 ## Acceptance Criteria
 
-- [ ] Selecting in Map highlights in Flow and Timeline
-- [ ] Selecting in Flow highlights in Map and Timeline
-- [ ] Selecting in Timeline highlights in Map and Flow
-- [ ] Views auto-scroll to show selected entity
-- [ ] Multi-select works across views
-- [ ] Selecting a Settlement synchronizes across all views
-- [ ] Selecting a Structure synchronizes across all views
-- [ ] Structure highlighting shows parent Settlement location on map
+- [x] Selecting in Map highlights in Flow and Timeline
+- [x] Selecting in Flow highlights in Map and Timeline
+- [x] Selecting in Timeline highlights in Map and Flow
+- [x] Views auto-scroll to show selected entity
+- [x] Multi-select works across views
+- [x] Selecting a Settlement synchronizes across all views
+- [x] Selecting a Structure synchronizes across all views
+- [x] Structure highlighting shows parent Settlement location on map
 
 ## Dependencies
 
