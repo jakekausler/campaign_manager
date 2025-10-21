@@ -148,12 +148,58 @@ export const graphqlHandlers = [
     });
   }),
 
+  graphql.query('GetEventById', ({ variables }) => {
+    const { id } = variables as { id: string };
+
+    // Simulate server error for "invalid-*" IDs
+    if (id.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Internal server error' }],
+      });
+    }
+
+    // Return error for entities that don't exist
+    const event = mockEvents.find((e) => e.id === id);
+    if (!event) {
+      return HttpResponse.json({
+        errors: [{ message: `Event with ID "${id}" not found` }],
+      });
+    }
+
+    return HttpResponse.json({
+      data: { event },
+    });
+  }),
+
   // Encounter Queries
   graphql.query('GetEncountersByCampaign', ({ variables }) => {
     const { campaignId } = variables as { campaignId: string };
     const encounters = mockEncounters.filter((e) => e.campaignId === campaignId);
     return HttpResponse.json({
       data: { encountersByCampaign: encounters },
+    });
+  }),
+
+  graphql.query('GetEncounterById', ({ variables }) => {
+    const { id } = variables as { id: string };
+
+    // Simulate server error for "invalid-*" IDs
+    if (id.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Internal server error' }],
+      });
+    }
+
+    // Return error for entities that don't exist
+    const encounter = mockEncounters.find((e) => e.id === id);
+    if (!encounter) {
+      return HttpResponse.json({
+        errors: [{ message: `Encounter with ID "${id}" not found` }],
+      });
+    }
+
+    return HttpResponse.json({
+      data: { encounter },
     });
   }),
 

@@ -3,6 +3,7 @@
  *
  * Tests the Encounter hooks with MSW-mocked GraphQL responses:
  * - useEncountersByCampaign
+ * - useEncounterDetails
  */
 
 import { ApolloProvider } from '@apollo/client/react';
@@ -12,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 
-import { useEncountersByCampaign } from './encounters';
+import { useEncountersByCampaign, useEncounterDetails } from './encounters';
 
 // Create a wrapper component for Apollo Provider
 function createWrapper() {
@@ -181,6 +182,87 @@ describe('Encounter Hooks Integration Tests', () => {
       });
 
       expect(result.current.networkStatus).toBeDefined();
+    });
+  });
+
+  describe('useEncounterDetails', () => {
+    it('should fetch encounter details by ID', async () => {
+      const { result } = renderHook(() => useEncounterDetails('encounter-1'), {
+        wrapper: createWrapper(),
+      });
+
+      // Initially loading
+      expect(result.current.loading).toBe(true);
+      expect(result.current.encounter).toBeNull();
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Should have encounter details
+      expect(result.current.encounter).not.toBeNull();
+      expect(result.current.encounter?.id).toBe('encounter-1');
+      expect(result.current.encounter?.name).toBe('Dragon Attack');
+      expect(result.current.encounter?.difficulty).toBe(15);
+      expect(result.current.encounter?.campaignId).toBe('campaign-1');
+    });
+
+    it('should include resolution information', async () => {
+      const { result } = renderHook(() => useEncounterDetails('encounter-1'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.encounter?.isResolved).toBe(true);
+      expect(result.current.encounter?.resolvedAt).toBe('2024-05-10T16:30:00.000Z');
+    });
+
+    it('should include variables', async () => {
+      const { result } = renderHook(() => useEncounterDetails('encounter-1'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.encounter?.variables).toBeDefined();
+      expect(result.current.encounter?.variables).toEqual({
+        casualties: 12,
+        goldLost: 5000,
+      });
+    });
+
+    it('should return null for non-existent encounter', async () => {
+      const { result } = renderHook(() => useEncounterDetails('encounter-999'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.encounter).toBeNull();
+      expect(result.current.error).toBeDefined();
+    });
+
+    it('should provide refetch function', async () => {
+      const { result } = renderHook(() => useEncounterDetails('encounter-1'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.refetch).toBeInstanceOf(Function);
+
+      const refetchResult = await result.current.refetch();
+      expect(refetchResult.data?.encounter?.id).toBe('encounter-1');
     });
   });
 });

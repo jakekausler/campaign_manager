@@ -3,6 +3,7 @@
  *
  * Tests the Event hooks with MSW-mocked GraphQL responses:
  * - useEventsByCampaign
+ * - useEventDetails
  */
 
 import { ApolloProvider } from '@apollo/client/react';
@@ -12,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 
-import { useEventsByCampaign } from './events';
+import { useEventsByCampaign, useEventDetails } from './events';
 
 // Create a wrapper component for Apollo Provider
 function createWrapper() {
@@ -167,6 +168,88 @@ describe('Event Hooks Integration Tests', () => {
       });
 
       expect(result.current.networkStatus).toBeDefined();
+    });
+  });
+
+  describe('useEventDetails', () => {
+    it('should fetch event details by ID', async () => {
+      const { result } = renderHook(() => useEventDetails('event-1'), {
+        wrapper: createWrapper(),
+      });
+
+      // Initially loading
+      expect(result.current.loading).toBe(true);
+      expect(result.current.event).toBeNull();
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Should have event details
+      expect(result.current.event).not.toBeNull();
+      expect(result.current.event?.id).toBe('event-1');
+      expect(result.current.event?.name).toBe('Royal Festival');
+      expect(result.current.event?.eventType).toBe('kingdom');
+      expect(result.current.event?.campaignId).toBe('campaign-1');
+    });
+
+    it('should include scheduling information', async () => {
+      const { result } = renderHook(() => useEventDetails('event-1'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.event?.isCompleted).toBe(true);
+      expect(result.current.event?.scheduledAt).toBe('2024-06-15T12:00:00.000Z');
+      expect(result.current.event?.occurredAt).toBe('2024-06-15T14:00:00.000Z');
+    });
+
+    it('should include variables', async () => {
+      const { result } = renderHook(() => useEventDetails('event-1'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.event?.variables).toBeDefined();
+      expect(result.current.event?.variables).toEqual({
+        attendees: 500,
+        revenue: 1200,
+      });
+    });
+
+    it('should return null for non-existent event', async () => {
+      const { result } = renderHook(() => useEventDetails('event-999'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.event).toBeNull();
+      expect(result.current.error).toBeDefined();
+    });
+
+    it('should provide refetch function', async () => {
+      const { result } = renderHook(() => useEventDetails('event-1'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.refetch).toBeInstanceOf(Function);
+
+      const refetchResult = await result.current.refetch();
+      expect(refetchResult.data?.event?.id).toBe('event-1');
     });
   });
 });
