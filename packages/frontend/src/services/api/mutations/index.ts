@@ -55,11 +55,26 @@ export { UPDATE_LOCATION_GEOMETRY, useUpdateLocationGeometry } from './locations
 export type { UpdateLocationGeometryInput, Location } from './locations';
 
 // Event mutations
-export { UPDATE_EVENT, useUpdateEvent } from './events';
+export { UPDATE_EVENT, COMPLETE_EVENT, useUpdateEvent, useCompleteEvent } from './events';
 
-export type { UpdateEventInput, Event } from './events';
+export type {
+  UpdateEventInput,
+  Event,
+  EventCompletionResult,
+  EffectExecutionSummary as EventEffectExecutionSummary,
+} from './events';
 
 // Encounter mutations
-export { UPDATE_ENCOUNTER, useUpdateEncounter } from './encounters';
+export {
+  UPDATE_ENCOUNTER,
+  RESOLVE_ENCOUNTER,
+  useUpdateEncounter,
+  useResolveEncounter,
+} from './encounters';
 
-export type { UpdateEncounterInput, Encounter } from './encounters';
+export type {
+  UpdateEncounterInput,
+  Encounter,
+  EncounterResolutionResult,
+  EffectExecutionSummary as EncounterEffectExecutionSummary,
+} from './encounters';

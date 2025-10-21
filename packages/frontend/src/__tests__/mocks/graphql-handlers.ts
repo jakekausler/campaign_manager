@@ -570,4 +570,105 @@ export const graphqlHandlers = [
       data: { entityAuditHistory: audits },
     });
   }),
+
+  // Event Mutations
+  graphql.mutation('CompleteEvent', ({ variables }) => {
+    const { id } = variables as { id: string };
+
+    // Simulate server error for "invalid-*" IDs
+    if (id.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Internal server error' }],
+      });
+    }
+
+    const event = mockEvents.find((e) => e.id === id);
+    if (!event) {
+      return HttpResponse.json({
+        errors: [{ message: 'Event not found' }],
+      });
+    }
+
+    // Mock completed event with effect execution summary
+    const completedEvent = {
+      ...event,
+      isCompleted: true,
+      occurredAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Mock effect execution summary for 3 phases
+    const mockEffectSummary = {
+      total: 3,
+      succeeded: 3,
+      failed: 0,
+      results: [
+        { effectId: 'effect-1', success: true, error: null },
+        { effectId: 'effect-2', success: true, error: null },
+        { effectId: 'effect-3', success: true, error: null },
+      ],
+      executionOrder: ['effect-1', 'effect-2', 'effect-3'],
+    };
+
+    return HttpResponse.json({
+      data: {
+        completeEvent: {
+          event: completedEvent,
+          pre: mockEffectSummary,
+          onResolve: mockEffectSummary,
+          post: mockEffectSummary,
+        },
+      },
+    });
+  }),
+
+  // Encounter Mutations
+  graphql.mutation('ResolveEncounter', ({ variables }) => {
+    const { id } = variables as { id: string };
+
+    // Simulate server error for "invalid-*" IDs
+    if (id.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Internal server error' }],
+      });
+    }
+
+    const encounter = mockEncounters.find((e) => e.id === id);
+    if (!encounter) {
+      return HttpResponse.json({
+        errors: [{ message: 'Encounter not found' }],
+      });
+    }
+
+    // Mock resolved encounter with effect execution summary
+    const resolvedEncounter = {
+      ...encounter,
+      isResolved: true,
+      resolvedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Mock effect execution summary for 3 phases
+    const mockEffectSummary = {
+      total: 2,
+      succeeded: 2,
+      failed: 0,
+      results: [
+        { effectId: 'effect-4', success: true, error: null },
+        { effectId: 'effect-5', success: true, error: null },
+      ],
+      executionOrder: ['effect-4', 'effect-5'],
+    };
+
+    return HttpResponse.json({
+      data: {
+        resolveEncounter: {
+          encounter: resolvedEncounter,
+          pre: mockEffectSummary,
+          onResolve: mockEffectSummary,
+          post: mockEffectSummary,
+        },
+      },
+    });
+  }),
 ];

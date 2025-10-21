@@ -127,3 +127,161 @@ export function useUpdateEncounter() {
     [updateEncounter, loading, error, data]
   );
 }
+
+/**
+ * EffectExecutionSummary - Summary of effects executed during a phase
+ */
+export interface EffectExecutionSummary {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: Array<{
+    effectId: string;
+    success: boolean;
+    error?: string | null;
+  }>;
+  executionOrder?: string[] | null;
+}
+
+/**
+ * EncounterResolutionResult - Result of resolving an encounter with effect execution
+ */
+export interface EncounterResolutionResult {
+  encounter: Encounter;
+  pre: EffectExecutionSummary;
+  onResolve: EffectExecutionSummary;
+  post: EffectExecutionSummary;
+}
+
+/**
+ * GraphQL mutation to resolve an encounter with 3-phase effect execution.
+ *
+ * Executes effects in order: PRE → ON_RESOLVE → POST
+ * Marks the encounter as resolved and sets resolvedAt timestamp.
+ */
+export const RESOLVE_ENCOUNTER = gql`
+  mutation ResolveEncounter($id: ID!) {
+    resolveEncounter(id: $id) {
+      encounter {
+        id
+        campaignId
+        locationId
+        name
+        description
+        difficulty
+        scheduledAt
+        isResolved
+        resolvedAt
+        variables
+        updatedAt
+      }
+      pre {
+        total
+        succeeded
+        failed
+        results {
+          effectId
+          success
+          error
+        }
+        executionOrder
+      }
+      onResolve {
+        total
+        succeeded
+        failed
+        results {
+          effectId
+          success
+          error
+        }
+        executionOrder
+      }
+      post {
+        total
+        succeeded
+        failed
+        results {
+          effectId
+          success
+          error
+        }
+        executionOrder
+      }
+    }
+  }
+`;
+
+/**
+ * Hook to resolve an encounter with automatic effect execution.
+ *
+ * Provides a mutation function to resolve an encounter, which triggers
+ * 3-phase effect execution (PRE → ON_RESOLVE → POST). The encounter is
+ * marked as resolved and the resolvedAt timestamp is set.
+ *
+ * @returns Object with resolveEncounter mutation function, loading state, error state, and result data
+ *
+ * @example
+ * ```tsx
+ * function EncounterResolution({ encounterId }: { encounterId: string }) {
+ *   const { resolveEncounter, loading, error, data } = useResolveEncounter();
+ *
+ *   const handleResolve = async () => {
+ *     try {
+ *       const result = await resolveEncounter(encounterId);
+ *       console.log(`Resolved encounter ${result.encounter.id}`);
+ *       console.log(`PRE: ${result.pre.succeeded}/${result.pre.total} effects succeeded`);
+ *       console.log(`ON_RESOLVE: ${result.onResolve.succeeded}/${result.onResolve.total} effects succeeded`);
+ *       console.log(`POST: ${result.post.succeeded}/${result.post.total} effects succeeded`);
+ *       toast.success('Encounter resolved successfully');
+ *     } catch (err) {
+ *       toast.error('Failed to resolve encounter');
+ *     }
+ *   };
+ *
+ *   return (
+ *     <button onClick={handleResolve} disabled={loading}>
+ *       {loading ? 'Resolving...' : 'Resolve Encounter'}
+ *     </button>
+ *   );
+ * }
+ * ```
+ */
+export function useResolveEncounter() {
+  const [mutate, { loading, error, data }] = useMutation<
+    { resolveEncounter: EncounterResolutionResult },
+    { id: string }
+  >(RESOLVE_ENCOUNTER, {
+    // Refetch queries that display encounters after resolution
+    refetchQueries: ['GetEncountersByCampaign', 'GetEncounterById'],
+    // Use network-only to ensure fresh data
+    fetchPolicy: 'network-only',
+  });
+
+  // Wrap mutation in a more convenient API
+  const resolveEncounter = useCallback(
+    async (id: string): Promise<EncounterResolutionResult> => {
+      const result = await mutate({
+        variables: { id },
+      });
+
+      if (!result.data) {
+        throw new Error('Failed to resolve encounter');
+      }
+
+      return result.data.resolveEncounter;
+    },
+    [mutate]
+  );
+
+  // Return memoized result
+  return useMemo(
+    () => ({
+      resolveEncounter,
+      loading,
+      error,
+      data: data?.resolveEncounter,
+    }),
+    [resolveEncounter, loading, error, data]
+  );
+}
