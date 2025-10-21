@@ -2,7 +2,7 @@ import { useRef, useCallback, useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { TimelineItem } from 'vis-timeline/types';
 
-import { ErrorBoundary } from '@/components';
+import { ErrorBoundary, SelectionInfo } from '@/components';
 import {
   Timeline,
   TimelineControls,
@@ -304,6 +304,23 @@ export default function TimelinePage() {
     }
   }, [selectedEntities, items]);
 
+  // Keyboard shortcuts for selection management
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Escape: clear selection
+      if (event.key === 'Escape') {
+        clearSelection();
+        // Also clear timeline visual selection
+        if (timelineRef.current) {
+          timelineRef.current.setSelection([]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [clearSelection]);
+
   // Show loading skeleton while fetching data
   if (loading) {
     return (
@@ -444,6 +461,9 @@ export default function TimelinePage() {
               <div className="text-sm font-medium">Rescheduling...</div>
             </div>
           )}
+
+          {/* Selection Info - shows selected entities count and list */}
+          <SelectionInfo />
         </div>
       </div>
     </div>

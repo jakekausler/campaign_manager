@@ -9,6 +9,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 
+import { SelectionInfo } from '@/components';
 import { EntityInspector } from '@/components/features/entity-inspector';
 import {
   VariableNode,
@@ -597,6 +598,9 @@ export default function FlowViewPage() {
             onClose={handleInspectorClose}
           />
         )}
+
+        {/* Selection Info - shows selected entities count and list */}
+        <SelectionInfo />
       </ReactFlowProvider>
     </div>
   );

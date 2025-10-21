@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
+import { SelectionInfo } from '@/components';
 import { EntityInspector } from '@/components/features/entity-inspector';
 import { Map, ViewportState } from '@/components/features/map';
 import { useSelectionStore, EntityType } from '@/stores';
@@ -31,7 +32,7 @@ export default function MapPage() {
   } | null>(null);
 
   // Selection store for cross-view synchronization
-  const { selectEntity, toggleSelection } = useSelectionStore();
+  const { selectEntity, toggleSelection, clearSelection } = useSelectionStore();
 
   // Handle entity selection from map
   // This function handles both local inspector state AND cross-view selection state
@@ -77,6 +78,19 @@ export default function MapPage() {
   const kingdomId = 'kingdom-placeholder-id';
   const campaignId = 'campaign-placeholder-id';
 
+  // Keyboard shortcuts for selection management
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Escape: clear selection
+      if (event.key === 'Escape') {
+        clearSelection();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [clearSelection]);
+
   return (
     <div className="h-screen flex flex-col">
       {/* Page header */}
@@ -115,6 +129,9 @@ export default function MapPage() {
           onClose={handleInspectorClose}
         />
       )}
+
+      {/* Selection Info - shows selected entities count and list */}
+      <SelectionInfo />
     </div>
   );
 }
