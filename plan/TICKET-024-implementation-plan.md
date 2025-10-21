@@ -101,42 +101,54 @@ Implement synchronized selection and highlighting across Map, Flow, and Timeline
 
 ---
 
-### Stage 3: Flow View Selection Integration ✅
+### Stage 3: Flow View Selection Integration ✅ COMPLETE
 
 **Goal**: Integrate selection state with FlowViewPage for all entity types
 
 **Tasks**:
 
-- [ ] Read current FlowViewPage implementation to understand node selection
-- [ ] Add `useSelectionStore()` hook to FlowViewPage component
-- [ ] Implement node click handlers:
+- [x] Read current FlowViewPage implementation to understand node selection
+- [x] Add `useSelectionStore()` hook to FlowViewPage component
+- [x] Implement node click handlers:
   - Single-click: select entity (update selection state based on node type)
   - Ctrl+click: toggle entity in multi-select
-- [ ] Map React Flow node types to EntityType:
-  - VariableNode → (determine if Settlement/Structure based on metadata)
-  - ConditionNode → (determine entity type)
-  - EffectNode → EVENT or ENCOUNTER (based on parent entity)
-  - EntityNode → SETTLEMENT or STRUCTURE
-- [ ] Add node highlighting for selected entities (border/background color)
-- [ ] Subscribe to selection state changes from other views
-- [ ] Implement auto-scroll/zoom to selected node when selection changes externally
-- [ ] Update SelectionPanel to show cross-view selection
-- [ ] Write integration tests for flow selection
+- [x] Map React Flow node types to EntityType:
+  - VariableNode → Not selectable (no entity metadata)
+  - ConditionNode → Not selectable (no entity metadata)
+  - EffectNode → SETTLEMENT, STRUCTURE, EVENT, or ENCOUNTER (based on metadata.entityType)
+  - EntityNode → SETTLEMENT or STRUCTURE (based on metadata.entityType)
+- [x] Add node highlighting for selected entities (uses existing applySelectionStyles)
+- [x] Subscribe to selection state changes from other views
+- [x] Implement auto-scroll/zoom to selected node when selection changes externally
+- [x] Update SelectionPanel to show cross-view selection (already working)
+- [x] Write integration tests for flow selection
 
 **Success Criteria**:
 
-- Clicking node updates global selection state
-- Flow highlights selected nodes with visual indicators
-- Flow auto-scrolls/zooms to node when selected from another view
-- Multi-select works with Ctrl+click
-- SelectionPanel reflects global selection state
+- ✅ Clicking node updates global selection state
+- ✅ Flow highlights selected nodes with visual indicators
+- ✅ Flow auto-scrolls/zooms to node when selected from another view
+- ✅ Multi-select works with Ctrl+click
+- ✅ SelectionPanel reflects global selection state
 
-**Notes**:
+**Implementation Notes**:
 
-- React Flow has built-in selection, sync with our global state
-- Use `reactFlowInstance.fitView()` or `setCenter()` for auto-scroll
-- Consider edge highlighting if both connected nodes are selected
-- Handle case where node represents a condition/effect (not a selectable entity)
+- Created `nodeToSelectedEntity()` function to map Flow nodes to SelectedEntity
+- EFFECT nodes extract entityType from metadata: "Settlement" → SETTLEMENT, "Structure" → STRUCTURE, etc.
+- ENTITY nodes also extract entityType from metadata
+- VARIABLE and CONDITION nodes return null (not selectable entities)
+- Bidirectional sync: Local clicks → global store, global changes → local selection
+- Echo prevention via `isLocalSelectionChange` ref to prevent infinite loops
+- Auto-scroll: single node uses `setCenter(x+75, y+30, { zoom: 1.5, duration: 500 })`
+- Auto-scroll: multiple nodes use `fitView({ nodes, duration: 500, padding: 0.2 })`
+- ReactFlowProvider wrapper enables programmatic control via reactFlowInstance ref
+- Highlighting reuses existing `applySelectionStyles()` from TICKET-021
+- Pane click and Escape key clear both local and global selection
+- Added 16 integration tests documenting all selection patterns
+- All 1,107 tests pass with proper TypeScript types
+- Code review approved with only optional performance improvements
+
+**Commit**: fce9730
 
 ---
 
