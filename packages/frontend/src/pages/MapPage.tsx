@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { EntityInspector } from '@/components/features/entity-inspector';
 import { Map, ViewportState } from '@/components/features/map';
+import { useSelectionStore, EntityType } from '@/stores';
 
 /**
  * Map page component (protected route)
@@ -29,10 +30,38 @@ export default function MapPage() {
     id: string;
   } | null>(null);
 
+  // Selection store for cross-view synchronization
+  const { selectEntity, toggleSelection } = useSelectionStore();
+
   // Handle entity selection from map
-  const handleEntitySelect = (type: 'settlement' | 'structure', id: string) => {
-    setSelectedEntity({ type, id });
-    setInspectorOpen(true);
+  // This function handles both local inspector state AND cross-view selection state
+  const handleEntitySelect = (
+    type: 'settlement' | 'structure',
+    id: string,
+    event?: { ctrlKey?: boolean; metaKey?: boolean },
+    metadata?: { locationId?: string; settlementId?: string }
+  ) => {
+    // Create SelectedEntity for cross-view synchronization
+    const entity = {
+      id,
+      type: type === 'settlement' ? EntityType.SETTLEMENT : EntityType.STRUCTURE,
+      metadata,
+    };
+
+    // Check if Ctrl/Cmd key is pressed for multi-select
+    const isMultiSelect = event?.ctrlKey || event?.metaKey;
+
+    if (isMultiSelect) {
+      // Multi-select: toggle entity in selection
+      toggleSelection(entity);
+      // Don't open inspector for multi-select
+    } else {
+      // Single-select: update global selection state
+      selectEntity(entity);
+      // Open inspector for single-select
+      setSelectedEntity({ type, id });
+      setInspectorOpen(true);
+    }
   };
 
   // Handle inspector close

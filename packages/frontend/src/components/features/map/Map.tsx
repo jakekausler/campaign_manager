@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
 import { useCurrentWorldTime } from '@/services/api/hooks';
 import { useUpdateLocationGeometry } from '@/services/api/mutations/locations';
-import { useCurrentBranchId } from '@/stores';
+import { useCurrentBranchId, useSelectedEntities, EntityType } from '@/stores';
 
 import { DrawControl } from './DrawControl';
 import { DrawToolbar } from './DrawToolbar';
@@ -82,8 +82,17 @@ interface MapProps {
   /**
    * Callback when an entity (settlement or structure) is selected (optional)
    * Called when user clicks on a settlement or structure marker
+   * @param type - Entity type ('settlement' or 'structure')
+   * @param id - Entity ID
+   * @param event - Mouse event data including modifier keys (ctrlKey, metaKey)
+   * @param metadata - Optional metadata (locationId for settlements, settlementId for structures)
    */
-  onEntitySelect?: (type: 'settlement' | 'structure', id: string) => void;
+  onEntitySelect?: (
+    type: 'settlement' | 'structure',
+    id: string,
+    event?: { ctrlKey?: boolean; metaKey?: boolean },
+    metadata?: { locationId?: string; settlementId?: string }
+  ) => void;
 }
 
 /**
@@ -269,6 +278,9 @@ export function Map({
     locationDataRef.current = locationMetadata;
   }, [locationMetadata]);
 
+  // Subscribe to selection state for cross-view synchronization
+  const selectedEntities = useSelectedEntities();
+
   // Entity popup management
   const { showPopup } = useEntityPopup(map.current);
 
@@ -389,7 +401,17 @@ export function Map({
       // If onEntitySelect callback is provided, use it instead of showing popup
       // This allows parent components to handle entity selection (e.g., open inspector)
       if (onEntitySelect) {
-        onEntitySelect('settlement', properties.id);
+        onEntitySelect(
+          'settlement',
+          properties.id,
+          {
+            ctrlKey: e.originalEvent.ctrlKey,
+            metaKey: e.originalEvent.metaKey,
+          },
+          {
+            locationId: properties.locationId,
+          }
+        );
         return;
       }
 
@@ -424,7 +446,17 @@ export function Map({
       // If onEntitySelect callback is provided, use it instead of showing popup
       // This allows parent components to handle entity selection (e.g., open inspector)
       if (onEntitySelect) {
-        onEntitySelect('structure', properties.id);
+        onEntitySelect(
+          'structure',
+          properties.id,
+          {
+            ctrlKey: e.originalEvent.ctrlKey,
+            metaKey: e.originalEvent.metaKey,
+          },
+          {
+            settlementId: properties.settlementId,
+          }
+        );
         return;
       }
 
@@ -536,6 +568,169 @@ export function Map({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [enableDrawing, drawActions]);
+
+  /**
+   * Update map highlighting when selection changes (cross-view synchronization)
+   */
+  useEffect(() => {
+    if (!map.current) return;
+
+    const mapInstance = map.current;
+
+    // Extract selected settlement and structure IDs
+    const selectedSettlementIds = selectedEntities
+      .filter((e) => e.type === EntityType.SETTLEMENT)
+      .map((e) => e.id);
+
+    const selectedStructureIds = selectedEntities
+      .filter((e) => e.type === EntityType.STRUCTURE)
+      .map((e) => e.id);
+
+    // Update settlement layer highlighting
+    // Use MapLibre's feature-state to highlight selected settlements
+    // This approach is more performant than recreating layers
+    if (mapInstance.getLayer('settlement-layer')) {
+      // Create filter expression for selected settlements
+      // Highlight settlement if its ID is in the selection array
+      const settlementFilter =
+        selectedSettlementIds.length > 0
+          ? ['in', ['get', 'id'], ['literal', selectedSettlementIds]]
+          : false;
+
+      // Set paint properties for highlighting
+      // Selected settlements: larger, blue border
+      // Unselected settlements: default size, white border
+      mapInstance.setPaintProperty('settlement-layer', 'circle-stroke-color', [
+        'case',
+        settlementFilter,
+        '#3b82f6', // Blue for selected
+        '#ffffff', // White for unselected
+      ]);
+
+      mapInstance.setPaintProperty('settlement-layer', 'circle-stroke-width', [
+        'case',
+        settlementFilter,
+        3, // Thicker border for selected
+        2, // Normal border for unselected
+      ]);
+
+      mapInstance.setPaintProperty('settlement-layer', 'circle-radius', [
+        'case',
+        settlementFilter,
+        10, // Larger circle for selected
+        8, // Normal size for unselected
+      ]);
+    }
+
+    // Update structure layer highlighting
+    if (mapInstance.getLayer('structure-layer')) {
+      // Create filter expression for selected structures
+      const structureFilter =
+        selectedStructureIds.length > 0
+          ? ['in', ['get', 'id'], ['literal', selectedStructureIds]]
+          : false;
+
+      // Set paint properties for highlighting
+      // Selected structures: larger, blue border
+      // Unselected structures: default size, white border
+      mapInstance.setPaintProperty('structure-layer', 'circle-stroke-color', [
+        'case',
+        structureFilter,
+        '#3b82f6', // Blue for selected
+        '#ffffff', // White for unselected
+      ]);
+
+      mapInstance.setPaintProperty('structure-layer', 'circle-stroke-width', [
+        'case',
+        structureFilter,
+        3, // Thicker border for selected
+        1, // Normal border for unselected
+      ]);
+
+      mapInstance.setPaintProperty('structure-layer', 'circle-radius', [
+        'case',
+        structureFilter,
+        8, // Larger circle for selected
+        6, // Normal size for unselected
+      ]);
+    }
+  }, [selectedEntities]);
+
+  /**
+   * Auto-pan to selected entity when selection changes from another view
+   * Uses metadata.locationId from selectedEntities to find coordinates
+   */
+  useEffect(() => {
+    if (!map.current || selectedEntities.length === 0) return;
+    if (!locations || locations.length === 0) return;
+
+    const mapInstance = map.current;
+
+    // Get the first selected settlement or structure
+    // For multi-select, we pan to show all selected entities
+    const selectedSettlementsAndStructures = selectedEntities.filter(
+      (e) => e.type === EntityType.SETTLEMENT || e.type === EntityType.STRUCTURE
+    );
+
+    if (selectedSettlementsAndStructures.length === 0) return;
+
+    // Extract location IDs from metadata
+    const locationIds = selectedSettlementsAndStructures
+      .map((e) => e.metadata?.locationId)
+      .filter((id): id is string => id !== undefined);
+
+    if (locationIds.length === 0) return;
+
+    // Find coordinates for these locations
+    const selectedLocations = locations.filter((loc) => locationIds.includes(loc.id));
+
+    if (selectedLocations.length === 0) return;
+
+    // Extract coordinates from locations
+    const coordinates: [number, number][] = [];
+    selectedLocations.forEach((loc) => {
+      if (loc.geoJson.type === 'Point') {
+        coordinates.push(loc.geoJson.coordinates as [number, number]);
+      } else if (loc.geoJson.type === 'Polygon') {
+        // For polygons, use the centroid (first coordinate of first ring)
+        const coords = loc.geoJson.coordinates[0];
+        if (coords && coords.length > 0) {
+          coordinates.push(coords[0] as [number, number]);
+        }
+      }
+    });
+
+    if (coordinates.length === 0) return;
+
+    // If single entity, fly to it
+    if (coordinates.length === 1) {
+      mapInstance.flyTo({
+        center: coordinates[0],
+        zoom: Math.max(mapInstance.getZoom(), 12), // Zoom in if needed
+        duration: 500, // 500ms animation
+      });
+    } else {
+      // If multiple entities, fit bounds to show all
+      const lngs = coordinates.map((c) => c[0]);
+      const lats = coordinates.map((c) => c[1]);
+
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+
+      mapInstance.fitBounds(
+        [
+          [minLng, minLat],
+          [maxLng, maxLat],
+        ],
+        {
+          padding: 50, // 50px padding around bounds
+          duration: 500, // 500ms animation
+        }
+      );
+    }
+  }, [selectedEntities, locations]);
 
   // Determine overall loading state
   const isLoading = timeLoading || locationsLoading || settlementsLoading;
