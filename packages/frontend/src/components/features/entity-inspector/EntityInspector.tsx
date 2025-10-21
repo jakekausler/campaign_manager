@@ -1,5 +1,6 @@
 import { ChevronLeft, Edit2, Save, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,6 +27,7 @@ import {
   useSettlementDetails,
   useStructureDetails,
 } from '@/services/api/hooks';
+import { useCompleteEvent, useResolveEncounter } from '@/services/api/mutations';
 
 import { ConditionsTab } from './ConditionsTab';
 import { EffectsTab } from './EffectsTab';
@@ -182,6 +184,13 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
     currentEntityId
   );
 
+  // Resolution mutation hooks
+  const { completeEvent, loading: completingEvent } = useCompleteEvent();
+  const { resolveEncounter, loading: resolvingEncounter } = useResolveEncounter();
+
+  // Combined loading state for resolution
+  const isResolving = completingEvent || resolvingEncounter;
+
   // Helper function to get the appropriate query based on entity type
   const getQuery = () => {
     switch (currentEntityType) {
@@ -212,6 +221,45 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
 
   const query = getQuery();
   const entity = getEntity();
+
+  /**
+   * Handle resolution confirmation
+   * Executes appropriate mutation based on entity type and handles success/error
+   */
+  const handleResolutionConfirm = useCallback(async () => {
+    if (!entity) return;
+
+    try {
+      let result;
+      if (currentEntityType === 'event') {
+        result = await completeEvent(currentEntityId);
+        if (result) {
+          toast.success('Event completed successfully', {
+            description: `Effects executed: ${result.pre.succeeded + result.onResolve.succeeded + result.post.succeeded}`,
+          });
+          // Close inspector after successful resolution
+          setShowResolutionDialog(false);
+          onClose();
+        }
+      } else if (currentEntityType === 'encounter') {
+        result = await resolveEncounter(currentEntityId);
+        if (result) {
+          toast.success('Encounter resolved successfully', {
+            description: `Effects executed: ${result.pre.succeeded + result.onResolve.succeeded + result.post.succeeded}`,
+          });
+          // Close inspector after successful resolution
+          setShowResolutionDialog(false);
+          onClose();
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error('Resolution failed', {
+        description: errorMessage,
+      });
+      // Keep dialog open on error to allow retry
+    }
+  }, [entity, currentEntityType, currentEntityId, completeEvent, resolveEncounter, onClose]);
 
   /**
    * Navigate to a related entity
@@ -368,7 +416,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
                           ? (entity as { isCompleted: boolean }).isCompleted
                           : (entity as { isResolved: boolean }).isResolved
                       }
-                      loading={false}
+                      loading={isResolving}
                       onClick={() => setShowResolutionDialog(true)}
                       className="h-8 px-2"
                     />
@@ -543,15 +591,11 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
           entityName={entity.name}
           effects={allEffects || []}
           validation={{ isValid: true, errors: [], warnings: [] }}
-          loading={false}
+          loading={isResolving}
           error={null}
           success={false}
           isOpen={showResolutionDialog}
-          onConfirm={() => {
-            // TODO: Will be implemented in Stage 6-7 with mutation hooks
-            console.log('Resolution confirmed - mutation will be added in Stage 6-7');
-            setShowResolutionDialog(false);
-          }}
+          onConfirm={handleResolutionConfirm}
           onCancel={() => setShowResolutionDialog(false)}
         />
       )}

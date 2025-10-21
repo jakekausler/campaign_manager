@@ -423,4 +423,124 @@ describe('EntityInspector', () => {
       );
     });
   });
+
+  describe('Resolution Workflow', () => {
+    it('should show resolution button for event entities', async () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="event"
+          entityId="event-2"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockEvents[1].name)).toBeInTheDocument();
+      });
+
+      // Should show "Complete Event" button
+      expect(screen.getByRole('button', { name: /Complete Event/i })).toBeInTheDocument();
+    });
+
+    it('should show resolution button for encounter entities', async () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="encounter"
+          entityId="encounter-2"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockEncounters[1].name)).toBeInTheDocument();
+      });
+
+      // Should show "Resolve Encounter" button
+      expect(screen.getByRole('button', { name: /Resolve Encounter/i })).toBeInTheDocument();
+    });
+
+    it('should not show resolution button for settlement entities', async () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="settlement"
+          entityId="settlement-1"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockSettlements[0].name)).toBeInTheDocument();
+      });
+
+      // Should NOT show resolution button
+      expect(screen.queryByRole('button', { name: /Complete|Resolve/i })).not.toBeInTheDocument();
+    });
+
+    it('should not show resolution button for structure entities', async () => {
+      renderWithApollo(
+        <EntityInspector
+          entityType="structure"
+          entityId="structure-1"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockStructures[0].name)).toBeInTheDocument();
+      });
+
+      // Should NOT show resolution button
+      expect(screen.queryByRole('button', { name: /Complete|Resolve/i })).not.toBeInTheDocument();
+    });
+
+    it('should disable resolution button for already completed events', async () => {
+      // event-1 is marked as completed in mock data
+      renderWithApollo(
+        <EntityInspector
+          entityType="event"
+          entityId="event-1"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockEvents[0].name)).toBeInTheDocument();
+      });
+
+      // Resolution button should be disabled and show "Event Completed"
+      const button = screen.getByRole('button', { name: /Event Completed/i });
+      expect(button).toBeDisabled();
+    });
+
+    it('should disable resolution button for already resolved encounters', async () => {
+      // encounter-1 is marked as resolved in mock data
+      renderWithApollo(
+        <EntityInspector
+          entityType="encounter"
+          entityId="encounter-1"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockEncounters[0].name)).toBeInTheDocument();
+      });
+
+      // Resolution button should be disabled and show "Encounter Resolved"
+      const button = screen.getByRole('button', { name: /Encounter Resolved/i });
+      expect(button).toBeDisabled();
+    });
+  });
 });
