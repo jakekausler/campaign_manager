@@ -1418,6 +1418,105 @@ Events/encounters mutate world state when they resolve using JSON Patch operatio
 
 ---
 
+## Cross-View Selection
+
+Synchronized entity selection and highlighting across Map, Flow, and Timeline views with auto-scroll/pan. See [detailed documentation](docs/features/cross-view-selection.md).
+
+**Quick Reference:**
+
+- State: `selection-slice.ts` in `packages/frontend/src/stores/`
+- Component: `SelectionInfo` in `packages/frontend/src/components/`
+- Integration: MapPage, FlowViewPage, TimelinePage
+- Entity Types: Settlement, Structure, Event, Encounter
+- Key Features:
+  - **Single Selection**: Click entity to select, syncs across all views
+  - **Multi-Select**: Ctrl+Click to add/toggle entities
+  - **Auto-Scroll**: Views pan/scroll to show selected entity (500ms animation)
+  - **Parent Highlighting**: Structures show parent Settlement on map (purple vs. blue)
+  - **Selection Info Panel**: Bottom-right panel with entity count, names, and clear button
+  - **Keyboard Shortcuts**: Escape to clear, Ctrl+Click for multi-select
+- User Interactions:
+  - **Map**: Single-click selects + opens inspector, Ctrl+click multi-selects
+  - **Flow**: Single-click selects, Ctrl+click toggles, pane click clears
+  - **Timeline**: Single-click selects, Ctrl+click toggles, Shift+click range select (native)
+  - **Clearing**: Escape key (all views), empty space click (Map/Flow), Clear button (Selection Info)
+- Visual Indicators:
+  - Primary selection: Blue border (#3b82f6, 80% opacity, 11px radius)
+  - Parent Settlement: Purple border (#a855f7, 60% opacity, 9px radius)
+  - Entity badges: Settlement (purple), Structure (blue), Event (green), Encounter (orange)
+- Performance: All operations <100ms for 100 entities, tested with performance test suite
+- Accessibility: WCAG 2.1 Level AA compliant, full keyboard navigation, screen reader support
+- Implementation: TICKET-024 (Commits: 4fb08aa, a97f37b, fce9730, e1b4a20, cb11034, 134e0cc, 126c265, [Stage 8 TBD])
+
+**Integration Pattern**:
+
+```typescript
+import { useSelectionStore, EntityType } from '@/stores';
+import { SelectionInfo } from '@/components';
+
+// Subscribe to selection state
+const selectedEntities = useSelectionStore((state) => state.selectedEntities);
+const selectEntity = useSelectionStore((state) => state.selectEntity);
+const toggleSelection = useSelectionStore((state) => state.toggleSelection);
+const clearSelection = useSelectionStore((state) => state.clearSelection);
+
+// Handle entity click
+const handleClick = (entity, event) => {
+  if (event.ctrlKey || event.metaKey) {
+    toggleSelection({ id: entity.id, type: EntityType.SETTLEMENT, name: entity.name });
+  } else {
+    selectEntity({ id: entity.id, type: EntityType.SETTLEMENT, name: entity.name });
+  }
+};
+
+// Add SelectionInfo panel to your view
+<SelectionInfo />
+```
+
+**Escape Key Handler**:
+
+```typescript
+useEffect(() => {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') clearSelection();
+  };
+  window.addEventListener('keydown', handleKeyDown);
+  return () => window.removeEventListener('keydown', handleKeyDown);
+}, [clearSelection]);
+```
+
+**Auto-Scroll Implementation**:
+
+```typescript
+// Map view
+useEffect(() => {
+  if (selectedEntities.length === 0) return;
+  const coords = selectedEntities[0].metadata?.locationId; // get coords
+  if (coords) map.flyTo({ center: coords, zoom: 12, duration: 500 });
+}, [selectedEntities]);
+
+// Flow view
+useEffect(() => {
+  if (selectedEntities.length === 0) return;
+  const nodes = selectedEntities.map(e => /* find node by e.id */);
+  if (nodes.length === 1) {
+    const [x, y] = [nodes[0].position.x, nodes[0].position.y];
+    reactFlowInstance.setCenter(x + 75, y + 30, { zoom: 1.5, duration: 500 });
+  } else {
+    reactFlowInstance.fitView({ nodes, duration: 500, padding: 0.2 });
+  }
+}, [selectedEntities]);
+
+// Timeline view
+useEffect(() => {
+  if (selectedEntities.length === 0) return;
+  const timestamp = selectedEntities[0].metadata?.scheduledAt;
+  if (timestamp) timeline.moveTo(timestamp, { animation: true });
+}, [selectedEntities]);
+```
+
+---
+
 ## Quick Reference Card
 
 ### Most Common Commands
