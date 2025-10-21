@@ -4,6 +4,10 @@
 
 - [ ] Completed
 - **Commits**:
+  - Stage 1: 50c5d1e (EventPanel and EncounterPanel components)
+  - Stage 2: 449d0e9 (GraphQL hooks for Event and Encounter detail queries)
+  - Stage 3: e1daa41 (EntityInspector extension for Event/Encounter types)
+  - Stage 4: 4edfcfe (EntityInspector integration with TimelinePage)
 
 ## Description
 
