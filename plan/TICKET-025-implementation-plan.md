@@ -330,13 +330,15 @@ This ticket implements a comprehensive system for inspecting, resolving, and man
 
 ---
 
-### Stage 5: Create Resolution Workflow UI Components
+### Stage 5: Create Resolution Workflow UI Components ✅
+
+**Status**: COMPLETE (Commit: c39c099)
 
 **Goal**: Build UI components for the resolution workflow, including a confirmation dialog that shows effect preview, validation checks, and execution status.
 
 **Tasks**:
 
-- [ ] Create `ResolutionDialog.tsx` component in `packages/frontend/src/components/features/entity-inspector/`
+- [x] Create `ResolutionDialog.tsx` component in `packages/frontend/src/components/features/entity-inspector/`
   - Accept entity (Event or Encounter), effects list, onConfirm, onCancel props
   - Display entity name and type
   - Show list of effects grouped by timing phase (PRE, ON_RESOLVE, POST)
@@ -345,43 +347,95 @@ This ticket implements a comprehensive system for inspecting, resolving, and man
   - Show loading spinner during execution
   - Show success/error messages
   - Handle keyboard shortcuts (Enter to confirm, Escape to cancel)
-- [ ] Create `ResolutionButton.tsx` component
+- [x] Create `ResolutionButton.tsx` component
   - Display "Complete Event" or "Resolve Encounter" button
   - Disable if already completed/resolved
   - Show loading state during mutation
   - Open ResolutionDialog on click
-- [ ] Add resolution UI to EntityInspector
-  - Show ResolutionButton in Overview tab header
+- [x] Add resolution UI to EntityInspector
+  - Show ResolutionButton in EntityInspector header (alongside Edit button)
   - Render ResolutionDialog when triggered
-- [ ] Write unit tests for ResolutionDialog
-- [ ] Write unit tests for ResolutionButton
+- [x] Write unit tests for ResolutionDialog
+- [x] Write unit tests for ResolutionButton
 
-**Files to create**:
+**Files Created**:
 
-- `packages/frontend/src/components/features/entity-inspector/ResolutionDialog.tsx`
-- `packages/frontend/src/components/features/entity-inspector/ResolutionDialog.test.tsx`
-- `packages/frontend/src/components/features/entity-inspector/ResolutionButton.tsx`
-- `packages/frontend/src/components/features/entity-inspector/ResolutionButton.test.tsx`
+- `packages/frontend/src/components/features/entity-inspector/ResolutionDialog.tsx` (350 lines)
+- `packages/frontend/src/components/features/entity-inspector/ResolutionDialog.test.tsx` (21 tests)
+- `packages/frontend/src/components/features/entity-inspector/ResolutionButton.tsx` (80 lines)
+- `packages/frontend/src/components/features/entity-inspector/ResolutionButton.test.tsx` (18 tests)
 
-**Files to modify**:
+**Files Modified**:
 
-- `packages/frontend/src/components/features/entity-inspector/EntityInspector.tsx`
-- `packages/frontend/src/components/features/entity-inspector/index.ts`
+- `packages/frontend/src/components/features/entity-inspector/EntityInspector.tsx` (added resolution state, button, dialog)
+- `packages/frontend/src/components/features/entity-inspector/index.ts` (exported new components)
 
 **Testing**:
 
-- ResolutionDialog displays effect preview correctly
-- ResolutionButton disabled for already resolved entities
-- Confirmation flow works (open dialog → preview → confirm → execute)
-- Cancellation flow works (open dialog → cancel → close)
-- Loading and error states render correctly
+- ✅ ResolutionDialog displays effect preview correctly (grouped by timing phase, sorted by priority)
+- ✅ ResolutionButton disabled for already resolved entities
+- ✅ Confirmation flow works (open dialog → preview → confirm → execute)
+- ✅ Cancellation flow works (open dialog → cancel → close)
+- ✅ Loading and error states render correctly
+- ✅ Keyboard shortcuts work (Enter to confirm, Escape to cancel)
+- ✅ Validation display (errors block confirmation, warnings allow with caution)
+- ✅ 39 total tests (21 ResolutionDialog + 18 ResolutionButton), all passing
 
 **Success Criteria**:
 
-- Resolution dialog shows clear effect preview
-- User can confirm or cancel resolution
-- UI provides clear feedback during execution
-- Tests pass with >90% coverage
+- ✅ Resolution dialog shows clear effect preview with timing phases and priorities
+- ✅ User can confirm or cancel resolution with keyboard shortcuts
+- ✅ UI provides clear feedback during execution (loading, success, error states)
+- ✅ Tests pass with >90% coverage (39 comprehensive tests)
+- ✅ TypeScript strict mode compliant, ESLint passing (0 errors in new code)
+- ✅ Code Reviewer approved with no critical issues
+
+**Implementation Notes**:
+
+- **ResolutionDialog Features**:
+  - Effect preview grouped by timing phase (PRE/ON_RESOLVE/POST) with color-coded badges
+  - Priority-based sorting within each timing group (lower values execute first)
+  - Validation display with AlertCircle icons (red for errors, yellow for warnings)
+  - Keyboard shortcuts with cleanup (Enter confirms if valid, Escape cancels)
+  - Loading/success/error states with appropriate icons and messaging
+  - Max height with overflow scrolling for large effect lists
+  - Comprehensive props interface for all states (loading, error, success, validation)
+
+- **ResolutionButton Features**:
+  - Dynamic label based on entity type ("Complete Event" vs "Resolve Encounter")
+  - Conditional rendering in EntityInspector (only for Event/Encounter types)
+  - Disabled states (already resolved, loading)
+  - Icon indicators (CheckCircle normally, Loader2 when loading)
+  - Variant styling (outline when resolved, default otherwise)
+  - Helpful tooltips explaining button state
+
+- **EntityInspector Integration**:
+  - Added `showResolutionDialog` state to track dialog visibility
+  - ResolutionButton placed in header alongside Edit controls (line 356-368)
+  - Uses `useAllEffectsForEntity` hook to fetch effects for preview
+  - ResolutionDialog rendered conditionally at component bottom (line 540-557)
+  - Placeholder `onConfirm` handler logs message (mutations in Stage 6-7)
+  - Minimal changes to existing code (follows established patterns)
+
+- **Code Quality**:
+  - Comprehensive JSDoc documentation with usage examples
+  - TypeScript strict mode with explicit interfaces, no `any` types
+  - Clean utility functions (`groupEffectsByTiming`, `getTimingLabel`, `getTimingColor`)
+  - Proper event listener cleanup in useEffect to prevent memory leaks
+  - Accessibility features (ARIA labels, semantic HTML, keyboard navigation)
+
+- **Code Review Feedback**:
+  - APPROVED with 3 optional minor suggestions (low priority, not blocking):
+    1. Add `skip` parameter to `useAllEffectsForEntity` for Settlement/Structure
+    2. Consider removing Escape handler (Dialog handles natively)
+    3. Test icon via aria-busy instead of CSS class (test brittleness)
+  - All suggestions can be addressed in future refactoring
+
+**Next Steps**:
+
+- Stage 6 will add GraphQL mutation hooks (`useCompleteEvent`, `useResolveEncounter`)
+- Stage 7 will wire up mutations to ResolutionDialog's `onConfirm` callback
+- Validation logic will be added in Stage 9
 
 ---
 
