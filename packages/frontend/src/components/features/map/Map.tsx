@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type MapboxDraw from 'maplibre-gl-draw';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
-import { useCurrentWorldTime } from '@/services/api/hooks';
+import { useCurrentWorldTime, useSettlementDetails } from '@/services/api/hooks';
 import { useUpdateLocationGeometry } from '@/services/api/mutations/locations';
 import { useCurrentBranchId, useSelectedEntities, EntityType } from '@/stores';
 
@@ -280,6 +280,26 @@ export function Map({
 
   // Subscribe to selection state for cross-view synchronization
   const selectedEntities = useSelectedEntities();
+
+  // Extract parent settlement IDs from selected structures for highlighting
+  // When a Structure is selected, we want to highlight its parent Settlement
+  const parentSettlementIds = useMemo(() => {
+    return selectedEntities
+      .filter((e) => e.type === EntityType.STRUCTURE && e.metadata?.settlementId)
+      .map((e) => e.metadata!.settlementId!);
+  }, [selectedEntities]);
+
+  // Query parent settlement details to get location for highlighting and auto-pan
+  // Only query the first parent settlement ID (for single-select or first in multi-select)
+  // Skip query if no parent settlement IDs or if the parent is already directly selected
+  const parentSettlementId = parentSettlementIds[0] ?? null;
+  const isParentAlreadySelected = parentSettlementId
+    ? selectedEntities.some((e) => e.type === EntityType.SETTLEMENT && e.id === parentSettlementId)
+    : false;
+
+  const { settlement: parentSettlement } = useSettlementDetails(parentSettlementId ?? '', {
+    skip: !parentSettlementId || isParentAlreadySelected,
+  });
 
   // Entity popup management
   const { showPopup } = useEntityPopup(map.current);
@@ -586,43 +606,70 @@ export function Map({
       .filter((e) => e.type === EntityType.STRUCTURE)
       .map((e) => e.id);
 
+    // Extract parent settlement IDs from selected structures
+    // These will be highlighted with a secondary (dashed) style
+    const parentIds = selectedEntities
+      .filter((e) => e.type === EntityType.STRUCTURE && e.metadata?.settlementId)
+      .map((e) => e.metadata!.settlementId!)
+      .filter((id) => !selectedSettlementIds.includes(id)); // Don't double-highlight already-selected settlements
+
     // Update settlement layer highlighting
-    // Use MapLibre's feature-state to highlight selected settlements
-    // This approach is more performant than recreating layers
+    // Three states: primary selected (solid blue), parent highlighted (dashed border), default (white)
     if (mapInstance.getLayer('settlement-layer')) {
-      // Create filter expression for selected settlements
-      // Highlight settlement if its ID is in the selection array
-      const settlementFilter =
+      // Primary selection filter (directly selected settlements)
+      const primarySelectionFilter =
         selectedSettlementIds.length > 0
           ? ['in', ['get', 'id'], ['literal', selectedSettlementIds]]
           : false;
 
-      // Set paint properties for highlighting
-      // Selected settlements: larger, blue border
-      // Unselected settlements: default size, white border
+      // Parent selection filter (parent settlements of selected structures)
+      const parentSelectionFilter =
+        parentIds.length > 0 ? ['in', ['get', 'id'], ['literal', parentIds]] : false;
+
+      // Set paint properties for highlighting with three states
+      // Primary selected: solid blue border, larger
+      // Parent highlighted: dashed purple border, slightly larger
+      // Default: white border, normal size
       mapInstance.setPaintProperty('settlement-layer', 'circle-stroke-color', [
         'case',
-        settlementFilter,
-        '#3b82f6', // Blue for selected
+        primarySelectionFilter,
+        '#3b82f6', // Blue for primary selection
+        parentSelectionFilter,
+        '#a855f7', // Purple for parent highlighting
         '#ffffff', // White for unselected
       ]);
 
       mapInstance.setPaintProperty('settlement-layer', 'circle-stroke-width', [
         'case',
-        settlementFilter,
-        3, // Thicker border for selected
+        primarySelectionFilter,
+        3, // Thicker border for primary selection
+        parentSelectionFilter,
+        2.5, // Medium border for parent
         2, // Normal border for unselected
       ]);
 
       mapInstance.setPaintProperty('settlement-layer', 'circle-radius', [
         'case',
-        settlementFilter,
-        10, // Larger circle for selected
+        primarySelectionFilter,
+        10, // Larger circle for primary selection
+        parentSelectionFilter,
+        9, // Slightly larger for parent
         8, // Normal size for unselected
+      ]);
+
+      // Add dash array for parent highlighting to visually distinguish it
+      // Note: MapLibre doesn't support dashed circles, so we use opacity instead
+      mapInstance.setPaintProperty('settlement-layer', 'circle-opacity', [
+        'case',
+        primarySelectionFilter,
+        0.8, // Normal opacity for primary selection
+        parentSelectionFilter,
+        0.6, // Slightly transparent for parent highlighting
+        0.6, // Normal opacity for unselected
       ]);
     }
 
-    // Update structure layer highlighting
+    // Update structure layer highlighting (unchanged from original implementation)
     if (mapInstance.getLayer('structure-layer')) {
       // Create filter expression for selected structures
       const structureFilter =
@@ -659,6 +706,7 @@ export function Map({
   /**
    * Auto-pan to selected entity when selection changes from another view
    * Uses metadata.locationId from selectedEntities to find coordinates
+   * Also includes parent Settlement location when a Structure is selected
    */
   useEffect(() => {
     if (!map.current || selectedEntities.length === 0) return;
@@ -678,6 +726,12 @@ export function Map({
     const locationIds = selectedSettlementsAndStructures
       .map((e) => e.metadata?.locationId)
       .filter((id): id is string => id !== undefined);
+
+    // If a Structure is selected and we have parent Settlement data, include its location too
+    // This ensures the map pans to show both the Structure and its parent Settlement
+    if (parentSettlement?.location?.id && !isParentAlreadySelected) {
+      locationIds.push(parentSettlement.location.id);
+    }
 
     if (locationIds.length === 0) return;
 
@@ -709,7 +763,8 @@ export function Map({
 
     if (coordinates.length === 0) return;
 
-    // If single entity, fly to it
+    // If single entity selected without parent, fly to it
+    // If Structure with parent OR multiple entities, fit bounds to show all
     if (coordinates.length === 1) {
       mapInstance.flyTo({
         center: coordinates[0],
@@ -717,7 +772,7 @@ export function Map({
         duration: 500, // 500ms animation
       });
     } else {
-      // If multiple entities, fit bounds to show all
+      // If multiple entities (including parent Settlement), fit bounds to show all
       const lngs = coordinates.map((c) => c[0]);
       const lats = coordinates.map((c) => c[1]);
 
@@ -737,7 +792,7 @@ export function Map({
         }
       );
     }
-  }, [selectedEntities, locations]);
+  }, [selectedEntities, locations, parentSettlement, isParentAlreadySelected]);
 
   // Determine overall loading state
   const isLoading = timeLoading || locationsLoading || settlementsLoading;

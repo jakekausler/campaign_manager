@@ -16,6 +16,15 @@ vi.mock('@/stores', async (importOriginal) => {
   };
 });
 
+// Mock the settlement details hook
+vi.mock('@/services/api/hooks', () => ({
+  useSettlementDetails: vi.fn(() => ({
+    settlement: null,
+    loading: false,
+    error: null,
+  })),
+}));
+
 describe('SelectionInfo', () => {
   const mockClearSelection = vi.fn();
 
@@ -381,6 +390,138 @@ describe('SelectionInfo', () => {
       render(<SelectionInfo />);
       expect(screen.getByText(/Press.*to clear selection/)).toBeInTheDocument();
       expect(screen.getByText('Esc')).toBeInTheDocument();
+    });
+  });
+
+  describe('Parent Settlement (Stage 7)', () => {
+    it('should display parent settlement info for selected structure', async () => {
+      const { useSettlementDetails } = await import('@/services/api/hooks');
+
+      // Mock settlement details hook to return parent settlement
+      vi.mocked(useSettlementDetails).mockReturnValue({
+        settlement: {
+          id: 'settlement-1',
+          name: 'Waterdeep',
+          level: 3,
+          campaignId: 'campaign-1',
+          kingdomId: 'kingdom-1',
+          locationId: 'location-1',
+          ownerId: 'user-1',
+          x: 100,
+          y: 150,
+          z: 0,
+          isArchived: false,
+          archivedAt: null,
+          createdAt: '2024-01-01T00:00:00.000Z',
+          updatedAt: '2024-01-01T00:00:00.000Z',
+          computedFields: {},
+        },
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      vi.mocked(stores.useSelectionStore).mockReturnValue({
+        selectedEntities: [
+          {
+            id: 'structure-1',
+            type: EntityType.STRUCTURE,
+            name: 'Blacksmith',
+            metadata: {
+              settlementId: 'settlement-1',
+            },
+          },
+        ],
+        clearSelection: mockClearSelection,
+        selectEntity: vi.fn(),
+        addToSelection: vi.fn(),
+        removeFromSelection: vi.fn(),
+        toggleSelection: vi.fn(),
+      });
+
+      render(<SelectionInfo />);
+
+      // Should show structure name
+      expect(screen.getByText('Blacksmith')).toBeInTheDocument();
+
+      // Should show parent settlement info
+      expect(screen.getByText(/in/)).toBeInTheDocument();
+      expect(screen.getByText('Waterdeep')).toBeInTheDocument();
+    });
+
+    it('should not display parent settlement info when structure has no parent metadata', () => {
+      vi.mocked(stores.useSelectionStore).mockReturnValue({
+        selectedEntities: [
+          {
+            id: 'structure-1',
+            type: EntityType.STRUCTURE,
+            name: 'Blacksmith',
+            // No metadata
+          },
+        ],
+        clearSelection: mockClearSelection,
+        selectEntity: vi.fn(),
+        addToSelection: vi.fn(),
+        removeFromSelection: vi.fn(),
+        toggleSelection: vi.fn(),
+      });
+
+      render(<SelectionInfo />);
+
+      // Should show structure name
+      expect(screen.getByText('Blacksmith')).toBeInTheDocument();
+
+      // Should NOT show parent settlement info
+      expect(screen.queryByText(/in/)).not.toBeInTheDocument();
+    });
+
+    it('should not query parent settlement when parent is already selected', async () => {
+      const { useSettlementDetails } = await import('@/services/api/hooks');
+
+      vi.mocked(useSettlementDetails).mockReturnValue({
+        settlement: null,
+        loading: false,
+        error: undefined,
+        refetch: vi.fn(),
+        networkStatus: 7,
+      });
+
+      vi.mocked(stores.useSelectionStore).mockReturnValue({
+        selectedEntities: [
+          // Parent settlement already selected
+          {
+            id: 'settlement-1',
+            type: EntityType.SETTLEMENT,
+            name: 'Waterdeep',
+          },
+          // Structure with same parent
+          {
+            id: 'structure-1',
+            type: EntityType.STRUCTURE,
+            name: 'Blacksmith',
+            metadata: {
+              settlementId: 'settlement-1',
+            },
+          },
+        ],
+        clearSelection: mockClearSelection,
+        selectEntity: vi.fn(),
+        addToSelection: vi.fn(),
+        removeFromSelection: vi.fn(),
+        toggleSelection: vi.fn(),
+      });
+
+      render(<SelectionInfo />);
+
+      // Should show both entities
+      expect(screen.getByText('Waterdeep')).toBeInTheDocument();
+      expect(screen.getByText('Blacksmith')).toBeInTheDocument();
+
+      // Hook should be called with skip: true
+      expect(useSettlementDetails).toHaveBeenCalledWith('settlement-1', {
+        skip: true,
+      });
     });
   });
 });

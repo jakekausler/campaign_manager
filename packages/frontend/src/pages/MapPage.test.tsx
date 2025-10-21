@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import { renderWithApollo } from '@/__tests__/utils/test-utils';
 import { useSelectionStore } from '@/stores';
 
 import MapPage from './MapPage';
@@ -65,50 +66,50 @@ describe('MapPage', () => {
     });
   });
   it('should render page header with title', () => {
-    render(<MapPage />);
+    renderWithApollo(<MapPage />);
 
     expect(screen.getByRole('heading', { name: /campaign map/i })).toBeInTheDocument();
     expect(screen.getByText(/interactive view of your campaign world/i)).toBeInTheDocument();
   });
 
   it('should render Map component', () => {
-    render(<MapPage />);
+    renderWithApollo(<MapPage />);
 
     expect(screen.getByTestId('map-component')).toBeInTheDocument();
   });
 
   it('should pass initial center [0, 0] to Map', () => {
-    render(<MapPage />);
+    renderWithApollo(<MapPage />);
 
     expect(screen.getByTestId('map-initial-center')).toHaveTextContent('[0,0]');
   });
 
   it('should pass initial zoom 2 to Map', () => {
-    render(<MapPage />);
+    renderWithApollo(<MapPage />);
 
     expect(screen.getByTestId('map-initial-zoom')).toHaveTextContent('2');
   });
 
   it('should pass placeholder worldId to Map', () => {
-    render(<MapPage />);
+    renderWithApollo(<MapPage />);
 
     expect(screen.getByTestId('map-world-id')).toHaveTextContent('world-placeholder-id');
   });
 
   it('should pass placeholder kingdomId to Map', () => {
-    render(<MapPage />);
+    renderWithApollo(<MapPage />);
 
     expect(screen.getByTestId('map-kingdom-id')).toHaveTextContent('kingdom-placeholder-id');
   });
 
   it('should pass placeholder campaignId to Map', () => {
-    render(<MapPage />);
+    renderWithApollo(<MapPage />);
 
     expect(screen.getByTestId('map-campaign-id')).toHaveTextContent('campaign-placeholder-id');
   });
 
   it('should render footer with viewport info', () => {
-    render(<MapPage />);
+    renderWithApollo(<MapPage />);
 
     // Footer contains initial viewport info (from state initialization)
     const footer = screen.getByRole('contentinfo');
@@ -119,28 +120,28 @@ describe('MapPage', () => {
   });
 
   it('should have full-screen flex layout', () => {
-    const { container } = render(<MapPage />);
+    const { container } = renderWithApollo(<MapPage />);
 
     const mainContainer = container.firstChild as HTMLElement;
     expect(mainContainer).toHaveClass('h-screen', 'flex', 'flex-col');
   });
 
   it('should have header with proper styling', () => {
-    render(<MapPage />);
+    renderWithApollo(<MapPage />);
 
     const header = screen.getByRole('banner');
     expect(header).toHaveClass('bg-white', 'border-b', 'border-gray-200');
   });
 
   it('should have main content area with flex-1', () => {
-    const { container } = render(<MapPage />);
+    const { container } = renderWithApollo(<MapPage />);
 
     const main = container.querySelector('main');
     expect(main).toHaveClass('flex-1', 'relative');
   });
 
   it('should have footer with proper styling', () => {
-    render(<MapPage />);
+    renderWithApollo(<MapPage />);
 
     const footer = screen.getByRole('contentinfo');
     expect(footer).toHaveClass('bg-white', 'border-t', 'border-gray-200');
@@ -148,7 +149,7 @@ describe('MapPage', () => {
 
   describe('Selection Integration (TICKET-024)', () => {
     it('should call selectEntity when settlement clicked without modifier keys', async () => {
-      render(<MapPage />);
+      renderWithApollo(<MapPage />);
 
       // Simulate settlement click (no modifier keys)
       if (mockOnEntitySelect) {
@@ -171,7 +172,7 @@ describe('MapPage', () => {
     });
 
     it('should call toggleSelection when settlement clicked with Ctrl key', async () => {
-      render(<MapPage />);
+      renderWithApollo(<MapPage />);
 
       // Simulate settlement Ctrl+click
       if (mockOnEntitySelect) {
@@ -194,7 +195,7 @@ describe('MapPage', () => {
     });
 
     it('should call toggleSelection when settlement clicked with Cmd key (Mac)', async () => {
-      render(<MapPage />);
+      renderWithApollo(<MapPage />);
 
       // Simulate settlement Cmd+click (Mac)
       if (mockOnEntitySelect) {
@@ -217,7 +218,7 @@ describe('MapPage', () => {
     });
 
     it('should call selectEntity when structure clicked without modifier keys', async () => {
-      render(<MapPage />);
+      renderWithApollo(<MapPage />);
 
       // Simulate structure click (no modifier keys)
       if (mockOnEntitySelect) {
@@ -240,7 +241,7 @@ describe('MapPage', () => {
     });
 
     it('should call toggleSelection when structure clicked with Ctrl key', async () => {
-      render(<MapPage />);
+      renderWithApollo(<MapPage />);
 
       // Simulate structure Ctrl+click
       if (mockOnEntitySelect) {
@@ -263,7 +264,7 @@ describe('MapPage', () => {
     });
 
     it('should pass onEntitySelect callback to Map component', () => {
-      render(<MapPage />);
+      renderWithApollo(<MapPage />);
 
       // Verify the callback was captured
       expect(mockOnEntitySelect).toBeDefined();
