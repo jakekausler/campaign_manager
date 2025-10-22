@@ -62,13 +62,13 @@ export default defineConfig({
     pool: 'forks',
     poolOptions: {
       forks: {
-        // Use multiple forks to distribute memory load
-        singleFork: false,
+        // Use single fork to minimize memory overhead
+        singleFork: true,
         minForks: 1,
-        maxForks: 2, // Use only 2 forks to give each fork maximum memory
-        // Significantly increase memory limit per fork (8GB per fork)
+        maxForks: 1, // Single fork only
+        // 3GB per fork (safe for 7GB CI runners)
         // This allows headroom for memory-intensive test files
-        execArgv: ['--max-old-space-size=8192', '--expose-gc'],
+        execArgv: ['--max-old-space-size=3072', '--expose-gc'],
       },
     },
     // Ensure proper cleanup between tests
