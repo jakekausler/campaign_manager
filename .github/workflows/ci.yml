@@ -44,8 +44,8 @@ jobs:
       - name: Type check
         run: pnpm run type-check
 
-  test:
-    name: Run Tests
+  test-backend:
+    name: Backend Tests (API, Rules Engine, Scheduler)
     runs-on: ubuntu-latest
 
     services:
@@ -93,8 +93,142 @@ jobs:
       - name: Run database migrations
         run: pnpm --filter @campaign/api exec prisma migrate deploy
 
-      - name: Run tests
-        run: pnpm run test
+      - name: Run backend tests
+        run: |
+          pnpm --filter @campaign/api test
+          pnpm --filter @campaign/rules-engine test
+          pnpm --filter @campaign/scheduler test
+          pnpm --filter @campaign/shared test
+
+  test-frontend-unit:
+    name: Frontend Tests - Unit (Stores, Utils, Hooks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @campaign/shared build
+
+      - name: Run unit tests
+        run: |
+          pnpm --filter @campaign/frontend test -- \
+            stores/ \
+            utils/ \
+            services/api/hooks/ \
+            services/api/mutations/ \
+            hooks/
+
+  test-frontend-map:
+    name: Frontend Tests - Map Components
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @campaign/shared build
+
+      - name: Run map tests
+        run: |
+          pnpm --filter @campaign/frontend test -- \
+            components/features/map/ \
+            pages/MapPage.test.tsx
+
+  test-frontend-flow:
+    name: Frontend Tests - Flow Components
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @campaign/shared build
+
+      - name: Run flow tests
+        run: |
+          pnpm --filter @campaign/frontend test -- \
+            components/features/flow/ \
+            pages/FlowViewPage.test.tsx
+
+  test-frontend-timeline-inspector:
+    name: Frontend Tests - Timeline & Entity Inspector
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @campaign/shared build
+
+      - name: Run timeline and inspector tests
+        run: |
+          pnpm --filter @campaign/frontend test -- \
+            components/features/timeline/ \
+            pages/TimelinePage.test.tsx \
+            components/features/entity-inspector/ \
+            components/SelectionInfo.test.tsx \
+            components/ErrorBoundary.test.tsx
 
   performance:
     name: Performance Regression Tests
