@@ -122,7 +122,7 @@ export const mockEncounters = [
   },
   {
     id: 'encounter-4',
-    campaignId: 'campaign-2',
+    campaignId: 'campaign-3', // Changed from campaign-2 to campaign-3 so campaign-2 has only events
     locationId: 'location-3',
     name: 'Storm Elemental',
     description: 'Elemental manifestation of the storm',

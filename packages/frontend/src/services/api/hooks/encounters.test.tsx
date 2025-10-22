@@ -74,7 +74,7 @@ describe('Encounter Hooks Integration Tests', () => {
       expect(result1.current.encounters).toHaveLength(3);
       expect(result1.current.encounters.every((e) => e.campaignId === 'campaign-1')).toBe(true);
 
-      const { result: result2 } = renderHook(() => useEncountersByCampaign('campaign-2'), {
+      const { result: result2 } = renderHook(() => useEncountersByCampaign('campaign-3'), {
         wrapper: createWrapper(),
       });
 
@@ -84,7 +84,7 @@ describe('Encounter Hooks Integration Tests', () => {
 
       expect(result2.current.encounters).toHaveLength(1);
       expect(result2.current.encounters[0].id).toBe('encounter-4');
-      expect(result2.current.encounters[0].campaignId).toBe('campaign-2');
+      expect(result2.current.encounters[0].campaignId).toBe('campaign-3');
     });
 
     it('should include resolution information', async () => {

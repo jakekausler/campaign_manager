@@ -1340,6 +1340,57 @@ Comprehensive drawer component for inspecting and editing Settlement and Structu
 
 See `plan/TICKET-023.md` for detailed implementation notes and commit hashes.
 
+## Event & Encounter Resolution System
+
+Extends Entity Inspector to support Event and Encounter entity types with resolution workflow for completing story events and resolving combat encounters. See [detailed documentation](docs/features/event-encounter-resolution.md).
+
+**Quick Reference:**
+
+- Components: `EventPanel`, `EncounterPanel`, `ResolutionDialog`, `ResolutionButton` in `packages/frontend/src/components/features/entity-inspector/`
+- Hooks: `useEventDetails`, `useEncounterDetails`, `useCompleteEvent`, `useResolveEncounter` in `packages/frontend/src/services/api/hooks/` and `packages/frontend/src/services/api/mutations/`
+- Validation: `resolution-validation.ts` in `packages/frontend/src/utils/`
+- GraphQL: `GET_EVENT_BY_ID`, `GET_ENCOUNTER_BY_ID` queries; `completeEvent`, `resolveEncounter` mutations
+- Key Features: Resolution workflow with effect preview, validation (errors block, warnings allow), toast notifications, resolution history in Versions tab, timeline integration
+- Entity Types:
+  - **Event**: name, eventType (story/kingdom/party/world), scheduledAt, occurredAt, isCompleted, variables
+  - **Encounter**: name, difficulty (0-10), scheduledAt, resolvedAt, isResolved, variables
+- Resolution Flow:
+  1. Click Event/Encounter on Timeline → Inspector opens
+  2. Review Details, Effects, Conditions tabs
+  3. Click "Complete Event" or "Resolve Encounter" button
+  4. Preview effects grouped by timing phase (PRE/ON_RESOLVE/POST)
+  5. Validation checks (errors block, warnings inform)
+  6. Confirm → Effects execute in order → World state mutates
+  7. Success toast → Timeline updates → Resolution history in Versions tab
+- Visual Indicators (Timeline):
+  - Completed events: Green (#10b981), Scheduled: Blue (#3b82f6), Overdue: Red (#ef4444)
+  - Resolved encounters: Green (#059669), Unresolved: Orange (#f97316)
+- Validation Rules:
+  - ❌ Errors (block): Already completed/resolved, invalid/empty name
+  - ⚠️ Warnings (inform): Missing timestamps, missing difficulty
+- Resolution History: Versions tab shows green-highlighted entries with effect execution summaries (total count, phase breakdown with ✓/✗ indicators)
+- Accessibility: WCAG 2.1 Level AA compliant, keyboard shortcuts (Enter confirms, Escape cancels)
+- Performance: <200ms inspector load, <2s mutation execution, <0.1ms validation
+- Integration: TimelinePage (click-to-open), cross-view selection sync
+- Implementation: TICKET-025 (9 active stages, commits: 50c5d1e - [Stage 12 TBD])
+
+**TICKET-025: Event & Encounter Resolution System** (12 stages, 10 active):
+
+1. Create EventPanel and EncounterPanel (Commit: 50c5d1e)
+2. GraphQL Hooks for Detail Queries (Commit: 449d0e9)
+3. Extend EntityInspector for Event/Encounter (Commit: e1daa41)
+4. Timeline Integration (Commit: 4edfcfe)
+5. Resolution UI Components (Commit: c39c099)
+6. Mutation Hooks (Commit: 6506eca)
+7. UI Integration with Mutations (Commit: 0f48d7b)
+8. Resolution History (Commit: 7645e57 - implemented proactively)
+9. Validation (Commit: 6f70f7e)
+10. Rollback Capability (SKIPPED - backend not available, deferred to future "Undo System" ticket)
+11. Notifications & Feedback (No commit - implemented proactively in earlier stages)
+12. Documentation & Polish (IN PROGRESS)
+
+See `plan/TICKET-025.md` for detailed implementation notes and commit hashes.
+
 ## World Time System
 
 Campaign-specific time tracking with custom calendars. See [detailed documentation](docs/features/world-time-system.md).

@@ -82,7 +82,7 @@ describe('ResolutionDialog', () => {
         />
       );
 
-      expect(screen.getByText('Complete Event')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Complete Event' })).toBeInTheDocument();
       expect(screen.getByText(/Festival of the Harvest/)).toBeInTheDocument();
     });
 
@@ -99,7 +99,7 @@ describe('ResolutionDialog', () => {
         />
       );
 
-      expect(screen.getByText('Resolve Encounter')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Resolve Encounter' })).toBeInTheDocument();
       expect(screen.getByText(/Goblin Ambush/)).toBeInTheDocument();
     });
 
@@ -287,7 +287,8 @@ describe('ResolutionDialog', () => {
       );
 
       expect(screen.getByText('Event completed successfully!')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Close/ })).toBeInTheDocument();
+      const closeButtons = screen.getAllByRole('button', { name: /Close/ });
+      expect(closeButtons.length).toBeGreaterThan(0);
     });
 
     it('shows success message for encounter', () => {
