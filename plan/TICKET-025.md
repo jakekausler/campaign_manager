@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] Completed
+- [x] Completed
 - **Commits**:
   - Stage 1: 50c5d1e (EventPanel and EncounterPanel components)
   - Stage 2: 449d0e9 (GraphQL hooks for Event and Encounter detail queries)
@@ -13,6 +13,9 @@
   - Stage 7: 0f48d7b (Integrate resolution mutations with UI)
   - Stage 8: 7645e57 (Resolution history in Versions tab - already implemented proactively)
   - Stage 9: 6f70f7e (Resolution validation for resolution preconditions)
+  - Stage 10: SKIPPED (Rollback capability - backend not available)
+  - Stage 11: N/A (Notifications & feedback - already implemented proactively)
+  - Stage 12: a8d5a5d (Documentation, testing, and polish)
 
 ## Description
 
