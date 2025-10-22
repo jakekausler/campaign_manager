@@ -62,10 +62,11 @@ export default defineConfig({
     pool: 'forks',
     poolOptions: {
       forks: {
-        // Use single fork to minimize memory overhead
-        singleFork: true,
+        // Restart fork after each test file to prevent memory accumulation
+        // Each test file gets a fresh 5GB heap with no retained memory from previous files
+        singleFork: false,
         minForks: 1,
-        maxForks: 1, // Single fork only
+        maxForks: 1, // Only 1 fork active at a time (sequential execution)
         // 5GB per fork (fits within 7GB GitHub Actions runner limit)
         // Total: 1GB wrapper + 5GB worker = 6GB (1GB safety margin)
         execArgv: ['--max-old-space-size=5120', '--expose-gc'],
