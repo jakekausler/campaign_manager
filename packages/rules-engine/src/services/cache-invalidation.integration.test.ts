@@ -119,9 +119,9 @@ describe('Cache Invalidation Integration', () => {
       // Database should NOT have been called (cache hit)
       expect(mockPrismaClient.fieldCondition.findUnique).not.toHaveBeenCalled();
 
-      // INTERIM: CI timing variability (2x allowance)
+      // INTERIM: CI timing variability (10x allowance for GitHub Actions runners)
       // TODO: Use statistical measurement (p95 of 100 samples) instead of single measurement
-      const cacheThreshold = process.env.CI ? 2 : 1;
+      const cacheThreshold = process.env.CI ? 10 : 1;
       expect(result2.evaluationTimeMs).toBeLessThanOrEqual(cacheThreshold);
     });
 
