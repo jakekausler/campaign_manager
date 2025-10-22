@@ -1372,7 +1372,7 @@ Extends Entity Inspector to support Event and Encounter entity types with resolu
 - Accessibility: WCAG 2.1 Level AA compliant, keyboard shortcuts (Enter confirms, Escape cancels)
 - Performance: <200ms inspector load, <2s mutation execution, <0.1ms validation
 - Integration: TimelinePage (click-to-open), cross-view selection sync
-- Implementation: TICKET-025 (9 active stages, commits: 50c5d1e - [Stage 12 TBD])
+- Implementation: TICKET-025 (10 active stages, commits: 50c5d1e - a8d5a5d)
 
 **TICKET-025: Event & Encounter Resolution System** (12 stages, 10 active):
 
@@ -1387,7 +1387,7 @@ Extends Entity Inspector to support Event and Encounter entity types with resolu
 9. Validation (Commit: 6f70f7e)
 10. Rollback Capability (SKIPPED - backend not available, deferred to future "Undo System" ticket)
 11. Notifications & Feedback (No commit - implemented proactively in earlier stages)
-12. Documentation & Polish (IN PROGRESS)
+12. Documentation & Polish (Commit: a8d5a5d)
 
 See `plan/TICKET-025.md` for detailed implementation notes and commit hashes.
 

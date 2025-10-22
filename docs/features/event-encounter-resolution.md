@@ -6,7 +6,7 @@ The Event & Encounter Resolution System extends the Entity Inspector to support 
 
 **Location**: `packages/frontend/src/components/features/entity-inspector/`
 
-**Implemented**: TICKET-025 (9 active stages, commits: 50c5d1e - [Stage 12 TBD])
+**Implemented**: TICKET-025 (10 active stages, commits: 50c5d1e - a8d5a5d)
 
 **Status**: ✅ Production-ready (all tests passing, type-safe, WCAG 2.1 Level AA compliant)
 
@@ -726,7 +726,7 @@ Success toast → Inspector closes → User sees updated timeline
 9. ✅ Validation (Commit: 6f70f7e)
 10. ⏸️ Rollback Capability (SKIPPED - backend not available)
 11. ✅ Notifications & Feedback (No commit - implemented proactively in earlier stages)
-12. 🔄 Documentation & Polish (IN PROGRESS)
+12. ✅ Documentation & Polish (Commit: a8d5a5d)
 
 **Duration**: ~3 days actual (estimated 3-4 days)
 

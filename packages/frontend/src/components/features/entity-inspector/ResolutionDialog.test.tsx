@@ -287,8 +287,9 @@ describe('ResolutionDialog', () => {
       );
 
       expect(screen.getByText('Event completed successfully!')).toBeInTheDocument();
+      // Both the Dialog's X button and the footer's Close button have "Close" label
       const closeButtons = screen.getAllByRole('button', { name: /Close/ });
-      expect(closeButtons.length).toBeGreaterThan(0);
+      expect(closeButtons.length).toBe(2); // X button + footer Close button
     });
 
     it('shows success message for encounter', () => {
