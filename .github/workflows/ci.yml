@@ -94,8 +94,6 @@ jobs:
         run: pnpm --filter @campaign/api exec prisma migrate deploy
 
       - name: Run tests
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm run test
 
   performance:
