@@ -6,15 +6,15 @@
 # that occurred after most tests passed. This is a known issue with large
 # test suites where memory accumulates even with proper cleanup.
 #
-# Memory allocation: 3GB wrapper (1 fork × 3GB = 3GB total, safe for 7GB CI runners)
+# Memory allocation: 2GB wrapper + 4GB worker = 6GB total (safe for 7GB CI runners)
 # Performance impact: Sequential file execution reduces memory spikes
 #
 
 set +e  # Don't exit on error
 
 # Run tests and capture output and exit code
-# Allocate 3GB to match single fork allocation
-OUTPUT=$(NODE_OPTIONS='--max-old-space-size=3072' pnpm exec vitest run --passWithNoTests 2>&1)
+# Allocate 2GB for wrapper (worker gets 4GB via vite.config.ts)
+OUTPUT=$(NODE_OPTIONS='--max-old-space-size=2048' pnpm exec vitest run --passWithNoTests 2>&1)
 EXIT_CODE=$?
 
 # Print the full output (safely quoted to prevent shell injection)

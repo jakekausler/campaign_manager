@@ -66,9 +66,9 @@ export default defineConfig({
         singleFork: true,
         minForks: 1,
         maxForks: 1, // Single fork only
-        // 5GB per fork (required for memory-intensive test files)
-        // Main process uses 3GB, worker needs 5GB
-        execArgv: ['--max-old-space-size=5120', '--expose-gc'],
+        // 4GB per fork (fits within 7GB GitHub Actions runner limit)
+        // Total: 2GB wrapper + 4GB worker = 6GB (1GB safety margin)
+        execArgv: ['--max-old-space-size=4096', '--expose-gc'],
       },
     },
     // Ensure proper cleanup between tests

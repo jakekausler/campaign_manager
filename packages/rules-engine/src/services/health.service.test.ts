@@ -91,7 +91,7 @@ describe('HealthService', () => {
       expect(result.checks.redis.status).toBe('pass');
       expect(result.checks.cache.status).toBe('pass');
       expect(result.checks.dependencyGraph.status).toBe('pass');
-      expect(result.uptime).toBeGreaterThan(0);
+      expect(result.uptime).toBeGreaterThanOrEqual(0); // Can be 0 if test runs immediately
       expect(result.timestamp).toBeDefined();
     });
 
