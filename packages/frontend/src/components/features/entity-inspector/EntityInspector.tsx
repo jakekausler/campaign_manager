@@ -1,5 +1,5 @@
 import { ChevronLeft, Edit2, Save, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ import {
   useStructureDetails,
 } from '@/services/api/hooks';
 import { useCompleteEvent, useResolveEncounter } from '@/services/api/mutations';
+import { validateResolution } from '@/utils/resolution-validation';
 
 import { ConditionsTab } from './ConditionsTab';
 import { EffectsTab } from './EffectsTab';
@@ -221,6 +222,26 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
 
   const query = getQuery();
   const entity = getEntity();
+
+  /**
+   * Compute validation result for resolution
+   * Only validates for Event/Encounter entities
+   */
+  const validationResult = useMemo(() => {
+    if (!entity) {
+      return { isValid: true, errors: [], warnings: [] };
+    }
+
+    if (currentEntityType === 'event' || currentEntityType === 'encounter') {
+      // Type assertion is safe here because we've checked currentEntityType
+      return validateResolution(
+        entity as Parameters<typeof validateResolution>[0],
+        currentEntityType
+      );
+    }
+
+    return { isValid: true, errors: [], warnings: [] };
+  }, [entity, currentEntityType]);
 
   /**
    * Handle resolution confirmation
@@ -590,7 +611,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
           entityType={currentEntityType}
           entityName={entity.name}
           effects={allEffects || []}
-          validation={{ isValid: true, errors: [], warnings: [] }}
+          validation={validationResult}
           loading={isResolving}
           error={null}
           success={false}

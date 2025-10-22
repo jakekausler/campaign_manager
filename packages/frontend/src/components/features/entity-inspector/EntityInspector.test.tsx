@@ -1,5 +1,5 @@
 import { ApolloProvider } from '@apollo/client/react';
-import { screen, waitFor, render } from '@testing-library/react';
+import { fireEvent, screen, waitFor, render } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 
 import {
@@ -541,6 +541,131 @@ describe('EntityInspector', () => {
       // Resolution button should be disabled and show "Encounter Resolved"
       const button = screen.getByRole('button', { name: /Encounter Resolved/i });
       expect(button).toBeDisabled();
+    });
+  });
+
+  describe('Resolution Validation', () => {
+    it('should show validation errors when trying to resolve completed event', async () => {
+      // event-1 is already completed
+      renderWithApollo(
+        <EntityInspector
+          entityType="event"
+          entityId="event-1"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockEvents[0].name)).toBeInTheDocument();
+      });
+
+      // Click resolution button (it should be disabled)
+      const resolveButton = screen.getByRole('button', { name: /Event Completed/i });
+      expect(resolveButton).toBeDisabled();
+    });
+
+    it('should show validation errors when trying to resolve resolved encounter', async () => {
+      // encounter-1 is already resolved
+      renderWithApollo(
+        <EntityInspector
+          entityType="encounter"
+          entityId="encounter-1"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockEncounters[0].name)).toBeInTheDocument();
+      });
+
+      // Resolution button should be disabled
+      const resolveButton = screen.getByRole('button', { name: /Encounter Resolved/i });
+      expect(resolveButton).toBeDisabled();
+    });
+
+    it('should allow resolution for valid unresolved event', async () => {
+      // event-2 is not completed
+      renderWithApollo(
+        <EntityInspector
+          entityType="event"
+          entityId="event-2"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockEvents[1].name)).toBeInTheDocument();
+      });
+
+      // Resolution button should be enabled
+      const resolveButton = screen.getByRole('button', { name: /Complete Event/i });
+      expect(resolveButton).not.toBeDisabled();
+    });
+
+    it('should allow resolution for valid unresolved encounter', async () => {
+      // encounter-2 is not resolved
+      renderWithApollo(
+        <EntityInspector
+          entityType="encounter"
+          entityId="encounter-2"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockEncounters[1].name)).toBeInTheDocument();
+      });
+
+      // Resolution button should be enabled
+      const resolveButton = screen.getByRole('button', { name: /Resolve Encounter/i });
+      expect(resolveButton).not.toBeDisabled();
+    });
+
+    it('should show validation warnings for event without occurredAt', async () => {
+      // event-4 has no occurredAt (should show warning but allow resolution)
+      renderWithApollo(
+        <EntityInspector
+          entityType="event"
+          entityId="event-4"
+          isOpen={true}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Wait for data to load
+      await waitFor(() => {
+        expect(screen.getByText(mockEvents[3].name)).toBeInTheDocument();
+      });
+
+      // Open resolution dialog
+      const resolveButton = screen.getByRole('button', { name: /Complete Event/i });
+      expect(resolveButton).not.toBeDisabled();
+      fireEvent.click(resolveButton);
+
+      // Wait for dialog to open and check for warning message
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: 'Complete Event' })).toBeInTheDocument();
+      });
+
+      // Warning should be displayed (but confirm button should still be enabled)
+      expect(screen.getByText(/Warning:/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Event has not yet occurred \(occurredAt is not set\)/)
+      ).toBeInTheDocument();
+
+      // Confirm button should still be enabled despite warning
+      // There are two "Complete Event" buttons (main button + dialog confirm button)
+      // Use title attribute to find the dialog confirm button
+      const confirmButton = screen.getByTitle(/Confirm resolution/);
+      expect(confirmButton).not.toBeDisabled();
     });
   });
 });
