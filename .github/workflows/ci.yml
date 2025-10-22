@@ -95,7 +95,7 @@ jobs:
 
       - name: Run tests
         env:
-          NODE_OPTIONS: --max-old-space-size=3584
+          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm run test
 
   performance:
