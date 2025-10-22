@@ -6,15 +6,15 @@
 # that occurred after most tests passed. This is a known issue with large
 # test suites where memory accumulates even with proper cleanup.
 #
-# Memory allocation: 12GB wrapper (2 forks × 6GB each = 12GB total)
+# Memory allocation: 16GB wrapper (2 forks × 8GB each = 16GB total)
 # Performance impact: Sequential file execution reduces memory spikes
 #
 
 set +e  # Don't exit on error
 
 # Run tests and capture output and exit code
-# Allocate 12GB to match the total fork allocation (2 forks × 6GB each)
-OUTPUT=$(NODE_OPTIONS='--max-old-space-size=12288' pnpm exec vitest run --passWithNoTests 2>&1)
+# Allocate 16GB to match the total fork allocation (2 forks × 8GB each)
+OUTPUT=$(NODE_OPTIONS='--max-old-space-size=16384' pnpm exec vitest run --passWithNoTests 2>&1)
 EXIT_CODE=$?
 
 # Print the full output (safely quoted to prevent shell injection)
