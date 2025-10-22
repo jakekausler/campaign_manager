@@ -66,9 +66,9 @@ export default defineConfig({
         singleFork: true,
         minForks: 1,
         maxForks: 1, // Single fork only
-        // 3GB per fork (safe for 7GB CI runners)
-        // This allows headroom for memory-intensive test files
-        execArgv: ['--max-old-space-size=3072', '--expose-gc'],
+        // 4GB per fork (required for memory-intensive test files)
+        // Main process uses 3GB, worker needs 4GB
+        execArgv: ['--max-old-space-size=4096', '--expose-gc'],
       },
     },
     // Ensure proper cleanup between tests
