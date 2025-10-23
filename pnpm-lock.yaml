@@ -488,6 +488,9 @@ importers:
       class-validator:
         specifier: ^0.14.2
         version: 0.14.2
+      cron:
+        specifier: ^4.3.3
+        version: 4.3.3
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -510,6 +513,12 @@ importers:
       '@types/bull':
         specifier: ^4.10.4
         version: 4.10.4
+      '@types/cron':
+        specifier: ^2.4.3
+        version: 2.4.3
+      '@types/express':
+        specifier: ^5.0.3
+        version: 5.0.3
       '@types/jest':
         specifier: ^29.5.11
         version: 29.5.14
@@ -3851,6 +3860,10 @@ packages:
 
   '@types/cookies@0.9.1':
     resolution: {integrity: sha512-E/DPgzifH4sM1UMadJMWd6mO2jOd4g1Ejwzx8/uRCDpJis1IrlyQEcGAYEomtAqRYmD5ORbNXMeI9U0RiVGZbg==}
+
+  '@types/cron@2.4.3':
+    resolution: {integrity: sha512-ViRBkoZD9Rk0hGeMdd2GHGaOaZuH9mDmwsE5/Zo53Ftwcvh7h9VJc8lIt2wdgEwS4EW5lbtTX6vlE0idCLPOyA==}
+    deprecated: This is a stub types definition. cron provides its own type definitions, so you do not need this installed.
 
   '@types/d3-color@3.1.3':
     resolution: {integrity: sha512-iO90scth9WAbmgv7ogoq57O9YpKmFBbmoEoCHDB2xMBY0+/KVrqAaCDyCE16dUspeOvIxFFRI+0sEtqDqy2b4A==}
@@ -14262,6 +14275,10 @@ snapshots:
       '@types/express': 5.0.3
       '@types/keygrip': 1.0.6
       '@types/node': 20.19.21
+
+  '@types/cron@2.4.3':
+    dependencies:
+      cron: 4.3.3
 
   '@types/d3-color@3.1.3': {}
 

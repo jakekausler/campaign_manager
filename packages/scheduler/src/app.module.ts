@@ -1,11 +1,12 @@
 import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
-import { ScheduleModule } from '@nestjs/schedule';
+import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
 
 import { ConfigModule } from './config/config.module';
 import { ConfigService } from './config/config.service';
 import { HealthModule } from './health/health.module';
 import { QueueModule } from './queue/queue.module';
+import { ScheduleModule } from './schedule/schedule.module';
 
 @Module({
   imports: [
@@ -19,9 +20,10 @@ import { QueueModule } from './queue/queue.module';
       inject: [ConfigService],
     }),
     // Enable cron scheduling
-    ScheduleModule.forRoot(),
+    NestScheduleModule.forRoot(),
     HealthModule,
     QueueModule,
+    ScheduleModule,
   ],
 })
 export class AppModule {}
