@@ -3,7 +3,7 @@
 ## Status
 
 - [ ] Completed
-- **Commits**:
+- **Commits**: a48a6ff (Stage 1)
 
 ## Description
 
