@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, cleanup } from '@testing-library/react';
 import type { Node } from '@xyflow/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -74,6 +74,9 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
 
   afterEach(() => {
     alertSpy.mockRestore();
+    // Critical memory cleanup for React Flow instances
+    cleanup(); // Unmount all React components
+    vi.clearAllMocks(); // Clear all mock function call history
   });
 
   describe('handleNodeDoubleClick', () => {
@@ -345,6 +348,11 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
           ENCOUNTER: 'ENCOUNTER',
         },
       }));
+    });
+
+    afterEach(() => {
+      // Critical: Reset module mocks created by vi.doMock
+      vi.resetModules();
     });
 
     describe('nodeToSelectedEntity mapping', () => {
