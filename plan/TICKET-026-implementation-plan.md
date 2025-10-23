@@ -270,6 +270,63 @@ Create a standalone NestJS scheduler service that manages time-based operations 
 
 ---
 
+### Stage 5a: API Support for Event Expiration
+
+**Goal**: Implement API-side GraphQL queries and mutations to support event expiration
+
+**Tasks**:
+
+- [ ] Add `getOverdueEvents` query to EventResolver
+  - [ ] Query events where `scheduledAt < currentWorldTime` AND `isCompleted = false`
+  - [ ] Filter by campaignId
+  - [ ] Apply grace period if provided
+  - [ ] Return EventSummary objects (id, campaignId, name, eventType, scheduledAt, isCompleted)
+- [ ] Add `expireEvent` mutation to EventResolver
+  - [ ] Validate event exists and is not already completed
+  - [ ] Set `isCompleted = true`
+  - [ ] Set `occurredAt = currentWorldTime` (or current timestamp)
+  - [ ] Return updated event
+  - [ ] Publish event modification via Redis pub/sub
+- [ ] Ensure `campaigns` query exists in CampaignResolver (for getAllCampaignIds)
+  - [ ] Return list of campaign IDs with minimal fields
+  - [ ] Consider authorization (public vs private campaigns)
+- [ ] Add authorization checks
+  - [ ] getOverdueEvents: campaign owner/GM only
+  - [ ] expireEvent: campaign owner/GM only
+  - [ ] campaigns: authenticated users only
+- [ ] Add audit trail entries for expired events
+  - [ ] Log operation = UPDATE, field = isCompleted/occurredAt
+- [ ] Integration with EventService
+  - [ ] Reuse existing findByCampaignId with filters
+  - [ ] Add expiration logic to update method
+
+**Acceptance Criteria**:
+
+- getOverdueEvents query returns correct events based on world time
+- expireEvent mutation successfully marks events as expired
+- campaigns query returns list of campaign IDs
+- Authorization properly restricts access to campaign members
+- Audit trail records expiration actions
+- Redis pub/sub notifies of event modifications
+
+**Testing**:
+
+- Unit tests for new resolver methods
+- Integration tests with Prisma/database
+- Test authorization (reject unauthorized users)
+- Test edge cases (already completed, non-existent event)
+- Test world time comparison logic
+
+**Implementation Notes**:
+
+- This stage implements the API counterpart to scheduler Stage 5
+- getOverdueEvents should use Campaign.currentWorldTime for comparison
+- Consider adding index on (campaignId, scheduledAt, isCompleted) for performance
+- expireEvent could optionally trigger effect execution (or defer to scheduler)
+- May need to extend EventService with findOverdueEvents method
+
+---
+
 ### Stage 6: Settlement Growth Scheduling ✅
 
 **Goal**: Schedule and execute periodic settlement growth events (population, resources, level progression)
