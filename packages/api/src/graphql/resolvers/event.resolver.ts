@@ -122,4 +122,29 @@ export class EventResolver {
       post: result.effectSummary.post,
     };
   }
+
+  @Query(() => [Event], {
+    description:
+      'Get overdue events for a campaign (scheduledAt < currentWorldTime - gracePeriod AND not completed)',
+  })
+  @UseGuards(JwtAuthGuard)
+  async getOverdueEvents(
+    @Args('campaignId', { type: () => ID }) campaignId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Event[]> {
+    return this.eventService.findOverdueEvents(campaignId, user) as Promise<Event[]>;
+  }
+
+  @Mutation(() => Event, {
+    description:
+      'Expire an event by marking it as completed (used by scheduler for automatic expiration)',
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('owner', 'gm')
+  async expireEvent(
+    @Args('eventId', { type: () => ID }) eventId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Event> {
+    return this.eventService.expire(eventId, user) as Promise<Event>;
+  }
 }

@@ -32,6 +32,15 @@ export class CampaignResolver {
     return this.campaignService.findById(id, user) as Promise<Campaign | null>;
   }
 
+  @Query(() => [Campaign], {
+    description:
+      'Get all campaigns accessible to the user (campaigns where user is owner or has membership)',
+  })
+  @UseGuards(JwtAuthGuard)
+  async campaigns(@CurrentUser() user: AuthenticatedUser): Promise<Campaign[]> {
+    return this.campaignService.findAll(user) as Promise<Campaign[]>;
+  }
+
   @Query(() => [Campaign], { description: 'Get all campaigns for a world' })
   @UseGuards(JwtAuthGuard)
   async campaignsByWorld(

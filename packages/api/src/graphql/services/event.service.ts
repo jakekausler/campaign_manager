@@ -26,6 +26,7 @@ import {
   type UserContext,
 } from './effect-execution.service';
 import { VersionService, type CreateVersionInput } from './version.service';
+import { WorldTimeService } from './world-time.service';
 
 @Injectable()
 export class EventService {
@@ -34,6 +35,7 @@ export class EventService {
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
     private readonly effectExecution: EffectExecutionService,
+    private readonly worldTimeService: WorldTimeService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
@@ -482,6 +484,126 @@ export class EventService {
         post: postResults,
       },
     };
+  }
+
+  /**
+   * Find overdue events for a campaign
+   * Events are overdue if scheduledAt < (currentWorldTime - gracePeriod) AND not completed
+   *
+   * @param campaignId - Campaign ID to check for overdue events
+   * @param user - User context for authorization
+   * @param gracePeriodMs - Grace period in milliseconds to allow before marking events as overdue (default: 300000ms = 5 minutes)
+   * @returns Array of overdue events ordered by scheduledAt (ascending)
+   */
+  async findOverdueEvents(
+    campaignId: string,
+    user: AuthenticatedUser,
+    gracePeriodMs = 5 * 60 * 1000 // 300000ms = 5 minutes
+  ): Promise<PrismaEvent[]> {
+    // Verify campaign access
+    await this.checkCampaignAccess(campaignId, user);
+
+    // Get current world time for the campaign
+    const currentWorldTime = await this.worldTimeService.getCurrentWorldTime(campaignId, user);
+
+    // If no world time set, no events can be overdue
+    if (!currentWorldTime) {
+      return [];
+    }
+
+    // Calculate cutoff time (currentWorldTime - gracePeriod)
+    const cutoffTime = new Date(currentWorldTime.getTime() - gracePeriodMs);
+
+    // Query overdue events
+    return this.prisma.event.findMany({
+      where: {
+        campaignId,
+        scheduledAt: {
+          lt: cutoffTime,
+        },
+        isCompleted: false,
+        deletedAt: null,
+        archivedAt: null,
+      },
+      orderBy: {
+        scheduledAt: 'asc',
+      },
+    });
+  }
+
+  /**
+   * Expire an event by marking it as completed
+   * Simpler than complete() - only marks as completed without executing effects
+   * Used by scheduler service for automatic expiration
+   *
+   * @param id - Event ID
+   * @param user - User context for authorization and audit
+   * @returns Expired event
+   */
+  async expire(id: string, user: AuthenticatedUser): Promise<PrismaEvent> {
+    // Verify event exists and user has access
+    const event = await this.findById(id, user);
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${id} not found`);
+    }
+
+    // Check if already completed
+    if (event.isCompleted) {
+      throw new BadRequestException(`Event with ID ${id} is already completed`);
+    }
+
+    // Get current world time for occurredAt timestamp
+    const currentWorldTime = await this.worldTimeService.getCurrentWorldTime(
+      event.campaignId,
+      user
+    );
+    const occurredAt = currentWorldTime || new Date();
+
+    // Mark event as completed (expired) with optimistic locking
+    let expired: PrismaEvent;
+    try {
+      expired = await this.prisma.event.update({
+        where: {
+          id,
+          version: event.version, // Optimistic lock: only update if version matches
+        },
+        data: {
+          isCompleted: true,
+          occurredAt,
+          version: event.version + 1,
+        },
+      });
+    } catch (error) {
+      // Handle optimistic lock failure (version mismatch or concurrent update)
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
+        throw new OptimisticLockException(
+          `Event was modified by another process. Please retry.`,
+          event.version,
+          event.version + 1
+        );
+      }
+      throw error;
+    }
+
+    // Create audit entry for expiration
+    await this.audit.log('event', id, 'UPDATE', user.id, {
+      isCompleted: true,
+      occurredAt,
+      expiredBy: 'scheduler',
+    });
+
+    // Publish entityModified event
+    await this.pubSub.publish(`entity.modified.${id}`, {
+      entityModified: {
+        entityId: id,
+        entityType: 'event',
+        version: expired.version,
+        modifiedBy: user.id,
+        modifiedAt: expired.updatedAt,
+      },
+    });
+
+    return expired;
   }
 
   /**
