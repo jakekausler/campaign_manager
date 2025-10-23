@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from './config/config.module';
 import { ConfigService } from './config/config.service';
 import { HealthModule } from './health/health.module';
+import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HealthModule } from './health/health.module';
     // Enable cron scheduling
     ScheduleModule.forRoot(),
     HealthModule,
+    QueueModule,
   ],
 })
 export class AppModule {}

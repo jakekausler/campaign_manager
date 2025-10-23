@@ -3,6 +3,8 @@ import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
+import { BullBoardModule } from './queue/bull-board.module';
+import { QueueModule } from './queue/queue.module';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -13,6 +15,18 @@ async function bootstrap() {
     });
 
     const configService = app.get(ConfigService);
+
+    // Mount Bull Board UI in development
+    if (configService.nodeEnv === 'development') {
+      const queueModule = app.select(QueueModule);
+      const bullBoardModule = queueModule.get(BullBoardModule, { strict: false });
+      const bullBoardRouter = bullBoardModule.getRouter();
+
+      if (bullBoardRouter) {
+        app.use('/admin/queues', bullBoardRouter);
+        logger.log('Bull Board UI available at /admin/queues');
+      }
+    }
 
     // Get port from configuration
     const port = configService.port;
@@ -28,6 +42,7 @@ async function bootstrap() {
     logger.log(`Redis host: ${redisHost}`);
     logger.log(`API endpoint: ${apiHost}`);
     logger.log('Health check available at GET /health');
+    logger.log('Queue metrics available at GET /metrics');
   } catch (error) {
     logger.error('Failed to start scheduler service', error);
     process.exit(1);
