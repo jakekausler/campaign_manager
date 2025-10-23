@@ -334,7 +334,7 @@ Create a standalone NestJS scheduler service that manages time-based operations 
 ### Stage 6: Settlement Growth Scheduling ✅
 
 **Status**: COMPLETED
-**Commit**: [TBD - awaiting commit]
+**Commit**: cf18baf
 
 **Goal**: Schedule and execute periodic settlement growth events (population, resources, level progression)
 
