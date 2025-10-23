@@ -5,6 +5,7 @@ import { CronJob } from 'cron';
 import { ConfigService } from '../config/config.service';
 import { EventExpirationJobData, JobPriority, JobType } from '../queue/job.interface';
 import { QueueService } from '../queue/queue.service';
+import { SettlementSchedulingService } from '../settlements/settlement-scheduling.service';
 
 /**
  * Service for managing scheduled cron tasks.
@@ -18,7 +19,8 @@ export class ScheduleService {
   constructor(
     private readonly configService: ConfigService,
     private readonly queueService: QueueService,
-    private readonly schedulerRegistry: SchedulerRegistry
+    private readonly schedulerRegistry: SchedulerRegistry,
+    private readonly settlementSchedulingService: SettlementSchedulingService
   ) {
     // All tasks start enabled by default
     this.taskStates.set('eventExpiration', true);
@@ -124,12 +126,22 @@ export class ScheduleService {
   private async handleSettlementGrowthTask(): Promise<void> {
     this.logger.debug('Executing settlement growth task');
 
-    // TODO: In Stage 6, implement:
-    // 1. Query API for settlements with active growth schedules
-    // 2. Calculate next growth event time
-    // 3. Queue SETTLEMENT_GROWTH jobs with appropriate data
+    try {
+      const result = await this.settlementSchedulingService.processAllSettlements();
+      this.logger.log(
+        `Settlement growth task completed: ${result.totalSettlements} settlement(s), ` +
+          `${result.jobsQueued} job(s) queued, ${result.errors} error(s)`
+      );
 
-    this.logger.debug('Settlement growth task completed (stub)');
+      if (result.errors > 0) {
+        this.logger.warn(`Settlement growth had errors: ${result.errorMessages.join('; ')}`);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Settlement growth task failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error;
+    }
   }
 
   /**

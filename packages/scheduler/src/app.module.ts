@@ -7,6 +7,7 @@ import { ConfigService } from './config/config.service';
 import { HealthModule } from './health/health.module';
 import { QueueModule } from './queue/queue.module';
 import { ScheduleModule } from './schedule/schedule.module';
+import { SettlementModule } from './settlements/settlement.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ScheduleModule } from './schedule/schedule.module';
     HealthModule,
     QueueModule,
     ScheduleModule,
+    SettlementModule,
   ],
 })
 export class AppModule {}

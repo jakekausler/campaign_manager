@@ -55,8 +55,11 @@ export interface SettlementGrowthJobData extends BaseJobData {
   /** The settlement ID to process */
   settlementId: string;
 
-  /** The type of growth event (e.g., POPULATION_GROWTH, RESOURCE_GENERATION) */
-  growthType: string;
+  /** The type of growth event (e.g., POPULATION_GROWTH, RESOURCE_GENERATION, LEVEL_UP_CHECK) */
+  eventType: string;
+
+  /** Parameters for the growth event (growth rates, thresholds, etc.) */
+  parameters: Record<string, unknown>;
 }
 
 /**

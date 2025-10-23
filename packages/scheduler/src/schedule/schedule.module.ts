@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { ConfigModule } from '../config/config.module';
 import { QueueModule } from '../queue/queue.module';
+import { SettlementModule } from '../settlements/settlement.module';
 
 import { ScheduleService } from './schedule.service';
 
@@ -10,7 +11,7 @@ import { ScheduleService } from './schedule.service';
  * Registers the ScheduleService and its dependencies.
  */
 @Module({
-  imports: [ConfigModule, QueueModule],
+  imports: [ConfigModule, QueueModule, SettlementModule],
   providers: [ScheduleService],
   exports: [ScheduleService],
 })

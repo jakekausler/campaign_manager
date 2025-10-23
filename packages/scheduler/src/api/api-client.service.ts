@@ -89,6 +89,22 @@ const EXPIRE_EVENT_MUTATION = `
 `;
 
 /**
+ * GraphQL query for fetching settlements by campaign
+ */
+const GET_SETTLEMENTS_BY_CAMPAIGN_QUERY = `
+  query GetSettlementsByCampaign($campaignId: ID!) {
+    settlementsByCampaign(campaignId: $campaignId) {
+      id
+      campaignId
+      kingdomId
+      name
+      level
+      variables
+    }
+  }
+`;
+
+/**
  * Effect details returned from the API
  */
 export interface EffectDetails {
@@ -138,6 +154,18 @@ export interface ExpiredEventResult {
   id: string;
   isCompleted: boolean;
   occurredAt: string;
+}
+
+/**
+ * Settlement summary from the API
+ */
+export interface SettlementSummary {
+  id: string;
+  campaignId: string;
+  kingdomId: string;
+  name: string;
+  level: number;
+  variables: Record<string, unknown>;
 }
 
 /**
@@ -423,6 +451,43 @@ export class ApiClientService {
           this.logger.error(`API request failed: ${axiosError.message}`);
         }
       }
+      throw error;
+    }
+  }
+
+  /**
+   * Get settlements for a campaign
+   *
+   * @param campaignId - The campaign ID
+   * @returns Array of settlement summaries
+   */
+  async getSettlementsByCampaign(campaignId: string): Promise<SettlementSummary[]> {
+    this.logger.debug(`Fetching settlements for campaign ${campaignId}`);
+
+    try {
+      const response = (await this.circuitBreaker.fire({
+        query: GET_SETTLEMENTS_BY_CAMPAIGN_QUERY,
+        variables: { campaignId },
+      })) as GraphQLResponse<{ settlementsByCampaign: SettlementSummary[] }>;
+
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors.map((e: { message: string }) => e.message).join(', ');
+        this.logger.error(`GraphQL errors fetching settlements: ${errorMessage}`);
+        throw new Error(`GraphQL errors: ${errorMessage}`);
+      }
+
+      if (!response.data?.settlementsByCampaign) {
+        this.logger.warn(`No settlements found for campaign ${campaignId}`);
+        return [];
+      }
+
+      const settlements = response.data.settlementsByCampaign;
+      this.logger.debug(`Found ${settlements.length} settlement(s) for campaign ${campaignId}`);
+      return settlements;
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch settlements for campaign ${campaignId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       throw error;
     }
   }

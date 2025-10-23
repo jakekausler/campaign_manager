@@ -99,10 +99,42 @@ export class JobProcessorService {
 
   /**
    * Process a settlement growth job.
+   * Executes growth effects (population, resources, level-up) for a settlement.
    */
   private async processSettlementGrowth(job: Job<JobData>): Promise<void> {
-    // TODO: Implement in Stage 6
-    this.logger.debug(`Processing settlement growth for job ${job.id} (not yet implemented)`);
+    const jobData = job.data as {
+      settlementId: string;
+      eventType: string;
+      parameters: Record<string, unknown>;
+    };
+    const { settlementId, eventType, parameters } = jobData;
+
+    this.logger.log(
+      `Processing settlement growth for job ${job.id}: ` +
+        `settlement ${settlementId}, event type ${eventType}`
+    );
+
+    try {
+      // TODO: In future implementation, this will:
+      // 1. Create an Effect for the growth event via GraphQL mutation
+      // 2. Execute the effect to mutate settlement state
+      // 3. Update settlement variables (population, resources, level)
+      //
+      // For now, we log the growth event and mark the job as complete
+      // The actual effect creation and execution will be implemented when
+      // the API provides settlement-specific effect creation endpoints
+
+      this.logger.log(
+        `Settlement growth job ${job.id} completed (effect execution not yet implemented): ` +
+          `${eventType} for settlement ${settlementId} with parameters: ${JSON.stringify(parameters)}`
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error processing settlement growth job ${job.id}: ` +
+          `${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error; // Re-throw to trigger retry
+    }
   }
 
   /**
