@@ -149,6 +149,47 @@ export class ConfigService {
   }
 
   /**
+   * Generic getter for config values (type-safe access)
+   * Maps environment variable names to their corresponding getter methods
+   */
+  get(key: string): string | number {
+    switch (key) {
+      case 'NODE_ENV':
+        return this.nodeEnv;
+      case 'PORT':
+        return this.port;
+      case 'LOG_LEVEL':
+        return this.logLevel;
+      case 'REDIS_URL':
+        return this.redisUrl;
+      case 'API_URL':
+        return this.apiUrl;
+      case 'API_SERVICE_ACCOUNT_TOKEN':
+        return this.apiServiceAccountToken;
+      case 'CRON_EVENT_EXPIRATION':
+        return this.cronEventExpiration;
+      case 'CRON_SETTLEMENT_GROWTH':
+        return this.cronSettlementGrowth;
+      case 'CRON_STRUCTURE_MAINTENANCE':
+        return this.cronStructureMaintenance;
+      case 'QUEUE_MAX_RETRIES':
+        return this.queueMaxRetries;
+      case 'QUEUE_RETRY_BACKOFF_MS':
+        return this.queueRetryBackoffMs;
+      case 'QUEUE_CONCURRENCY':
+        return this.queueConcurrency;
+      case 'API_REQUEST_TIMEOUT_MS':
+        return this.apiRequestTimeoutMs;
+      case 'API_CIRCUIT_BREAKER_THRESHOLD':
+        return this.apiCircuitBreakerThreshold;
+      case 'API_CIRCUIT_BREAKER_DURATION_MS':
+        return this.apiCircuitBreakerDurationMs;
+      default:
+        throw new Error(`Unknown configuration key: ${key}`);
+    }
+  }
+
+  /**
    * Validate that all required configuration is present
    */
   private validateConfig(): void {

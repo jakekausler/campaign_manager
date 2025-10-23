@@ -2,8 +2,10 @@ import { Processor, Process } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 
+import { DeferredEffectService } from '../effects/deferred-effect.service';
+
 import { JobType } from './job-types.enum';
-import { JobData } from './job.interface';
+import { JobData, DeferredEffectJobData } from './job.interface';
 import { SCHEDULER_QUEUE } from './queue.constants';
 
 /**
@@ -13,6 +15,8 @@ import { SCHEDULER_QUEUE } from './queue.constants';
 @Processor(SCHEDULER_QUEUE)
 export class JobProcessorService {
   private readonly logger = new Logger(JobProcessorService.name);
+
+  constructor(private readonly deferredEffectService: DeferredEffectService) {}
 
   /**
    * Main job processing method that routes to specific handlers.
@@ -26,19 +30,19 @@ export class JobProcessorService {
     try {
       switch (job.data.type) {
         case JobType.DEFERRED_EFFECT:
-          await this.processDeferredEffect(job as Job<JobData>);
+          await this.processDeferredEffect(job as Job<DeferredEffectJobData>);
           break;
 
         case JobType.SETTLEMENT_GROWTH:
-          await this.processSettlementGrowth(job as Job<JobData>);
+          await this.processSettlementGrowth(job);
           break;
 
         case JobType.STRUCTURE_MAINTENANCE:
-          await this.processStructureMaintenance(job as Job<JobData>);
+          await this.processStructureMaintenance(job);
           break;
 
         case JobType.EVENT_EXPIRATION:
-          await this.processEventExpiration(job as Job<JobData>);
+          await this.processEventExpiration(job);
           break;
 
         default:
@@ -58,9 +62,35 @@ export class JobProcessorService {
   /**
    * Process a deferred effect execution job.
    */
-  private async processDeferredEffect(job: Job<JobData>): Promise<void> {
-    // TODO: Implement in Stage 4
-    this.logger.debug(`Processing deferred effect for job ${job.id} (not yet implemented)`);
+  private async processDeferredEffect(job: Job<DeferredEffectJobData>): Promise<void> {
+    const { effectId, campaignId, executeAt } = job.data;
+
+    this.logger.log(`Processing deferred effect job ${job.id} for effect ${effectId}`);
+
+    try {
+      const result = await this.deferredEffectService.executeDeferredEffect(
+        effectId,
+        campaignId,
+        executeAt
+      );
+
+      if (!result.success) {
+        const errorMsg = result.error || result.message || 'Unknown failure reason';
+        this.logger.error(
+          `Deferred effect ${effectId} execution failed: ${errorMsg}. Job will retry if attempts remain.`
+        );
+        throw new Error(`Effect execution failed: ${errorMsg}`);
+      }
+
+      this.logger.log(
+        `Deferred effect ${effectId} executed successfully (execution ID: ${result.executionId})`
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error processing deferred effect job ${job.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error; // Re-throw to trigger retry
+    }
   }
 
   /**

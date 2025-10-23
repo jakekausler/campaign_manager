@@ -178,6 +178,28 @@ describe('ConfigService', () => {
       expect(service.isDevelopment).toBe(false);
       expect(service.isTest).toBe(false);
     });
+
+    it('should provide generic get method for all config values', () => {
+      expect(service.get('NODE_ENV')).toBe('production');
+      expect(service.get('PORT')).toBe(8080);
+      expect(service.get('LOG_LEVEL')).toBe('error');
+      expect(service.get('REDIS_URL')).toBe('redis://localhost:6379');
+      expect(service.get('API_URL')).toBe('http://localhost:9264/graphql');
+      expect(service.get('API_SERVICE_ACCOUNT_TOKEN')).toBe('test-token');
+      expect(service.get('CRON_EVENT_EXPIRATION')).toBe('*/10 * * * *');
+      expect(service.get('CRON_SETTLEMENT_GROWTH')).toBe('0 */2 * * *');
+      expect(service.get('CRON_STRUCTURE_MAINTENANCE')).toBe('0 0 * * *');
+      expect(service.get('QUEUE_MAX_RETRIES')).toBe(5);
+      expect(service.get('QUEUE_RETRY_BACKOFF_MS')).toBe(10000);
+      expect(service.get('QUEUE_CONCURRENCY')).toBe(10);
+      expect(service.get('API_REQUEST_TIMEOUT_MS')).toBe(20000);
+      expect(service.get('API_CIRCUIT_BREAKER_THRESHOLD')).toBe(10);
+      expect(service.get('API_CIRCUIT_BREAKER_DURATION_MS')).toBe(60000);
+    });
+
+    it('should throw error for unknown configuration key', () => {
+      expect(() => service.get('UNKNOWN_KEY')).toThrow('Unknown configuration key: UNKNOWN_KEY');
+    });
   });
 
   describe('with missing required configuration', () => {

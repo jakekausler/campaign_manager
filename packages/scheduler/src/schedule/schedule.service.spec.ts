@@ -134,7 +134,7 @@ describe('ScheduleService', () => {
       expect(eventExpirationJob).toBeDefined();
 
       // Manually trigger the cron job callback
-      await eventExpirationJob.fireOnTick();
+      await eventExpirationJob!.fireOnTick();
 
       expect(queueService.addJob).toHaveBeenCalledWith({
         type: JobType.EVENT_EXPIRATION,
@@ -148,7 +148,7 @@ describe('ScheduleService', () => {
       service.disableTask('eventExpiration');
 
       const eventExpirationJob = mockCronJobs.get('eventExpiration');
-      await eventExpirationJob.fireOnTick();
+      await eventExpirationJob!.fireOnTick();
 
       expect(queueService.addJob).not.toHaveBeenCalled();
     });
@@ -161,7 +161,7 @@ describe('ScheduleService', () => {
       const settlementGrowthJob = mockCronJobs.get('settlementGrowth');
       expect(settlementGrowthJob).toBeDefined();
 
-      await expect(settlementGrowthJob.fireOnTick()).resolves.not.toThrow();
+      await expect(settlementGrowthJob!.fireOnTick()).resolves.not.toThrow();
     });
 
     it('should not execute if task is disabled', async () => {
@@ -170,7 +170,7 @@ describe('ScheduleService', () => {
 
       const settlementGrowthJob = mockCronJobs.get('settlementGrowth');
       // Should not throw, but also should not do anything
-      await expect(settlementGrowthJob.fireOnTick()).resolves.not.toThrow();
+      await expect(settlementGrowthJob!.fireOnTick()).resolves.not.toThrow();
     });
   });
 
@@ -181,7 +181,7 @@ describe('ScheduleService', () => {
       const structureMaintenanceJob = mockCronJobs.get('structureMaintenance');
       expect(structureMaintenanceJob).toBeDefined();
 
-      await expect(structureMaintenanceJob.fireOnTick()).resolves.not.toThrow();
+      await expect(structureMaintenanceJob!.fireOnTick()).resolves.not.toThrow();
     });
 
     it('should not execute if task is disabled', async () => {
@@ -189,7 +189,7 @@ describe('ScheduleService', () => {
       service.disableTask('structureMaintenance');
 
       const structureMaintenanceJob = mockCronJobs.get('structureMaintenance');
-      await expect(structureMaintenanceJob.fireOnTick()).resolves.not.toThrow();
+      await expect(structureMaintenanceJob!.fireOnTick()).resolves.not.toThrow();
     });
   });
 
@@ -284,7 +284,7 @@ describe('ScheduleService', () => {
 
       const eventExpirationJob = mockCronJobs.get('eventExpiration');
       // Should not throw, errors should be caught and logged
-      await expect(eventExpirationJob.fireOnTick()).resolves.not.toThrow();
+      await expect(eventExpirationJob!.fireOnTick()).resolves.not.toThrow();
 
       // Job should have been attempted
       expect(queueService.addJob).toHaveBeenCalled();
@@ -292,12 +292,16 @@ describe('ScheduleService', () => {
 
     it('should not trigger alerts in non-production mode', async () => {
       queueService.addJob.mockRejectedValueOnce(new Error('Test error'));
-      configService.isProduction = false;
+      Object.defineProperty(configService, 'isProduction', {
+        value: false,
+        writable: true,
+        configurable: true,
+      });
 
       service.onModuleInit();
 
       const eventExpirationJob = mockCronJobs.get('eventExpiration');
-      await eventExpirationJob.fireOnTick();
+      await eventExpirationJob!.fireOnTick();
 
       // In non-production, alert should not be triggered
       // (we can't easily verify this without spying on the logger)
@@ -305,12 +309,16 @@ describe('ScheduleService', () => {
 
     it('should trigger alerts in production mode', async () => {
       queueService.addJob.mockRejectedValueOnce(new Error('Test error'));
-      configService.isProduction = true;
+      Object.defineProperty(configService, 'isProduction', {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
 
       service.onModuleInit();
 
       const eventExpirationJob = mockCronJobs.get('eventExpiration');
-      await eventExpirationJob.fireOnTick();
+      await eventExpirationJob!.fireOnTick();
 
       // Alert method should be called (we can't easily verify without spying on private methods)
     });
@@ -321,7 +329,7 @@ describe('ScheduleService', () => {
       service.onModuleInit();
 
       const eventExpirationJob = mockCronJobs.get('eventExpiration');
-      await eventExpirationJob.fireOnTick();
+      await eventExpirationJob!.fireOnTick();
 
       // Logger calls are implicit, but we can verify the task completed successfully
       expect(queueService.addJob).toHaveBeenCalled();
@@ -333,7 +341,7 @@ describe('ScheduleService', () => {
       const eventExpirationJob = mockCronJobs.get('eventExpiration');
 
       const startTime = Date.now();
-      await eventExpirationJob.fireOnTick();
+      await eventExpirationJob!.fireOnTick();
       const endTime = Date.now();
 
       // Duration should be reasonable (< 1 second for this simple test)
