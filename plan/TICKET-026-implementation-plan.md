@@ -223,31 +223,50 @@ Create a standalone NestJS scheduler service that manages time-based operations 
 
 ### Stage 5: Event Expiration Handling ✅
 
+**Status**: COMPLETED
+**Commit**: a9f88ce
+
 **Goal**: Mark events as expired if their scheduledAt time has passed
 
 **Tasks**:
 
-- [ ] Create EventExpirationService
-- [ ] Query API for events with scheduledAt < currentWorldTime and isCompleted = false
-- [ ] Mark events as expired via API mutation (PATCH /events/:id/expire)
-- [ ] Handle batch expiration (process multiple events)
-- [ ] Add configurable expiration window (e.g., grace period)
-- [ ] Log expiration actions
-- [ ] Integrate with cron schedule (every 5 minutes)
+- [x] Create EventExpirationService
+- [x] Query API for events with scheduledAt < currentWorldTime and isCompleted = false
+- [x] Mark events as expired via API mutation (PATCH /events/:id/expire)
+- [x] Handle batch expiration (process multiple events)
+- [x] Add configurable expiration window (e.g., grace period)
+- [x] Log expiration actions
+- [x] Integrate with cron schedule (every 5 minutes)
 
 **Acceptance Criteria**:
 
-- Overdue events are detected
-- Events are marked as expired via API
-- Batch processing works for multiple events
-- Expiration actions are logged
+- [x] Overdue events are detected
+- [x] Events are marked as expired via API
+- [x] Batch processing works for multiple events
+- [x] Expiration actions are logged
 
 **Testing**:
 
-- Unit tests for EventExpirationService
-- Integration test with mock API
-- Test batch expiration
-- Test grace period handling
+- [x] Unit tests for EventExpirationService (8 tests)
+- [x] Integration tests with mock API (9 tests for ApiClientService)
+- [x] Test batch expiration (25 events across 3 batches)
+- [x] Test grace period handling (get/set/validation)
+
+**Implementation Notes**:
+
+- Created EventExpirationService with batch processing (10 events/batch) to prevent API overload
+- ApiClientService adds 3 GraphQL operations: getOverdueEvents, getAllCampaignIds, expireEvent
+- JobProcessorService routes EVENT_EXPIRATION jobs to expiration handler
+- EventsModule provides DI container for event-related services
+- 5-minute grace period prevents premature expiration from scheduling delays
+- Sequential campaign processing prioritizes safety (can optimize to parallel later)
+- Circuit breaker pattern provides resilience during API failures
+- Partial failure handling: tracks errors but allows job to complete successfully
+- Comprehensive error logging with sanitized output (no sensitive data)
+- 147 total tests passing in scheduler package (+26 new tests)
+- TypeScript Tester subagent fixed unused ConfigService dependency
+- Code Reviewer approved with no critical issues
+- Ready for API implementation of getOverdueEvents query and expireEvent mutation
 
 ---
 
