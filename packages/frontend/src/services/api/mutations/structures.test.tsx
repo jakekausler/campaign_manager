@@ -13,10 +13,10 @@
  */
 
 import { ApolloProvider } from '@apollo/client/react';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, cleanup } from '@testing-library/react';
 import { graphql, HttpResponse } from 'msw';
 import { type ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, afterEach, vi } from 'vitest';
 
 import { server } from '@/__tests__/mocks/server';
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
@@ -37,6 +37,11 @@ function createWrapper() {
     return <ApolloProvider client={client}>{children}</ApolloProvider>;
   };
 }
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
+});
 
 describe('Structure Mutation Hooks Integration Tests', () => {
   describe('useCreateStructure', () => {

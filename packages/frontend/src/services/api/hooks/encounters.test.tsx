@@ -7,9 +7,9 @@
  */
 
 import { ApolloProvider } from '@apollo/client/react';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, cleanup } from '@testing-library/react';
 import { type ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, afterEach, vi } from 'vitest';
 
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 
@@ -22,6 +22,11 @@ function createWrapper() {
     return <ApolloProvider client={client}>{children}</ApolloProvider>;
   };
 }
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
+});
 
 describe('Encounter Hooks Integration Tests', () => {
   describe('useEncountersByCampaign', () => {

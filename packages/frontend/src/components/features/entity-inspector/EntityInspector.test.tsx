@@ -1,6 +1,6 @@
 import { ApolloProvider } from '@apollo/client/react';
-import { fireEvent, screen, waitFor, render } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, screen, waitFor, render, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import {
   mockEncounters,
@@ -24,6 +24,11 @@ import { EntityInspector } from './EntityInspector';
  * - Shows not found state when entity doesn't exist
  * - Tabs are navigable
  */
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
+});
 
 describe('EntityInspector', () => {
   const mockOnClose = vi.fn();
