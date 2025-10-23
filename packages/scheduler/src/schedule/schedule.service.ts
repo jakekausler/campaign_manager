@@ -6,6 +6,7 @@ import { ConfigService } from '../config/config.service';
 import { EventExpirationJobData, JobPriority, JobType } from '../queue/job.interface';
 import { QueueService } from '../queue/queue.service';
 import { SettlementSchedulingService } from '../settlements/settlement-scheduling.service';
+import { StructureSchedulingService } from '../structures/structure-scheduling.service';
 
 /**
  * Service for managing scheduled cron tasks.
@@ -20,7 +21,8 @@ export class ScheduleService {
     private readonly configService: ConfigService,
     private readonly queueService: QueueService,
     private readonly schedulerRegistry: SchedulerRegistry,
-    private readonly settlementSchedulingService: SettlementSchedulingService
+    private readonly settlementSchedulingService: SettlementSchedulingService,
+    private readonly structureSchedulingService: StructureSchedulingService
   ) {
     // All tasks start enabled by default
     this.taskStates.set('eventExpiration', true);
@@ -151,13 +153,22 @@ export class ScheduleService {
   private async handleStructureMaintenanceTask(): Promise<void> {
     this.logger.debug('Executing structure maintenance task');
 
-    // TODO: In Stage 7, implement:
-    // 1. Query API for structures with active schedules
-    // 2. Schedule construction completion
-    // 3. Schedule maintenance based on intervals
-    // 4. Queue STRUCTURE_MAINTENANCE jobs with appropriate data
+    try {
+      const result = await this.structureSchedulingService.processAllStructures();
+      this.logger.log(
+        `Structure maintenance task completed: ${result.totalStructures} structure(s), ` +
+          `${result.jobsQueued} job(s) queued, ${result.errors} error(s)`
+      );
 
-    this.logger.debug('Structure maintenance task completed (stub)');
+      if (result.errors > 0) {
+        this.logger.warn(`Structure maintenance had errors: ${result.errorMessages.join('; ')}`);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Structure maintenance task failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error;
+    }
   }
 
   /**

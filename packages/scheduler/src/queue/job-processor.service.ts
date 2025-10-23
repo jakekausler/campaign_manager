@@ -139,10 +139,42 @@ export class JobProcessorService {
 
   /**
    * Process a structure maintenance job.
+   * Executes maintenance effects (construction completion, maintenance, upgrades) for a structure.
    */
   private async processStructureMaintenance(job: Job<JobData>): Promise<void> {
-    // TODO: Implement in Stage 7
-    this.logger.debug(`Processing structure maintenance for job ${job.id} (not yet implemented)`);
+    const jobData = job.data as {
+      structureId: string;
+      maintenanceType: string;
+      parameters?: Record<string, unknown>;
+    };
+    const { structureId, maintenanceType, parameters } = jobData;
+
+    this.logger.log(
+      `Processing structure maintenance for job ${job.id}: ` +
+        `structure ${structureId}, maintenance type ${maintenanceType}`
+    );
+
+    try {
+      // TODO (TICKET-037): In future implementation, this will:
+      // 1. Create an Effect for the maintenance event via GraphQL mutation
+      // 2. Execute the effect to mutate structure state
+      // 3. Update structure variables (health, isOperational, level)
+      //
+      // For now, we log the maintenance event and mark the job as complete
+      // The actual effect creation and execution will be implemented when
+      // the API provides structure-specific effect creation endpoints
+
+      this.logger.log(
+        `Structure maintenance job ${job.id} completed (effect execution deferred to TICKET-037): ` +
+          `${maintenanceType} for structure ${structureId} with parameters: ${JSON.stringify(parameters || {})}`
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error processing structure maintenance job ${job.id}: ` +
+          `${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error; // Re-throw to trigger retry
+    }
   }
 
   /**

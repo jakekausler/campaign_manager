@@ -73,6 +73,9 @@ export interface StructureMaintenanceJobData extends BaseJobData {
 
   /** The type of maintenance event (e.g., CONSTRUCTION_COMPLETE, MAINTENANCE_DUE) */
   maintenanceType: string;
+
+  /** Parameters for the maintenance event (construction duration, health, etc.) */
+  parameters?: Record<string, unknown>;
 }
 
 /**

@@ -105,6 +105,22 @@ const GET_SETTLEMENTS_BY_CAMPAIGN_QUERY = `
 `;
 
 /**
+ * GraphQL query for fetching structures by campaign
+ */
+const GET_STRUCTURES_BY_CAMPAIGN_QUERY = `
+  query GetStructuresByCampaign($campaignId: ID!) {
+    structuresByCampaign(campaignId: $campaignId) {
+      id
+      campaignId
+      settlementId
+      name
+      type
+      variables
+    }
+  }
+`;
+
+/**
  * Effect details returned from the API
  */
 export interface EffectDetails {
@@ -165,6 +181,18 @@ export interface SettlementSummary {
   kingdomId: string;
   name: string;
   level: number;
+  variables: Record<string, unknown>;
+}
+
+/**
+ * Structure summary from the API
+ */
+export interface StructureSummary {
+  id: string;
+  campaignId: string;
+  settlementId: string;
+  name: string;
+  type: string;
   variables: Record<string, unknown>;
 }
 
@@ -487,6 +515,43 @@ export class ApiClientService {
     } catch (error) {
       this.logger.error(
         `Failed to fetch settlements for campaign ${campaignId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get structures for a campaign
+   *
+   * @param campaignId - The campaign ID
+   * @returns Array of structure summaries
+   */
+  async getStructuresByCampaign(campaignId: string): Promise<StructureSummary[]> {
+    this.logger.debug(`Fetching structures for campaign ${campaignId}`);
+
+    try {
+      const response = (await this.circuitBreaker.fire({
+        query: GET_STRUCTURES_BY_CAMPAIGN_QUERY,
+        variables: { campaignId },
+      })) as GraphQLResponse<{ structuresByCampaign: StructureSummary[] }>;
+
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors.map((e: { message: string }) => e.message).join(', ');
+        this.logger.error(`GraphQL errors fetching structures: ${errorMessage}`);
+        throw new Error(`GraphQL errors: ${errorMessage}`);
+      }
+
+      if (!response.data?.structuresByCampaign) {
+        this.logger.warn(`No structures found for campaign ${campaignId}`);
+        return [];
+      }
+
+      const structures = response.data.structuresByCampaign;
+      this.logger.debug(`Found ${structures.length} structure(s) for campaign ${campaignId}`);
+      return structures;
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch structures for campaign ${campaignId}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       throw error;
     }
