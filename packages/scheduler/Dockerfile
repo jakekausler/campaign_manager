@@ -62,9 +62,12 @@ COPY --chown=worker:nodejs --from=builder /app/packages/shared/dist ./packages/s
 # Switch to non-root user
 USER worker
 
-# Health check (worker process check)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
-  CMD pgrep -f "node.*scheduler" || exit 1
+# Expose port
+EXPOSE 9266
 
-# Start the worker
-CMD ["node", "packages/scheduler/dist/index.js"]
+# Health check (HTTP health endpoint)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:9266/health || exit 1
+
+# Start the scheduler service
+CMD ["node", "packages/scheduler/dist/main.js"]

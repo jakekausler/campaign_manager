@@ -193,8 +193,26 @@ services:
       - .env.local
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      DATABASE_URL: postgres://${POSTGRES_USER:-campaign_user}:${POSTGRES_PASSWORD:-campaign_pass}@postgres:5432/${POSTGRES_DB:-campaign_db}
+      PORT: ${SCHEDULER_PORT:-9266}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       REDIS_URL: redis://redis:6379
+      API_URL: http://api:3000/graphql
+      # SECURITY: Set SCHEDULER_API_TOKEN in .env.local - default is for development only
+      API_SERVICE_ACCOUNT_TOKEN: ${SCHEDULER_API_TOKEN:-your-jwt-token-here}
+      # Cron schedules
+      CRON_EVENT_EXPIRATION: ${CRON_EVENT_EXPIRATION:-*/5 * * * *}
+      CRON_SETTLEMENT_GROWTH: ${CRON_SETTLEMENT_GROWTH:-0 * * * *}
+      CRON_STRUCTURE_MAINTENANCE: ${CRON_STRUCTURE_MAINTENANCE:-0 * * * *}
+      # Queue configuration
+      QUEUE_MAX_RETRIES: ${QUEUE_MAX_RETRIES:-3}
+      QUEUE_RETRY_BACKOFF_MS: ${QUEUE_RETRY_BACKOFF_MS:-5000}
+      QUEUE_CONCURRENCY: ${QUEUE_CONCURRENCY:-5}
+      # API client configuration
+      API_REQUEST_TIMEOUT_MS: ${API_REQUEST_TIMEOUT_MS:-10000}
+      API_CIRCUIT_BREAKER_THRESHOLD: ${API_CIRCUIT_BREAKER_THRESHOLD:-5}
+      API_CIRCUIT_BREAKER_DURATION_MS: ${API_CIRCUIT_BREAKER_DURATION_MS:-30000}
+    ports:
+      - '${SCHEDULER_PORT:-9266}:9266'
     networks:
       - backend-network
     depends_on:
@@ -202,7 +220,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      api:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:9266/health']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
 
   # =================================================================
   # Frontend - React + Nginx
