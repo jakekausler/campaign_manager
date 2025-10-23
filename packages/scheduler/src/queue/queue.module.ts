@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 
 import { ConfigModule } from '../config/config.module';
 import { EffectsModule } from '../effects/effects.module';
+import { EventsModule } from '../events/events.module';
 
 import { BullBoardModule } from './bull-board.module';
 import { DeadLetterService } from './dead-letter.service';
@@ -33,6 +34,7 @@ import { QueueService } from './queue.service';
     }),
     BullBoardModule,
     EffectsModule,
+    EventsModule,
   ],
   controllers: [MetricsController],
   providers: [QueueService, JobProcessorService, DeadLetterService],

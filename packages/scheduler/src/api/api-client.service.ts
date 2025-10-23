@@ -49,6 +49,46 @@ const EXECUTE_EFFECT_MUTATION = `
 `;
 
 /**
+ * GraphQL query for fetching overdue events
+ */
+const GET_OVERDUE_EVENTS_QUERY = `
+  query GetOverdueEvents($campaignId: ID!) {
+    getOverdueEvents(campaignId: $campaignId) {
+      id
+      campaignId
+      name
+      eventType
+      scheduledAt
+      isCompleted
+    }
+  }
+`;
+
+/**
+ * GraphQL query for fetching all campaign IDs
+ */
+const GET_ALL_CAMPAIGN_IDS_QUERY = `
+  query GetAllCampaignIds {
+    campaigns {
+      id
+    }
+  }
+`;
+
+/**
+ * GraphQL mutation for marking an event as expired
+ */
+const EXPIRE_EVENT_MUTATION = `
+  mutation ExpireEvent($eventId: ID!) {
+    expireEvent(eventId: $eventId) {
+      id
+      isCompleted
+      occurredAt
+    }
+  }
+`;
+
+/**
  * Effect details returned from the API
  */
 export interface EffectDetails {
@@ -77,6 +117,27 @@ export interface EffectExecutionResult {
     success: boolean;
     error?: string;
   };
+}
+
+/**
+ * Event summary returned from the API
+ */
+export interface EventSummary {
+  id: string;
+  campaignId: string;
+  name: string;
+  eventType: string;
+  scheduledAt: string;
+  isCompleted: boolean;
+}
+
+/**
+ * Expired event result from the API
+ */
+export interface ExpiredEventResult {
+  id: string;
+  isCompleted: boolean;
+  occurredAt: string;
 }
 
 /**
@@ -221,6 +282,114 @@ export class ApiClientService {
     } catch (error) {
       this.logger.error(
         `Failed to execute effect ${effectId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get overdue events for a campaign
+   *
+   * @param campaignId - The campaign ID
+   * @returns Array of overdue event summaries
+   */
+  async getOverdueEvents(campaignId: string): Promise<EventSummary[]> {
+    this.logger.debug(`Fetching overdue events for campaign ${campaignId}`);
+
+    try {
+      const response = (await this.circuitBreaker.fire({
+        query: GET_OVERDUE_EVENTS_QUERY,
+        variables: { campaignId },
+      })) as GraphQLResponse<{ getOverdueEvents: EventSummary[] }>;
+
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors.map((e: { message: string }) => e.message).join(', ');
+        this.logger.error(`GraphQL errors fetching overdue events: ${errorMessage}`);
+        throw new Error(`GraphQL errors: ${errorMessage}`);
+      }
+
+      if (!response.data?.getOverdueEvents) {
+        this.logger.warn(`No overdue events found for campaign ${campaignId}`);
+        return [];
+      }
+
+      const events = response.data.getOverdueEvents;
+      this.logger.debug(`Found ${events.length} overdue event(s) for campaign ${campaignId}`);
+      return events;
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch overdue events for campaign ${campaignId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get all campaign IDs
+   *
+   * @returns Array of campaign IDs
+   */
+  async getAllCampaignIds(): Promise<string[]> {
+    this.logger.debug('Fetching all campaign IDs');
+
+    try {
+      const response = (await this.circuitBreaker.fire({
+        query: GET_ALL_CAMPAIGN_IDS_QUERY,
+      })) as GraphQLResponse<{ campaigns: Array<{ id: string }> }>;
+
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors.map((e: { message: string }) => e.message).join(', ');
+        this.logger.error(`GraphQL errors fetching campaign IDs: ${errorMessage}`);
+        throw new Error(`GraphQL errors: ${errorMessage}`);
+      }
+
+      if (!response.data?.campaigns) {
+        this.logger.warn('No campaigns found');
+        return [];
+      }
+
+      const campaignIds = response.data.campaigns.map((c) => c.id);
+      this.logger.debug(`Found ${campaignIds.length} campaign(s)`);
+      return campaignIds;
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch campaign IDs: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Mark an event as expired
+   *
+   * @param eventId - The event ID to expire
+   * @returns Expired event result
+   */
+  async expireEvent(eventId: string): Promise<ExpiredEventResult> {
+    this.logger.log(`Marking event ${eventId} as expired`);
+
+    try {
+      const response = (await this.circuitBreaker.fire({
+        query: EXPIRE_EVENT_MUTATION,
+        variables: { eventId },
+      })) as GraphQLResponse<{ expireEvent: ExpiredEventResult }>;
+
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors.map((e: { message: string }) => e.message).join(', ');
+        this.logger.error(`GraphQL errors expiring event ${eventId}: ${errorMessage}`);
+        throw new Error(`GraphQL errors: ${errorMessage}`);
+      }
+
+      if (!response.data?.expireEvent) {
+        throw new Error('No result returned from expireEvent mutation');
+      }
+
+      const result = response.data.expireEvent;
+      this.logger.log(`Successfully expired event ${eventId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to expire event ${eventId}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       throw error;
     }

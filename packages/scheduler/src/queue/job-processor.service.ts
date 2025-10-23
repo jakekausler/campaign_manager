@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 
 import { DeferredEffectService } from '../effects/deferred-effect.service';
+import { EventExpirationService } from '../events/event-expiration.service';
 
 import { JobType } from './job-types.enum';
 import { JobData, DeferredEffectJobData } from './job.interface';
@@ -16,7 +17,10 @@ import { SCHEDULER_QUEUE } from './queue.constants';
 export class JobProcessorService {
   private readonly logger = new Logger(JobProcessorService.name);
 
-  constructor(private readonly deferredEffectService: DeferredEffectService) {}
+  constructor(
+    private readonly deferredEffectService: DeferredEffectService,
+    private readonly eventExpirationService: EventExpirationService
+  ) {}
 
   /**
    * Main job processing method that routes to specific handlers.
@@ -111,9 +115,32 @@ export class JobProcessorService {
 
   /**
    * Process an event expiration check job.
+   * Checks for and marks overdue events across all campaigns.
    */
   private async processEventExpiration(job: Job<JobData>): Promise<void> {
-    // TODO: Implement in Stage 5
-    this.logger.debug(`Processing event expiration for job ${job.id} (not yet implemented)`);
+    this.logger.log(`Processing event expiration for job ${job.id}`);
+
+    try {
+      const result = await this.eventExpirationService.processAllCampaigns();
+
+      this.logger.log(
+        `Event expiration job ${job.id} completed: ` +
+          `${result.totalChecked} checked, ${result.expired} expired, ${result.errors} errors`
+      );
+
+      if (result.errors > 0) {
+        this.logger.warn(
+          `Event expiration job ${job.id} completed with errors: ${result.errorMessages.join('; ')}`
+        );
+      }
+
+      // Note: We don't throw an error even if some events failed to expire
+      // This allows the job to complete successfully and the cron will retry on next run
+    } catch (error) {
+      this.logger.error(
+        `Event expiration job ${job.id} failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error; // Re-throw to trigger retry
+    }
   }
 }

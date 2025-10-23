@@ -264,6 +264,146 @@ describe('ApiClientService', () => {
     });
   });
 
+  describe('getOverdueEvents', () => {
+    it('should fetch overdue events successfully', async () => {
+      const campaignId = 'campaign-1';
+      const overdueEvents = [
+        {
+          id: 'event-1',
+          campaignId,
+          name: 'Test Event 1',
+          eventType: 'story',
+          scheduledAt: '2025-01-01T00:00:00Z',
+          isCompleted: false,
+        },
+        {
+          id: 'event-2',
+          campaignId,
+          name: 'Test Event 2',
+          eventType: 'kingdom',
+          scheduledAt: '2025-01-02T00:00:00Z',
+          isCompleted: false,
+        },
+      ];
+
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { getOverdueEvents: overdueEvents },
+      });
+
+      const result = await service.getOverdueEvents(campaignId);
+
+      expect(result).toEqual(overdueEvents);
+      expect(mockCircuitBreaker.fire).toHaveBeenCalledWith({
+        query: expect.stringContaining('query GetOverdueEvents'),
+        variables: { campaignId },
+      });
+    });
+
+    it('should return empty array when no overdue events found', async () => {
+      const campaignId = 'campaign-1';
+
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { getOverdueEvents: null },
+      });
+
+      const result = await service.getOverdueEvents(campaignId);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should throw error on GraphQL errors', async () => {
+      const campaignId = 'campaign-1';
+
+      mockCircuitBreaker.fire.mockResolvedValue({
+        errors: [{ message: 'Unauthorized' }],
+      });
+
+      await expect(service.getOverdueEvents(campaignId)).rejects.toThrow(
+        'GraphQL errors: Unauthorized'
+      );
+    });
+  });
+
+  describe('getAllCampaignIds', () => {
+    it('should fetch all campaign IDs successfully', async () => {
+      const campaigns = [{ id: 'campaign-1' }, { id: 'campaign-2' }, { id: 'campaign-3' }];
+
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { campaigns },
+      });
+
+      const result = await service.getAllCampaignIds();
+
+      expect(result).toEqual(['campaign-1', 'campaign-2', 'campaign-3']);
+      expect(mockCircuitBreaker.fire).toHaveBeenCalledWith({
+        query: expect.stringContaining('query GetAllCampaignIds'),
+      });
+    });
+
+    it('should return empty array when no campaigns found', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { campaigns: null },
+      });
+
+      const result = await service.getAllCampaignIds();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should throw error on GraphQL errors', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        errors: [{ message: 'Database error' }],
+      });
+
+      await expect(service.getAllCampaignIds()).rejects.toThrow('GraphQL errors: Database error');
+    });
+  });
+
+  describe('expireEvent', () => {
+    it('should expire event successfully', async () => {
+      const eventId = 'event-1';
+      const expiredEvent = {
+        id: eventId,
+        isCompleted: true,
+        occurredAt: '2025-01-10T00:00:00Z',
+      };
+
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { expireEvent: expiredEvent },
+      });
+
+      const result = await service.expireEvent(eventId);
+
+      expect(result).toEqual(expiredEvent);
+      expect(mockCircuitBreaker.fire).toHaveBeenCalledWith({
+        query: expect.stringContaining('mutation ExpireEvent'),
+        variables: { eventId },
+      });
+    });
+
+    it('should throw error on GraphQL errors', async () => {
+      const eventId = 'event-1';
+
+      mockCircuitBreaker.fire.mockResolvedValue({
+        errors: [{ message: 'Event not found' }],
+      });
+
+      await expect(service.expireEvent(eventId)).rejects.toThrow('GraphQL errors: Event not found');
+    });
+
+    it('should throw error if no result returned', async () => {
+      const eventId = 'event-1';
+
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { expireEvent: null },
+      });
+
+      await expect(service.expireEvent(eventId)).rejects.toThrow(
+        'No result returned from expireEvent mutation'
+      );
+    });
+  });
+
   describe('isCircuitBreakerOpen', () => {
     it('should return true when circuit breaker is open', () => {
       Object.defineProperty(mockCircuitBreaker, 'opened', {

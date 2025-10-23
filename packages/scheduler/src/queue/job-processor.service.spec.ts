@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Job } from 'bull';
 
 import { DeferredEffectService } from '../effects/deferred-effect.service';
+import { EventExpirationService } from '../events/event-expiration.service';
 
 import { JobProcessorService } from './job-processor.service';
 import { JobData, JobType } from './job.interface';
@@ -9,11 +10,16 @@ import { JobData, JobType } from './job.interface';
 describe('JobProcessorService', () => {
   let service: JobProcessorService;
   let deferredEffectService: jest.Mocked<DeferredEffectService>;
+  let eventExpirationService: jest.Mocked<EventExpirationService>;
 
   beforeEach(async () => {
     // Create mock services
     const mockDeferredEffectService = {
       executeDeferredEffect: jest.fn(),
+    };
+
+    const mockEventExpirationService = {
+      processAllCampaigns: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -23,11 +29,18 @@ describe('JobProcessorService', () => {
           provide: DeferredEffectService,
           useValue: mockDeferredEffectService,
         },
+        {
+          provide: EventExpirationService,
+          useValue: mockEventExpirationService,
+        },
       ],
     }).compile();
 
     service = module.get<JobProcessorService>(JobProcessorService);
     deferredEffectService = module.get(DeferredEffectService) as jest.Mocked<DeferredEffectService>;
+    eventExpirationService = module.get(
+      EventExpirationService
+    ) as jest.Mocked<EventExpirationService>;
   });
 
   it('should be defined', () => {
@@ -129,7 +142,16 @@ describe('JobProcessorService', () => {
         data: jobData,
       } as Job<JobData>;
 
+      eventExpirationService.processAllCampaigns.mockResolvedValue({
+        totalChecked: 10,
+        expired: 2,
+        errors: 0,
+        expiredEventIds: ['event-1', 'event-2'],
+        errorMessages: [],
+      });
+
       await expect(service.processJob(mockJob)).resolves.not.toThrow();
+      expect(eventExpirationService.processAllCampaigns).toHaveBeenCalled();
     });
 
     it('should handle unknown job types by throwing an error', async () => {
