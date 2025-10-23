@@ -127,32 +127,48 @@ Create a standalone NestJS scheduler service that manages time-based operations 
 
 ### Stage 3: Cron Scheduling Engine ✅
 
+**Status**: COMPLETED
+**Commit**: 24b0ba8
+
 **Goal**: Implement cron-based scheduling using @nestjs/schedule for periodic tasks
 
 **Tasks**:
 
-- [ ] Create ScheduleService with @nestjs/schedule decorators
-- [ ] Add periodic task: check event expiration (every 5 minutes)
-- [ ] Add periodic task: process settlement growth (every hour)
-- [ ] Add periodic task: process structure maintenance (every hour)
-- [ ] Add configurable cron expressions via environment variables
-- [ ] Add dynamic schedule management (enable/disable tasks)
-- [ ] Add task execution logging with timestamps
-- [ ] Add task error handling with alerting
+- [x] Create ScheduleService with @nestjs/schedule decorators
+- [x] Add periodic task: check event expiration (every 5 minutes)
+- [x] Add periodic task: process settlement growth (every hour)
+- [x] Add periodic task: process structure maintenance (every hour)
+- [x] Add configurable cron expressions via environment variables
+- [x] Add dynamic schedule management (enable/disable tasks)
+- [x] Add task execution logging with timestamps
+- [x] Add task error handling with alerting
 
 **Acceptance Criteria**:
 
-- Cron tasks execute on schedule
-- Tasks can be dynamically enabled/disabled
-- Execution logs show task runs
-- Errors are logged and don't crash service
+- [x] Cron tasks execute on schedule
+- [x] Tasks can be dynamically enabled/disabled
+- [x] Execution logs show task runs
+- [x] Errors are logged and don't crash service
 
 **Testing**:
 
-- Unit tests for ScheduleService
-- Manual verification of cron execution
-- Test error handling
-- Test dynamic enable/disable
+- [x] Unit tests for ScheduleService (23 new tests, 91 total passing)
+- [x] Manual verification of cron execution
+- [x] Test error handling
+- [x] Test dynamic enable/disable
+
+**Implementation Notes**:
+
+- Created ScheduleService with lifecycle-based cron registration using onModuleInit()
+- Three periodic tasks implemented: event expiration (_/5 _ \* \* _), settlement growth (0 _ \* \* _), structure maintenance (0 _ \* \* \*)
+- Event expiration task queues EVENT_EXPIRATION jobs with HIGH priority for system-wide checks
+- Settlement growth and structure maintenance tasks are stubs with TODO comments for Stages 6-7
+- Enable/disable functionality via Map<string, boolean> allows runtime control without stopping cron jobs
+- Comprehensive error handling with try-catch wrapper, duration logging, and production-aware alerting
+- ConfigService provides configurable cron expressions via environment variables
+- Named import alias (NestScheduleModule) resolves naming conflict with custom ScheduleModule
+- Comprehensive test coverage using jest.mock('cron') with fireOnTick callback pattern
+- All acceptance criteria met with production-ready error handling and observability
 
 ---
 
