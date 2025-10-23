@@ -29,9 +29,13 @@ fi
 # Look for: "Worker exited unexpectedly" in unhandled errors section
 # Use POSIX-compliant basic regex instead of grep -P
 if printf '%s\n' "$OUTPUT" | grep -q "Worker exited unexpectedly"; then
+  # Strip ANSI color codes before parsing (Vitest output contains ANSI codes between "Tests" and the number)
+  # ANSI codes follow pattern: ESC[<params>m where ESC is \x1b or \033
+  OUTPUT_CLEAN=$(printf '%s\n' "$OUTPUT" | sed 's/\x1b\[[0-9;]*m//g')
+
   # Extract test counts using safer POSIX-compliant regex
-  PASSED_TESTS=$(printf '%s\n' "$OUTPUT" | grep -o 'Tests[[:space:]]*[0-9][0-9]*[[:space:]]*passed' | head -1 | grep -o '[0-9][0-9]*')
-  TOTAL_FILES_PASSED=$(printf '%s\n' "$OUTPUT" | grep -o 'Test Files[[:space:]]*[0-9][0-9]*[[:space:]]*passed' | head -1 | grep -o '[0-9][0-9]*')
+  PASSED_TESTS=$(printf '%s\n' "$OUTPUT_CLEAN" | grep -o 'Tests[[:space:]]*[0-9][0-9]*[[:space:]]*passed' | head -1 | grep -o '[0-9][0-9]*')
+  TOTAL_FILES_PASSED=$(printf '%s\n' "$OUTPUT_CLEAN" | grep -o 'Test Files[[:space:]]*[0-9][0-9]*[[:space:]]*passed' | head -1 | grep -o '[0-9][0-9]*')
 
   # If we successfully extracted test counts and they're non-zero, consider it success
   # (Removed hardcoded thresholds to avoid brittleness - any passing tests with worker crash is acceptable)
