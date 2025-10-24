@@ -17,6 +17,8 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useStructuresForMap } from '@/services/api/hooks/structures';
 
+import { AddStructureModal } from './AddStructureModal';
+
 /**
  * Structure data as returned by useStructuresForMap hook
  */
@@ -102,6 +104,7 @@ export function SettlementHierarchyPanel({
   onAddStructure,
 }: SettlementHierarchyPanelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
   const { structures, loading, error } = useStructuresForMap(settlementId);
 
   // Calculate quick stats
@@ -113,6 +116,24 @@ export function SettlementHierarchyPanel({
 
   // Handle structure selection
   const handleStructureClick = (structureId: string) => {
+    if (onStructureSelect) {
+      onStructureSelect(structureId);
+    }
+  };
+
+  // Handle "Add Structure" button click
+  const handleAddStructure = () => {
+    // Call parent callback if provided (for backward compatibility)
+    if (onAddStructure) {
+      onAddStructure();
+    }
+    // Open internal modal
+    setShowAddModal(true);
+  };
+
+  // Handle successful structure creation
+  const handleStructureCreated = (structureId: string) => {
+    // Optionally, select the newly created structure
     if (onStructureSelect) {
       onStructureSelect(structureId);
     }
@@ -131,7 +152,7 @@ export function SettlementHierarchyPanel({
             </p>
           </div>
           {onAddStructure && (
-            <Button variant="outline" size="sm" onClick={onAddStructure}>
+            <Button variant="outline" size="sm" onClick={handleAddStructure}>
               Add Structure
             </Button>
           )}
@@ -183,7 +204,12 @@ export function SettlementHierarchyPanel({
                 <div className="py-3 px-3 text-center">
                   <p className="text-xs text-slate-500 italic">No structures in this settlement</p>
                   {onAddStructure && (
-                    <Button variant="outline" size="sm" onClick={onAddStructure} className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddStructure}
+                      className="mt-2"
+                    >
                       Add First Structure
                     </Button>
                   )}
@@ -222,6 +248,14 @@ export function SettlementHierarchyPanel({
           )}
         </div>
       </div>
+
+      {/* Add Structure Modal */}
+      <AddStructureModal
+        settlementId={settlementId}
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={handleStructureCreated}
+      />
     </Card>
   );
 }
