@@ -1,5 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 
+import { HealthService } from '../health/health.service';
+
 import { DeadLetterService } from './dead-letter.service';
 import { QueueService } from './queue.service';
 
@@ -11,7 +13,8 @@ import { QueueService } from './queue.service';
 export class MetricsController {
   constructor(
     private readonly queueService: QueueService,
-    private readonly deadLetterService: DeadLetterService
+    private readonly deadLetterService: DeadLetterService,
+    private readonly healthService: HealthService
   ) {}
 
   /**
@@ -56,9 +59,10 @@ export class MetricsController {
    */
   @Get('prometheus')
   async getPrometheusMetrics(): Promise<string> {
-    const [queueMetrics, deadLetterCount] = await Promise.all([
+    const [queueMetrics, deadLetterCount, healthStatus] = await Promise.all([
       this.queueService.getMetrics(),
       this.deadLetterService.getDeadLetterCount(),
+      this.healthService.check(),
     ]);
 
     const metrics = [
@@ -86,8 +90,66 @@ export class MetricsController {
       '# TYPE scheduler_dead_letter_count gauge',
       `scheduler_dead_letter_count ${deadLetterCount}`,
       '',
+      '# HELP scheduler_health_status Overall health status (0=unhealthy, 1=degraded, 2=healthy)',
+      '# TYPE scheduler_health_status gauge',
+      `scheduler_health_status ${this.healthStatusToNumber(healthStatus.status)}`,
+      '',
+      '# HELP scheduler_component_status Component health status (0=down, 1=degraded, 2=up)',
+      '# TYPE scheduler_component_status gauge',
+      `scheduler_component_status{component="redis"} ${this.componentStatusToNumber(healthStatus.components.redis.status)}`,
+      `scheduler_component_status{component="redis_subscriber"} ${this.componentStatusToNumber(healthStatus.components.redisSubscriber.status)}`,
+      `scheduler_component_status{component="bull_queue"} ${this.componentStatusToNumber(healthStatus.components.bullQueue.status)}`,
+      `scheduler_component_status{component="api"} ${this.componentStatusToNumber(healthStatus.components.api.status)}`,
+      '',
+      '# HELP scheduler_uptime_seconds Scheduler service uptime in seconds',
+      '# TYPE scheduler_uptime_seconds counter',
+      `scheduler_uptime_seconds ${healthStatus.uptime}`,
+      '',
+      '# HELP process_cpu_usage_percent Process CPU usage percentage',
+      '# TYPE process_cpu_usage_percent gauge',
+      `process_cpu_usage_percent ${process.cpuUsage().user / 1000000}`,
+      '',
+      '# HELP process_memory_usage_bytes Process memory usage in bytes',
+      '# TYPE process_memory_usage_bytes gauge',
+      `process_memory_usage_bytes{type="rss"} ${process.memoryUsage().rss}`,
+      `process_memory_usage_bytes{type="heap_used"} ${process.memoryUsage().heapUsed}`,
+      `process_memory_usage_bytes{type="heap_total"} ${process.memoryUsage().heapTotal}`,
+      `process_memory_usage_bytes{type="external"} ${process.memoryUsage().external}`,
+      '',
     ];
 
     return metrics.join('\n');
+  }
+
+  /**
+   * Convert health status to number for Prometheus
+   */
+  private healthStatusToNumber(status: 'healthy' | 'degraded' | 'unhealthy'): number {
+    switch (status) {
+      case 'healthy':
+        return 2;
+      case 'degraded':
+        return 1;
+      case 'unhealthy':
+        return 0;
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Convert component status to number for Prometheus
+   */
+  private componentStatusToNumber(status: 'up' | 'down' | 'degraded'): number {
+    switch (status) {
+      case 'up':
+        return 2;
+      case 'degraded':
+        return 1;
+      case 'down':
+        return 0;
+      default:
+        return 0;
+    }
   }
 }

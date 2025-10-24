@@ -2,6 +2,8 @@ import { InjectQueue } from '@nestjs/bull';
 import { Injectable, Logger } from '@nestjs/common';
 import { Queue, Job } from 'bull';
 
+import { AlertingService } from '../monitoring/alerting.service';
+
 import { JobData } from './job.interface';
 import { DEAD_LETTER_QUEUE, SCHEDULER_QUEUE } from './queue.constants';
 
@@ -38,7 +40,8 @@ export class DeadLetterService {
 
   constructor(
     @InjectQueue(SCHEDULER_QUEUE) private readonly schedulerQueue: Queue<JobData>,
-    @InjectQueue(DEAD_LETTER_QUEUE) private readonly deadLetterQueue: Queue<DeadLetterJob>
+    @InjectQueue(DEAD_LETTER_QUEUE) private readonly deadLetterQueue: Queue<DeadLetterJob>,
+    private readonly alertingService: AlertingService
   ) {
     // Set up event listener for failed jobs
     this.schedulerQueue.on('failed', this.handleFailedJob.bind(this));
@@ -68,6 +71,19 @@ export class DeadLetterService {
         removeOnComplete: false, // Keep completed DLQ jobs
         removeOnFail: false, // Keep failed DLQ jobs
       });
+
+      // Send critical alert for job failure
+      await this.alertingService.critical(
+        'Job Failed - Moved to Dead Letter Queue',
+        `Job ${job.id} of type ${job.data.type} failed after ${job.attemptsMade} attempts`,
+        {
+          jobId: job.id.toString(),
+          jobType: job.data.type,
+          campaignId: job.data.campaignId,
+          error: error.message,
+          attemptsMade: job.attemptsMade,
+        }
+      );
 
       this.logger.log(`Job ${job.id} moved to dead-letter queue`);
     }

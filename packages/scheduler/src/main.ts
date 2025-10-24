@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 import { AppModule } from './app.module';
 import { ConfigService } from './config/config.service';
@@ -11,8 +12,11 @@ async function bootstrap() {
 
   try {
     const app = await NestFactory.create(AppModule, {
-      logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+      bufferLogs: true, // Buffer logs until logger is ready
     });
+
+    // Use Winston logger for all NestJS logs
+    app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
     const configService = app.get(ConfigService);
 

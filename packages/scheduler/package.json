@@ -29,10 +29,12 @@
     "class-validator": "^0.14.2",
     "cron": "^4.3.3",
     "ioredis": "^5.8.1",
+    "nest-winston": "^1.10.2",
     "node-cron": "^3.0.3",
     "opossum": "^9.0.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "winston": "^3.18.3"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.10",

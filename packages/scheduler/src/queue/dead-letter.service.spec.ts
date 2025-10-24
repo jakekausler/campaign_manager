@@ -2,6 +2,8 @@ import { getQueueToken } from '@nestjs/bull';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Queue, Job } from 'bull';
 
+import { AlertingService } from '../monitoring/alerting.service';
+
 import { DeadLetterService, DeadLetterJob } from './dead-letter.service';
 import { JobData, JobType } from './job.interface';
 import { DEAD_LETTER_QUEUE, SCHEDULER_QUEUE } from './queue.constants';
@@ -10,6 +12,7 @@ describe('DeadLetterService', () => {
   let service: DeadLetterService;
   let mockSchedulerQueue: Partial<Queue<JobData>>;
   let mockDeadLetterQueue: Partial<Queue<DeadLetterJob>>;
+  let mockAlertingService: jest.Mocked<Partial<AlertingService>>;
 
   beforeEach(async () => {
     // Mock the scheduler queue
@@ -27,6 +30,11 @@ describe('DeadLetterService', () => {
       getJob: jest.fn(),
     };
 
+    // Mock the alerting service
+    mockAlertingService = {
+      sendAlert: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DeadLetterService,
@@ -37,6 +45,10 @@ describe('DeadLetterService', () => {
         {
           provide: getQueueToken(DEAD_LETTER_QUEUE),
           useValue: mockDeadLetterQueue,
+        },
+        {
+          provide: AlertingService,
+          useValue: mockAlertingService,
         },
       ],
     }).compile();

@@ -1,6 +1,9 @@
 import { getQueueToken } from '@nestjs/bull';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ApiClientService } from '../api/api-client.service';
+import { RedisSubscriberService } from '../redis/redis-subscriber.service';
+
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
 
@@ -13,6 +16,18 @@ describe('HealthController', () => {
       client: {
         ping: jest.fn().mockResolvedValue('PONG'),
       },
+      getActiveCount: jest.fn().mockResolvedValue(0),
+      getWaitingCount: jest.fn().mockResolvedValue(0),
+      getDelayedCount: jest.fn().mockResolvedValue(0),
+      getFailedCount: jest.fn().mockResolvedValue(0),
+    };
+
+    const mockRedisSubscriber = {
+      isConnected: jest.fn().mockReturnValue(true),
+    };
+
+    const mockApiClient = {
+      getAllCampaignIds: jest.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -22,6 +37,14 @@ describe('HealthController', () => {
         {
           provide: getQueueToken('health-check'),
           useValue: mockQueue,
+        },
+        {
+          provide: RedisSubscriberService,
+          useValue: mockRedisSubscriber,
+        },
+        {
+          provide: ApiClientService,
+          useValue: mockApiClient,
         },
       ],
     }).compile();
@@ -38,14 +61,15 @@ describe('HealthController', () => {
 
     expect(result).toHaveProperty('status');
     expect(result).toHaveProperty('timestamp');
-    expect(result).toHaveProperty('redis');
+    expect(result).toHaveProperty('components');
+    expect(result.components).toHaveProperty('redis');
   });
 
   it('should return healthy status when Redis is connected', async () => {
     const result = await controller.check();
 
     expect(result.status).toBe('healthy');
-    expect(result.redis).toBe('connected');
+    expect(result.components.redis.status).toBe('up');
   });
 
   it('should include timestamp in ISO format', async () => {
