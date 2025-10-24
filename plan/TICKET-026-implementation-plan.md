@@ -566,33 +566,70 @@ Create a standalone NestJS scheduler service that manages time-based operations 
 
 ### Stage 10: Monitoring & Health Checks ✅
 
+**Status**: COMPLETED
+**Commit**: 52b9c08
+
 **Goal**: Add comprehensive monitoring, metrics, and health checks for observability
 
 **Tasks**:
 
-- [ ] Extend health check endpoint with detailed status
-- [ ] Add metrics endpoint (GET /metrics) with Prometheus format
-- [ ] Track metrics: jobs queued, jobs completed, jobs failed, API requests, Redis connection status
-- [ ] Add logging with structured format (JSON)
-- [ ] Add log levels (DEBUG, INFO, WARN, ERROR)
-- [ ] Create dashboard config for Grafana (optional, future)
-- [ ] Add alerting hooks for critical failures
-- [ ] Document monitoring setup in README
+- [x] Extend health check endpoint with detailed status
+- [x] Add metrics endpoint (GET /metrics) with Prometheus format
+- [x] Track metrics: jobs queued, jobs completed, jobs failed, API requests, Redis connection status
+- [x] Add logging with structured format (JSON)
+- [x] Add log levels (DEBUG, INFO, WARN, ERROR)
+- [x] Create dashboard config for Grafana (optional, future)
+- [x] Add alerting hooks for critical failures
+- [x] Document monitoring setup in README
 
 **Acceptance Criteria**:
 
-- Health check shows Redis, API, and queue status
-- Metrics endpoint returns Prometheus format
-- Logs are structured and filterable
-- Critical failures trigger alerts
-- Monitoring documentation is complete
+- [x] Health check shows Redis, API, and queue status
+- [x] Metrics endpoint returns Prometheus format
+- [x] Logs are structured and filterable
+- [x] Critical failures trigger alerts
+- [x] Monitoring documentation is complete
 
 **Testing**:
 
-- Unit tests for metrics collection
-- Manual verification of Prometheus format
-- Test health check during failures
-- Verify alert triggers
+- [x] Unit tests for metrics collection (HealthService: 8 tests, AlertingService: 9 tests)
+- [x] Manual verification of Prometheus format
+- [x] Test health check during failures
+- [x] Verify alert triggers
+
+**Implementation Notes**:
+
+- Enhanced HealthService with component-level health checks for Redis, Redis Subscriber, Bull Queue, and API
+- Returns detailed status with "healthy", "degraded", or "unhealthy" overall status
+- Component status includes latency measurements and specific messages
+- MetricsController extended with comprehensive Prometheus metrics:
+  - Queue metrics (active, waiting, completed, failed, delayed)
+  - Health status metrics with numeric mapping (0=unhealthy, 1=degraded, 2=healthy)
+  - Per-component status metrics with labels
+  - Process metrics (CPU, memory usage by type)
+  - Uptime counter
+- Integrated Winston logger with production/development format switching:
+  - JSON format in production for log aggregation
+  - Human-readable colored format in development
+  - Configurable log levels via LOG_LEVEL environment variable
+- Created AlertingService with handler registration pattern:
+  - Three severity levels: CRITICAL, WARNING, INFO
+  - Default structured logging handler
+  - Extensible for external integrations (PagerDuty, Slack, email)
+  - Integrated with DeadLetterService for job failure alerts
+- Created comprehensive scheduler README (680+ lines):
+  - Architecture diagram and overview
+  - Job types documentation
+  - Monitoring & Observability section with examples
+  - Health check and metrics endpoint documentation
+  - Structured logging examples
+  - Alerting integration guide
+  - Troubleshooting guide
+  - Production deployment guide with Prometheus/Grafana setup
+- Dependencies added: nest-winston, winston
+- Module organization: LoggerModule, MonitoringModule (global)
+- Used forwardRef to prevent circular dependency between HealthModule and QueueModule
+- All 212 tests passing with comprehensive coverage of monitoring components
 
 ---
 
