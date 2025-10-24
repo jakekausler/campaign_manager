@@ -121,6 +121,49 @@ const GET_STRUCTURES_BY_CAMPAIGN_QUERY = `
 `;
 
 /**
+ * GraphQL mutation for updating a settlement
+ */
+const UPDATE_SETTLEMENT_MUTATION = `
+  mutation UpdateSettlement($id: ID!, $input: UpdateSettlementInput!) {
+    updateSettlement(id: $id, input: $input) {
+      id
+      name
+      level
+      variables
+      version
+    }
+  }
+`;
+
+/**
+ * GraphQL mutation for updating a structure
+ */
+const UPDATE_STRUCTURE_MUTATION = `
+  mutation UpdateStructure($id: ID!, $input: UpdateStructureInput!) {
+    updateStructure(id: $id, input: $input) {
+      id
+      name
+      type
+      variables
+      version
+    }
+  }
+`;
+
+/**
+ * GraphQL mutation for completing an event
+ */
+const COMPLETE_EVENT_MUTATION = `
+  mutation CompleteEvent($eventId: ID!, $occurredAt: DateTime) {
+    completeEvent(eventId: $eventId, occurredAt: $occurredAt) {
+      id
+      isCompleted
+      occurredAt
+    }
+  }
+`;
+
+/**
  * Effect details returned from the API
  */
 export interface EffectDetails {
@@ -197,6 +240,57 @@ export interface StructureSummary {
 }
 
 /**
+ * Settlement update input
+ */
+export interface UpdateSettlementInput {
+  name?: string;
+  level?: number;
+  variables?: Record<string, unknown>;
+  version?: number;
+}
+
+/**
+ * Settlement update result
+ */
+export interface UpdateSettlementResult {
+  id: string;
+  name: string;
+  level: number;
+  variables: Record<string, unknown>;
+  version: number;
+}
+
+/**
+ * Structure update input
+ */
+export interface UpdateStructureInput {
+  name?: string;
+  type?: string;
+  variables?: Record<string, unknown>;
+  version?: number;
+}
+
+/**
+ * Structure update result
+ */
+export interface UpdateStructureResult {
+  id: string;
+  name: string;
+  type: string;
+  variables: Record<string, unknown>;
+  version: number;
+}
+
+/**
+ * Complete event result
+ */
+export interface CompleteEventResult {
+  id: string;
+  isCompleted: boolean;
+  occurredAt: string;
+}
+
+/**
  * GraphQL request body structure
  */
 interface GraphQLRequest {
@@ -221,6 +315,11 @@ export class ApiClientService {
   private readonly logger = new Logger(ApiClientService.name);
   private readonly axiosInstance: AxiosInstance;
   private readonly circuitBreaker: CircuitBreaker;
+
+  // Cache for frequently accessed data
+  private readonly campaignCache = new Map<string, { data: string[]; timestamp: number }>();
+  private readonly effectCache = new Map<string, { data: EffectDetails; timestamp: number }>();
+  private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   constructor(private readonly configService: ConfigService) {
     // Create axios instance with default configuration
@@ -258,12 +357,19 @@ export class ApiClientService {
   }
 
   /**
-   * Fetch effect details from the API
+   * Fetch effect details from the API (with caching)
    *
    * @param effectId - The effect ID to fetch
    * @returns Effect details
    */
   async getEffect(effectId: string): Promise<EffectDetails | null> {
+    // Check cache first
+    const cached = this.effectCache.get(effectId);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL_MS) {
+      this.logger.debug(`Returning cached effect ${effectId}`);
+      return cached.data;
+    }
+
     this.logger.debug(`Fetching effect details for effect ${effectId}`);
 
     try {
@@ -281,6 +387,17 @@ export class ApiClientService {
       if (!response.data?.getEffect) {
         this.logger.warn(`Effect ${effectId} not found`);
         return null;
+      }
+
+      // Cache the result
+      this.effectCache.set(effectId, {
+        data: response.data.getEffect,
+        timestamp: Date.now(),
+      });
+
+      // Clear expired cache entries periodically
+      if (this.effectCache.size > 100) {
+        this.clearExpiredCache();
       }
 
       this.logger.debug(`Successfully fetched effect ${effectId}`);
@@ -381,11 +498,19 @@ export class ApiClientService {
   }
 
   /**
-   * Get all campaign IDs
+   * Get all campaign IDs (with caching)
    *
    * @returns Array of campaign IDs
    */
   async getAllCampaignIds(): Promise<string[]> {
+    // Check cache first
+    const cacheKey = 'all_campaigns';
+    const cached = this.campaignCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL_MS) {
+      this.logger.debug('Returning cached campaign IDs');
+      return cached.data;
+    }
+
     this.logger.debug('Fetching all campaign IDs');
 
     try {
@@ -405,6 +530,13 @@ export class ApiClientService {
       }
 
       const campaignIds = response.data.campaigns.map((c) => c.id);
+
+      // Cache the result
+      this.campaignCache.set(cacheKey, {
+        data: campaignIds,
+        timestamp: Date.now(),
+      });
+
       this.logger.debug(`Found ${campaignIds.length} campaign(s)`);
       return campaignIds;
     } catch (error) {
@@ -555,6 +687,160 @@ export class ApiClientService {
       );
       throw error;
     }
+  }
+
+  /**
+   * Update a settlement
+   *
+   * @param id - Settlement ID
+   * @param input - Update input
+   * @returns Updated settlement
+   */
+  async updateSettlement(
+    id: string,
+    input: UpdateSettlementInput
+  ): Promise<UpdateSettlementResult> {
+    this.logger.log(`Updating settlement ${id}`);
+
+    try {
+      const response = (await this.circuitBreaker.fire({
+        query: UPDATE_SETTLEMENT_MUTATION,
+        variables: { id, input },
+      })) as GraphQLResponse<{ updateSettlement: UpdateSettlementResult }>;
+
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors.map((e: { message: string }) => e.message).join(', ');
+        this.logger.error(`GraphQL errors updating settlement ${id}: ${errorMessage}`);
+        throw new Error(`GraphQL errors: ${errorMessage}`);
+      }
+
+      if (!response.data?.updateSettlement) {
+        throw new Error('No result returned from updateSettlement mutation');
+      }
+
+      const result = response.data.updateSettlement;
+      this.logger.log(`Successfully updated settlement ${id}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to update settlement ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Update a structure
+   *
+   * @param id - Structure ID
+   * @param input - Update input
+   * @returns Updated structure
+   */
+  async updateStructure(id: string, input: UpdateStructureInput): Promise<UpdateStructureResult> {
+    this.logger.log(`Updating structure ${id}`);
+
+    try {
+      const response = (await this.circuitBreaker.fire({
+        query: UPDATE_STRUCTURE_MUTATION,
+        variables: { id, input },
+      })) as GraphQLResponse<{ updateStructure: UpdateStructureResult }>;
+
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors.map((e: { message: string }) => e.message).join(', ');
+        this.logger.error(`GraphQL errors updating structure ${id}: ${errorMessage}`);
+        throw new Error(`GraphQL errors: ${errorMessage}`);
+      }
+
+      if (!response.data?.updateStructure) {
+        throw new Error('No result returned from updateStructure mutation');
+      }
+
+      const result = response.data.updateStructure;
+      this.logger.log(`Successfully updated structure ${id}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to update structure ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Complete an event (triggers effects execution)
+   *
+   * @param eventId - Event ID
+   * @param occurredAt - Optional timestamp (defaults to current world time)
+   * @returns Completed event result
+   */
+  async completeEvent(eventId: string, occurredAt?: string): Promise<CompleteEventResult> {
+    this.logger.log(`Completing event ${eventId}${occurredAt ? ` at ${occurredAt}` : ''}`);
+
+    try {
+      const response = (await this.circuitBreaker.fire({
+        query: COMPLETE_EVENT_MUTATION,
+        variables: { eventId, ...(occurredAt && { occurredAt }) },
+      })) as GraphQLResponse<{ completeEvent: CompleteEventResult }>;
+
+      if (response.errors && response.errors.length > 0) {
+        const errorMessage = response.errors.map((e: { message: string }) => e.message).join(', ');
+        this.logger.error(`GraphQL errors completing event ${eventId}: ${errorMessage}`);
+        throw new Error(`GraphQL errors: ${errorMessage}`);
+      }
+
+      if (!response.data?.completeEvent) {
+        throw new Error('No result returned from completeEvent mutation');
+      }
+
+      const result = response.data.completeEvent;
+      this.logger.log(`Successfully completed event ${eventId}`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to complete event ${eventId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Clear expired cache entries
+   */
+  private clearExpiredCache(): void {
+    const now = Date.now();
+
+    // Clear expired campaign cache entries
+    for (const [key, value] of this.campaignCache.entries()) {
+      if (now - value.timestamp > this.CACHE_TTL_MS) {
+        this.campaignCache.delete(key);
+      }
+    }
+
+    // Clear expired effect cache entries
+    for (const [key, value] of this.effectCache.entries()) {
+      if (now - value.timestamp > this.CACHE_TTL_MS) {
+        this.effectCache.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Invalidate all caches
+   */
+  invalidateCache(): void {
+    this.logger.debug('Invalidating all caches');
+    this.campaignCache.clear();
+    this.effectCache.clear();
+  }
+
+  /**
+   * Invalidate effect cache for a specific effect
+   *
+   * @param effectId - Effect ID to invalidate
+   */
+  invalidateEffectCache(effectId: string): void {
+    this.logger.debug(`Invalidating effect cache for ${effectId}`);
+    this.effectCache.delete(effectId);
   }
 
   /**

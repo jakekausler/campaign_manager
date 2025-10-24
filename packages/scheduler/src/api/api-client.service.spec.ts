@@ -445,4 +445,248 @@ describe('ApiClientService', () => {
       expect(stats).toEqual(mockStats);
     });
   });
+
+  describe('updateSettlement', () => {
+    const settlementId = 'settlement-1';
+    const updateInput = {
+      name: 'Updated Settlement',
+      level: 2,
+      variables: { population: 1500 },
+      version: 1,
+    };
+    const mockResult = {
+      id: settlementId,
+      name: 'Updated Settlement',
+      level: 2,
+      variables: { population: 1500 },
+      version: 2,
+    };
+
+    it('should update settlement successfully', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { updateSettlement: mockResult },
+      });
+
+      const result = await service.updateSettlement(settlementId, updateInput);
+
+      expect(result).toEqual(mockResult);
+      expect(mockCircuitBreaker.fire).toHaveBeenCalledWith({
+        query: expect.stringContaining('mutation UpdateSettlement'),
+        variables: { id: settlementId, input: updateInput },
+      });
+    });
+
+    it('should throw error on GraphQL errors', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        errors: [{ message: 'Settlement not found' }],
+      });
+
+      await expect(service.updateSettlement(settlementId, updateInput)).rejects.toThrow(
+        'GraphQL errors: Settlement not found'
+      );
+    });
+
+    it('should throw error if no result returned', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { updateSettlement: null },
+      });
+
+      await expect(service.updateSettlement(settlementId, updateInput)).rejects.toThrow(
+        'No result returned from updateSettlement mutation'
+      );
+    });
+  });
+
+  describe('updateStructure', () => {
+    const structureId = 'structure-1';
+    const updateInput = {
+      name: 'Updated Structure',
+      type: 'temple',
+      variables: { devotion: 50 },
+      version: 1,
+    };
+    const mockResult = {
+      id: structureId,
+      name: 'Updated Structure',
+      type: 'temple',
+      variables: { devotion: 50 },
+      version: 2,
+    };
+
+    it('should update structure successfully', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { updateStructure: mockResult },
+      });
+
+      const result = await service.updateStructure(structureId, updateInput);
+
+      expect(result).toEqual(mockResult);
+      expect(mockCircuitBreaker.fire).toHaveBeenCalledWith({
+        query: expect.stringContaining('mutation UpdateStructure'),
+        variables: { id: structureId, input: updateInput },
+      });
+    });
+
+    it('should throw error on GraphQL errors', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        errors: [{ message: 'Structure not found' }],
+      });
+
+      await expect(service.updateStructure(structureId, updateInput)).rejects.toThrow(
+        'GraphQL errors: Structure not found'
+      );
+    });
+
+    it('should throw error if no result returned', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { updateStructure: null },
+      });
+
+      await expect(service.updateStructure(structureId, updateInput)).rejects.toThrow(
+        'No result returned from updateStructure mutation'
+      );
+    });
+  });
+
+  describe('completeEvent', () => {
+    const eventId = 'event-1';
+    const occurredAt = '2025-10-24T12:00:00Z';
+    const mockResult = {
+      id: eventId,
+      isCompleted: true,
+      occurredAt,
+    };
+
+    it('should complete event successfully with occurredAt', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { completeEvent: mockResult },
+      });
+
+      const result = await service.completeEvent(eventId, occurredAt);
+
+      expect(result).toEqual(mockResult);
+      expect(mockCircuitBreaker.fire).toHaveBeenCalledWith({
+        query: expect.stringContaining('mutation CompleteEvent'),
+        variables: { eventId, occurredAt },
+      });
+    });
+
+    it('should complete event successfully without occurredAt', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { completeEvent: mockResult },
+      });
+
+      const result = await service.completeEvent(eventId);
+
+      expect(result).toEqual(mockResult);
+      expect(mockCircuitBreaker.fire).toHaveBeenCalledWith({
+        query: expect.stringContaining('mutation CompleteEvent'),
+        variables: { eventId },
+      });
+    });
+
+    it('should throw error on GraphQL errors', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        errors: [{ message: 'Event already completed' }],
+      });
+
+      await expect(service.completeEvent(eventId)).rejects.toThrow(
+        'GraphQL errors: Event already completed'
+      );
+    });
+
+    it('should throw error if no result returned', async () => {
+      mockCircuitBreaker.fire.mockResolvedValue({
+        data: { completeEvent: null },
+      });
+
+      await expect(service.completeEvent(eventId)).rejects.toThrow(
+        'No result returned from completeEvent mutation'
+      );
+    });
+  });
+
+  describe('caching', () => {
+    describe('getEffect caching', () => {
+      const mockEffect = {
+        id: 'effect-1',
+        campaignId: 'campaign-1',
+        name: 'Test Effect',
+        entityType: 'Settlement',
+        entityId: 'entity-1',
+        timing: 'PRE',
+        jsonPatch: [{ op: 'add', path: '/test', value: 123 }],
+        isActive: true,
+        priority: 5,
+      };
+
+      it('should cache effect details', async () => {
+        mockCircuitBreaker.fire.mockResolvedValue({
+          data: { getEffect: mockEffect },
+        });
+
+        // First call should hit API
+        const result1 = await service.getEffect('effect-1');
+        expect(result1).toEqual(mockEffect);
+        expect(mockCircuitBreaker.fire).toHaveBeenCalledTimes(1);
+
+        // Second call should use cache
+        const result2 = await service.getEffect('effect-1');
+        expect(result2).toEqual(mockEffect);
+        expect(mockCircuitBreaker.fire).toHaveBeenCalledTimes(1); // Not called again
+      });
+
+      it('should invalidate specific effect cache', async () => {
+        mockCircuitBreaker.fire.mockResolvedValue({
+          data: { getEffect: mockEffect },
+        });
+
+        await service.getEffect('effect-1');
+        expect(mockCircuitBreaker.fire).toHaveBeenCalledTimes(1);
+
+        service.invalidateEffectCache('effect-1');
+
+        await service.getEffect('effect-1');
+        expect(mockCircuitBreaker.fire).toHaveBeenCalledTimes(2); // Called again after invalidation
+      });
+    });
+
+    describe('getAllCampaignIds caching', () => {
+      const mockCampaignIds = ['campaign-1', 'campaign-2', 'campaign-3'];
+
+      it('should cache campaign IDs', async () => {
+        mockCircuitBreaker.fire.mockResolvedValue({
+          data: {
+            campaigns: mockCampaignIds.map((id) => ({ id })),
+          },
+        });
+
+        // First call should hit API
+        const result1 = await service.getAllCampaignIds();
+        expect(result1).toEqual(mockCampaignIds);
+        expect(mockCircuitBreaker.fire).toHaveBeenCalledTimes(1);
+
+        // Second call should use cache
+        const result2 = await service.getAllCampaignIds();
+        expect(result2).toEqual(mockCampaignIds);
+        expect(mockCircuitBreaker.fire).toHaveBeenCalledTimes(1); // Not called again
+      });
+
+      it('should invalidate all caches', async () => {
+        mockCircuitBreaker.fire.mockResolvedValue({
+          data: {
+            campaigns: mockCampaignIds.map((id) => ({ id })),
+          },
+        });
+
+        await service.getAllCampaignIds();
+        expect(mockCircuitBreaker.fire).toHaveBeenCalledTimes(1);
+
+        service.invalidateCache();
+
+        await service.getAllCampaignIds();
+        expect(mockCircuitBreaker.fire).toHaveBeenCalledTimes(2); // Called again after invalidation
+      });
+    });
+  });
 });
