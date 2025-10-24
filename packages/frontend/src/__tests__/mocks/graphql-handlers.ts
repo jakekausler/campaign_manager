@@ -112,6 +112,57 @@ export const graphqlHandlers = [
     });
   }),
 
+  graphql.query('GetStructuresForMap', ({ variables }) => {
+    const { settlementId } = variables as { settlementId: string };
+
+    // Simulate server error for "invalid-*" IDs
+    if (settlementId.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Internal server error' }],
+      });
+    }
+
+    // Return empty array for settlements with no structures
+    if (settlementId.endsWith('-empty')) {
+      return HttpResponse.json({
+        data: { structuresBySettlement: [] },
+      });
+    }
+
+    // Filter structures by settlementId
+    const structures = mockStructures.filter((s) => s.settlementId === settlementId);
+
+    // Find the settlement to enrich structures with settlement and location data
+    const settlement = mockSettlements.find((s) => s.id === settlementId);
+
+    // Enrich structures with settlement and location data
+    const enrichedStructures = structures.map((structure) => ({
+      ...structure,
+      settlement: settlement
+        ? {
+            id: settlement.id,
+            name: settlement.name,
+            level: settlement.level,
+            location: {
+              id: settlement.locationId,
+              worldId: 'world-1',
+              type: 'point',
+              name: `${settlement.name} Location`,
+              description: null,
+              geojson: {
+                type: 'Point',
+                coordinates: [settlement.x, settlement.y],
+              },
+            },
+          }
+        : null,
+    }));
+
+    return HttpResponse.json({
+      data: { structuresBySettlement: enrichedStructures },
+    });
+  }),
+
   // Dependency Graph Queries
   graphql.query('GetDependencyGraph', ({ variables }) => {
     const { campaignId, branchId = 'main' } = variables as {

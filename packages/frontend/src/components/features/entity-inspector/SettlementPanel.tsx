@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 
+import { SettlementHierarchyPanel } from './SettlementHierarchyPanel';
+
 export interface SettlementData {
   id: string;
   name: string;
@@ -26,6 +28,10 @@ export interface SettlementData {
 export interface SettlementPanelProps {
   /** The settlement entity to display */
   settlement: SettlementData;
+  /** Callback when a structure is selected from the hierarchy */
+  onStructureSelect?: (structureId: string) => void;
+  /** Callback when "Add Structure" button is clicked */
+  onAddStructure?: () => void;
 }
 
 /**
@@ -34,10 +40,15 @@ export interface SettlementPanelProps {
  * Features:
  * - Settlement attributes (kingdom, location, level)
  * - Typed variables from the variables JSON field
+ * - Settlement-Structure hierarchy tree view
  * - Copy-to-clipboard functionality
  * - Automatic type-based formatting
  */
-export function SettlementPanel({ settlement }: SettlementPanelProps) {
+export function SettlementPanel({
+  settlement,
+  onStructureSelect,
+  onAddStructure,
+}: SettlementPanelProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -134,6 +145,15 @@ export function SettlementPanel({ settlement }: SettlementPanelProps) {
 
   return (
     <div className="space-y-6">
+      {/* Settlement Hierarchy Section */}
+      <SettlementHierarchyPanel
+        settlementId={settlement.id}
+        settlementName={settlement.name}
+        settlementLevel={settlement.level}
+        onStructureSelect={onStructureSelect}
+        onAddStructure={onAddStructure}
+      />
+
       {/* Settlement Attributes Section */}
       <Card className="p-4">
         <h3 className="text-sm font-bold text-slate-900 mb-4">Settlement Attributes</h3>

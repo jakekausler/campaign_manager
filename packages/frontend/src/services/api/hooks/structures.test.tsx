@@ -174,8 +174,8 @@ describe('Structure Hooks Integration Tests', () => {
       expect(marketResult.current.structure?.typeId).toBe('marketplace');
       expect(marketResult.current.structure?.name).toBe('Central Market');
 
-      // Test temple (structure-3)
-      const { result: templeResult } = renderHook(() => useStructureDetails('structure-3'), {
+      // Test temple (structure-4)
+      const { result: templeResult } = renderHook(() => useStructureDetails('structure-4'), {
         wrapper: createWrapper(),
       });
 
@@ -275,8 +275,8 @@ describe('Structure Hooks Integration Tests', () => {
         capacity: 50,
       });
 
-      // Temple (structure-3)
-      const { result: templeResult } = renderHook(() => useStructureConditions('structure-3'), {
+      // Temple (structure-4)
+      const { result: templeResult } = renderHook(() => useStructureConditions('structure-4'), {
         wrapper: createWrapper(),
       });
 

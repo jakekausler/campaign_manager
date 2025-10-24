@@ -207,12 +207,14 @@ describe('Settlement Hooks Integration Tests', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      // Should have structures from settlement-1
-      expect(result.current.structures).toHaveLength(2);
+      // Should have structures from settlement-1 (now has 3 structures)
+      expect(result.current.structures).toHaveLength(3);
       expect(result.current.structures[0].id).toBe('structure-1');
       expect(result.current.structures[0].name).toBe('Main Barracks');
       expect(result.current.structures[1].id).toBe('structure-2');
       expect(result.current.structures[1].name).toBe('Central Market');
+      expect(result.current.structures[2].id).toBe('structure-3');
+      expect(result.current.structures[2].name).toBe('Grand Library');
     });
 
     it('should include settlement name', async () => {
@@ -228,7 +230,7 @@ describe('Settlement Hooks Integration Tests', () => {
     });
 
     it('should return empty array for settlement with no structures', async () => {
-      const { result } = renderHook(() => useStructuresBySettlement('settlement-3'), {
+      const { result } = renderHook(() => useStructuresBySettlement('settlement-empty'), {
         wrapper: createWrapper(),
       });
 
@@ -236,7 +238,7 @@ describe('Settlement Hooks Integration Tests', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      // settlement-3 (Stormwatch) has no structures in mock data
+      // settlement-empty has no structures in mock data
       expect(result.current.structures).toHaveLength(0);
     });
 
@@ -249,7 +251,7 @@ describe('Settlement Hooks Integration Tests', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.structures).toHaveLength(2);
+      expect(result.current.structures).toHaveLength(3);
       expect(result.current.structures.every((s) => s.settlementId === 'settlement-1')).toBe(true);
     });
 
@@ -265,7 +267,7 @@ describe('Settlement Hooks Integration Tests', () => {
       expect(result.current.refetch).toBeInstanceOf(Function);
 
       const refetchResult = await result.current.refetch();
-      expect(refetchResult.data?.settlement?.structures).toHaveLength(2);
+      expect(refetchResult.data?.settlement?.structures).toHaveLength(3);
     });
 
     it('should handle settlement not found', async () => {

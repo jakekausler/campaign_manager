@@ -76,7 +76,7 @@ describe('LinksTab', () => {
         renderWithApollo(<LinksTab entityType="settlement" entityId="settlement-1" />);
 
         await waitFor(() => {
-          expect(screen.getByText(/structures \(2\)/i)).toBeInTheDocument();
+          expect(screen.getByText(/structures \(3\)/i)).toBeInTheDocument();
         });
       });
 
