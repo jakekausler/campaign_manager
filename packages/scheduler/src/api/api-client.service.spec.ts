@@ -85,6 +85,8 @@ describe('ApiClientService', () => {
           'Content-Type': 'application/json',
           Authorization: 'Bearer test-token',
         },
+        httpAgent: expect.any(Object),
+        httpsAgent: expect.any(Object),
       });
     });
 

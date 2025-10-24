@@ -23,6 +23,11 @@ import { StructureModule } from './structures/structure.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         url: configService.redisUrl,
+        // Set default job processing options
+        defaultJobOptions: {
+          removeOnComplete: 100, // Keep last 100 completed jobs
+          removeOnFail: 500, // Keep last 500 failed jobs
+        },
       }),
       inject: [ConfigService],
     }),

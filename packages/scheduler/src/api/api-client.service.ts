@@ -3,7 +3,8 @@
  * Handles communication with the main API service via GraphQL
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { HttpAgent, HttpsAgent } from 'agentkeepalive';
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import CircuitBreaker from 'opossum';
 
@@ -311,10 +312,12 @@ interface GraphQLResponse<T> {
 }
 
 @Injectable()
-export class ApiClientService {
+export class ApiClientService implements OnModuleDestroy {
   private readonly logger = new Logger(ApiClientService.name);
   private readonly axiosInstance: AxiosInstance;
   private readonly circuitBreaker: CircuitBreaker;
+  private readonly httpAgent: HttpAgent;
+  private readonly httpsAgent: HttpsAgent;
 
   // Cache for frequently accessed data
   private readonly campaignCache = new Map<string, { data: string[]; timestamp: number }>();
@@ -322,6 +325,24 @@ export class ApiClientService {
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   constructor(private readonly configService: ConfigService) {
+    // Create connection pooling agents for HTTP/HTTPS
+    // These agents reuse TCP connections for multiple requests
+    this.httpAgent = new HttpAgent({
+      keepAlive: true,
+      maxSockets: 10, // Max concurrent connections per host
+      maxFreeSockets: 5, // Max idle connections per host
+      timeout: 60000, // Socket timeout (60s)
+      freeSocketTimeout: 30000, // Idle socket timeout (30s)
+    });
+
+    this.httpsAgent = new HttpsAgent({
+      keepAlive: true,
+      maxSockets: 10,
+      maxFreeSockets: 5,
+      timeout: 60000,
+      freeSocketTimeout: 30000,
+    });
+
     // Create axios instance with default configuration
     this.axiosInstance = axios.create({
       baseURL: this.configService.get('API_URL') as string,
@@ -330,6 +351,9 @@ export class ApiClientService {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.configService.get('API_SERVICE_ACCOUNT_TOKEN')}`,
       },
+      // Use connection pooling agents
+      httpAgent: this.httpAgent,
+      httpsAgent: this.httpsAgent,
     });
 
     // Create circuit breaker for API requests
@@ -859,5 +883,15 @@ export class ApiClientService {
    */
   getCircuitBreakerStats() {
     return this.circuitBreaker.stats;
+  }
+
+  /**
+   * Cleanup resources on module destruction
+   */
+  onModuleDestroy() {
+    this.logger.log('Cleaning up API client resources');
+    // Destroy connection pooling agents
+    this.httpAgent.destroy();
+    this.httpsAgent.destroy();
   }
 }

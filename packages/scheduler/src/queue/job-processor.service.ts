@@ -14,6 +14,7 @@ import { SCHEDULER_QUEUE } from './queue.constants';
 /**
  * Processes jobs from the scheduler queue.
  * Routes jobs to appropriate handlers based on job type.
+ * Concurrency is limited to 5 concurrent jobs to prevent overload.
  */
 @Processor(SCHEDULER_QUEUE)
 export class JobProcessorService {
@@ -28,8 +29,9 @@ export class JobProcessorService {
 
   /**
    * Main job processing method that routes to specific handlers.
+   * Concurrency limit of 5 prevents system overload during high traffic.
    */
-  @Process()
+  @Process({ concurrency: 5 })
   async processJob(job: Job<JobData>): Promise<void> {
     this.logger.log(
       `Processing job ${job.id} of type ${job.data.type} for campaign ${job.data.campaignId}`

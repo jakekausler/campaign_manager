@@ -32,6 +32,25 @@ async function bootstrap() {
       }
     }
 
+    // Enable graceful shutdown hooks
+    app.enableShutdownHooks();
+
+    // Setup graceful shutdown handlers
+    const signals: NodeJS.Signals[] = ['SIGTERM', 'SIGINT'];
+    signals.forEach((signal) => {
+      process.on(signal, async () => {
+        logger.log(`Received ${signal}, starting graceful shutdown...`);
+        try {
+          await app.close();
+          logger.log('Application closed successfully');
+          process.exit(0);
+        } catch (error) {
+          logger.error('Error during graceful shutdown', error);
+          process.exit(1);
+        }
+      });
+    });
+
     // Get port from configuration
     const port = configService.port;
 
@@ -47,6 +66,7 @@ async function bootstrap() {
     logger.log(`API endpoint: ${apiHost}`);
     logger.log('Health check available at GET /health');
     logger.log('Queue metrics available at GET /metrics');
+    logger.log('Graceful shutdown enabled for SIGTERM and SIGINT');
   } catch (error) {
     logger.error('Failed to start scheduler service', error);
     process.exit(1);

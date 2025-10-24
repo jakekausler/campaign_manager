@@ -12,7 +12,9 @@
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "benchmark": "ts-node scripts/performance-benchmark.ts",
+    "load-test": "ts-node scripts/load-test.ts"
   },
   "dependencies": {
     "@bull-board/api": "^6.14.0",
@@ -23,6 +25,7 @@
     "@nestjs/core": "^11.1.7",
     "@nestjs/platform-express": "^11.1.7",
     "@nestjs/schedule": "^6.0.1",
+    "agentkeepalive": "^4.6.0",
     "axios": "^1.12.2",
     "bull": "^4.16.5",
     "class-transformer": "^0.5.1",

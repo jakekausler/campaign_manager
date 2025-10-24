@@ -99,6 +99,10 @@ The Scheduler Service is a standalone NestJS microservice that manages all time-
 - **Deduplication**: 5-second cooldown for worldTimeAdvanced events per campaign
 - **Caching**: 5-minute TTL for frequently accessed data (effects, campaign IDs)
 - **Batch Processing**: Event expiration processes in batches of 10
+- **Connection Pooling**: HTTP/HTTPS agents reuse TCP connections (10 max sockets, 5 idle)
+- **Job Concurrency Limits**: Maximum 5 concurrent jobs to prevent overload
+- **Graceful Shutdown**: Drains job queues on SIGTERM/SIGINT before exit
+- **Automatic Cleanup**: Keeps last 100 completed jobs, last 500 failed jobs in queue
 
 ## Configuration
 
@@ -481,6 +485,17 @@ pnpm --filter @campaign/scheduler lint
 
 # Auto-fix issues
 pnpm --filter @campaign/scheduler lint:fix
+```
+
+### Performance Testing
+
+```bash
+# Run performance benchmarks
+pnpm --filter @campaign/scheduler benchmark
+
+# Run load test (requires Redis running)
+# Usage: pnpm --filter @campaign/scheduler load-test [numJobs] [numCampaigns]
+pnpm --filter @campaign/scheduler load-test 100 5
 ```
 
 ## Production Deployment
