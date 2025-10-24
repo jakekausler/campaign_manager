@@ -1452,6 +1452,50 @@ Dedicated NestJS microservice for high-performance condition evaluation with cac
 
 ---
 
+## Scheduler Service Worker
+
+Standalone NestJS microservice managing time-based operations including world-time progression, deferred effects, scheduled events, and Settlement/Structure periodic events. See [detailed documentation](docs/features/scheduler-service.md).
+
+**Quick Reference:**
+
+- Package: `@campaign/scheduler` in `packages/scheduler/`
+- Port: 9266 (dev), configurable via `PORT` environment variable
+- Job Queue: Bull (Redis-based) with retry logic, priorities, and dead-letter queue
+- Services: `ScheduleService`, `DeferredEffectService`, `EventExpirationService`, `SettlementSchedulingService`, `StructureSchedulingService`
+- Key Features:
+  - **Job Types**: Deferred effects, event expiration, settlement growth, structure maintenance, schedule recalculation
+  - **Cron Scheduling**: Event expiration (5min), settlement growth (hourly), structure maintenance (hourly)
+  - **Redis Pub/Sub**: Subscribes to world time changes and entity modifications
+  - **API Integration**: GraphQL client with circuit breaker pattern
+  - **Monitoring**: Health checks, JSON metrics, Prometheus metrics, Bull Board UI (dev-only)
+  - **Performance Optimizations**: Thundering herd prevention, deduplication cooldown (5s), responsive reconnection (60s max backoff)
+- Settlement Growth: Level-based multipliers (1.0x baseline → 0.6x at level 5 = 67% faster), customizable intervals via typed variables
+- Structure Maintenance: Construction completion, maintenance scheduling, upgrade checks
+- Test Coverage: 82.13% line coverage, 285 tests passing
+- Implementation: TICKET-026 (Commits: a48a6ff - [Stage 11 TBD])
+
+**Monitoring Endpoints:**
+
+- `GET /health` - Detailed component health status (Redis, Bull Queue, API)
+- `GET /metrics` - JSON format queue metrics
+- `GET /metrics/prometheus` - Prometheus format metrics for Grafana integration
+
+**Configuration:**
+
+```bash
+# Environment variables
+NODE_ENV=development
+PORT=9266
+REDIS_URL=redis://localhost:6379
+API_URL=http://localhost:9264/graphql
+API_SERVICE_ACCOUNT_TOKEN=<jwt-token>
+CRON_EVENT_EXPIRATION=*/5 * * * *
+CRON_SETTLEMENT_GROWTH=0 * * * *
+CRON_STRUCTURE_MAINTENANCE=0 * * * *
+```
+
+---
+
 ## Effect System
 
 Events/encounters mutate world state when they resolve using JSON Patch operations. See [detailed documentation](docs/features/effect-system.md).

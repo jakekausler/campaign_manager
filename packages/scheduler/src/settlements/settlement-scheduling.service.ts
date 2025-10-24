@@ -68,10 +68,10 @@ export class SettlementSchedulingService {
       levelCheckIntervalMinutes: 360, // 6 hours
       levelGrowthMultipliers: new Map([
         [1, 1.0], // Level 1: baseline
-        [2, 0.9], // Level 2: slightly slower
-        [3, 0.8], // Level 3: slower
-        [4, 0.7], // Level 4: much slower
-        [5, 0.6], // Level 5: very slow
+        [2, 0.9], // Level 2: 10% faster
+        [3, 0.8], // Level 3: 20% faster
+        [4, 0.7], // Level 4: 30% faster
+        [5, 0.6], // Level 5: 40% faster
       ]),
     };
   }
@@ -238,8 +238,7 @@ export class SettlementSchedulingService {
 
     // Population growth calculation
     const populationInterval =
-      customPopulationInterval ||
-      this.config.populationGrowthIntervalMinutes * (1 / levelMultiplier);
+      customPopulationInterval || this.config.populationGrowthIntervalMinutes * levelMultiplier;
 
     calculations.push({
       campaignId: settlement.campaignId,
@@ -255,8 +254,7 @@ export class SettlementSchedulingService {
 
     // Resource generation calculation
     const resourceInterval =
-      customResourceInterval ||
-      this.config.resourceGenerationIntervalMinutes * (1 / levelMultiplier);
+      customResourceInterval || this.config.resourceGenerationIntervalMinutes * levelMultiplier;
 
     calculations.push({
       campaignId: settlement.campaignId,
@@ -274,7 +272,7 @@ export class SettlementSchedulingService {
     });
 
     // Level-up check calculation
-    const levelCheckInterval = this.config.levelCheckIntervalMinutes * (1 / levelMultiplier);
+    const levelCheckInterval = this.config.levelCheckIntervalMinutes * levelMultiplier;
 
     calculations.push({
       campaignId: settlement.campaignId,
