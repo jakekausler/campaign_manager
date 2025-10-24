@@ -103,7 +103,8 @@ describe('Queue Integration Tests', () => {
         type: JobType.SETTLEMENT_GROWTH,
         campaignId: 'campaign-123',
         settlementId: 'settlement-456',
-        growthType: 'POPULATION_GROWTH',
+        eventType: 'POPULATION_GROWTH',
+        parameters: {},
         priority: JobPriority.NORMAL,
       });
 

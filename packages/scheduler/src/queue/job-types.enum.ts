@@ -26,4 +26,16 @@ export enum JobType {
    * Runs periodically to find events where scheduledAt < currentWorldTime.
    */
   EVENT_EXPIRATION = 'EVENT_EXPIRATION',
+
+  /**
+   * Recalculate settlement schedules for all settlements in a campaign.
+   * Triggered when world time advances to update growth schedules.
+   */
+  RECALCULATE_SETTLEMENT_SCHEDULES = 'RECALCULATE_SETTLEMENT_SCHEDULES',
+
+  /**
+   * Recalculate structure schedules for all structures in a campaign.
+   * Triggered when world time advances to update maintenance schedules.
+   */
+  RECALCULATE_STRUCTURE_SCHEDULES = 'RECALCULATE_STRUCTURE_SCHEDULES',
 }

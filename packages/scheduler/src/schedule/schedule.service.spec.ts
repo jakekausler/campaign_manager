@@ -4,6 +4,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '../config/config.service';
 import { JobPriority, JobType } from '../queue/job.interface';
 import { QueueService } from '../queue/queue.service';
+import { SettlementSchedulingService } from '../settlements/settlement-scheduling.service';
+import { StructureSchedulingService } from '../structures/structure-scheduling.service';
 
 import { ScheduleService } from './schedule.service';
 
@@ -29,6 +31,8 @@ describe('ScheduleService', () => {
   let configService: jest.Mocked<ConfigService>;
   let queueService: jest.Mocked<QueueService>;
   let schedulerRegistry: jest.Mocked<SchedulerRegistry>;
+  let settlementSchedulingService: jest.Mocked<SettlementSchedulingService>;
+  let structureSchedulingService: jest.Mocked<StructureSchedulingService>;
 
   // Mock CronJob instances
   const mockCronJobs: Map<
@@ -53,6 +57,14 @@ describe('ScheduleService', () => {
       addJob: jest.fn().mockResolvedValue('job-123'),
     } as unknown as jest.Mocked<QueueService>;
 
+    settlementSchedulingService = {
+      processSettlementsForCampaign: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<SettlementSchedulingService>;
+
+    structureSchedulingService = {
+      processStructuresForCampaign: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<StructureSchedulingService>;
+
     schedulerRegistry = {
       addCronJob: jest.fn(
         (
@@ -76,6 +88,8 @@ describe('ScheduleService', () => {
         { provide: ConfigService, useValue: configService },
         { provide: QueueService, useValue: queueService },
         { provide: SchedulerRegistry, useValue: schedulerRegistry },
+        { provide: SettlementSchedulingService, useValue: settlementSchedulingService },
+        { provide: StructureSchedulingService, useValue: structureSchedulingService },
       ],
     }).compile();
 

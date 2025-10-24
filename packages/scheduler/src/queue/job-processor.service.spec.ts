@@ -3,6 +3,8 @@ import { Job } from 'bull';
 
 import { DeferredEffectService } from '../effects/deferred-effect.service';
 import { EventExpirationService } from '../events/event-expiration.service';
+import { SettlementSchedulingService } from '../settlements/settlement-scheduling.service';
+import { StructureSchedulingService } from '../structures/structure-scheduling.service';
 
 import { JobProcessorService } from './job-processor.service';
 import { JobData, JobType } from './job.interface';
@@ -11,6 +13,8 @@ describe('JobProcessorService', () => {
   let service: JobProcessorService;
   let deferredEffectService: jest.Mocked<DeferredEffectService>;
   let eventExpirationService: jest.Mocked<EventExpirationService>;
+  let settlementSchedulingService: jest.Mocked<SettlementSchedulingService>;
+  let structureSchedulingService: jest.Mocked<StructureSchedulingService>;
 
   beforeEach(async () => {
     // Create mock services
@@ -20,6 +24,14 @@ describe('JobProcessorService', () => {
 
     const mockEventExpirationService = {
       processAllCampaigns: jest.fn(),
+    };
+
+    const mockSettlementSchedulingService = {
+      processSettlementsForCampaign: jest.fn(),
+    };
+
+    const mockStructureSchedulingService = {
+      processStructuresForCampaign: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -33,6 +45,14 @@ describe('JobProcessorService', () => {
           provide: EventExpirationService,
           useValue: mockEventExpirationService,
         },
+        {
+          provide: SettlementSchedulingService,
+          useValue: mockSettlementSchedulingService,
+        },
+        {
+          provide: StructureSchedulingService,
+          useValue: mockStructureSchedulingService,
+        },
       ],
     }).compile();
 
@@ -41,6 +61,12 @@ describe('JobProcessorService', () => {
     eventExpirationService = module.get(
       EventExpirationService
     ) as jest.Mocked<EventExpirationService>;
+    settlementSchedulingService = module.get(
+      SettlementSchedulingService
+    ) as jest.Mocked<SettlementSchedulingService>;
+    structureSchedulingService = module.get(
+      StructureSchedulingService
+    ) as jest.Mocked<StructureSchedulingService>;
   });
 
   it('should be defined', () => {
@@ -104,7 +130,8 @@ describe('JobProcessorService', () => {
         type: JobType.SETTLEMENT_GROWTH,
         campaignId: 'campaign-123',
         settlementId: 'settlement-456',
-        growthType: 'POPULATION_GROWTH',
+        eventType: 'POPULATION_GROWTH',
+        parameters: {},
       };
 
       const mockJob = {
@@ -152,6 +179,90 @@ describe('JobProcessorService', () => {
 
       await expect(service.processJob(mockJob)).resolves.not.toThrow();
       expect(eventExpirationService.processAllCampaigns).toHaveBeenCalled();
+    });
+
+    it('should process a RECALCULATE_SETTLEMENT_SCHEDULES job successfully', async () => {
+      const jobData: JobData = {
+        type: JobType.RECALCULATE_SETTLEMENT_SCHEDULES,
+        campaignId: 'campaign-123',
+      };
+
+      const mockJob = {
+        id: '12345',
+        data: jobData,
+      } as Job<JobData>;
+
+      settlementSchedulingService.processSettlementsForCampaign.mockResolvedValue({
+        totalSettlements: 0,
+        jobsQueued: 0,
+        errors: 0,
+        errorMessages: [],
+      });
+
+      await expect(service.processJob(mockJob)).resolves.not.toThrow();
+      expect(settlementSchedulingService.processSettlementsForCampaign).toHaveBeenCalledWith(
+        'campaign-123'
+      );
+    });
+
+    it('should throw error when RECALCULATE_SETTLEMENT_SCHEDULES job fails', async () => {
+      const jobData: JobData = {
+        type: JobType.RECALCULATE_SETTLEMENT_SCHEDULES,
+        campaignId: 'campaign-123',
+      };
+
+      const mockJob = {
+        id: '12345',
+        data: jobData,
+      } as Job<JobData>;
+
+      settlementSchedulingService.processSettlementsForCampaign.mockRejectedValue(
+        new Error('Database error')
+      );
+
+      await expect(service.processJob(mockJob)).rejects.toThrow('Database error');
+    });
+
+    it('should process a RECALCULATE_STRUCTURE_SCHEDULES job successfully', async () => {
+      const jobData: JobData = {
+        type: JobType.RECALCULATE_STRUCTURE_SCHEDULES,
+        campaignId: 'campaign-123',
+      };
+
+      const mockJob = {
+        id: '12345',
+        data: jobData,
+      } as Job<JobData>;
+
+      structureSchedulingService.processStructuresForCampaign.mockResolvedValue({
+        totalStructures: 0,
+        jobsQueued: 0,
+        errors: 0,
+        errorMessages: [],
+      });
+
+      await expect(service.processJob(mockJob)).resolves.not.toThrow();
+      expect(structureSchedulingService.processStructuresForCampaign).toHaveBeenCalledWith(
+        'campaign-123'
+      );
+    });
+
+    it('should throw error when RECALCULATE_STRUCTURE_SCHEDULES job fails', async () => {
+      const jobData: JobData = {
+        type: JobType.RECALCULATE_STRUCTURE_SCHEDULES,
+        campaignId: 'campaign-123',
+      };
+
+      const mockJob = {
+        id: '12345',
+        data: jobData,
+      } as Job<JobData>;
+
+      structureSchedulingService.processStructuresForCampaign.mockRejectedValue(
+        new Error('Database error')
+      );
+
+      await expect(service.processJob(mockJob)).rejects.toThrow('Database error');
     });
 
     it('should handle unknown job types by throwing an error', async () => {

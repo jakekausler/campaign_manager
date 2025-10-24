@@ -4,6 +4,8 @@ import { Job } from 'bull';
 
 import { DeferredEffectService } from '../effects/deferred-effect.service';
 import { EventExpirationService } from '../events/event-expiration.service';
+import { SettlementSchedulingService } from '../settlements/settlement-scheduling.service';
+import { StructureSchedulingService } from '../structures/structure-scheduling.service';
 
 import { JobType } from './job-types.enum';
 import { JobData, DeferredEffectJobData } from './job.interface';
@@ -19,7 +21,9 @@ export class JobProcessorService {
 
   constructor(
     private readonly deferredEffectService: DeferredEffectService,
-    private readonly eventExpirationService: EventExpirationService
+    private readonly eventExpirationService: EventExpirationService,
+    private readonly settlementSchedulingService: SettlementSchedulingService,
+    private readonly structureSchedulingService: StructureSchedulingService
   ) {}
 
   /**
@@ -47,6 +51,14 @@ export class JobProcessorService {
 
         case JobType.EVENT_EXPIRATION:
           await this.processEventExpiration(job);
+          break;
+
+        case JobType.RECALCULATE_SETTLEMENT_SCHEDULES:
+          await this.processRecalculateSettlementSchedules(job);
+          break;
+
+        case JobType.RECALCULATE_STRUCTURE_SCHEDULES:
+          await this.processRecalculateStructureSchedules(job);
           break;
 
         default:
@@ -203,6 +215,56 @@ export class JobProcessorService {
     } catch (error) {
       this.logger.error(
         `Event expiration job ${job.id} failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error; // Re-throw to trigger retry
+    }
+  }
+
+  /**
+   * Process a recalculate settlement schedules job.
+   * Recalculates growth schedules for all settlements in a campaign.
+   */
+  private async processRecalculateSettlementSchedules(job: Job<JobData>): Promise<void> {
+    const { campaignId } = job.data;
+
+    this.logger.log(
+      `Processing settlement schedule recalculation for job ${job.id} in campaign ${campaignId}`
+    );
+
+    try {
+      await this.settlementSchedulingService.processSettlementsForCampaign(campaignId);
+
+      this.logger.log(
+        `Settlement schedule recalculation job ${job.id} completed for campaign ${campaignId}`
+      );
+    } catch (error) {
+      this.logger.error(
+        `Settlement schedule recalculation job ${job.id} failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw error; // Re-throw to trigger retry
+    }
+  }
+
+  /**
+   * Process a recalculate structure schedules job.
+   * Recalculates maintenance schedules for all structures in a campaign.
+   */
+  private async processRecalculateStructureSchedules(job: Job<JobData>): Promise<void> {
+    const { campaignId } = job.data;
+
+    this.logger.log(
+      `Processing structure schedule recalculation for job ${job.id} in campaign ${campaignId}`
+    );
+
+    try {
+      await this.structureSchedulingService.processStructuresForCampaign(campaignId);
+
+      this.logger.log(
+        `Structure schedule recalculation job ${job.id} completed for campaign ${campaignId}`
+      );
+    } catch (error) {
+      this.logger.error(
+        `Structure schedule recalculation job ${job.id} failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       throw error; // Re-throw to trigger retry
     }

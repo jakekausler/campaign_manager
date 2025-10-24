@@ -89,13 +89,29 @@ export interface EventExpirationJobData extends BaseJobData {
 }
 
 /**
+ * Job data for recalculating settlement schedules.
+ */
+export interface RecalculateSettlementSchedulesJobData extends BaseJobData {
+  type: JobType.RECALCULATE_SETTLEMENT_SCHEDULES;
+}
+
+/**
+ * Job data for recalculating structure schedules.
+ */
+export interface RecalculateStructureSchedulesJobData extends BaseJobData {
+  type: JobType.RECALCULATE_STRUCTURE_SCHEDULES;
+}
+
+/**
  * Union type of all possible job data types.
  */
 export type JobData =
   | DeferredEffectJobData
   | SettlementGrowthJobData
   | StructureMaintenanceJobData
-  | EventExpirationJobData;
+  | EventExpirationJobData
+  | RecalculateSettlementSchedulesJobData
+  | RecalculateStructureSchedulesJobData;
 
 /**
  * Options for adding a job to the queue.

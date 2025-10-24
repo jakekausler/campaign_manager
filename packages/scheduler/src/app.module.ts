@@ -6,6 +6,7 @@ import { ConfigModule } from './config/config.module';
 import { ConfigService } from './config/config.service';
 import { HealthModule } from './health/health.module';
 import { QueueModule } from './queue/queue.module';
+import { RedisSubscriberModule } from './redis/redis-subscriber.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { SettlementModule } from './settlements/settlement.module';
 import { StructureModule } from './structures/structure.module';
@@ -28,6 +29,8 @@ import { StructureModule } from './structures/structure.module';
     ScheduleModule,
     SettlementModule,
     StructureModule,
+    // Redis pub/sub for real-time reactivity
+    RedisSubscriberModule,
   ],
 })
 export class AppModule {}

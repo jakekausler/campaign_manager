@@ -86,7 +86,8 @@ describe('QueueService', () => {
         type: JobType.SETTLEMENT_GROWTH,
         campaignId: 'campaign-123',
         settlementId: 'settlement-456',
-        growthType: 'POPULATION_GROWTH',
+        eventType: 'POPULATION_GROWTH',
+        parameters: {},
       };
 
       await service.addJob(jobData, { priority: JobPriority.CRITICAL });
