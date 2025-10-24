@@ -18,6 +18,7 @@ import { EffectExecutionService } from './effect-execution.service';
 import { EffectPatchService } from './effect-patch.service';
 import { EventService } from './event.service';
 import { VersionService } from './version.service';
+import { WorldTimeService } from './world-time.service';
 
 // Mock data
 const mockEvent: Event = {
@@ -179,6 +180,13 @@ describe('EventService - Completion Integration', () => {
         {
           provide: EffectPatchService,
           useValue: mockEffectPatch,
+        },
+        {
+          provide: WorldTimeService,
+          useValue: {
+            getCurrentWorldTime: jest.fn(),
+            advanceWorldTime: jest.fn(),
+          },
         },
       ],
     }).compile();

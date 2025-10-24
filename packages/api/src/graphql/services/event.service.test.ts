@@ -14,6 +14,7 @@ import { EffectExecutionService } from './effect-execution.service';
 import { EffectPatchService } from './effect-patch.service';
 import { EventService } from './event.service';
 import { VersionService } from './version.service';
+import { WorldTimeService } from './world-time.service';
 
 describe('EventService', () => {
   let service: EventService;
@@ -141,6 +142,13 @@ describe('EventService', () => {
           provide: EffectPatchService,
           useValue: {
             applyPatch: jest.fn(),
+          },
+        },
+        {
+          provide: WorldTimeService,
+          useValue: {
+            getCurrentWorldTime: jest.fn(),
+            advanceWorldTime: jest.fn(),
           },
         },
         {

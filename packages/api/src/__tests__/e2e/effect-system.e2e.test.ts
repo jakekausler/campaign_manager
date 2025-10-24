@@ -26,6 +26,7 @@ import { EffectService } from '../../graphql/services/effect.service';
 import { EncounterService } from '../../graphql/services/encounter.service';
 import { EventService } from '../../graphql/services/event.service';
 import { VersionService } from '../../graphql/services/version.service';
+import { WorldTimeService } from '../../graphql/services/world-time.service';
 
 describe('Effect System E2E Tests', () => {
   let module: TestingModule;
@@ -172,6 +173,13 @@ describe('Effect System E2E Tests', () => {
           provide: REDIS_PUBSUB,
           useValue: {
             publish: jest.fn(),
+          },
+        },
+        {
+          provide: WorldTimeService,
+          useValue: {
+            getCurrentWorldTime: jest.fn(),
+            advanceWorldTime: jest.fn(),
           },
         },
       ],
