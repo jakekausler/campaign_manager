@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 
+import { LevelControl } from './LevelControl';
 import { SettlementHierarchyPanel } from './SettlementHierarchyPanel';
 
 export interface SettlementData {
@@ -20,6 +21,7 @@ export interface SettlementData {
   archivedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  version?: number;
   computedFields?: Record<string, unknown>;
   variables?: Record<string, unknown>;
   [key: string]: unknown;
@@ -160,7 +162,19 @@ export function SettlementPanel({
         <div className="space-y-3">
           {renderField('Kingdom ID', settlement.kingdomId, 'kingdomId')}
           {renderField('Campaign ID', settlement.campaignId, 'campaignId')}
-          {renderField('Level', settlement.level, 'level')}
+
+          {/* Level Control with increment/decrement buttons */}
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs font-semibold text-slate-700">Level</Label>
+            <LevelControl
+              entityId={settlement.id}
+              entityType="settlement"
+              entityName={settlement.name}
+              currentLevel={settlement.level}
+              version={settlement.version}
+            />
+          </div>
+
           {renderField('Owner ID', settlement.ownerId, 'ownerId')}
           {renderField('Is Archived', settlement.isArchived, 'isArchived')}
         </div>

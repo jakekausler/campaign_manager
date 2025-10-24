@@ -1,9 +1,24 @@
+import { ApolloProvider } from '@apollo/client/react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
+
+import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 
 import { StructurePanel } from './StructurePanel';
 import type { StructureData } from './StructurePanel';
+
+// Create a wrapper component for Apollo Provider
+function createWrapper() {
+  const client = createTestApolloClient();
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return <ApolloProvider client={client}>{children}</ApolloProvider>;
+  };
+}
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('StructurePanel', () => {
   const mockStructure: StructureData = {
@@ -29,18 +44,18 @@ describe('StructurePanel', () => {
 
   describe('Structure Attributes Section', () => {
     it('should render structure attributes section header', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Structure Attributes')).toBeInTheDocument();
     });
 
     it('should display structure type', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Type')).toBeInTheDocument();
       expect(screen.getByText('barracks')).toBeInTheDocument();
     });
 
     it('should use type field if available', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('barracks')).toBeInTheDocument();
     });
 
@@ -49,36 +64,36 @@ describe('StructurePanel', () => {
         ...mockStructure,
         type: undefined,
       };
-      render(<StructurePanel structure={structureNoType} />);
+      render(<StructurePanel structure={structureNoType} />, { wrapper: createWrapper() });
       expect(screen.getByText('barracks')).toBeInTheDocument(); // typeId is 'barracks'
     });
 
     it('should display settlement ID', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Settlement ID')).toBeInTheDocument();
       expect(screen.getByText('settlement-1')).toBeInTheDocument();
     });
 
     it('should display level', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Level')).toBeInTheDocument();
-      expect(screen.getByText('2')).toBeInTheDocument();
+      expect(screen.getByText('Level 2')).toBeInTheDocument();
     });
 
     it('should display position X', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Position X')).toBeInTheDocument();
       expect(screen.getByText('10')).toBeInTheDocument();
     });
 
     it('should display position Y', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Position Y')).toBeInTheDocument();
       expect(screen.getByText('20')).toBeInTheDocument();
     });
 
     it('should display orientation with degree symbol', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Orientation')).toBeInTheDocument();
       expect(screen.getByText('90°')).toBeInTheDocument();
     });
@@ -86,12 +101,12 @@ describe('StructurePanel', () => {
 
   describe('Typed Variables Section', () => {
     it('should render typed variables section header', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Typed Variables')).toBeInTheDocument();
     });
 
     it('should display number variables', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Garrison Size')).toBeInTheDocument();
       expect(screen.getByText('50')).toBeInTheDocument();
       expect(screen.getByText('Maintenance Cost')).toBeInTheDocument();
@@ -99,13 +114,13 @@ describe('StructurePanel', () => {
     });
 
     it('should display boolean variables', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Is Upgraded')).toBeInTheDocument();
       expect(screen.getByText('false')).toBeInTheDocument();
     });
 
     it('should convert snake_case to Title Case', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Garrison Size')).toBeInTheDocument();
       expect(screen.getByText('Maintenance Cost')).toBeInTheDocument();
       expect(screen.getByText('Is Upgraded')).toBeInTheDocument();
@@ -116,7 +131,7 @@ describe('StructurePanel', () => {
         ...mockStructure,
         variables: {},
       };
-      render(<StructurePanel structure={structureNoVars} />);
+      render(<StructurePanel structure={structureNoVars} />, { wrapper: createWrapper() });
       expect(
         screen.getByText('No typed variables available for this structure')
       ).toBeInTheDocument();
@@ -127,7 +142,7 @@ describe('StructurePanel', () => {
         ...mockStructure,
         variables: undefined,
       };
-      render(<StructurePanel structure={structureNoVars} />);
+      render(<StructurePanel structure={structureNoVars} />, { wrapper: createWrapper() });
       expect(
         screen.getByText('No typed variables available for this structure')
       ).toBeInTheDocument();
@@ -143,7 +158,7 @@ describe('StructurePanel', () => {
           },
         },
       };
-      render(<StructurePanel structure={structureWithObject} />);
+      render(<StructurePanel structure={structureWithObject} />, { wrapper: createWrapper() });
       expect(screen.getByText('Equipment')).toBeInTheDocument();
       const jsonText = screen.getByText(/"swords": 100/);
       expect(jsonText).toBeInTheDocument();
@@ -153,7 +168,7 @@ describe('StructurePanel', () => {
   describe('Copy to Clipboard', () => {
     it('should copy field value to clipboard when copy button is clicked', async () => {
       const user = userEvent.setup();
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
 
       // Spy on clipboard AFTER render
       const writeTextSpy = vi.spyOn(navigator.clipboard, 'writeText');
@@ -177,7 +192,7 @@ describe('StructurePanel', () => {
 
     it('should show checkmark after successful copy', async () => {
       const user = userEvent.setup();
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
 
       const copyButtons = screen.getAllByTitle('Copy to clipboard');
       await user.click(copyButtons[0]);
@@ -193,7 +208,7 @@ describe('StructurePanel', () => {
     it('should reset checkmark after 2 seconds', async () => {
       vi.useFakeTimers();
       try {
-        render(<StructurePanel structure={mockStructure} />);
+        render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
 
         const copyButtons = screen.getAllByTitle('Copy to clipboard');
         // Use fireEvent instead of userEvent with fake timers
@@ -219,7 +234,7 @@ describe('StructurePanel', () => {
     it('should handle clipboard errors gracefully', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const user = userEvent.setup();
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
 
       // Mock clipboard to reject AFTER render
       const writeTextSpy = vi
@@ -252,7 +267,7 @@ describe('StructurePanel', () => {
           empty_field: null,
         },
       };
-      render(<StructurePanel structure={structureWithNull} />);
+      render(<StructurePanel structure={structureWithNull} />, { wrapper: createWrapper() });
       expect(screen.getByText('N/A')).toBeInTheDocument();
     });
 
@@ -263,7 +278,7 @@ describe('StructurePanel', () => {
           missing_field: undefined,
         },
       };
-      render(<StructurePanel structure={structureWithUndefined} />);
+      render(<StructurePanel structure={structureWithUndefined} />, { wrapper: createWrapper() });
       expect(screen.getByText('N/A')).toBeInTheDocument();
     });
 
@@ -274,14 +289,14 @@ describe('StructurePanel', () => {
           is_active: true,
         },
       };
-      render(<StructurePanel structure={structureWithTrue} />);
+      render(<StructurePanel structure={structureWithTrue} />, { wrapper: createWrapper() });
       expect(screen.getByText('true')).toBeInTheDocument();
     });
   });
 
   describe('Accessibility', () => {
     it('should have proper labels for all fields', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       expect(screen.getByText('Type')).toHaveClass('text-xs', 'font-semibold');
       expect(screen.getByText('Settlement ID')).toHaveClass('text-xs', 'font-semibold');
       expect(screen.getByText('Level')).toHaveClass('text-xs', 'font-semibold');
@@ -291,7 +306,7 @@ describe('StructurePanel', () => {
     });
 
     it('should have title attribute on copy buttons', () => {
-      render(<StructurePanel structure={mockStructure} />);
+      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       const copyButtons = screen.getAllByTitle('Copy to clipboard');
       expect(copyButtons.length).toBeGreaterThan(0);
     });

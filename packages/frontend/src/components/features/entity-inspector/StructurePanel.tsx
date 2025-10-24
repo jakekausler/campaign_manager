@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 
+import { LevelControl } from './LevelControl';
+
 export interface StructureData {
   id: string;
   name: string;
@@ -18,6 +20,7 @@ export interface StructureData {
   archivedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  version?: number;
   computedFields?: Record<string, unknown>;
   variables?: Record<string, unknown>;
   [key: string]: unknown;
@@ -142,7 +145,21 @@ export function StructurePanel({ structure }: StructurePanelProps) {
         <div className="space-y-3">
           {renderField('Type', structureType, 'type')}
           {renderField('Settlement ID', structure.settlementId, 'settlementId')}
-          {renderField('Level', structure.level, 'level')}
+
+          {/* Level Control with increment/decrement buttons */}
+          {structure.level !== undefined && (
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-semibold text-slate-700">Level</Label>
+              <LevelControl
+                entityId={structure.id}
+                entityType="structure"
+                entityName={structure.name}
+                currentLevel={structure.level}
+                version={structure.version}
+              />
+            </div>
+          )}
+
           {renderField('Position X', structure.x, 'x')}
           {renderField('Position Y', structure.y, 'y')}
           {renderField('Orientation', `${structure.orientation}°`, 'orientation')}
