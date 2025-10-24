@@ -10,24 +10,39 @@ Create comprehensive UI components for managing Settlement-Structure hierarchies
 
 **Goal**: Create the base hierarchy panel that displays Settlement → Structures as a tree
 
+**Commit**: `97d0e63` - feat(frontend): add Settlement hierarchy panel with tree view
+
 **Tasks**:
 
-- [ ] Install tree UI dependencies (react-arborist or custom tree component)
-- [ ] Create `SettlementHierarchyPanel.tsx` component in `packages/frontend/src/components/features/entity-inspector/`
-- [ ] Implement tree rendering with Settlement as root and Structures as children
-- [ ] Add expand/collapse functionality for structure nodes
-- [ ] Display quick stats (total structures, average structure level)
-- [ ] Add structure icons based on type
-- [ ] Style with Tailwind CSS matching existing Entity Inspector theme
-- [ ] Write unit tests for hierarchy rendering
-- [ ] Add to SettlementPanel as a new "Hierarchy" section
+- [x] Install tree UI dependencies (react-arborist or custom tree component) - Built custom tree instead
+- [x] Create `SettlementHierarchyPanel.tsx` component in `packages/frontend/src/components/features/entity-inspector/`
+- [x] Implement tree rendering with Settlement as root and Structures as children
+- [x] Add expand/collapse functionality for structure nodes
+- [x] Display quick stats (total structures, average structure level)
+- [x] Add structure icons based on type (8 types: temple, barracks, market, library, forge, tavern, fortress, citadel)
+- [x] Style with Tailwind CSS matching existing Entity Inspector theme
+- [x] Write unit tests for hierarchy rendering (31 test cases, 465 lines)
+- [x] Add to SettlementPanel as a new "Hierarchy" section
 
-**Success Criteria**:
+**Implementation Notes**:
 
-- Tree displays Settlement with nested Structures
-- Expand/collapse works smoothly
-- Quick stats calculate correctly
-- Visual styling is consistent with Entity Inspector
+- Chose custom tree component instead of external library to minimize dependencies
+- Component: 228 lines of production code
+- Tests: 465 lines with comprehensive coverage (31 test cases across 10 describe blocks)
+- Icon mapping for 8+ structure types using lucide-react
+- Loading, error, and empty states with appropriate fallback UI
+- MSW handler added for GetStructuresForMap GraphQL query
+- Mock data updated: added structure-3 (Grand Library) to settlement-1
+- Skeleton component enhanced with data-testid attribute for testing
+- All 1371 frontend tests passing
+- Code Reviewer approved: no security issues, good performance, clean code
+
+**Success Criteria**: ✅ ALL MET
+
+- ✅ Tree displays Settlement with nested Structures
+- ✅ Expand/collapse works smoothly
+- ✅ Quick stats calculate correctly
+- ✅ Visual styling is consistent with Entity Inspector
 
 ---
 
