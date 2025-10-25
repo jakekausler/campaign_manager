@@ -150,6 +150,7 @@ export const GET_SETTLEMENT_DETAILS = gql`
       updatedAt
       computedFields
       variables
+      variableSchemas
     }
   }
 `;

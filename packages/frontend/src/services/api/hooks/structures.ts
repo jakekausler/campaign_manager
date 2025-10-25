@@ -108,6 +108,7 @@ export const GET_STRUCTURE_DETAILS = gql`
       updatedAt
       computedFields
       variables
+      variableSchemas
     }
   }
 `;

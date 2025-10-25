@@ -26,5 +26,7 @@ export { SettlementPanel } from './SettlementPanel';
 export type { SettlementPanelProps, SettlementData } from './SettlementPanel';
 export { StructurePanel } from './StructurePanel';
 export type { StructurePanelProps, StructureData } from './StructurePanel';
+export { TypedVariableEditor } from './TypedVariableEditor';
+export type { TypedVariableEditorProps } from './TypedVariableEditor';
 export { VersionsTab } from './VersionsTab';
 export type { VersionsTabProps } from './VersionsTab';
