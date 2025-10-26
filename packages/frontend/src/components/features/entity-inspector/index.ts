@@ -14,6 +14,8 @@ export { EntityInspector } from './EntityInspector';
 export type { EntityInspectorProps, EntityType } from './EntityInspector';
 export { EventPanel } from './EventPanel';
 export type { EventPanelProps, EventData } from './EventPanel';
+export { KingdomContextPanel } from './KingdomContextPanel';
+export type { KingdomContextPanelProps } from './KingdomContextPanel';
 export { LinksTab } from './LinksTab';
 export type { LinksTabProps, EntityLink } from './LinksTab';
 export { LocationContextPanel } from './LocationContextPanel';

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 
+import { KingdomContextPanel } from './KingdomContextPanel';
 import { LevelControl } from './LevelControl';
 import { LocationContextPanel } from './LocationContextPanel';
 import { SettlementHierarchyPanel } from './SettlementHierarchyPanel';
@@ -157,6 +158,9 @@ export function SettlementPanel({
         onStructureSelect={onStructureSelect}
         onAddStructure={onAddStructure}
       />
+
+      {/* Kingdom Context Section */}
+      <KingdomContextPanel kingdomId={settlement.kingdomId} settlementName={settlement.name} />
 
       {/* Settlement Attributes Section */}
       <Card className="p-4">

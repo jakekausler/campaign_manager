@@ -32,6 +32,9 @@ export {
   GET_SETTLEMENT_STRUCTURES,
 } from './settlements';
 
+// Kingdom hooks
+export { useKingdomById, GET_KINGDOM_BY_ID } from './kingdoms';
+
 // Structure hooks
 export {
   useStructureDetails,
