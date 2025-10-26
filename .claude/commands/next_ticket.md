@@ -22,7 +22,7 @@ If a corresponding TICKET-###-implementation-plan.md DOES exist, read it and con
 
 ## PLAN
 
-Create a new file in plan/ named TICKET-###-implementation-plan.md, where ### is the ticket number. In this file, outline a detailed plan for implementing the ticket. This should include a breakdown of the tasks needed to create the ticket in one or more stages, with checkboxes to mark each task as complete.
+Create a new file in plan/ named TICKET-###-implementation-plan.md, where ### is the ticket number. In this file, outline a detailed plan for implementing the ticket. This should include a breakdown of the tasks needed to create the ticket in one or more stages, with checkboxes to mark each task as complete. Do not use checkmark emojis or similar in the title or body of the plan stages. These should ONLY be used to indicate actually completed items.
 
 After creating the implementation plan, commit it and then STOP and wait for further instructions. DO NOT begin implementation until instructed to do so.
 
