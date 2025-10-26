@@ -25,6 +25,7 @@ describe('SettlementPanel', () => {
     id: 'settlement-1',
     name: 'Ironhold',
     kingdomId: 'kingdom-1',
+    locationId: 'location-1',
     level: 3,
     x: 100,
     y: 200,

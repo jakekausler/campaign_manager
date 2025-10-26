@@ -16,6 +16,8 @@ export { EventPanel } from './EventPanel';
 export type { EventPanelProps, EventData } from './EventPanel';
 export { LinksTab } from './LinksTab';
 export type { LinksTabProps, EntityLink } from './LinksTab';
+export { LocationContextPanel } from './LocationContextPanel';
+export type { LocationContextPanelProps } from './LocationContextPanel';
 export { OverviewTab } from './OverviewTab';
 export type { OverviewTabProps, Entity } from './OverviewTab';
 export { ResolutionButton } from './ResolutionButton';

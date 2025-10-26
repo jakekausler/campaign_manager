@@ -5,12 +5,14 @@ import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 
 import { LevelControl } from './LevelControl';
+import { LocationContextPanel } from './LocationContextPanel';
 import { SettlementHierarchyPanel } from './SettlementHierarchyPanel';
 
 export interface SettlementData {
   id: string;
   name: string;
   kingdomId: string;
+  locationId: string;
   level: number;
   x: number;
   y: number;
@@ -179,6 +181,9 @@ export function SettlementPanel({
           {renderField('Is Archived', settlement.isArchived, 'isArchived')}
         </div>
       </Card>
+
+      {/* Location Context Section */}
+      <LocationContextPanel locationId={settlement.locationId} settlementName={settlement.name} />
 
       {/* Typed Variables Section */}
       <Card className="p-4">
