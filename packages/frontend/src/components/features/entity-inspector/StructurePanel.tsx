@@ -1,12 +1,23 @@
-import { Building2, Church, Swords, Store, BookOpen, Hammer, Beer, Castle } from 'lucide-react';
+import {
+  Building2,
+  Church,
+  Swords,
+  Store,
+  BookOpen,
+  Hammer,
+  Beer,
+  Castle,
+  Trash2,
+} from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { useUpdateStructure } from '@/services/api/mutations/structures';
+import { useUpdateStructure, useDeleteStructure } from '@/services/api/mutations/structures';
 
+import { DeleteStructureConfirmationDialog } from './DeleteStructureConfirmationDialog';
 import { LevelControl } from './LevelControl';
 import { ParentSettlementContext } from './ParentSettlementContext';
 import { TypedVariableEditor } from './TypedVariableEditor';
@@ -45,6 +56,8 @@ export interface StructurePanelProps {
   structure: StructureData;
   /** Callback when opening parent settlement */
   onNavigateToSettlement?: (settlementId: string) => void;
+  /** Callback when structure is deleted (optional) */
+  onStructureDeleted?: (structureId: string) => void;
 }
 
 /**
@@ -95,6 +108,7 @@ const formatTypeName = (str: string): string => {
  *
  * Features:
  * - Structure type icon and label in header
+ * - Delete structure button with confirmation
  * - Level control with increment/decrement
  * - Structure attributes (position, orientation)
  * - Typed variables editor with validation
@@ -102,10 +116,16 @@ const formatTypeName = (str: string): string => {
  * - Copy-to-clipboard functionality
  * - Automatic type-based formatting
  */
-export function StructurePanel({ structure, onNavigateToSettlement }: StructurePanelProps) {
+export function StructurePanel({
+  structure,
+  onNavigateToSettlement,
+  onStructureDeleted,
+}: StructurePanelProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { updateStructure } = useUpdateStructure();
+  const { deleteStructure, loading: deleting } = useDeleteStructure();
 
   // Cleanup timeout on unmount to prevent memory leaks
   useEffect(() => {
@@ -174,6 +194,23 @@ export function StructurePanel({ structure, onNavigateToSettlement }: StructureP
   };
 
   /**
+   * Handle structure deletion
+   */
+  const handleConfirmDelete = async () => {
+    try {
+      await deleteStructure(structure.id);
+      toast.success(`Structure "${structure.name}" deleted successfully`);
+      setShowDeleteDialog(false);
+      // Notify parent component that structure was deleted
+      onStructureDeleted?.(structure.id);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to delete structure. Please try again.'
+      );
+    }
+  };
+
+  /**
    * Render a field row with label, value, and copy button
    */
   const renderField = (label: string, value: unknown, fieldKey: string) => {
@@ -214,22 +251,45 @@ export function StructurePanel({ structure, onNavigateToSettlement }: StructureP
 
   return (
     <div className="space-y-6">
-      {/* Structure Type Header with Icon */}
+      {/* Structure Type Header with Icon and Delete Button */}
       <Card className="p-4 bg-gradient-to-r from-blue-50 to-slate-50">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-white border border-slate-200 shadow-sm">
-            {structureIcon}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-white border border-slate-200 shadow-sm">
+              {structureIcon}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                Structure Type
+              </p>
+              <h2 className="text-lg font-bold text-slate-900" data-testid="structure-type-header">
+                {formattedTypeName}
+              </h2>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-              Structure Type
-            </p>
-            <h2 className="text-lg font-bold text-slate-900" data-testid="structure-type-header">
-              {formattedTypeName}
-            </h2>
-          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={deleting}
+            className="shrink-0"
+            title="Delete structure"
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
         </div>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteStructureConfirmationDialog
+        open={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleConfirmDelete}
+        structureName={structure.name}
+        structureType={formattedTypeName}
+        loading={deleting}
+      />
 
       {/* Parent Settlement Context */}
       <ParentSettlementContext

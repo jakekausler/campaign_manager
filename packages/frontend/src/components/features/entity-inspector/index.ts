@@ -2,6 +2,8 @@ export { ConditionExplanation } from './ConditionExplanation';
 export type { ConditionExplanationProps } from './ConditionExplanation';
 export { ConditionsTab } from './ConditionsTab';
 export type { ConditionsTabProps, FieldCondition } from './ConditionsTab';
+export { DeleteStructureConfirmationDialog } from './DeleteStructureConfirmationDialog';
+export type { DeleteStructureConfirmationDialogProps } from './DeleteStructureConfirmationDialog';
 export { EditableField } from './EditableField';
 export type { EditableFieldProps, FieldType } from './EditableField';
 export { EffectExecutionHistory } from './EffectExecutionHistory';

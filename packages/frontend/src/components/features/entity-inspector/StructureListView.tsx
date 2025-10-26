@@ -11,14 +11,19 @@ import {
   Castle,
   Search,
   Filter,
+  Trash2,
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useStructuresForMap } from '@/services/api/hooks/structures';
+import { useDeleteStructure } from '@/services/api/mutations/structures';
+
+import { DeleteStructureConfirmationDialog } from './DeleteStructureConfirmationDialog';
 
 /**
  * Structure data as returned by useStructuresForMap hook
@@ -103,6 +108,7 @@ const getUniqueTypes = (structures: StructureNode[]): string[] => {
  */
 export function StructureListView({ settlementId, onStructureSelect }: StructureListViewProps) {
   const { structures, loading, error } = useStructuresForMap(settlementId);
+  const { deleteStructure, loading: deleting } = useDeleteStructure();
 
   // Filter and sort state
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,6 +116,10 @@ export function StructureListView({ settlementId, onStructureSelect }: Structure
   const [filterType, setFilterType] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [structureToDelete, setStructureToDelete] = useState<StructureNode | null>(null);
 
   // Debounce search query (300ms delay)
   useEffect(() => {
@@ -175,6 +185,36 @@ export function StructureListView({ settlementId, onStructureSelect }: Structure
       setSortBy(field);
       setSortOrder('asc');
     }
+  };
+
+  // Handle delete button click
+  const handleDeleteClick = (structure: StructureNode, e: React.MouseEvent) => {
+    // Stop propagation to prevent selecting the structure
+    e.stopPropagation();
+    setStructureToDelete(structure);
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle delete confirmation
+  const handleConfirmDelete = async () => {
+    if (!structureToDelete) return;
+
+    try {
+      await deleteStructure(structureToDelete.id);
+      toast.success(`Structure "${structureToDelete.name}" deleted successfully`);
+      setDeleteDialogOpen(false);
+      setStructureToDelete(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to delete structure. Please try again.'
+      );
+    }
+  };
+
+  // Close dialog handler
+  const handleCloseDialog = () => {
+    setDeleteDialogOpen(false);
+    setStructureToDelete(null);
   };
 
   return (
@@ -327,6 +367,18 @@ export function StructureListView({ settlementId, onStructureSelect }: Structure
                   </div>
                 </div>
 
+                {/* Delete Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => handleDeleteClick(structure, e)}
+                  disabled={deleting}
+                  className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  title="Delete structure"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+
                 {/* Arrow indicator */}
                 <div className="text-slate-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
                   <ArrowUpDown className="h-4 w-4" />
@@ -334,6 +386,16 @@ export function StructureListView({ settlementId, onStructureSelect }: Structure
               </button>
             ))}
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <DeleteStructureConfirmationDialog
+          open={deleteDialogOpen}
+          onClose={handleCloseDialog}
+          onConfirm={handleConfirmDelete}
+          structureName={structureToDelete?.name || ''}
+          structureType={structureToDelete?.type}
+          loading={deleting}
+        />
       </div>
     </Card>
   );

@@ -545,6 +545,7 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
                 ) : currentEntityType === 'structure' ? (
                   <StructurePanel
                     structure={entity as NonNullable<typeof structureQuery.structure>}
+                    onStructureDeleted={onClose}
                   />
                 ) : currentEntityType === 'event' ? (
                   <EventPanel event={entity as NonNullable<typeof eventQuery.event>} />
