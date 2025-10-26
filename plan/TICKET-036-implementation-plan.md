@@ -277,29 +277,44 @@ Create comprehensive UI components for managing Settlement-Structure hierarchies
 
 ---
 
-### Stage 7: Kingdom Context Display
+### Stage 7: Kingdom Context Display ✅
 
 **Goal**: Show parent Kingdom information with navigation
 
+**Commit**: `44130e1` - feat(frontend): add Kingdom Context Display to Settlement Inspector (TICKET-036 Stage 7)
+
 **Tasks**:
 
-- [ ] Create `KingdomContextPanel.tsx` component
-- [ ] Create `useKingdomById` GraphQL hook if not exists
-- [ ] Fetch kingdom data for Settlement's parent kingdom
-- [ ] Display kingdom name and relevant stats
-- [ ] Add "Navigate to Kingdom" link (note: Kingdom detail view may not exist yet)
-- [ ] Show kingdom-level stats relevant to Settlement (e.g., total settlements, kingdom level)
-- [ ] Add loading and error states
-- [ ] Integrate into SettlementPanel
-- [ ] Write tests for kingdom data display
-- [ ] Write tests for navigation (or placeholder if Kingdom view doesn't exist)
+- [x] Create `KingdomContextPanel.tsx` component (174 lines)
+- [x] Create `useKingdomById` GraphQL hook (98 lines)
+- [x] Fetch kingdom data for Settlement's parent kingdom
+- [x] Display kingdom name and relevant stats (kingdom level, total settlements)
+- [x] Add "Navigate to Kingdom" link (placeholder button with console.info - Kingdom detail view doesn't exist yet)
+- [x] Show kingdom-level stats relevant to Settlement (total settlements count with singular/plural grammar)
+- [x] Add loading and error states (skeleton UI, error messages, missing kingdom fallback)
+- [x] Integrate into SettlementPanel (between hierarchy and attributes sections)
+- [x] Write tests for kingdom data display (19 comprehensive test cases, 497 lines)
+- [x] Write tests for navigation placeholder (button click logs to console, proper title attribute)
 
-**Success Criteria**:
+**Implementation Notes**:
 
-- Kingdom name displays correctly
-- Kingdom stats are relevant and accurate
-- Navigation link works (or is appropriately disabled/styled as "coming soon")
-- Loading and error handling work
+- Component: 174 lines with comprehensive JSDoc documentation
+- GraphQL Hook: 98 lines following exact same pattern as locations/settlements hooks
+- Tests: 497 lines with 19 passing test cases across 8 describe blocks
+- Total Settlements Count: Uses existing `useSettlementsByKingdom` hook (DRY principle)
+- Singular/Plural Grammar: Properly handles "1 settlement" vs "3 settlements"
+- Pattern Consistency: Mirrors `LocationContextPanel` structure exactly (Stage 6)
+- Accessibility: WCAG 2.1 Level AA compliant with proper ARIA attributes
+- Code Review: Approved by Code Reviewer with zero critical issues
+- Integration: Clean exports in barrel files (hooks/index.ts, entity-inspector/index.ts)
+- Placeholder Navigation: Button logs "Kingdom detail view not yet implemented" - to be wired up in future ticket
+
+**Success Criteria**: ✅ ALL MET
+
+- ✅ Kingdom name displays correctly
+- ✅ Kingdom stats are relevant and accurate (level, total settlements)
+- ✅ Navigation link works as placeholder (button with helpful title, tested console.info call)
+- ✅ Loading and error handling work (skeleton, error alerts, missing kingdom fallback)
 
 ---
 
