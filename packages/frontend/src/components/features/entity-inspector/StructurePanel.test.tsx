@@ -6,7 +6,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 
 import { StructurePanel } from './StructurePanel';
-import type { StructureData } from './StructurePanel';
+import type { StructureData, VariableSchema } from './StructurePanel';
 
 // Create a wrapper component for Apollo Provider
 function createWrapper() {
@@ -21,6 +21,8 @@ afterEach(() => {
 });
 
 describe('StructurePanel', () => {
+  const mockOnNavigate = vi.fn();
+
   const mockStructure: StructureData = {
     id: 'structure-1',
     name: 'Main Barracks',
@@ -38,62 +40,56 @@ describe('StructurePanel', () => {
       is_upgraded: false,
       maintenance_cost: 25,
     },
+    variableSchemas: [
+      {
+        name: 'garrison_size',
+        type: 'number',
+        description: 'Size of garrison stationed here',
+      },
+      {
+        name: 'is_upgraded',
+        type: 'boolean',
+        description: 'Whether barracks has been upgraded',
+      },
+      {
+        name: 'maintenance_cost',
+        type: 'number',
+        description: 'Gold per turn maintenance cost',
+      },
+    ] as VariableSchema[],
+    version: 1,
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
   };
 
   describe('Structure Attributes Section', () => {
-    it('should render structure attributes section header', () => {
-      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
-      expect(screen.getByText('Structure Attributes')).toBeInTheDocument();
-    });
-
-    it('should display structure type', () => {
-      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
-      expect(screen.getByText('Type')).toBeInTheDocument();
-      expect(screen.getByText('barracks')).toBeInTheDocument();
-    });
-
-    it('should use type field if available', () => {
-      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
-      expect(screen.getByText('barracks')).toBeInTheDocument();
-    });
-
-    it('should fallback to typeId if type is not available', () => {
-      const structureNoType: StructureData = {
-        ...mockStructure,
-        type: undefined,
-      };
-      render(<StructurePanel structure={structureNoType} />, { wrapper: createWrapper() });
-      expect(screen.getByText('barracks')).toBeInTheDocument(); // typeId is 'barracks'
-    });
-
-    it('should display settlement ID', () => {
-      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
-      expect(screen.getByText('Settlement ID')).toBeInTheDocument();
-      expect(screen.getByText('settlement-1')).toBeInTheDocument();
-    });
-
-    it('should display level', () => {
-      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
-      expect(screen.getByText('Level')).toBeInTheDocument();
-      expect(screen.getByText('Level 2')).toBeInTheDocument();
+    it('should render attributes section header', () => {
+      render(<StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      expect(screen.getByText('Attributes')).toBeInTheDocument();
     });
 
     it('should display position X', () => {
-      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
+      render(<StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
       expect(screen.getByText('Position X')).toBeInTheDocument();
       expect(screen.getByText('10')).toBeInTheDocument();
     });
 
     it('should display position Y', () => {
-      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
+      render(<StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
       expect(screen.getByText('Position Y')).toBeInTheDocument();
       expect(screen.getByText('20')).toBeInTheDocument();
     });
 
     it('should display orientation with degree symbol', () => {
-      render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
+      render(<StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
       expect(screen.getByText('Orientation')).toBeInTheDocument();
       expect(screen.getByText('90°')).toBeInTheDocument();
     });
@@ -297,9 +293,6 @@ describe('StructurePanel', () => {
   describe('Accessibility', () => {
     it('should have proper labels for all fields', () => {
       render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
-      expect(screen.getByText('Type')).toHaveClass('text-xs', 'font-semibold');
-      expect(screen.getByText('Settlement ID')).toHaveClass('text-xs', 'font-semibold');
-      expect(screen.getByText('Level')).toHaveClass('text-xs', 'font-semibold');
       expect(screen.getByText('Position X')).toHaveClass('text-xs', 'font-semibold');
       expect(screen.getByText('Position Y')).toHaveClass('text-xs', 'font-semibold');
       expect(screen.getByText('Orientation')).toHaveClass('text-xs', 'font-semibold');
@@ -309,6 +302,154 @@ describe('StructurePanel', () => {
       render(<StructurePanel structure={mockStructure} />, { wrapper: createWrapper() });
       const copyButtons = screen.getAllByTitle('Copy to clipboard');
       expect(copyButtons.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Structure Type Header (Stage 8)', () => {
+    it('should display structure type header with icon and formatted name', () => {
+      render(<StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+
+      expect(screen.getByTestId('structure-type-header')).toHaveTextContent('Barracks');
+      expect(screen.getByText('STRUCTURE TYPE')).toBeInTheDocument();
+    });
+
+    it('should format snake_case type names to Title Case', () => {
+      const structure = { ...mockStructure, type: 'war_barracks' };
+      render(<StructurePanel structure={structure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      expect(screen.getByTestId('structure-type-header')).toHaveTextContent('War Barracks');
+    });
+
+    it('should format PascalCase type names to Title Case', () => {
+      const structure = { ...mockStructure, type: 'GrandLibrary' };
+      render(<StructurePanel structure={structure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      expect(screen.getByTestId('structure-type-header')).toHaveTextContent('Grand Library');
+    });
+
+    it('should display gradient background for header', () => {
+      const { container } = render(
+        <StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />,
+        {
+          wrapper: createWrapper(),
+        }
+      );
+      const gradientCard = container.querySelector('.bg-gradient-to-r');
+      expect(gradientCard).toBeInTheDocument();
+    });
+  });
+
+  describe('Parent Settlement Context (Stage 8)', () => {
+    it('should render ParentSettlementContext component', () => {
+      render(<StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      expect(screen.getByText('Parent Settlement')).toBeInTheDocument();
+    });
+
+    it('should pass onNavigateToSettlement callback to ParentSettlementContext', () => {
+      render(<StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      // Check that navigation button is rendered (from ParentSettlementContext)
+      expect(screen.getByRole('button', { name: /navigate to settlement/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('Level Control Separation (Stage 8)', () => {
+    it('should render level control in separate card', () => {
+      render(<StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      const levelHeading = screen.getByText('Level');
+      const levelCard = levelHeading.closest('.p-4');
+      expect(levelCard).toBeInTheDocument();
+      expect(screen.getByText('Level 2')).toBeInTheDocument();
+    });
+
+    it('should not render level card when level is undefined', () => {
+      const structure = { ...mockStructure, level: undefined };
+      render(<StructurePanel structure={structure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      // "Level" heading should not exist
+      expect(screen.queryByText(/^Level$/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Attributes Section (Stage 8)', () => {
+    it('should render attributes in dedicated card without Type and Settlement ID', () => {
+      render(<StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      expect(screen.getByText('Attributes')).toBeInTheDocument();
+      // Type and Settlement ID should NOT be in Attributes section anymore
+      expect(screen.queryByText('Type')).not.toBeInTheDocument();
+      expect(screen.queryByText('Settlement ID')).not.toBeInTheDocument();
+      // But position and orientation should be there
+      expect(screen.getByText('Position X')).toBeInTheDocument();
+      expect(screen.getByText('Position Y')).toBeInTheDocument();
+      expect(screen.getByText('Orientation')).toBeInTheDocument();
+    });
+  });
+
+  describe('TypedVariableEditor Integration (Stage 8)', () => {
+    it('should render TypedVariableEditor when variableSchemas exist', () => {
+      render(<StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      // TypedVariableEditor renders "Typed Variables" heading
+      expect(screen.getAllByText('Typed Variables')[0]).toBeInTheDocument();
+    });
+
+    it('should not render TypedVariableEditor when variableSchemas is empty', () => {
+      const structure = { ...mockStructure, variableSchemas: [] };
+      render(<StructurePanel structure={structure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      // TypedVariableEditor should not be rendered, only old variables section
+      const typedVariablesElements = screen.queryAllByText('Typed Variables');
+      expect(typedVariablesElements.length).toBe(0);
+    });
+
+    it('should not render TypedVariableEditor when variableSchemas is undefined', () => {
+      const structure = { ...mockStructure, variableSchemas: undefined };
+      render(<StructurePanel structure={structure} onNavigateToSettlement={mockOnNavigate} />, {
+        wrapper: createWrapper(),
+      });
+      expect(screen.queryByText('Typed Variables')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Layout (Stage 8)', () => {
+    it('should render sections in correct order', () => {
+      const { container } = render(
+        <StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />,
+        {
+          wrapper: createWrapper(),
+        }
+      );
+      const cards = container.querySelectorAll('.p-4');
+      expect(cards.length).toBeGreaterThanOrEqual(4);
+      // Verify first card is the type header
+      expect(cards[0]).toHaveTextContent('STRUCTURE TYPE');
+      // Second card should be parent settlement
+      expect(cards[1]).toHaveTextContent('Parent Settlement');
+    });
+
+    it('should use space-y-6 for section spacing', () => {
+      const { container } = render(
+        <StructurePanel structure={mockStructure} onNavigateToSettlement={mockOnNavigate} />,
+        {
+          wrapper: createWrapper(),
+        }
+      );
+      const mainContainer = container.querySelector('.space-y-6');
+      expect(mainContainer).toBeInTheDocument();
     });
   });
 });

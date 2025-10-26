@@ -21,6 +21,8 @@ export type { LinksTabProps, EntityLink } from './LinksTab';
 export { LocationContextPanel } from './LocationContextPanel';
 export type { LocationContextPanelProps } from './LocationContextPanel';
 export { OverviewTab } from './OverviewTab';
+export { ParentSettlementContext } from './ParentSettlementContext';
+export type { ParentSettlementContextProps } from './ParentSettlementContext';
 export type { OverviewTabProps, Entity } from './OverviewTab';
 export { ResolutionButton } from './ResolutionButton';
 export type { ResolutionButtonProps } from './ResolutionButton';

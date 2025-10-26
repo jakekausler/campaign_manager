@@ -1,10 +1,23 @@
+import { Building2, Church, Swords, Store, BookOpen, Hammer, Beer, Castle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { useUpdateStructure } from '@/services/api/mutations/structures';
 
 import { LevelControl } from './LevelControl';
+import { ParentSettlementContext } from './ParentSettlementContext';
+import { TypedVariableEditor } from './TypedVariableEditor';
+
+export interface VariableSchema {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'enum';
+  description?: string;
+  enumValues?: string[];
+  defaultValue?: unknown;
+}
 
 export interface StructureData {
   id: string;
@@ -23,26 +36,76 @@ export interface StructureData {
   version?: number;
   computedFields?: Record<string, unknown>;
   variables?: Record<string, unknown>;
+  variableSchemas?: VariableSchema[];
   [key: string]: unknown;
 }
 
 export interface StructurePanelProps {
   /** The structure entity to display */
   structure: StructureData;
+  /** Callback when opening parent settlement */
+  onNavigateToSettlement?: (settlementId: string) => void;
 }
+
+/**
+ * Map structure type to icon component
+ * @param type - The structure type (temple, barracks, market, etc.)
+ * @returns React icon component with consistent sizing
+ */
+const getStructureIcon = (type?: string) => {
+  const iconClass = 'h-5 w-5 shrink-0';
+  switch (type?.toLowerCase()) {
+    case 'temple':
+      return <Church className={iconClass} />;
+    case 'barracks':
+      return <Swords className={iconClass} />;
+    case 'market':
+      return <Store className={iconClass} />;
+    case 'library':
+      return <BookOpen className={iconClass} />;
+    case 'forge':
+      return <Hammer className={iconClass} />;
+    case 'tavern':
+      return <Beer className={iconClass} />;
+    case 'fortress':
+    case 'citadel':
+      return <Castle className={iconClass} />;
+    default:
+      return <Building2 className={iconClass} />;
+  }
+};
+
+/**
+ * Convert snake_case or PascalCase type to Title Case for display
+ * @param str - The string to convert
+ * @returns Title Case formatted string
+ */
+const formatTypeName = (str: string): string => {
+  // Handle PascalCase: "SomeType" → "Some Type"
+  const spacedPascal = str.replace(/([A-Z])/g, ' $1').trim();
+  // Handle snake_case: "some_type" → "Some Type"
+  return spacedPascal
+    .split(/[_\s]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
 
 /**
  * StructurePanel displays Structure-specific information.
  *
  * Features:
- * - Structure attributes (type, settlement, level, position, orientation)
- * - Typed variables from the variables JSON field
+ * - Structure type icon and label in header
+ * - Level control with increment/decrement
+ * - Structure attributes (position, orientation)
+ * - Typed variables editor with validation
+ * - Parent settlement context and navigation
  * - Copy-to-clipboard functionality
  * - Automatic type-based formatting
  */
-export function StructurePanel({ structure }: StructurePanelProps) {
+export function StructurePanel({ structure, onNavigateToSettlement }: StructurePanelProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { updateStructure } = useUpdateStructure();
 
   // Cleanup timeout on unmount to prevent memory leaks
   useEffect(() => {
@@ -91,13 +154,23 @@ export function StructurePanel({ structure }: StructurePanelProps) {
   };
 
   /**
-   * Convert snake_case to Title Case
+   * Handle saving updated variables
    */
-  const toTitleCase = (str: string): string => {
-    return str
-      .split('_')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+  const handleSaveVariables = async (variables: Record<string, unknown>) => {
+    try {
+      await updateStructure(structure.id, {
+        variables,
+        expectedVersion: structure.version,
+      });
+      toast.success('Structure variables updated successfully');
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update structure variables. Please try again.'
+      );
+      throw error; // Re-throw so TypedVariableEditor knows the save failed
+    }
   };
 
   /**
@@ -133,52 +206,71 @@ export function StructurePanel({ structure }: StructurePanelProps) {
   };
 
   const variables = structure.variables || {};
-  const hasVariables = Object.keys(variables).length > 0;
+  const variableSchemas = structure.variableSchemas || [];
   // Use type if available, fallback to typeId
   const structureType = structure.type || structure.typeId;
+  const structureIcon = getStructureIcon(structureType);
+  const formattedTypeName = formatTypeName(structureType);
 
   return (
     <div className="space-y-6">
+      {/* Structure Type Header with Icon */}
+      <Card className="p-4 bg-gradient-to-r from-blue-50 to-slate-50">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-white border border-slate-200 shadow-sm">
+            {structureIcon}
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+              Structure Type
+            </p>
+            <h2 className="text-lg font-bold text-slate-900" data-testid="structure-type-header">
+              {formattedTypeName}
+            </h2>
+          </div>
+        </div>
+      </Card>
+
+      {/* Parent Settlement Context */}
+      <ParentSettlementContext
+        settlementId={structure.settlementId}
+        onNavigateToSettlement={onNavigateToSettlement}
+      />
+
+      {/* Level Control Section */}
+      {structure.level !== undefined && (
+        <Card className="p-4">
+          <h3 className="text-sm font-bold text-slate-900 mb-3">Level</h3>
+          <LevelControl
+            entityId={structure.id}
+            entityType="structure"
+            entityName={structure.name}
+            currentLevel={structure.level}
+            version={structure.version}
+          />
+        </Card>
+      )}
+
       {/* Structure Attributes Section */}
       <Card className="p-4">
-        <h3 className="text-sm font-bold text-slate-900 mb-4">Structure Attributes</h3>
+        <h3 className="text-sm font-bold text-slate-900 mb-4">Attributes</h3>
         <div className="space-y-3">
-          {renderField('Type', structureType, 'type')}
-          {renderField('Settlement ID', structure.settlementId, 'settlementId')}
-
-          {/* Level Control with increment/decrement buttons */}
-          {structure.level !== undefined && (
-            <div className="flex flex-col gap-1">
-              <Label className="text-xs font-semibold text-slate-700">Level</Label>
-              <LevelControl
-                entityId={structure.id}
-                entityType="structure"
-                entityName={structure.name}
-                currentLevel={structure.level}
-                version={structure.version}
-              />
-            </div>
-          )}
-
           {renderField('Position X', structure.x, 'x')}
           {renderField('Position Y', structure.y, 'y')}
           {renderField('Orientation', `${structure.orientation}°`, 'orientation')}
         </div>
       </Card>
 
-      {/* Typed Variables Section */}
-      <Card className="p-4">
-        <h3 className="text-sm font-bold text-slate-900 mb-4">Typed Variables</h3>
-        {hasVariables ? (
-          <div className="space-y-3">
-            {Object.entries(variables).map(([key, value]) =>
-              renderField(toTitleCase(key), value, `variable-${key}`)
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500">No typed variables available for this structure</p>
-        )}
-      </Card>
+      {/* Typed Variables Section with Editor */}
+      {variableSchemas.length > 0 && (
+        <TypedVariableEditor
+          entityId={structure.id}
+          entityType="structure"
+          variableSchemas={variableSchemas}
+          currentVariables={variables}
+          onSave={handleSaveVariables}
+        />
+      )}
     </div>
   );
 }

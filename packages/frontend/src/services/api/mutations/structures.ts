@@ -23,6 +23,7 @@ export interface UpdateStructureInput {
   x?: number;
   y?: number;
   level?: number;
+  variables?: Record<string, unknown>;
   branchId?: string;
   expectedVersion?: number;
   worldTime?: string;

@@ -78,7 +78,7 @@ export function TypedVariableEditor({
             initialValues[schema.name] = '';
             break;
           case 'number':
-            initialValues[schema.name] = '';
+            initialValues[schema.name] = 0;
             break;
           case 'boolean':
             initialValues[schema.name] = false;
@@ -196,7 +196,7 @@ export function TypedVariableEditor({
             resetValues[schema.name] = '';
             break;
           case 'number':
-            resetValues[schema.name] = '';
+            resetValues[schema.name] = 0;
             break;
           case 'boolean':
             resetValues[schema.name] = false;
@@ -244,12 +244,23 @@ export function TypedVariableEditor({
         return (
           <Input
             id={schema.name}
-            type="text"
-            inputMode="decimal"
-            value={value !== '' && value !== null && value !== undefined ? String(value) : ''}
+            type="number"
+            value={
+              value === '' || value === null || value === undefined
+                ? ''
+                : typeof value === 'number'
+                  ? value
+                  : String(value)
+            }
             onChange={(e) => {
               const val = e.target.value;
-              handleChange(schema.name, val === '' ? '' : val);
+              // Store as number if valid, empty string if empty
+              if (val === '') {
+                handleChange(schema.name, '');
+              } else {
+                const num = parseFloat(val);
+                handleChange(schema.name, isNaN(num) ? val : num);
+              }
             }}
             onBlur={() => handleBlur(schema.name)}
             className={commonClasses}
