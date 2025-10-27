@@ -566,7 +566,7 @@ Create comprehensive UI components for managing Settlement-Structure hierarchies
 
 **Goal**: Ensure seamless navigation between Settlement/Structure/Kingdom/Location
 
-**Commit**: [TBD] - feat(frontend): wire up Settlement/Structure navigation in EntityInspector
+**Commit**: `e540478` - feat(frontend): wire up Settlement/Structure navigation in EntityInspector
 
 **Tasks**:
 
