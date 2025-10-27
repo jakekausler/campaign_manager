@@ -58,11 +58,21 @@ describe('ScheduleService', () => {
     } as unknown as jest.Mocked<QueueService>;
 
     settlementSchedulingService = {
-      processSettlementsForCampaign: jest.fn().mockResolvedValue(undefined),
+      processAllSettlements: jest.fn().mockResolvedValue({
+        totalSettlements: 0,
+        jobsQueued: 0,
+        errors: 0,
+        errorMessages: [],
+      }),
     } as unknown as jest.Mocked<SettlementSchedulingService>;
 
     structureSchedulingService = {
-      processStructuresForCampaign: jest.fn().mockResolvedValue(undefined),
+      processAllStructures: jest.fn().mockResolvedValue({
+        totalStructures: 0,
+        jobsQueued: 0,
+        errors: 0,
+        errorMessages: [],
+      }),
     } as unknown as jest.Mocked<StructureSchedulingService>;
 
     schedulerRegistry = {
