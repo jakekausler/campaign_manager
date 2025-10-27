@@ -4,6 +4,15 @@
 
 - [ ] Completed
 - **Commits**:
+  - Stage 1: `97d0e63` - Settlement hierarchy panel with tree view
+  - Stage 2: `2107f05` - Structure creation modal with form validation
+  - Stage 3: `ae8010e` - Structure list view with filtering and sorting
+  - Stage 4: `85b7a01`, `94edf63` - Level management controls
+  - Stage 5: `a5199a8` - TypedVariableEditor component
+  - Stage 6: `0bd0f52` - LocationContextPanel for Settlement-Location relationship
+  - Stage 7: `44130e1` - Kingdom Context Display
+  - Stage 8: `c42bb0e` - Enhanced Structure detail view
+  - Stage 9: `b64a47a` - Comprehensive tests for DeleteStructureConfirmationDialog
 
 ## Description
 
