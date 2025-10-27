@@ -541,10 +541,16 @@ export function EntityInspector({ entityType, entityId, isOpen, onClose }: Entit
                 {currentEntityType === 'settlement' ? (
                   <SettlementPanel
                     settlement={entity as NonNullable<typeof settlementQuery.settlement>}
+                    onStructureSelect={(structureId) =>
+                      handleNavigate({ id: structureId, type: 'structure', name: 'Structure' })
+                    }
                   />
                 ) : currentEntityType === 'structure' ? (
                   <StructurePanel
                     structure={entity as NonNullable<typeof structureQuery.structure>}
+                    onNavigateToSettlement={(settlementId) =>
+                      handleNavigate({ id: settlementId, type: 'settlement', name: 'Settlement' })
+                    }
                     onStructureDeleted={onClose}
                   />
                 ) : currentEntityType === 'event' ? (

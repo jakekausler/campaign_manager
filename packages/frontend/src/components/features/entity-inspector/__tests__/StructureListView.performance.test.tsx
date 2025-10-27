@@ -1,3 +1,4 @@
+import { NetworkStatus } from '@apollo/client';
 import { MockedProvider } from '@apollo/client/testing/react';
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -36,7 +37,13 @@ const generateMockStructures = (count: number) => {
     id: `structure-${i}`,
     name: `Structure ${i}`,
     type: types[i % types.length],
+    typeId: `type-${i % types.length}`,
     level: (i % 10) + 1,
+    settlementId: 'settlement-1',
+    x: i * 10,
+    y: i * 5,
+    orientation: (i * 45) % 360,
+    isArchived: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     archivedAt: null,
@@ -49,8 +56,9 @@ describe('StructureListView - Performance', () => {
     mockedUseStructuresForMap.mockReturnValue({
       structures,
       loading: false,
-      error: null,
+      error: undefined,
       refetch: vi.fn(),
+      networkStatus: NetworkStatus.ready,
     });
 
     const start = performance.now();
@@ -73,8 +81,9 @@ describe('StructureListView - Performance', () => {
     mockedUseStructuresForMap.mockReturnValue({
       structures,
       loading: false,
-      error: null,
+      error: undefined,
       refetch: vi.fn(),
+      networkStatus: NetworkStatus.ready,
     });
 
     const start = performance.now();
@@ -97,8 +106,9 @@ describe('StructureListView - Performance', () => {
     mockedUseStructuresForMap.mockReturnValue({
       structures,
       loading: false,
-      error: null,
+      error: undefined,
       refetch: vi.fn(),
+      networkStatus: NetworkStatus.ready,
     });
 
     const start = performance.now();
@@ -121,8 +131,9 @@ describe('StructureListView - Performance', () => {
     mockedUseStructuresForMap.mockReturnValue({
       structures,
       loading: false,
-      error: null,
+      error: undefined,
       refetch: vi.fn(),
+      networkStatus: NetworkStatus.ready,
     });
 
     const { container } = render(
@@ -141,8 +152,9 @@ describe('StructureListView - Performance', () => {
     mockedUseStructuresForMap.mockReturnValue({
       structures,
       loading: false,
-      error: null,
+      error: undefined,
       refetch: vi.fn(),
+      networkStatus: NetworkStatus.ready,
     });
 
     const { container } = render(
