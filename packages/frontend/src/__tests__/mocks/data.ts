@@ -165,6 +165,11 @@ export const mockSettlements = [
       morale: 80,
       has_walls: true,
     },
+    variableSchemas: [
+      { name: 'prosperity', type: 'number' },
+      { name: 'morale', type: 'number' },
+      { name: 'has_walls', type: 'boolean' },
+    ],
   },
   {
     id: 'settlement-2',
@@ -187,6 +192,7 @@ export const mockSettlements = [
       population: 800,
       defense: 15,
     },
+    variableSchemas: [],
   },
   {
     id: 'settlement-3',
@@ -209,6 +215,7 @@ export const mockSettlements = [
       population: 2500,
       defense: 40,
     },
+    variableSchemas: [],
   },
   {
     id: 'settlement-empty',
@@ -229,6 +236,7 @@ export const mockSettlements = [
     version: 1,
     computedFields: {},
     variables: {},
+    variableSchemas: [],
   },
   {
     id: 'settlement-error-structures',
@@ -249,6 +257,7 @@ export const mockSettlements = [
     version: 1,
     computedFields: {},
     variables: {},
+    variableSchemas: [],
   },
 ];
 
@@ -278,6 +287,11 @@ export const mockStructures = [
       is_upgraded: false,
       maintenance_cost: 25,
     },
+    variableSchemas: [
+      { name: 'garrison_size', type: 'number' },
+      { name: 'is_upgraded', type: 'boolean' },
+      { name: 'maintenance_cost', type: 'number' },
+    ],
   },
   {
     id: 'structure-2',
@@ -299,6 +313,7 @@ export const mockStructures = [
       trade_bonus: 0.15,
       capacity: 50,
     },
+    variableSchemas: [],
   },
   {
     id: 'structure-3',
@@ -320,6 +335,7 @@ export const mockStructures = [
       knowledge: 75,
       research_speed: 1.5,
     },
+    variableSchemas: [],
   },
   {
     id: 'structure-4',
@@ -341,6 +357,7 @@ export const mockStructures = [
       faith: 50,
       healing_rate: 0.1,
     },
+    variableSchemas: [],
   },
   {
     id: 'structure-5',
@@ -361,6 +378,7 @@ export const mockStructures = [
     computedFields: {
       production: 50,
     },
+    variableSchemas: [],
   },
 ];
 

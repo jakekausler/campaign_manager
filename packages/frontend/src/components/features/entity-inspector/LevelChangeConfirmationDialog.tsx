@@ -73,10 +73,8 @@ export function LevelChangeConfirmationDialog({
           <AlertDialogDescription asChild>
             <div className="space-y-2">
               <p>
-                You are about to {levelChange} the level of{' '}
-                <span className="font-semibold text-foreground">{entityName}</span> from{' '}
-                <span className="font-semibold text-foreground">{currentLevel}</span> to{' '}
-                <span className="font-semibold text-foreground">{newLevel}</span>.
+                You are about to {levelChange} the level of <strong>{entityName}</strong> from{' '}
+                {currentLevel} to {newLevel}.
               </p>
               <p className="pt-2 text-sm text-muted-foreground">
                 <strong className="text-amber-600">⚠️ Important:</strong> Changing the level may

@@ -58,7 +58,7 @@ export function ParentSettlementContext({
             <Skeleton className="h-9 w-full" data-testid="settlement-name-skeleton" />
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold text-slate-700">Level</Label>
+            <Label className="text-xs font-semibold text-slate-700">Settlement Level</Label>
             <Skeleton className="h-9 w-24" data-testid="settlement-level-skeleton" />
           </div>
           <Skeleton className="h-10 w-full" data-testid="navigate-button-skeleton" />
@@ -126,9 +126,9 @@ export function ParentSettlementContext({
 
         {/* Settlement Level */}
         <div className="flex flex-col gap-1">
-          <Label className="text-xs font-semibold text-slate-700">Level</Label>
+          <Label className="text-xs font-semibold text-slate-700">Settlement Level</Label>
           <div className="p-2 rounded-md bg-slate-50 border border-slate-200 text-sm text-slate-900 w-24 text-center">
-            {settlement.level !== undefined ? settlement.level : 'N/A'}
+            {settlement.level !== undefined && settlement.level !== null ? settlement.level : 'N/A'}
           </div>
         </div>
 

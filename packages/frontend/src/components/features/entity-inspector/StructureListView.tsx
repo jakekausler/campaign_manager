@@ -109,37 +109,42 @@ const StructureRow = memo(({ structure, onSelect, onDelete, deleting }: Structur
   );
 
   return (
-    <button
-      onClick={handleClick}
-      className="w-full flex items-center gap-3 p-3 rounded-md border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left group"
-    >
-      {/* Icon */}
-      <div className="text-slate-600 group-hover:text-blue-600 transition-colors">
-        {getStructureIcon(structure.type)}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-semibold text-sm text-slate-900 truncate group-hover:text-blue-700">
-            {structure.name}
-          </span>
+    <div className="w-full flex items-center gap-3 p-3 rounded-md border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all group">
+      {/* Clickable row area */}
+      <button onClick={handleClick} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+        {/* Icon */}
+        <div className="text-slate-600 group-hover:text-blue-600 transition-colors">
+          {getStructureIcon(structure.type)}
         </div>
-        <div className="flex items-center gap-2">
-          {structure.type && (
-            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs">
-              {structure.type}
-            </span>
-          )}
-          {structure.level !== undefined && (
-            <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium">
-              Level {structure.level}
-            </span>
-          )}
-        </div>
-      </div>
 
-      {/* Delete Button */}
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-semibold text-sm text-slate-900 truncate group-hover:text-blue-700">
+              {structure.name}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {structure.type && (
+              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs">
+                {structure.type}
+              </span>
+            )}
+            {structure.level !== undefined && (
+              <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium">
+                Level {structure.level}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Arrow indicator */}
+        <div className="text-slate-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+          <ArrowUpDown className="h-4 w-4" />
+        </div>
+      </button>
+
+      {/* Delete Button (outside of clickable area to avoid nesting) */}
       <Button
         variant="ghost"
         size="sm"
@@ -150,12 +155,7 @@ const StructureRow = memo(({ structure, onSelect, onDelete, deleting }: Structur
       >
         <Trash2 className="h-4 w-4" />
       </Button>
-
-      {/* Arrow indicator */}
-      <div className="text-slate-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-        <ArrowUpDown className="h-4 w-4" />
-      </div>
-    </button>
+    </div>
   );
 });
 

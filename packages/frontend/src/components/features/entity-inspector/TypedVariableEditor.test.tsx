@@ -152,7 +152,8 @@ describe('TypedVariableEditor', () => {
 
       const input = screen.getByLabelText(/Population/i) as HTMLInputElement;
       expect(input).toBeInTheDocument();
-      expect(input.type).toBe('number');
+      expect(input.type).toBe('text');
+      expect(input.inputMode).toBe('decimal');
       expect(input.value).toBe('500');
     });
 
@@ -164,7 +165,7 @@ describe('TypedVariableEditor', () => {
       await user.clear(input);
       await user.type(input, '1250');
 
-      expect(input).toHaveValue(1250);
+      expect(input).toHaveValue('1250');
     });
 
     it('should validate number input on blur', async () => {
@@ -474,13 +475,13 @@ describe('TypedVariableEditor', () => {
       await user.clear(populationInput);
       await user.type(populationInput, '9999');
 
-      expect(populationInput).toHaveValue(9999);
+      expect(populationInput).toHaveValue('9999');
 
       const cancelButton = screen.getByRole('button', { name: /Cancel/i });
       await user.click(cancelButton);
 
       await waitFor(() => {
-        expect(populationInput).toHaveValue(500); // Reset to original
+        expect(populationInput).toHaveValue('500'); // Reset to original
       });
     });
 

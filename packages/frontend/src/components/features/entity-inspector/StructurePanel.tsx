@@ -15,12 +15,11 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { useUpdateStructure, useDeleteStructure } from '@/services/api/mutations/structures';
+import { useDeleteStructure } from '@/services/api/mutations/structures';
 
 import { DeleteStructureConfirmationDialog } from './DeleteStructureConfirmationDialog';
 import { LevelControl } from './LevelControl';
 import { ParentSettlementContext } from './ParentSettlementContext';
-import { TypedVariableEditor } from './TypedVariableEditor';
 
 export interface VariableSchema {
   name: string;
@@ -124,7 +123,6 @@ export function StructurePanel({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { updateStructure } = useUpdateStructure();
   const { deleteStructure, loading: deleting } = useDeleteStructure();
 
   // Cleanup timeout on unmount to prevent memory leaks
@@ -171,26 +169,6 @@ export function StructurePanel({
       return JSON.stringify(value, null, 2);
     }
     return String(value);
-  };
-
-  /**
-   * Handle saving updated variables
-   */
-  const handleSaveVariables = async (variables: Record<string, unknown>) => {
-    try {
-      await updateStructure(structure.id, {
-        variables,
-        expectedVersion: structure.version,
-      });
-      toast.success('Structure variables updated successfully');
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to update structure variables. Please try again.'
-      );
-      throw error; // Re-throw so TypedVariableEditor knows the save failed
-    }
   };
 
   /**
@@ -259,9 +237,7 @@ export function StructurePanel({
               {structureIcon}
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                Structure Type
-              </p>
+              <p className="text-xs font-medium text-slate-500 tracking-wide">STRUCTURE TYPE</p>
               <h2 className="text-lg font-bold text-slate-900" data-testid="structure-type-header">
                 {formattedTypeName}
               </h2>
@@ -321,15 +297,29 @@ export function StructurePanel({
         </div>
       </Card>
 
-      {/* Typed Variables Section with Editor */}
-      {variableSchemas.length > 0 && (
-        <TypedVariableEditor
-          entityId={structure.id}
-          entityType="structure"
-          variableSchemas={variableSchemas}
-          currentVariables={variables}
-          onSave={handleSaveVariables}
-        />
+      {/* Typed Variables Section */}
+      {variableSchemas && variableSchemas.length > 0 && (
+        <Card className="p-4">
+          <h3 className="text-sm font-bold text-slate-900 mb-4">Typed Variables</h3>
+          {Object.keys(variables).length > 0 ? (
+            <div className="space-y-3">
+              {Object.entries(variables).map(([key, value]) =>
+                renderField(
+                  key
+                    .split('_')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' '),
+                  value,
+                  `variable-${key}`
+                )
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">
+              No typed variables available for this structure
+            </p>
+          )}
+        </Card>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,9 @@ export function TypedVariableEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Ref to track latest form values synchronously (prevents race conditions in blur handler)
+  const formValuesRef = useRef<Record<string, unknown>>({});
+
   // Initialize form values from current variables or defaults
   useEffect(() => {
     const initialValues: Record<string, unknown> = {};
@@ -78,7 +81,7 @@ export function TypedVariableEditor({
             initialValues[schema.name] = '';
             break;
           case 'number':
-            initialValues[schema.name] = 0;
+            initialValues[schema.name] = '';
             break;
           case 'boolean':
             initialValues[schema.name] = false;
@@ -86,6 +89,7 @@ export function TypedVariableEditor({
         }
       }
     }
+    formValuesRef.current = initialValues;
     setFormValues(initialValues);
     setHasUnsavedChanges(false);
   }, [variableSchemas, currentVariables, entityId]);
@@ -97,8 +101,10 @@ export function TypedVariableEditor({
     const schema = variableSchemas.find((s) => s.name === name);
     if (!schema) return;
 
-    // Update form values
-    setFormValues((prev) => ({ ...prev, [name]: value }));
+    // Update form values (both state and ref)
+    const newValues = { ...formValuesRef.current, [name]: value };
+    formValuesRef.current = newValues;
+    setFormValues(newValues);
     setHasUnsavedChanges(true);
 
     // Validate if field has been touched
@@ -125,7 +131,8 @@ export function TypedVariableEditor({
     // Validate on blur
     const schema = variableSchemas.find((s) => s.name === name);
     if (schema) {
-      const value = formValues[name];
+      // Read from ref instead of state to avoid race conditions
+      const value = formValuesRef.current[name];
       const error = validateVariableValue(schema, value);
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -196,7 +203,7 @@ export function TypedVariableEditor({
             resetValues[schema.name] = '';
             break;
           case 'number':
-            resetValues[schema.name] = 0;
+            resetValues[schema.name] = '';
             break;
           case 'boolean':
             resetValues[schema.name] = false;
@@ -204,6 +211,7 @@ export function TypedVariableEditor({
         }
       }
     }
+    formValuesRef.current = resetValues;
     setFormValues(resetValues);
     setErrors({});
     setTouched({});
@@ -244,23 +252,12 @@ export function TypedVariableEditor({
         return (
           <Input
             id={schema.name}
-            type="number"
-            value={
-              value === '' || value === null || value === undefined
-                ? ''
-                : typeof value === 'number'
-                  ? value
-                  : String(value)
-            }
+            type="text"
+            inputMode="decimal"
+            value={value !== '' && value !== null && value !== undefined ? String(value) : ''}
             onChange={(e) => {
               const val = e.target.value;
-              // Store as number if valid, empty string if empty
-              if (val === '') {
-                handleChange(schema.name, '');
-              } else {
-                const num = parseFloat(val);
-                handleChange(schema.name, isNaN(num) ? val : num);
-              }
+              handleChange(schema.name, val === '' ? '' : val);
             }}
             onBlur={() => handleBlur(schema.name)}
             className={commonClasses}
