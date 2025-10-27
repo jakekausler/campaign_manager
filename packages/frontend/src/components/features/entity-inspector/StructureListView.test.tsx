@@ -1,3 +1,4 @@
+import { MockedProvider } from '@apollo/client/testing/react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -9,6 +10,14 @@ import { StructureListView } from './StructureListView';
 // Mock the useStructuresForMap hook
 vi.mock('@/services/api/hooks/structures', () => ({
   useStructuresForMap: vi.fn(),
+}));
+
+// Mock the useDeleteStructure hook
+vi.mock('@/services/api/mutations/structures', () => ({
+  useDeleteStructure: vi.fn(() => ({
+    deleteStructure: vi.fn(),
+    loading: false,
+  })),
 }));
 
 describe('StructureListView', () => {
@@ -107,16 +116,21 @@ describe('StructureListView', () => {
     });
   });
 
+  // Helper to render component with Apollo Client context
+  const renderWithApollo = (ui: React.ReactElement) => {
+    return render(<MockedProvider>{ui}</MockedProvider>);
+  };
+
   describe('Rendering', () => {
     it('should render the component with header', () => {
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       expect(screen.getByText('Structures')).toBeInTheDocument();
       expect(screen.getByText('5 of 5 structures')).toBeInTheDocument();
     });
 
     it('should render all structures when not filtered', () => {
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       expect(screen.getByText('Ancient Temple')).toBeInTheDocument();
       expect(screen.getByText('Royal Barracks')).toBeInTheDocument();
@@ -126,7 +140,7 @@ describe('StructureListView', () => {
     });
 
     it('should render structure types and levels', () => {
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       // Check for type badges (using getAllByText since types appear in both dropdown and cards)
       expect(screen.getAllByText('temple').length).toBeGreaterThanOrEqual(1);
@@ -146,7 +160,7 @@ describe('StructureListView', () => {
         networkStatus: 1, // NetworkStatus.loading
       });
 
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const skeletons = screen.getAllByTestId('skeleton');
       expect(skeletons.length).toBeGreaterThan(0);
@@ -162,7 +176,7 @@ describe('StructureListView', () => {
         networkStatus: 8, // NetworkStatus.error
       });
 
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       expect(screen.getByText('Failed to load structures')).toBeInTheDocument();
       expect(screen.getByText('Failed to fetch structures')).toBeInTheDocument();
@@ -177,7 +191,7 @@ describe('StructureListView', () => {
         networkStatus: 7, // NetworkStatus.ready
       });
 
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       expect(screen.getByText('No structures found')).toBeInTheDocument();
       expect(screen.getByText('This settlement has no structures')).toBeInTheDocument();
@@ -187,7 +201,7 @@ describe('StructureListView', () => {
   describe('Search Functionality', () => {
     it('should filter structures by search query', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText('Search by name...');
       await user.type(searchInput, 'Temple');
@@ -204,7 +218,7 @@ describe('StructureListView', () => {
 
     it('should debounce search input (300ms)', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText('Search by name...');
 
@@ -225,7 +239,7 @@ describe('StructureListView', () => {
 
     it('should be case-insensitive', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText('Search by name...');
       await user.type(searchInput, 'TEMPLE');
@@ -240,7 +254,7 @@ describe('StructureListView', () => {
 
     it('should show empty state when search has no results', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText('Search by name...');
       await user.type(searchInput, 'NonexistentStructure');
@@ -256,7 +270,7 @@ describe('StructureListView', () => {
 
     it('should update result count when filtering', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText('Search by name...');
       await user.type(searchInput, 'Temple');
@@ -273,7 +287,7 @@ describe('StructureListView', () => {
   describe('Filter by Type', () => {
     it('should filter structures by type', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const filterSelect = screen.getByDisplayValue('All Types');
       await user.selectOptions(filterSelect, 'temple');
@@ -284,7 +298,7 @@ describe('StructureListView', () => {
     });
 
     it('should show all types in filter dropdown', () => {
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const filterSelect = screen.getByDisplayValue('All Types');
       const options = within(filterSelect as HTMLSelectElement).getAllByRole('option');
@@ -300,7 +314,7 @@ describe('StructureListView', () => {
 
     it('should reset to all types when selecting "All Types"', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const filterSelect = screen.getByDisplayValue('All Types');
 
@@ -315,7 +329,7 @@ describe('StructureListView', () => {
 
     it('should combine search and filter', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText('Search by name...');
       const filterSelect = screen.getByDisplayValue('All Types');
@@ -337,7 +351,7 @@ describe('StructureListView', () => {
 
   describe('Sort Functionality', () => {
     it('should sort by name ascending by default', () => {
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const structures = screen.getAllByRole('button', { name: /Level \d+/ });
       expect(structures[0]).toHaveTextContent('Ancient Temple');
@@ -349,7 +363,7 @@ describe('StructureListView', () => {
 
     it('should toggle sort order when clicking same sort button', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const nameButton = screen.getByRole('button', { name: /Name/ });
 
@@ -364,7 +378,7 @@ describe('StructureListView', () => {
 
     it('should sort by type', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const typeButton = screen.getByRole('button', { name: /^Type/ });
       await user.click(typeButton);
@@ -379,7 +393,7 @@ describe('StructureListView', () => {
 
     it('should sort by level', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const levelButton = screen.getByRole('button', { name: /^Level/ });
       await user.click(levelButton);
@@ -394,7 +408,7 @@ describe('StructureListView', () => {
 
     it('should show sort indicator on active sort button', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const nameButton = screen.getByRole('button', { name: /Name/ });
       expect(nameButton).toHaveTextContent('↑'); // Default ascending
@@ -413,7 +427,7 @@ describe('StructureListView', () => {
     it('should call onStructureSelect when clicking a structure', async () => {
       const user = userEvent.setup();
       const onSelect = vi.fn();
-      render(<StructureListView {...defaultProps} onStructureSelect={onSelect} />);
+      renderWithApollo(<StructureListView {...defaultProps} onStructureSelect={onSelect} />);
 
       const temple = screen.getByText('Ancient Temple');
       await user.click(temple.closest('button')!);
@@ -423,7 +437,7 @@ describe('StructureListView', () => {
 
     it('should not call onStructureSelect if callback not provided', async () => {
       const user = userEvent.setup();
-      render(<StructureListView settlementId="settlement-1" />);
+      renderWithApollo(<StructureListView settlementId="settlement-1" />);
 
       const temple = screen.getByText('Ancient Temple');
       await user.click(temple.closest('button')!);
@@ -434,7 +448,7 @@ describe('StructureListView', () => {
     it('should call onStructureSelect with correct ID for different structures', async () => {
       const user = userEvent.setup();
       const onSelect = vi.fn();
-      render(<StructureListView {...defaultProps} onStructureSelect={onSelect} />);
+      renderWithApollo(<StructureListView {...defaultProps} onStructureSelect={onSelect} />);
 
       const barracks = screen.getByText('Royal Barracks');
       await user.click(barracks.closest('button')!);
@@ -450,7 +464,7 @@ describe('StructureListView', () => {
 
   describe('Icons', () => {
     it('should display correct icon for each structure type', () => {
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       // We can't directly test SVG icons, but we can verify they render without errors
       const structureButtons = screen.getAllByRole('button', { name: /Level \d+/ });
@@ -484,7 +498,7 @@ describe('StructureListView', () => {
         networkStatus: 7, // NetworkStatus.ready
       });
 
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       expect(screen.getByText('Unknown Structure')).toBeInTheDocument();
     });
@@ -518,7 +532,7 @@ describe('StructureListView', () => {
         networkStatus: 7, // NetworkStatus.ready
       });
 
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       expect(screen.getByText('Unnamed Structure')).toBeInTheDocument();
       expect(screen.queryByText('undefined')).not.toBeInTheDocument();
@@ -551,7 +565,7 @@ describe('StructureListView', () => {
         networkStatus: 7, // NetworkStatus.ready
       });
 
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       expect(screen.getByText('Levelless Structure')).toBeInTheDocument();
       expect(screen.queryByText(/Level \d+/)).not.toBeInTheDocument();
@@ -559,7 +573,7 @@ describe('StructureListView', () => {
 
     it('should handle empty search query gracefully', async () => {
       const user = userEvent.setup();
-      render(<StructureListView {...defaultProps} />);
+      renderWithApollo(<StructureListView {...defaultProps} />);
 
       const searchInput = screen.getByPlaceholderText('Search by name...');
       await user.type(searchInput, '   '); // Whitespace only

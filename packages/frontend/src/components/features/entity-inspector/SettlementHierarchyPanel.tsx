@@ -10,7 +10,7 @@ import {
   Beer,
   Castle,
 } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState, useCallback } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -72,6 +72,49 @@ const getStructureIcon = (type?: string) => {
 };
 
 /**
+ * TreeNode - Memoized component for rendering a single structure tree node
+ * Prevents unnecessary re-renders when parent state changes
+ */
+interface TreeNodeProps {
+  structure: StructureNode;
+  onClick: (id: string) => void;
+}
+
+const TreeNode = memo(({ structure, onClick }: TreeNodeProps) => {
+  const handleClick = useCallback(() => {
+    onClick(structure.id);
+  }, [onClick, structure.id]);
+
+  return (
+    <button
+      className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-blue-50 hover:border-blue-200 border border-transparent transition-colors text-left group"
+      onClick={handleClick}
+    >
+      {getStructureIcon(structure.type)}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-900 truncate group-hover:text-blue-700">
+            {structure.name}
+          </span>
+          {structure.type && (
+            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-xs shrink-0">
+              {structure.type}
+            </span>
+          )}
+          {structure.level !== undefined && (
+            <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium shrink-0">
+              L{structure.level}
+            </span>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+});
+
+TreeNode.displayName = 'TreeNode';
+
+/**
  * SettlementHierarchyPanel displays a tree view of a Settlement and its Structures.
  *
  * Features:
@@ -81,6 +124,7 @@ const getStructureIcon = (type?: string) => {
  * - Structure type icons
  * - Click to select structure (opens in Entity Inspector)
  * - "Add Structure" button integration
+ * - React.memo for tree nodes to prevent unnecessary re-renders
  *
  * This component is designed to be integrated into the SettlementPanel's Details tab
  * to provide a hierarchical view of the settlement's structures.
@@ -114,30 +158,36 @@ export function SettlementHierarchyPanel({
       ? structures.reduce((sum, s) => sum + (s.level ?? 0), 0) / totalStructures
       : 0;
 
-  // Handle structure selection
-  const handleStructureClick = (structureId: string) => {
-    if (onStructureSelect) {
-      onStructureSelect(structureId);
-    }
-  };
+  // Handle structure selection (memoized)
+  const handleStructureClick = useCallback(
+    (structureId: string) => {
+      if (onStructureSelect) {
+        onStructureSelect(structureId);
+      }
+    },
+    [onStructureSelect]
+  );
 
-  // Handle "Add Structure" button click
-  const handleAddStructure = () => {
+  // Handle "Add Structure" button click (memoized)
+  const handleAddStructure = useCallback(() => {
     // Call parent callback if provided (for backward compatibility)
     if (onAddStructure) {
       onAddStructure();
     }
     // Open internal modal
     setShowAddModal(true);
-  };
+  }, [onAddStructure]);
 
-  // Handle successful structure creation
-  const handleStructureCreated = (structureId: string) => {
-    // Optionally, select the newly created structure
-    if (onStructureSelect) {
-      onStructureSelect(structureId);
-    }
-  };
+  // Handle successful structure creation (memoized)
+  const handleStructureCreated = useCallback(
+    (structureId: string) => {
+      // Optionally, select the newly created structure
+      if (onStructureSelect) {
+        onStructureSelect(structureId);
+      }
+    },
+    [onStructureSelect]
+  );
 
   return (
     <Card className="p-4">
@@ -219,30 +269,11 @@ export function SettlementHierarchyPanel({
               {!loading &&
                 !error &&
                 structures.map((structure) => (
-                  <button
+                  <TreeNode
                     key={structure.id}
-                    className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-blue-50 hover:border-blue-200 border border-transparent transition-colors text-left group"
-                    onClick={() => handleStructureClick(structure.id)}
-                  >
-                    {getStructureIcon(structure.type)}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-900 truncate group-hover:text-blue-700">
-                          {structure.name}
-                        </span>
-                        {structure.type && (
-                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-xs shrink-0">
-                            {structure.type}
-                          </span>
-                        )}
-                        {structure.level !== undefined && (
-                          <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium shrink-0">
-                            L{structure.level}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
+                    structure={structure}
+                    onClick={handleStructureClick}
+                  />
                 ))}
             </div>
           )}

@@ -1,3 +1,4 @@
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   ArrowDownAZ,
   ArrowUpDown,
@@ -13,7 +14,7 @@ import {
   Filter,
   Trash2,
 } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { memo, useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -85,6 +86,82 @@ const getUniqueTypes = (structures: StructureNode[]): string[] => {
 };
 
 /**
+ * StructureRow - Memoized component for rendering a single structure row
+ * Prevents unnecessary re-renders when parent state changes
+ */
+interface StructureRowProps {
+  structure: StructureNode;
+  onSelect: (id: string) => void;
+  onDelete: (structure: StructureNode, e: React.MouseEvent) => void;
+  deleting: boolean;
+}
+
+const StructureRow = memo(({ structure, onSelect, onDelete, deleting }: StructureRowProps) => {
+  const handleClick = useCallback(() => {
+    onSelect(structure.id);
+  }, [onSelect, structure.id]);
+
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent) => {
+      onDelete(structure, e);
+    },
+    [onDelete, structure]
+  );
+
+  return (
+    <button
+      onClick={handleClick}
+      className="w-full flex items-center gap-3 p-3 rounded-md border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left group"
+    >
+      {/* Icon */}
+      <div className="text-slate-600 group-hover:text-blue-600 transition-colors">
+        {getStructureIcon(structure.type)}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-semibold text-sm text-slate-900 truncate group-hover:text-blue-700">
+            {structure.name}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {structure.type && (
+            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs">
+              {structure.type}
+            </span>
+          )}
+          {structure.level !== undefined && (
+            <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium">
+              Level {structure.level}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Delete Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleDeleteClick}
+        disabled={deleting}
+        className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+        title="Delete structure"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+
+      {/* Arrow indicator */}
+      <div className="text-slate-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+        <ArrowUpDown className="h-4 w-4" />
+      </div>
+    </button>
+  );
+});
+
+StructureRow.displayName = 'StructureRow';
+
+/**
  * StructureListView displays a filterable, sortable list of structures in a settlement.
  *
  * Features:
@@ -94,6 +171,8 @@ const getUniqueTypes = (structures: StructureNode[]): string[] => {
  * - Click to select structure (opens in Entity Inspector)
  * - Empty state when no structures match filters
  * - Loading and error states
+ * - Virtual scrolling for 100+ structures (performance optimization)
+ * - React.memo for structure rows to prevent unnecessary re-renders
  *
  * This component is designed to be integrated into the SettlementPanel to provide
  * a comprehensive list view with advanced filtering and sorting capabilities.
@@ -109,6 +188,9 @@ const getUniqueTypes = (structures: StructureNode[]): string[] => {
 export function StructureListView({ settlementId, onStructureSelect }: StructureListViewProps) {
   const { structures, loading, error } = useStructuresForMap(settlementId);
   const { deleteStructure, loading: deleting } = useDeleteStructure();
+
+  // Refs for virtual scrolling
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // Filter and sort state
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,33 +252,50 @@ export function StructureListView({ settlementId, onStructureSelect }: Structure
     return result;
   }, [structures, debouncedSearchQuery, filterType, sortBy, sortOrder]);
 
-  // Handle structure selection
-  const handleStructureClick = (structureId: string) => {
-    if (onStructureSelect) {
-      onStructureSelect(structureId);
-    }
-  };
+  // Virtual scrolling (only enabled for 50+ structures for better performance)
+  const enableVirtualScrolling = filteredAndSortedStructures.length >= 50;
+
+  const rowVirtualizer = useVirtualizer({
+    count: filteredAndSortedStructures.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: useCallback(() => 72, []), // Estimated row height in pixels
+    overscan: 5, // Render 5 extra items above and below viewport
+    enabled: enableVirtualScrolling,
+  });
+
+  // Handle structure selection (memoized to prevent unnecessary re-renders)
+  const handleStructureClick = useCallback(
+    (structureId: string) => {
+      if (onStructureSelect) {
+        onStructureSelect(structureId);
+      }
+    },
+    [onStructureSelect]
+  );
 
   // Toggle sort order or change sort field
-  const handleSortChange = (field: SortBy) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
-  };
+  const handleSortChange = useCallback(
+    (field: SortBy) => {
+      if (sortBy === field) {
+        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      } else {
+        setSortBy(field);
+        setSortOrder('asc');
+      }
+    },
+    [sortBy, sortOrder]
+  );
 
-  // Handle delete button click
-  const handleDeleteClick = (structure: StructureNode, e: React.MouseEvent) => {
+  // Handle delete button click (memoized)
+  const handleDeleteClick = useCallback((structure: StructureNode, e: React.MouseEvent) => {
     // Stop propagation to prevent selecting the structure
     e.stopPropagation();
     setStructureToDelete(structure);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
   // Handle delete confirmation
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = useCallback(async () => {
     if (!structureToDelete) return;
 
     try {
@@ -209,13 +308,13 @@ export function StructureListView({ settlementId, onStructureSelect }: Structure
         error instanceof Error ? error.message : 'Failed to delete structure. Please try again.'
       );
     }
-  };
+  }, [structureToDelete, deleteStructure]);
 
   // Close dialog handler
-  const handleCloseDialog = () => {
+  const handleCloseDialog = useCallback(() => {
     setDeleteDialogOpen(false);
     setStructureToDelete(null);
-  };
+  }, []);
 
   return (
     <Card className="p-4">
@@ -305,7 +404,18 @@ export function StructureListView({ settlementId, onStructureSelect }: Structure
         </div>
 
         {/* Structure List */}
-        <div className="space-y-2">
+        <div
+          ref={parentRef}
+          className="space-y-2"
+          style={
+            enableVirtualScrolling
+              ? {
+                  height: '400px',
+                  overflow: 'auto',
+                }
+              : undefined
+          }
+        >
           {loading && (
             <div className="space-y-2">
               <Skeleton className="h-16 w-full" />
@@ -333,58 +443,55 @@ export function StructureListView({ settlementId, onStructureSelect }: Structure
             </div>
           )}
 
-          {!loading &&
-            !error &&
-            filteredAndSortedStructures.map((structure) => (
-              <button
-                key={structure.id}
-                onClick={() => handleStructureClick(structure.id)}
-                className="w-full flex items-center gap-3 p-3 rounded-md border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all text-left group"
-              >
-                {/* Icon */}
-                <div className="text-slate-600 group-hover:text-blue-600 transition-colors">
-                  {getStructureIcon(structure.type)}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-sm text-slate-900 truncate group-hover:text-blue-700">
-                      {structure.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {structure.type && (
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-xs">
-                        {structure.type}
-                      </span>
-                    )}
-                    {structure.level !== undefined && (
-                      <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium">
-                        Level {structure.level}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Delete Button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => handleDeleteClick(structure, e)}
-                  disabled={deleting}
-                  className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  title="Delete structure"
+          {!loading && !error && filteredAndSortedStructures.length > 0 && (
+            <>
+              {enableVirtualScrolling ? (
+                // Virtual scrolling for 50+ structures
+                <div
+                  style={{
+                    height: `${rowVirtualizer.getTotalSize()}px`,
+                    width: '100%',
+                    position: 'relative',
+                  }}
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-
-                {/* Arrow indicator */}
-                <div className="text-slate-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ArrowUpDown className="h-4 w-4" />
+                  {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+                    const structure = filteredAndSortedStructures[virtualItem.index];
+                    return (
+                      <div
+                        key={virtualItem.key}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          transform: `translateY(${virtualItem.start}px)`,
+                          paddingBottom: '0.5rem',
+                        }}
+                      >
+                        <StructureRow
+                          structure={structure}
+                          onSelect={handleStructureClick}
+                          onDelete={handleDeleteClick}
+                          deleting={deleting}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-              </button>
-            ))}
+              ) : (
+                // Regular rendering for <50 structures
+                filteredAndSortedStructures.map((structure) => (
+                  <StructureRow
+                    key={structure.id}
+                    structure={structure}
+                    onSelect={handleStructureClick}
+                    onDelete={handleDeleteClick}
+                    deleting={deleting}
+                  />
+                ))
+              )}
+            </>
+          )}
         </div>
 
         {/* Delete Confirmation Dialog */}
