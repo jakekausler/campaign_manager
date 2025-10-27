@@ -612,7 +612,7 @@ Create comprehensive UI components for managing Settlement-Structure hierarchies
 
 **Goal**: Comprehensive testing, documentation, and final polish
 
-**Commit**: [TBD] - docs(frontend): add Stage 12 documentation and polish for Settlement/Structure hierarchy UI
+**Commit**: `7b5c6da` - docs(frontend): add Stage 12 documentation and polish for Settlement/Structure hierarchy UI
 
 **Tasks**:
 
