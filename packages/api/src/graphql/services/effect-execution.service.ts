@@ -18,7 +18,15 @@ import {
   BadRequestException,
   NotImplementedException,
 } from '@nestjs/common';
-import type { Effect, EffectExecution, Encounter, Event, Prisma } from '@prisma/client';
+import type {
+  Effect,
+  EffectExecution,
+  Encounter,
+  Event,
+  Settlement,
+  Structure,
+  Prisma,
+} from '@prisma/client';
 import type { Operation } from 'fast-json-patch';
 
 import { PrismaService } from '../../database/prisma.service';
@@ -66,12 +74,12 @@ export interface DependencyExecutionSummary extends EffectExecutionSummary {
 /**
  * Supported entity types that can be targeted by effects
  */
-type EntityType = 'ENCOUNTER' | 'EVENT';
+type EntityType = 'ENCOUNTER' | 'EVENT' | 'SETTLEMENT' | 'STRUCTURE';
 
 /**
  * Union type of all patchable entities
  */
-type PatchableEntity = Encounter | Event;
+type PatchableEntity = Encounter | Event | Settlement | Structure;
 
 @Injectable()
 export class EffectExecutionService {
@@ -370,7 +378,7 @@ export class EffectExecutionService {
   /**
    * Load entity from database by type and ID
    *
-   * @param entityType - Type of entity (ENCOUNTER or EVENT)
+   * @param entityType - Type of entity (ENCOUNTER, EVENT, SETTLEMENT, or STRUCTURE)
    * @param entityId - ID of entity
    * @returns Entity object or null if not found
    */
@@ -387,6 +395,14 @@ export class EffectExecutionService {
         return await this.prisma.event.findUnique({
           where: { id: entityId, deletedAt: null },
         });
+      case 'SETTLEMENT':
+        return await this.prisma.settlement.findUnique({
+          where: { id: entityId, deletedAt: null },
+        });
+      case 'STRUCTURE':
+        return await this.prisma.structure.findUnique({
+          where: { id: entityId, deletedAt: null },
+        });
       default:
         throw new BadRequestException(`Unsupported entity type: ${entityType}`);
     }
@@ -395,7 +411,7 @@ export class EffectExecutionService {
   /**
    * Update entity in database with patched data
    *
-   * @param entityType - Type of entity (ENCOUNTER or EVENT)
+   * @param entityType - Type of entity (ENCOUNTER, EVENT, SETTLEMENT, or STRUCTURE)
    * @param entityId - ID of entity
    * @param patchedEntity - Patched entity data
    * @param tx - Prisma transaction client
@@ -415,6 +431,18 @@ export class EffectExecutionService {
         break;
       case 'EVENT':
         await tx.event.update({
+          where: { id: entityId },
+          data: patchedEntity as any,
+        });
+        break;
+      case 'SETTLEMENT':
+        await tx.settlement.update({
+          where: { id: entityId },
+          data: patchedEntity as any,
+        });
+        break;
+      case 'STRUCTURE':
+        await tx.structure.update({
           where: { id: entityId },
           data: patchedEntity as any,
         });
