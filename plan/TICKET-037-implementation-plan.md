@@ -664,7 +664,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 **Status**: ✅ Complete
 
-**Commit**: [TBD - to be added after code review and commit]
+**Commit**: 93ec6e2
 
 **Implementation Notes**:
 
