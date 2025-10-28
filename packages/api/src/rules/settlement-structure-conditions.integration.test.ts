@@ -90,8 +90,9 @@ async function applyAsync(condition: JSONLogicCondition, data: unknown): Promise
   const processedCondition = await preprocessCondition(condition);
 
   // Now apply the fully-resolved condition with standard JSONLogic
+  // Cast to unknown first, then to the expected type for json-logic-js
   // eslint-disable-next-line import/no-named-as-default-member
-  return jsonLogic.apply(processedCondition, data);
+  return jsonLogic.apply(processedCondition as unknown as jsonLogic.RulesLogic, data);
 }
 
 describe('Settlement & Structure Condition Examples (Integration)', () => {
