@@ -40,7 +40,9 @@ Creates service to build Settlement evaluation context for JSONLogic:
 Part of TICKET-037 Stage 1.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: 4421ec2d7f2cb04356ff25c91d11877f2db22f64
 
 ---
 
@@ -78,7 +80,9 @@ Creates service to build Structure evaluation context for JSONLogic:
 Part of TICKET-037 Stage 2.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: 7e89658f0e04e095cf5d9a0e22a2a0a7de0fa6b6
 
 ---
 
