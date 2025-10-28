@@ -486,7 +486,41 @@ Extends dependency tracking to include Settlement and Structure:
 Part of TICKET-037 Stage 8.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: de92b0d
+
+**Implementation Notes**:
+
+Successfully integrated Settlement and Structure entities into the dependency graph system:
+
+**DependencyExtractor Extensions:**
+
+- Added recognition for 6 Settlement custom operators: settlement.var, settlement.level, settlement.hasStructureType, settlement.structureCount, settlement.inKingdom, settlement.atLocation
+- Added recognition for 5 Structure custom operators: structure.var, structure.level, structure.type, structure.isOperational, structure.inSettlement
+- Each operator extracts appropriate dependencies (e.g., settlement.population, structure.integrity)
+- Graceful handling of invalid formats returns empty sets
+
+**DependencyGraphBuilder Extensions:**
+
+- Creates virtual VARIABLE nodes for Settlement/Structure properties that don't exist as StateVariables
+- Virtual nodes marked with metadata.virtual=true flag for distinction
+- Enables proper dependency tracking between conditions and Settlement/Structure entity properties
+- Supports fine-grained cache invalidation for Stage 9
+
+**Test Coverage:**
+
+- 19 new unit tests for Settlement operator dependency extraction
+- 17 new unit tests for Structure operator dependency extraction
+- 16 integration tests for end-to-end graph building with Settlement/Structure rules
+- All 85 tests passing successfully
+
+**Design Decisions:**
+
+- Virtual variable nodes use the full path (e.g., "settlement.level") as entityId since they don't have database IDs
+- Metadata includes entityType ('settlement' or 'structure') for filtering
+- settlement.hasStructureType and settlement.structureCount both map to 'settlement.structures.count' dependency (correct behavior - both read the structures collection)
+- Only Settlement/Structure dependencies get virtual nodes; standard variables must exist in StateVariable table
 
 ---
 
