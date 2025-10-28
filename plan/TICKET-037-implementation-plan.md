@@ -566,7 +566,44 @@ Uses fine-grained dependency tracking for optimal performance.
 Part of TICKET-037 Stage 9.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: 242849f
+
+**Implementation Notes**:
+
+Successfully integrated automatic cache invalidation for Settlement and Structure state changes:
+
+**SettlementService Integration:**
+
+- Added DependencyGraphService injection to constructor
+- Added invalidation call in `update()` method (invalidates after successful transaction)
+- Added invalidation call in `setLevel()` method (replaces TODO comment)
+- Invalidation wrapped in try-catch to prevent failures from blocking operations
+- Proper logging of invalidation events and failures
+
+**StructureService Integration:**
+
+- Added DependencyGraphService injection to constructor
+- Added invalidation call in `update()` method (invalidates after successful transaction)
+- Added invalidation call in `setLevel()` method (replaces TODO comment)
+- Invalidation wrapped in try-catch to prevent failures from blocking operations
+- Proper logging of invalidation events and failures
+
+**Test Coverage:**
+
+- Created `settlement-structure-cache-invalidation.integration.test.ts` with 9 comprehensive tests
+- Settlement tests: update(), variable changes, setLevel()
+- Structure tests: update(), variable changes, type changes, setLevel()
+- Error handling tests: verify graceful degradation when Redis fails
+- All 9 tests passing successfully
+
+**Design Decisions:**
+
+- Branch-aware invalidation: `update()` methods pass branchId parameter, `setLevel()` uses default 'main'
+- Non-blocking invalidation: Failures logged but don't throw to prevent breaking main operation
+- Consistent error handling pattern: Matches existing campaign context invalidation approach
+- Clear logging: Indicates which entity change triggered invalidation and for which campaign
 
 ---
 
