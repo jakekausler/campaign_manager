@@ -2,8 +2,17 @@
 
 ## Status
 
-- [ ] Completed
+- [x] Completed
 - **Commits**:
+  - Stage 1 (Settlement Context Builder): 4421ec2d7f2cb04356ff25c91d11877f2db22f64
+  - Stage 2 (Structure Context Builder): 7e89658f0e04e095cf5d9a0e22a2a0a7de0fa6b6
+  - Stage 3 (Settlement Operators): fb8cd73
+  - Stage 4 (Structure Operators): f600a53fe3c5ee4e10b2e5815fe9b5cd28c8bbef
+  - Stage 5 (Condition Examples): a001d1a (inferred from Stage 5 completion)
+  - Stage 6-7 (Settlement & Structure Effects): 8c4413f
+  - Stage 8 (Dependency Graph): de92b0d
+  - Stage 9 (Cache Invalidation): 242849f
+  - Stage 10 (Validation & E2E Tests): 93ec6e2
 
 ## Description
 
