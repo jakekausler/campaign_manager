@@ -39,3 +39,6 @@ coverage/
 *.tmp
 .cache/
 *.bak
+
+# Development
+.worktrees/
