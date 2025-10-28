@@ -193,7 +193,7 @@ Part of TICKET-037 Stage 4.
 
 **Status**: ✅ Complete
 
-**Commit**: [To be added after commit]
+**Commit**: f600a53fe3c5ee4e10b2e5815fe9b5cd28c8bbef
 
 **Implementation Notes**:
 
@@ -265,7 +265,46 @@ Includes integration tests and seed data.
 Part of TICKET-037 Stage 5.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: [TBD - to be added after commit]
+
+**Implementation Notes**:
+
+Created comprehensive integration test file `settlement-structure-conditions.integration.test.ts` with 22 passing tests demonstrating realistic use cases:
+
+**Settlement Condition Examples (10 tests)**:
+
+- Level threshold checks (level >= 5)
+- Population requirements (population > 5000, > 10000)
+- Structure composition (hasStructureType for temple + market, structureCount for temples >= 2)
+- Prosperity checks with typed variables (prosperity == 'thriving' AND defenseRating >= 7)
+- Complex combined conditions (level 5+, thriving economy, good defenses, military presence, multiple markets)
+
+**Structure Condition Examples (11 tests)**:
+
+- Level requirements (level >= 3)
+- Type identification (type == 'temple')
+- Operational status checks (isOperational)
+- Integrity thresholds (integrity > 80%, < 50%)
+- Complex conditions (operational high-level temples with good integrity, structures needing repair, profitable markets)
+
+**Cross-Entity Examples (1 test)**:
+
+- Combined settlement + structure queries (thriving settlement with operational temple)
+
+**Key Technical Challenge**:
+
+json-logic-js doesn't natively support async operations. Our custom operators return Promises, but JSONLogic would compare Promise objects directly instead of resolved values.
+
+**Solution**: Created `applyAsync()` helper function that:
+
+1. Pre-processes the condition tree recursively
+2. Identifies all custom operators (settlement._, structure._)
+3. Evaluates and awaits each custom operator
+4. Passes fully-resolved condition tree to JSONLogic for comparison
+
+This pattern will be essential for future rule evaluation in the ConditionEvaluationService.
 
 ---
 
