@@ -59,9 +59,13 @@ vi.mock('@/services/api/hooks/world-time', () => ({
 }));
 
 // Mock React Router hooks (for URL parameter integration in Stage 11)
-vi.mock('react-router-dom', () => ({
-  useSearchParams: vi.fn(),
-}));
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return {
+    ...actual,
+    useSearchParams: vi.fn(),
+  };
+});
 
 // Mock Timeline component, TimelineControls, and TimelineFilters
 vi.mock('@/components/features/timeline', () => ({

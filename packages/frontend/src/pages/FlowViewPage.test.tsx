@@ -1,9 +1,10 @@
-import { screen, cleanup } from '@testing-library/react';
+import { ApolloProvider } from '@apollo/client/react';
+import { screen, cleanup, render } from '@testing-library/react';
 import type { Node } from '@xyflow/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { renderWithApollo } from '@/__tests__/utils/test-utils';
+import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 import type { FlowNodeData } from '@/utils';
 
 import FlowViewPage from './FlowViewPage';
@@ -176,12 +177,15 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
         refetch: vi.fn(),
       });
 
-      renderWithApollo(
-        <MemoryRouter initialEntries={['/flow']}>
-          <Routes>
-            <Route path="/flow" element={<FlowViewPage />} />
-          </Routes>
-        </MemoryRouter>
+      const client = createTestApolloClient();
+      render(
+        <ApolloProvider client={client}>
+          <MemoryRouter initialEntries={['/flow']}>
+            <Routes>
+              <Route path="/flow" element={<FlowViewPage />} />
+            </Routes>
+          </MemoryRouter>
+        </ApolloProvider>
       );
 
       expect(screen.getByText('No dependencies found')).toBeInTheDocument();
@@ -197,12 +201,15 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
         refetch: vi.fn(),
       });
 
-      renderWithApollo(
-        <MemoryRouter initialEntries={['/flow']}>
-          <Routes>
-            <Route path="/flow" element={<FlowViewPage />} />
-          </Routes>
-        </MemoryRouter>
+      const client = createTestApolloClient();
+      render(
+        <ApolloProvider client={client}>
+          <MemoryRouter initialEntries={['/flow']}>
+            <Routes>
+              <Route path="/flow" element={<FlowViewPage />} />
+            </Routes>
+          </MemoryRouter>
+        </ApolloProvider>
       );
 
       expect(screen.getByText('Loading dependency graph...')).toBeInTheDocument();
@@ -218,12 +225,15 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
         refetch: vi.fn(),
       });
 
-      renderWithApollo(
-        <MemoryRouter initialEntries={['/flow']}>
-          <Routes>
-            <Route path="/flow" element={<FlowViewPage />} />
-          </Routes>
-        </MemoryRouter>
+      const client = createTestApolloClient();
+      render(
+        <ApolloProvider client={client}>
+          <MemoryRouter initialEntries={['/flow']}>
+            <Routes>
+              <Route path="/flow" element={<FlowViewPage />} />
+            </Routes>
+          </MemoryRouter>
+        </ApolloProvider>
       );
 
       expect(screen.getByText('Failed to load dependency graph')).toBeInTheDocument();
@@ -243,12 +253,15 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
         refetch: vi.fn(),
       });
 
-      renderWithApollo(
-        <MemoryRouter initialEntries={['/flow']}>
-          <Routes>
-            <Route path="/flow" element={<FlowViewPage />} />
-          </Routes>
-        </MemoryRouter>
+      const client = createTestApolloClient();
+      render(
+        <ApolloProvider client={client}>
+          <MemoryRouter initialEntries={['/flow']}>
+            <Routes>
+              <Route path="/flow" element={<FlowViewPage />} />
+            </Routes>
+          </MemoryRouter>
+        </ApolloProvider>
       );
 
       expect(screen.getByText('No campaign selected')).toBeInTheDocument();

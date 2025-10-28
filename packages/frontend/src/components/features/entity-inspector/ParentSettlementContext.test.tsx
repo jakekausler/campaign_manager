@@ -248,9 +248,9 @@ describe('ParentSettlementContext', () => {
         </TestWrapper>
       );
 
+      // Wait for loading skeleton to disappear
       await waitFor(() => {
-        // Settlement Level label should be visible
-        expect(screen.getByText('Settlement Level')).toBeInTheDocument();
+        expect(screen.queryByTestId('settlement-level-skeleton')).not.toBeInTheDocument();
       });
 
       // Find the level value container and check for "N/A"
