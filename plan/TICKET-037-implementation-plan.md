@@ -191,7 +191,26 @@ Operators support both current context and explicit structure ID.
 Part of TICKET-037 Stage 4.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: [To be added after commit]
+
+**Implementation Notes**:
+
+Created `StructureOperatorsService` with comprehensive operator implementations:
+
+- All 5 operators registered successfully via `OnModuleInit` lifecycle hook
+- Operators support both current context (no ID) and explicit structure ID parameter
+- Graceful error handling returns safe defaults (0, undefined, false) for missing data
+- Uses `StructureContextBuilderService` for efficient database queries
+- Future-proof design ready for evaluation context integration in Stage 10
+
+Test coverage:
+
+- 24 unit tests covering all operators and edge cases
+- Tests verify operator registration, module initialization, and async behavior
+- All tests passing with 100% success rate
+- Comprehensive edge case coverage (missing structures, invalid IDs, empty params)
 
 ---
 
