@@ -348,7 +348,36 @@ Effects are whitelisted, validated, and recorded in audit trail.
 Part of TICKET-037 Stage 6.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: 8c4413f
+
+**Implementation Notes**:
+
+Discovered that Settlement and Structure effects were **already fully implemented** in the existing EffectPatchService and EffectExecutionService! No new service code was needed.
+
+Key findings:
+
+- EffectPatchService already validates and applies JSON Patch operations to SETTLEMENT and STRUCTURE entities
+- Path whitelisting already configured (allows level, name, type, variables; blocks id, timestamps, foreign keys)
+- EffectExecutionService already handles loading, executing, and auditing effects for these entities
+- Effect.payload stores JSON Patch operations directly in the database
+
+Created comprehensive integration tests demonstrating:
+
+- settlement.setLevel: Update settlement level via JSON Patch replace operation
+- settlement.setVariable: Add/update typed variables in variables object
+- settlement.updateProsperity: Change prosperity status variable (special case of setVariable)
+- settlement.addStructure: Documented that this requires StructureService.create() (not a patch operation)
+- Complex multi-field updates (level, population, prosperity, defenseRating)
+- Security validation (protected fields rejected, whitelisted fields allowed)
+
+Test files created:
+
+- `packages/api/src/graphql/services/settlement-effects.integration.test.ts` (13 tests, all passing)
+- `packages/api/src/graphql/services/structure-effects.integration.test.ts` (13 tests, all passing)
+
+These tests serve as both verification and documentation of the effect system's capabilities for Settlement entities.
 
 ---
 
@@ -392,7 +421,28 @@ Effects are whitelisted, validated, and recorded in audit trail.
 Part of TICKET-037 Stage 7.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete
+
+**Commit**: 8c4413f (combined with Stage 6)
+
+**Implementation Notes**:
+
+Structure effects were also **already fully implemented** alongside Settlement effects in the existing services.
+
+Created comprehensive integration tests demonstrating:
+
+- structure.setLevel: Update structure level via JSON Patch replace operation
+- structure.setVariable: Add/update typed variables in variables object
+- structure.setOperational: Change operational status boolean variable
+- structure.upgrade: Multi-field upgrades (level, name, capacity, revenue)
+- Damage/repair workflows with integrity and operational status changes
+- Security validation (protected fields rejected, whitelisted fields allowed)
+
+Test file created:
+
+- `packages/api/src/graphql/services/structure-effects.integration.test.ts` (13 tests, all passing)
+
+Both Stage 6 and Stage 7 were completed together as they leverage the same underlying infrastructure and testing patterns.
 
 ---
 
