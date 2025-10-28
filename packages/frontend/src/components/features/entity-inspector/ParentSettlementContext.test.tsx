@@ -2,6 +2,7 @@ import { MockedProvider } from '@apollo/client/testing/react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GraphQLError } from 'graphql';
+import { BrowserRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 
 import { GET_SETTLEMENT_DETAILS } from '@/services/api/hooks/settlements';
@@ -18,6 +19,15 @@ import { ParentSettlementContext } from './ParentSettlementContext';
  * - Successful data display
  * - Navigation callback
  */
+
+// Wrapper to provide Router context for all tests
+function TestWrapper({ children, mocks }: { children: React.ReactNode; mocks: any[] }) {
+  return (
+    <BrowserRouter>
+      <MockedProvider mocks={mocks}>{children}</MockedProvider>
+    </BrowserRouter>
+  );
+}
 
 describe('ParentSettlementContext', () => {
   const mockSettlementId = 'settlement-1';
@@ -80,12 +90,12 @@ describe('ParentSettlementContext', () => {
   describe('Loading State', () => {
     it('should display loading skeletons while fetching data', () => {
       render(
-        <MockedProvider mocks={[successMock]}>
+        <TestWrapper mocks={[successMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       // Check for loading skeletons
@@ -96,12 +106,12 @@ describe('ParentSettlementContext', () => {
 
     it('should display "Parent Settlement" header during loading', () => {
       render(
-        <MockedProvider mocks={[successMock]}>
+        <TestWrapper mocks={[successMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       expect(screen.getByText('Parent Settlement')).toBeInTheDocument();
@@ -111,12 +121,12 @@ describe('ParentSettlementContext', () => {
   describe('Error State', () => {
     it('should display error message when fetch fails', async () => {
       render(
-        <MockedProvider mocks={[errorMock]}>
+        <TestWrapper mocks={[errorMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -130,12 +140,12 @@ describe('ParentSettlementContext', () => {
 
     it('should display error alert with role="alert"', async () => {
       render(
-        <MockedProvider mocks={[errorMock]}>
+        <TestWrapper mocks={[errorMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -148,12 +158,12 @@ describe('ParentSettlementContext', () => {
   describe('Missing Settlement State', () => {
     it('should display "Settlement not found" message when settlement is null', async () => {
       render(
-        <MockedProvider mocks={[nullSettlementMock]}>
+        <TestWrapper mocks={[nullSettlementMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -167,12 +177,12 @@ describe('ParentSettlementContext', () => {
 
     it('should display alert with role="status" for missing settlement', async () => {
       render(
-        <MockedProvider mocks={[nullSettlementMock]}>
+        <TestWrapper mocks={[nullSettlementMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -185,12 +195,12 @@ describe('ParentSettlementContext', () => {
   describe('Successful Data Display', () => {
     it('should display settlement name', async () => {
       render(
-        <MockedProvider mocks={[successMock]}>
+        <TestWrapper mocks={[successMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -200,12 +210,12 @@ describe('ParentSettlementContext', () => {
 
     it('should display settlement level', async () => {
       render(
-        <MockedProvider mocks={[successMock]}>
+        <TestWrapper mocks={[successMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -223,24 +233,24 @@ describe('ParentSettlementContext', () => {
           data: {
             settlement: {
               ...mockSettlementData,
-              level: undefined,
+              level: null,
             },
           },
         },
       };
 
       render(
-        <MockedProvider mocks={[noLevelMock]}>
+        <TestWrapper mocks={[noLevelMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
-        // Level label should be visible
-        expect(screen.getByText('Level')).toBeInTheDocument();
+        // Settlement Level label should be visible
+        expect(screen.getByText('Settlement Level')).toBeInTheDocument();
       });
 
       // Find the level value container and check for "N/A"
@@ -250,12 +260,12 @@ describe('ParentSettlementContext', () => {
 
     it('should display MapPin icon in header', async () => {
       render(
-        <MockedProvider mocks={[successMock]}>
+        <TestWrapper mocks={[successMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -269,12 +279,12 @@ describe('ParentSettlementContext', () => {
 
     it('should display "Navigate to Settlement" button', async () => {
       render(
-        <MockedProvider mocks={[successMock]}>
+        <TestWrapper mocks={[successMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -288,12 +298,12 @@ describe('ParentSettlementContext', () => {
       const user = userEvent.setup();
 
       render(
-        <MockedProvider mocks={[successMock]}>
+        <TestWrapper mocks={[successMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -311,9 +321,12 @@ describe('ParentSettlementContext', () => {
       const user = userEvent.setup();
 
       render(
-        <MockedProvider mocks={[successMock]}>
-          <ParentSettlementContext settlementId={mockSettlementId} />
-        </MockedProvider>
+        <TestWrapper mocks={[successMock]}>
+          <ParentSettlementContext
+            settlementId={mockSettlementId}
+            onNavigateToSettlement={mockOnNavigate}
+          />
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -328,12 +341,12 @@ describe('ParentSettlementContext', () => {
 
     it('should have helpful title attribute on navigate button', async () => {
       render(
-        <MockedProvider mocks={[successMock]}>
+        <TestWrapper mocks={[successMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -351,12 +364,12 @@ describe('ParentSettlementContext', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA structure for success state', async () => {
       render(
-        <MockedProvider mocks={[successMock]}>
+        <TestWrapper mocks={[successMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -374,12 +387,12 @@ describe('ParentSettlementContext', () => {
 
     it('should have role="alert" for error states', async () => {
       render(
-        <MockedProvider mocks={[errorMock]}>
+        <TestWrapper mocks={[errorMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {
@@ -390,12 +403,12 @@ describe('ParentSettlementContext', () => {
 
     it('should have role="status" for missing settlement states', async () => {
       render(
-        <MockedProvider mocks={[nullSettlementMock]}>
+        <TestWrapper mocks={[nullSettlementMock]}>
           <ParentSettlementContext
             settlementId={mockSettlementId}
             onNavigateToSettlement={mockOnNavigate}
           />
-        </MockedProvider>
+        </TestWrapper>
       );
 
       await waitFor(() => {

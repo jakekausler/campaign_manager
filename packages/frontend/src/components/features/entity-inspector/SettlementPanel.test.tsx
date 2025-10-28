@@ -1,6 +1,7 @@
 import { ApolloProvider } from '@apollo/client/react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { BrowserRouter } from 'react-router-dom';
 import { describe, expect, it, vi, afterEach } from 'vitest';
 
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
@@ -8,11 +9,15 @@ import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 import { SettlementPanel } from './SettlementPanel';
 import type { SettlementData } from './SettlementPanel';
 
-// Create a wrapper component for Apollo Provider
+// Create a wrapper component for Apollo Provider and Router
 function createWrapper() {
   const client = createTestApolloClient();
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return <ApolloProvider client={client}>{children}</ApolloProvider>;
+    return (
+      <BrowserRouter>
+        <ApolloProvider client={client}>{children}</ApolloProvider>
+      </BrowserRouter>
+    );
   };
 }
 
@@ -64,7 +69,7 @@ describe('SettlementPanel', () => {
     it('should display level', () => {
       render(<SettlementPanel settlement={mockSettlement} />, { wrapper: createWrapper() });
       expect(screen.getByText('Level')).toBeInTheDocument();
-      expect(screen.getByText('Level 3')).toBeInTheDocument();
+      expect(screen.getByTestId('level-badge')).toHaveTextContent('Level 3');
     });
 
     it('should display owner ID', () => {

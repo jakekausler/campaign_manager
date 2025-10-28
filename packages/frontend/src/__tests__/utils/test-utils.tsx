@@ -5,6 +5,7 @@
  * - Apollo Client (for GraphQL hooks)
  * - Zustand stores
  * - React Flow (for node components)
+ * - React Router (for navigation hooks)
  */
 
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
@@ -12,6 +13,7 @@ import { ApolloProvider } from '@apollo/client/react';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
 import { ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import { type ReactElement, type ReactNode } from 'react';
+import { BrowserRouter } from 'react-router-dom';
 
 /**
  * Creates a test Apollo Client with in-memory cache
@@ -57,7 +59,7 @@ export function createTestApolloClient() {
 }
 
 /**
- * Custom render function that wraps component with Apollo Provider
+ * Custom render function that wraps component with Apollo Provider and Router
  *
  * @param ui - The React element to render
  * @param options - Render options including custom Apollo client
@@ -71,7 +73,11 @@ export function renderWithApollo(
   }: RenderOptions & { client?: ReturnType<typeof createTestApolloClient> } = {}
 ): RenderResult & { client: ReturnType<typeof createTestApolloClient> } {
   function Wrapper({ children }: { children: ReactNode }) {
-    return <ApolloProvider client={client}>{children}</ApolloProvider>;
+    return (
+      <BrowserRouter>
+        <ApolloProvider client={client}>{children}</ApolloProvider>
+      </BrowserRouter>
+    );
   }
 
   return {

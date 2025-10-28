@@ -38,14 +38,14 @@ describe('LevelChangeConfirmationDialog', () => {
     it('should display increase wording when level is increasing', () => {
       render(<LevelChangeConfirmationDialog {...defaultProps} currentLevel={2} newLevel={3} />);
 
-      expect(screen.getByText(/increase/i)).toBeInTheDocument();
+      expect(screen.getByText(/You are about to increase the level/i)).toBeInTheDocument();
       expect(screen.getByText('Yes, increase level')).toBeInTheDocument();
     });
 
     it('should display decrease wording when level is decreasing', () => {
       render(<LevelChangeConfirmationDialog {...defaultProps} currentLevel={3} newLevel={2} />);
 
-      expect(screen.getByText(/decrease/i)).toBeInTheDocument();
+      expect(screen.getByText(/You are about to decrease the level/i)).toBeInTheDocument();
       expect(screen.getByText('Yes, decrease level')).toBeInTheDocument();
     });
 
@@ -118,7 +118,7 @@ describe('LevelChangeConfirmationDialog', () => {
     it('should disable confirm button when loading', () => {
       render(<LevelChangeConfirmationDialog {...defaultProps} loading={true} />);
 
-      const confirmButton = screen.getByText(/Yes,/);
+      const confirmButton = screen.getByText('Updating...');
       expect(confirmButton).toBeDisabled();
     });
 
@@ -140,7 +140,7 @@ describe('LevelChangeConfirmationDialog', () => {
     it('should capitalize Settlement in title', () => {
       render(<LevelChangeConfirmationDialog {...defaultProps} entityType="settlement" />);
 
-      expect(screen.getByText(/settlement/)).toBeInTheDocument();
+      expect(screen.getByText(/Computed fields for this settlement/i)).toBeInTheDocument();
     });
 
     it('should capitalize Structure in title', () => {
