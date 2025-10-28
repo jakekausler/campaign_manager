@@ -107,7 +107,7 @@ export class DependencyExtractor {
 
       // For copy and move operations, the target path is written to
       if (op.op === 'copy' || op.op === 'move') {
-        const targetPath = (op as any).path; // All operations have a path
+        const targetPath = op.path; // All operations have a path
         if (typeof targetPath === 'string') {
           const varName = this.extractBaseVariableFromPath(targetPath);
           if (varName) {
@@ -174,6 +174,62 @@ export class DependencyExtractor {
           }
         }
       }
+    }
+
+    // Check for Settlement custom operators
+    // These operators read Settlement data, so we track dependencies on settlement fields
+    if ('settlement.var' in obj) {
+      // settlement.var reads a specific typed variable
+      const args = obj['settlement.var'];
+      if (Array.isArray(args) && typeof args[0] === 'string') {
+        reads.add(`settlement.${args[0]}`);
+      }
+    }
+    if ('settlement.level' in obj) {
+      // settlement.level reads the settlement's level field
+      reads.add('settlement.level');
+    }
+    if ('settlement.hasStructureType' in obj) {
+      // settlement.hasStructureType reads the settlement's structures collection
+      reads.add('settlement.structures.count');
+    }
+    if ('settlement.structureCount' in obj) {
+      // settlement.structureCount reads the settlement's structures collection
+      reads.add('settlement.structures.count');
+    }
+    if ('settlement.inKingdom' in obj) {
+      // settlement.inKingdom reads the settlement's kingdomId
+      reads.add('settlement.kingdomId');
+    }
+    if ('settlement.atLocation' in obj) {
+      // settlement.atLocation reads the settlement's locationId
+      reads.add('settlement.locationId');
+    }
+
+    // Check for Structure custom operators
+    // These operators read Structure data, so we track dependencies on structure fields
+    if ('structure.var' in obj) {
+      // structure.var reads a specific typed variable
+      const args = obj['structure.var'];
+      if (Array.isArray(args) && typeof args[0] === 'string') {
+        reads.add(`structure.${args[0]}`);
+      }
+    }
+    if ('structure.level' in obj) {
+      // structure.level reads the structure's level field
+      reads.add('structure.level');
+    }
+    if ('structure.type' in obj) {
+      // structure.type reads the structure's type field
+      reads.add('structure.type');
+    }
+    if ('structure.isOperational' in obj) {
+      // structure.isOperational reads the structure's operational status
+      reads.add('structure.operational');
+    }
+    if ('structure.inSettlement' in obj) {
+      // structure.inSettlement reads the structure's settlementId
+      reads.add('structure.settlementId');
     }
 
     // Recursively walk all properties of the object

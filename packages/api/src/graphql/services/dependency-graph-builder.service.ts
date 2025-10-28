@@ -136,8 +136,33 @@ export class DependencyGraphBuilderService {
 
         // Create READS edges from condition to each variable it reads
         for (const varName of reads) {
-          // Find variable node by key (simplified - in production would need scope resolution)
-          const varNode = this.findVariableNodeByKey(graph, varName);
+          // Find or create variable node
+          // For Settlement/Structure dependencies (e.g., "settlement.level", "structure.type"),
+          // create virtual variable nodes since they don't exist as StateVariables
+          let varNode = this.findVariableNodeByKey(graph, varName);
+
+          if (!varNode) {
+            // Check if this is a Settlement/Structure dependency
+            if (varName.startsWith('settlement.') || varName.startsWith('structure.')) {
+              // Create virtual variable node for Settlement/Structure property
+              const virtualNodeId = this.makeVariableNodeId(varName);
+              const virtualNode: DependencyNode = {
+                id: virtualNodeId,
+                type: DependencyNodeType.VARIABLE,
+                entityId: varName, // Use the full path as entityId for virtual nodes
+                label: varName,
+                metadata: {
+                  key: varName,
+                  virtual: true, // Mark as virtual to distinguish from StateVariables
+                  entityType: varName.split('.')[0], // 'settlement' or 'structure'
+                },
+              };
+              graph.addNode(virtualNode);
+              varNode = virtualNode;
+              this.logger.debug(`Created virtual variable node for ${varName}`);
+            }
+          }
+
           if (varNode) {
             const edge: DependencyEdge = {
               fromId: conditionNodeId,

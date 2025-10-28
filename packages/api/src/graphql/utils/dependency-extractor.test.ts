@@ -85,12 +85,14 @@ describe('DependencyExtractor', () => {
     });
 
     it('should handle null expression', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const reads = extractor.extractReads(null as any);
 
       expect(reads).toEqual(new Set());
     });
 
     it('should handle undefined expression', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const reads = extractor.extractReads(undefined as any);
 
       expect(reads).toEqual(new Set());
@@ -448,6 +450,322 @@ describe('DependencyExtractor', () => {
       const reads = extractor.extractReadsFromMultiple(expressions);
 
       expect(reads).toEqual(new Set(['a', 'b', 'c', 'd', 'e']));
+    });
+  });
+
+  describe('Settlement custom operators', () => {
+    describe('settlement.var', () => {
+      it('should extract settlement variable dependency', () => {
+        const expression = {
+          '>': [{ 'settlement.var': ['population'] }, 5000],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['settlement.population']));
+      });
+
+      it('should handle multiple settlement.var operations', () => {
+        const expression = {
+          and: [
+            { '>=': [{ 'settlement.var': ['population'] }, 5000] },
+            { '>=': [{ 'settlement.var': ['defenseRating'] }, 7] },
+            { '==': [{ 'settlement.var': ['prosperity'] }, 'thriving'] },
+          ],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(
+          new Set(['settlement.population', 'settlement.defenseRating', 'settlement.prosperity'])
+        );
+      });
+
+      it('should handle settlement.var with non-array args gracefully', () => {
+        const expression = {
+          'settlement.var': 'population', // Invalid format
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        // Should not add anything for invalid format
+        expect(reads).toEqual(new Set());
+      });
+
+      it('should handle settlement.var with empty array', () => {
+        const expression = {
+          'settlement.var': [],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set());
+      });
+    });
+
+    describe('settlement.level', () => {
+      it('should extract settlement.level dependency', () => {
+        const expression = {
+          '>=': [{ 'settlement.level': [] }, 5],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['settlement.level']));
+      });
+
+      it('should handle multiple settlement.level references', () => {
+        const expression = {
+          and: [
+            { '>=': [{ 'settlement.level': [] }, 5] },
+            { '<': [{ 'settlement.level': [] }, 10] },
+          ],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        // Should deduplicate
+        expect(reads).toEqual(new Set(['settlement.level']));
+        expect(reads.size).toBe(1);
+      });
+    });
+
+    describe('settlement.hasStructureType', () => {
+      it('should extract settlement structures dependency', () => {
+        const expression = {
+          'settlement.hasStructureType': ['temple'],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['settlement.structures.count']));
+      });
+    });
+
+    describe('settlement.structureCount', () => {
+      it('should extract settlement structures dependency', () => {
+        const expression = {
+          '>=': [{ 'settlement.structureCount': [] }, 10],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['settlement.structures.count']));
+      });
+
+      it('should extract dependency for filtered structure count', () => {
+        const expression = {
+          '>=': [{ 'settlement.structureCount': ['barracks'] }, 2],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['settlement.structures.count']));
+      });
+    });
+
+    describe('settlement.inKingdom', () => {
+      it('should extract settlement kingdomId dependency', () => {
+        const expression = {
+          'settlement.inKingdom': ['kingdom-123'],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['settlement.kingdomId']));
+      });
+    });
+
+    describe('settlement.atLocation', () => {
+      it('should extract settlement locationId dependency', () => {
+        const expression = {
+          'settlement.atLocation': ['location-456'],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['settlement.locationId']));
+      });
+    });
+
+    describe('complex settlement conditions', () => {
+      it('should extract all dependencies from complex settlement condition', () => {
+        const expression = {
+          and: [
+            { '>=': [{ 'settlement.level': [] }, 5] },
+            { '==': [{ 'settlement.var': ['prosperity'] }, 'thriving'] },
+            { '>=': [{ 'settlement.var': ['defenseRating'] }, 7] },
+            { 'settlement.hasStructureType': ['barracks'] },
+            { '>=': [{ 'settlement.structureCount': ['market'] }, 2] },
+            { 'settlement.inKingdom': ['kingdom-123'] },
+          ],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(
+          new Set([
+            'settlement.level',
+            'settlement.prosperity',
+            'settlement.defenseRating',
+            'settlement.structures.count',
+            'settlement.kingdomId',
+          ])
+        );
+      });
+    });
+  });
+
+  describe('Structure custom operators', () => {
+    describe('structure.var', () => {
+      it('should extract structure variable dependency', () => {
+        const expression = {
+          '>': [{ 'structure.var': ['integrity'] }, 80],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['structure.integrity']));
+      });
+
+      it('should handle multiple structure.var operations', () => {
+        const expression = {
+          and: [
+            { '>': [{ 'structure.var': ['integrity'] }, 80] },
+            { '>=': [{ 'structure.var': ['capacity'] }, 100] },
+            { '>=': [{ 'structure.var': ['revenue'] }, 500] },
+          ],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(
+          new Set(['structure.integrity', 'structure.capacity', 'structure.revenue'])
+        );
+      });
+
+      it('should handle structure.var with non-array args gracefully', () => {
+        const expression = {
+          'structure.var': 'integrity', // Invalid format
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        // Should not add anything for invalid format
+        expect(reads).toEqual(new Set());
+      });
+
+      it('should handle structure.var with empty array', () => {
+        const expression = {
+          'structure.var': [],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set());
+      });
+    });
+
+    describe('structure.level', () => {
+      it('should extract structure.level dependency', () => {
+        const expression = {
+          '>=': [{ 'structure.level': [] }, 3],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['structure.level']));
+      });
+
+      it('should handle multiple structure.level references', () => {
+        const expression = {
+          and: [{ '>=': [{ 'structure.level': [] }, 3] }, { '<': [{ 'structure.level': [] }, 7] }],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        // Should deduplicate
+        expect(reads).toEqual(new Set(['structure.level']));
+        expect(reads.size).toBe(1);
+      });
+    });
+
+    describe('structure.type', () => {
+      it('should extract structure.type dependency', () => {
+        const expression = {
+          '==': [{ 'structure.type': [] }, 'temple'],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['structure.type']));
+      });
+    });
+
+    describe('structure.isOperational', () => {
+      it('should extract structure operational dependency', () => {
+        const expression = {
+          'structure.isOperational': [],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['structure.operational']));
+      });
+    });
+
+    describe('structure.inSettlement', () => {
+      it('should extract structure settlementId dependency', () => {
+        const expression = {
+          'structure.inSettlement': ['settlement-789'],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(new Set(['structure.settlementId']));
+      });
+    });
+
+    describe('complex structure conditions', () => {
+      it('should extract all dependencies from complex structure condition', () => {
+        const expression = {
+          and: [
+            { '==': [{ 'structure.type': [] }, 'temple'] },
+            { '>=': [{ 'structure.level': [] }, 5] },
+            { 'structure.isOperational': [] },
+            { '>': [{ 'structure.var': ['integrity'] }, 90] },
+            { '>=': [{ 'structure.var': ['capacity'] }, 200] },
+            { 'structure.inSettlement': ['settlement-123'] },
+          ],
+        } as unknown as Expression;
+        const reads = extractor.extractReads(expression);
+
+        expect(reads).toEqual(
+          new Set([
+            'structure.type',
+            'structure.level',
+            'structure.operational',
+            'structure.integrity',
+            'structure.capacity',
+            'structure.settlementId',
+          ])
+        );
+      });
+    });
+  });
+
+  describe('mixed entity dependencies', () => {
+    it('should extract dependencies from expression with Settlement and Structure operators', () => {
+      const expression = {
+        and: [
+          { '>=': [{ 'settlement.level': [] }, 5] },
+          { '==': [{ 'settlement.var': ['prosperity'] }, 'thriving'] },
+          { '==': [{ 'structure.type': [] }, 'temple'] },
+          { 'structure.isOperational': [] },
+        ],
+      } as unknown as Expression;
+      const reads = extractor.extractReads(expression);
+
+      expect(reads).toEqual(
+        new Set([
+          'settlement.level',
+          'settlement.prosperity',
+          'structure.type',
+          'structure.operational',
+        ])
+      );
+    });
+
+    it('should extract dependencies from expression with standard var and custom operators', () => {
+      const expression = {
+        and: [
+          { '>': [{ var: 'world.time' }, 1000] },
+          { '>=': [{ 'settlement.level': [] }, 5] },
+          { '>': [{ 'structure.var': ['integrity'] }, 80] },
+        ],
+      } as unknown as Expression;
+      const reads = extractor.extractReads(expression);
+
+      expect(reads).toEqual(new Set(['world', 'settlement.level', 'structure.integrity']));
     });
   });
 });
