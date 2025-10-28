@@ -26,6 +26,7 @@ import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 import { AuditService } from './audit.service';
 import { CampaignContextService } from './campaign-context.service';
 import { ConditionEvaluationService } from './condition-evaluation.service';
+import { DependencyGraphService } from './dependency-graph.service';
 import { LevelValidator } from './level-validator';
 import { VersionService, type CreateVersionInput } from './version.service';
 
@@ -41,7 +42,8 @@ export class StructureService {
     private readonly campaignContext: CampaignContextService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub,
     private readonly conditionEvaluation: ConditionEvaluationService,
-    private readonly rulesEngineClient: RulesEngineClientService
+    private readonly rulesEngineClient: RulesEngineClientService,
+    private readonly dependencyGraph: DependencyGraphService
   ) {}
 
   /**
@@ -444,6 +446,22 @@ export class StructureService {
       },
     });
 
+    // Invalidate dependency graph cache to trigger rule re-evaluation
+    // Cache invalidation failures should not block the operation
+    try {
+      this.dependencyGraph.invalidateGraph(
+        structureWithRelations!.settlement.kingdom.campaignId,
+        branchId
+      );
+      this.logger.log(
+        `Invalidated dependency graph for campaign ${structureWithRelations!.settlement.kingdom.campaignId} ` +
+          `due to structure ${id} update`
+      );
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.error(`Failed to invalidate dependency graph for structure ${id}:`, error);
+    }
+
     return updated;
   }
 
@@ -710,12 +728,18 @@ export class StructureService {
       console.error(`Failed to invalidate campaign context for structure ${id}:`, error);
     }
 
-    // TODO (TICKET-013): Trigger rules engine recalculation when rules engine is implemented
-    // await this.rulesEngine.invalidate({
-    //   campaignId: structureWithRelations!.settlement.kingdom.campaignId,
-    //   changeType: 'structure_level',
-    //   affectedVariables: ['structure.level'],
-    // });
+    // Invalidate dependency graph cache to trigger rule re-evaluation
+    // Cache invalidation failures should not block the operation
+    try {
+      this.dependencyGraph.invalidateGraph(structureWithRelations!.settlement.kingdom.campaignId);
+      this.logger.log(
+        `Invalidated dependency graph for campaign ${structureWithRelations!.settlement.kingdom.campaignId} ` +
+          `due to structure ${id} level change`
+      );
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.error(`Failed to invalidate dependency graph for structure ${id}:`, error);
+    }
 
     return updated;
   }

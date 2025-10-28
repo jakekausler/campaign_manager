@@ -26,6 +26,7 @@ import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 import { AuditService } from './audit.service';
 import { CampaignContextService } from './campaign-context.service';
 import { ConditionEvaluationService } from './condition-evaluation.service';
+import { DependencyGraphService } from './dependency-graph.service';
 import { LevelValidator } from './level-validator';
 import { VersionService, type CreateVersionInput } from './version.service';
 
@@ -41,7 +42,8 @@ export class SettlementService {
     private readonly campaignContext: CampaignContextService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub,
     private readonly conditionEvaluation: ConditionEvaluationService,
-    private readonly rulesEngineClient: RulesEngineClientService
+    private readonly rulesEngineClient: RulesEngineClientService,
+    private readonly dependencyGraph: DependencyGraphService
   ) {}
 
   /**
@@ -435,6 +437,19 @@ export class SettlementService {
       },
     });
 
+    // Invalidate dependency graph cache to trigger rule re-evaluation
+    // Cache invalidation failures should not block the operation
+    try {
+      this.dependencyGraph.invalidateGraph(settlementWithKingdom!.kingdom.campaignId, branchId);
+      this.logger.log(
+        `Invalidated dependency graph for campaign ${settlementWithKingdom!.kingdom.campaignId} ` +
+          `due to settlement ${id} update`
+      );
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.error(`Failed to invalidate dependency graph for settlement ${id}:`, error);
+    }
+
     return updated;
   }
 
@@ -699,12 +714,18 @@ export class SettlementService {
       console.error(`Failed to invalidate campaign context for settlement ${id}:`, error);
     }
 
-    // TODO (TICKET-013): Trigger rules engine recalculation when rules engine is implemented
-    // await this.rulesEngine.invalidate({
-    //   campaignId: settlementWithKingdom!.kingdom.campaignId,
-    //   changeType: 'settlement_level',
-    //   affectedVariables: ['settlement.level'],
-    // });
+    // Invalidate dependency graph cache to trigger rule re-evaluation
+    // Cache invalidation failures should not block the operation
+    try {
+      this.dependencyGraph.invalidateGraph(settlementWithKingdom!.kingdom.campaignId);
+      this.logger.log(
+        `Invalidated dependency graph for campaign ${settlementWithKingdom!.kingdom.campaignId} ` +
+          `due to settlement ${id} level change`
+      );
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.error(`Failed to invalidate dependency graph for settlement ${id}:`, error);
+    }
 
     return updated;
   }
