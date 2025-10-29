@@ -178,7 +178,7 @@ Added E2E tests covering all operations, auth checks, and error cases.
 Part of TICKET-027 Stage 3.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: 754b3d0)
 
 ---
 
