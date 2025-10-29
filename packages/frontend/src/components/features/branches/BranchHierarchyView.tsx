@@ -12,11 +12,14 @@ import '@xyflow/react/dist/style.css';
 import * as dagre from 'dagre';
 import { Calendar, Edit2, GitBranch, GitFork, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useGetBranchHierarchy } from '@/services/api/hooks/branches';
+import { useGetBranchHierarchy, useDeleteBranch } from '@/services/api/hooks/branches';
 import { useCampaignStore } from '@/stores';
+
+import { DeleteBranchDialog, type BranchInfo } from './DeleteBranchDialog';
 
 // Types for branch data
 type BranchNodeType = {
@@ -41,7 +44,10 @@ type BranchFlowNodeData = {
   divergedAt?: string | null;
   createdAt: string;
   isCurrent: boolean;
+  parentId?: string | null;
+  childrenIds: string[];
   versionCount?: number; // TODO: Add when backend provides statistics
+  onDelete?: (branchId: string) => void;
 };
 
 /**
@@ -96,14 +102,14 @@ function BranchNode({ data, selected }: { data: BranchFlowNodeData; selected: bo
         </div>
       )}
 
-      {/* Action buttons on hover - disabled until Stage 10 implements functionality */}
+      {/* Action buttons on hover */}
       {showActions && (
         <div className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 gap-1 rounded-md border border-gray-200 bg-white p-1 shadow-lg">
           <Button
             size="sm"
             variant="ghost"
             className="h-7 w-7 p-0"
-            title="Fork this branch (coming in Stage 6)"
+            title="Fork this branch (coming in future stage)"
             aria-label="Fork this branch"
             disabled
           >
@@ -113,7 +119,7 @@ function BranchNode({ data, selected }: { data: BranchFlowNodeData; selected: bo
             size="sm"
             variant="ghost"
             className="h-7 w-7 p-0"
-            title="Rename branch (coming in Stage 10)"
+            title="Rename branch (coming in future stage)"
             aria-label="Rename branch"
             disabled
           >
@@ -123,9 +129,12 @@ function BranchNode({ data, selected }: { data: BranchFlowNodeData; selected: bo
             size="sm"
             variant="ghost"
             className="h-7 w-7 p-0 text-destructive"
-            title="Delete branch (coming in Stage 10)"
+            title="Delete branch"
             aria-label="Delete branch"
-            disabled
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onDelete?.(data.branchId);
+            }}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -148,7 +157,8 @@ const nodeTypes = {
  */
 function convertHierarchyToFlow(
   hierarchy: BranchNodeType[],
-  currentBranchId?: string
+  currentBranchId?: string,
+  onDelete?: (branchId: string) => void
 ): { nodes: Node<BranchFlowNodeData>[]; edges: Edge[] } {
   const nodes: Node<BranchFlowNodeData>[] = [];
   const edges: Edge[] = [];
@@ -168,6 +178,9 @@ function convertHierarchyToFlow(
         divergedAt: branch.divergedAt,
         createdAt: branch.createdAt,
         isCurrent: branch.id === currentBranchId,
+        parentId: branch.parentId,
+        childrenIds: children.map((c) => c.branch.id),
+        onDelete,
       },
     });
 
@@ -250,6 +263,8 @@ export function BranchHierarchyView() {
   const { currentCampaignId, currentBranchId, setCurrentBranch } = useCampaignStore();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [branchToDelete, setBranchToDelete] = useState<BranchInfo | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Fetch branch hierarchy
   const { data, loading, error, refetch } = useGetBranchHierarchy({
@@ -257,13 +272,78 @@ export function BranchHierarchyView() {
     skip: !currentCampaignId,
   });
 
+  // Delete branch mutation
+  const [deleteBranch, { loading: deleting }] = useDeleteBranch();
+
+  // Handle delete button click
+  const handleDeleteClick = useCallback(
+    (branchId: string) => {
+      if (!data?.branchHierarchy) return;
+
+      // Find branch in hierarchy
+      const findBranch = (nodes: BranchNodeType[]): BranchNodeType | null => {
+        for (const node of nodes) {
+          if (node.branch.id === branchId) return node;
+          const found = findBranch(node.children);
+          if (found) return found;
+        }
+        return null;
+      };
+
+      const branchNode = findBranch(data.branchHierarchy);
+      if (branchNode) {
+        setBranchToDelete({
+          id: branchNode.branch.id,
+          name: branchNode.branch.name,
+          parentId: branchNode.branch.parentId,
+          children: branchNode.children.map((c) => ({ id: c.branch.id })),
+        });
+        setDeleteDialogOpen(true);
+      }
+    },
+    [data]
+  );
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!branchToDelete) return;
+
+    try {
+      await deleteBranch({
+        variables: { id: branchToDelete.id },
+      });
+
+      toast.success('Branch deleted', {
+        description: `"${branchToDelete.name}" has been permanently deleted.`,
+      });
+
+      // If deleted branch was current, switch to parent
+      if (branchToDelete.id === currentBranchId && branchToDelete.parentId) {
+        setCurrentBranch(branchToDelete.parentId);
+      }
+
+      // Close dialog and refetch hierarchy
+      setDeleteDialogOpen(false);
+      setBranchToDelete(null);
+      refetch();
+    } catch (err) {
+      toast.error('Failed to delete branch', {
+        description: err instanceof Error ? err.message : 'An unknown error occurred',
+      });
+    }
+  }, [branchToDelete, deleteBranch, currentBranchId, setCurrentBranch, refetch]);
+
   // Convert hierarchy to flow nodes/edges
   const { nodes: rawNodes, edges: rawEdges } = useMemo(() => {
     if (!data?.branchHierarchy) {
       return { nodes: [], edges: [] };
     }
-    return convertHierarchyToFlow(data.branchHierarchy, currentBranchId ?? undefined);
-  }, [data, currentBranchId]);
+    return convertHierarchyToFlow(
+      data.branchHierarchy,
+      currentBranchId ?? undefined,
+      handleDeleteClick
+    );
+  }, [data, currentBranchId, handleDeleteClick]);
 
   // Apply layout
   const layoutedNodes = useMemo(() => {
@@ -431,6 +511,19 @@ export function BranchHierarchyView() {
       {/* Fork dialog - TODO: Implement when BranchSelector provides sourceBranch prop */}
       {/* ForkBranchDialog requires sourceBranch: Branch | null prop */}
       {/* Will be implemented in future ticket when BranchSelector integration is complete */}
+
+      {/* Delete Branch Dialog */}
+      <DeleteBranchDialog
+        open={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setBranchToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        branch={branchToDelete}
+        loading={deleting}
+        isCurrentBranch={branchToDelete?.id === currentBranchId}
+      />
     </div>
   );
 }

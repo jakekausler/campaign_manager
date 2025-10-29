@@ -1,5 +1,5 @@
 import { AlertCircle, CheckCircle, GitBranch, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -116,44 +116,47 @@ export function ForkBranchDialog({
   }, [isOpen, reset]);
 
   // Handle form submission
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
+  const handleSubmit = useCallback(
+    async (e?: React.FormEvent) => {
+      e?.preventDefault();
 
-    // Validate input
-    if (!name.trim()) {
-      setValidationError('Branch name is required');
-      return;
-    }
+      // Validate input
+      if (!name.trim()) {
+        setValidationError('Branch name is required');
+        return;
+      }
 
-    if (!sourceBranch) {
-      setValidationError('Source branch not found');
-      return;
-    }
+      if (!sourceBranch) {
+        setValidationError('Source branch not found');
+        return;
+      }
 
-    if (!campaign?.currentWorldTime) {
-      setValidationError('Current world time not available');
-      return;
-    }
+      if (!campaign?.currentWorldTime) {
+        setValidationError('Current world time not available');
+        return;
+      }
 
-    setValidationError(null);
+      setValidationError(null);
 
-    // Execute fork mutation
-    try {
-      await forkBranch({
-        variables: {
-          input: {
-            sourceBranchId: sourceBranch.id,
-            name: name.trim(),
-            description: description.trim() || null,
-            worldTime: campaign.currentWorldTime,
+      // Execute fork mutation
+      try {
+        await forkBranch({
+          variables: {
+            input: {
+              sourceBranchId: sourceBranch.id,
+              name: name.trim(),
+              description: description.trim() || null,
+              worldTime: campaign.currentWorldTime,
+            },
           },
-        },
-      });
-    } catch (err) {
-      // Error is handled by Apollo's error state
-      console.error('Fork branch error:', err);
-    }
-  };
+        });
+      } catch (err) {
+        // Error is handled by Apollo's error state
+        console.error('Fork branch error:', err);
+      }
+    },
+    [name, description, sourceBranch, campaign, forkBranch]
+  );
 
   // Handle keyboard shortcuts
   useEffect(() => {

@@ -393,7 +393,8 @@ describe('BranchService', () => {
     it('should soft delete branch without children', async () => {
       const branchWithRelations = {
         ...mockBranch,
-        parent: null,
+        parentId: 'parent-branch',
+        parent: { id: 'parent-branch', name: 'Parent' },
         children: [],
         campaign: mockCampaign,
       };
@@ -424,10 +425,29 @@ describe('BranchService', () => {
       );
     });
 
+    it('should throw BadRequestException when trying to delete root branch', async () => {
+      const rootBranchWithRelations = {
+        ...mockBranch,
+        parentId: null,
+        parent: null,
+        children: [],
+        campaign: mockCampaign,
+      };
+
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(rootBranchWithRelations);
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+
+      await expect(service.delete('branch-1', mockUser)).rejects.toThrow(BadRequestException);
+      await expect(service.delete('branch-1', mockUser)).rejects.toThrow(
+        'Cannot delete root branch'
+      );
+    });
+
     it('should throw BadRequestException when branch has children', async () => {
       const branchWithRelations = {
         ...mockBranch,
-        parent: null,
+        parentId: 'branch-root', // Non-root branch with a parent
+        parent: { id: 'branch-root' },
         children: [mockChildBranch],
         campaign: mockCampaign,
       };

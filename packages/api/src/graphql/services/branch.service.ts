@@ -232,7 +232,7 @@ export class BranchService {
 
   /**
    * Soft delete a branch
-   * Validates branch has no children before deletion
+   * Validates branch is not a root branch and has no children before deletion
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaBranch> {
     // Verify branch exists
@@ -243,6 +243,13 @@ export class BranchService {
 
     // Verify user has access to the campaign
     await this.checkCampaignAccess(branch.campaignId, user);
+
+    // Prevent deletion of root branches (branches without a parent)
+    if (!branch.parentId) {
+      throw new BadRequestException(
+        'Cannot delete root branch. Root branches serve as the foundation of the campaign timeline.'
+      );
+    }
 
     // Validate branch has no children
     const childCount = await this.prisma.branch.count({
