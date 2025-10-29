@@ -1,4 +1,4 @@
-import { ChevronDown, GitBranch, AlertCircle, Check } from 'lucide-react';
+import { ChevronDown, GitBranch, AlertCircle, Check, GitFork } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -8,6 +8,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGetBranchHierarchy, type Branch } from '@/services/api/hooks';
 import { useCampaignStore } from '@/stores';
+
+import { ForkBranchDialog } from './ForkBranchDialog';
 
 /**
  * BranchSelector Component
@@ -37,6 +39,7 @@ import { useCampaignStore } from '@/stores';
 export function BranchSelector() {
   const { currentCampaignId, currentBranchId, setCurrentBranch } = useCampaignStore();
   const [isOpen, setIsOpen] = useState(false);
+  const [isForkDialogOpen, setIsForkDialogOpen] = useState(false);
 
   // Fetch branch hierarchy for current campaign
   const { flatBranches, loading, error } = useGetBranchHierarchy({
@@ -55,76 +58,111 @@ export function BranchSelector() {
     setIsOpen(false);
   };
 
+  // Handle fork button click
+  const handleForkClick = () => {
+    setIsForkDialogOpen(true);
+  };
+
+  // Handle fork success
+  const handleForkSuccess = () => {
+    // Close both dialogs
+    setIsForkDialogOpen(false);
+    setIsOpen(false);
+  };
+
   // If no campaign selected, don't render
   if (!currentCampaignId) {
     return null;
   }
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="outline"
-          className="flex items-center gap-2 min-w-[200px]"
-          data-testid="branch-selector-trigger"
-        >
-          <GitBranch className="h-4 w-4" />
-          <span className="truncate flex-1 text-left">
-            {currentBranch?.name ?? 'Select Branch'}
-          </span>
-          <ChevronDown className="h-4 w-4 opacity-50" />
-        </Button>
-      </SheetTrigger>
+    <>
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="outline"
+            className="flex items-center gap-2 min-w-[200px]"
+            data-testid="branch-selector-trigger"
+          >
+            <GitBranch className="h-4 w-4" />
+            <span className="truncate flex-1 text-left">
+              {currentBranch?.name ?? 'Select Branch'}
+            </span>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </Button>
+        </SheetTrigger>
 
-      <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-        <SheetHeader>
-          <SheetTitle>Select Branch</SheetTitle>
-        </SheetHeader>
-
-        <div className="mt-6 space-y-4">
-          {/* Loading state */}
-          {loading && (
-            <div className="space-y-2">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
+        <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+          <SheetHeader>
+            <div className="flex items-center justify-between">
+              <SheetTitle>Select Branch</SheetTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleForkClick}
+                disabled={!currentBranch}
+                title={currentBranch ? 'Fork this branch' : 'Select a branch first'}
+                data-testid="fork-branch-button"
+              >
+                <GitFork className="h-4 w-4 mr-2" />
+                Fork
+              </Button>
             </div>
-          )}
+          </SheetHeader>
 
-          {/* Error state */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>Failed to load branches: {error.message}</AlertDescription>
-            </Alert>
-          )}
+          <div className="mt-6 space-y-4">
+            {/* Loading state */}
+            {loading && (
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            )}
 
-          {/* Branch list */}
-          {!loading && !error && flatBranches.length === 0 && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                No branches found for this campaign. Create a branch to get started.
-              </AlertDescription>
-            </Alert>
-          )}
+            {/* Error state */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>Failed to load branches: {error.message}</AlertDescription>
+              </Alert>
+            )}
 
-          {!loading && !error && flatBranches.length > 0 && (
-            <div className="space-y-1" data-testid="branch-list">
-              {flatBranches.map((branch) => (
-                <BranchItem
-                  key={branch.id}
-                  branch={branch}
-                  depth={branch.depth}
-                  isSelected={branch.id === currentBranchId}
-                  onSelect={handleSelectBranch}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+            {/* Branch list */}
+            {!loading && !error && flatBranches.length === 0 && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  No branches found for this campaign. Create a branch to get started.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!loading && !error && flatBranches.length > 0 && (
+              <div className="space-y-1" data-testid="branch-list">
+                {flatBranches.map((branch) => (
+                  <BranchItem
+                    key={branch.id}
+                    branch={branch}
+                    depth={branch.depth}
+                    isSelected={branch.id === currentBranchId}
+                    onSelect={handleSelectBranch}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Fork Branch Dialog */}
+      <ForkBranchDialog
+        sourceBranch={currentBranch}
+        isOpen={isForkDialogOpen}
+        onClose={() => setIsForkDialogOpen(false)}
+        onSuccess={handleForkSuccess}
+      />
+    </>
   );
 }
 
