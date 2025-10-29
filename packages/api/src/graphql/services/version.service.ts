@@ -220,6 +220,34 @@ export class VersionService {
   }
 
   /**
+   * Get all versions for a specific entity type in a branch at a given world time.
+   * Used for merge operations to identify all entities that exist in a branch.
+   *
+   * @param branchId - ID of the branch
+   * @param entityType - Type of entity (e.g., "settlement", "structure")
+   * @param worldTime - World time at which to get versions
+   * @returns Array of versions for the entity type
+   */
+  async getVersionsForBranchAndType(
+    branchId: string,
+    entityType: string,
+    worldTime: Date
+  ): Promise<Version[]> {
+    return this.prisma.version.findMany({
+      where: {
+        branchId,
+        entityType,
+        validFrom: { lte: worldTime },
+        OR: [
+          { validTo: { gt: worldTime } }, // Historical version
+          { validTo: null }, // Current version
+        ],
+      },
+      orderBy: { validFrom: 'desc' },
+    });
+  }
+
+  /**
    * Resolves a version for an entity at a specific time with branch inheritance
    * If not found in the specified branch, walks up the branch ancestry chain
    * Optimized to avoid N+1 queries by fetching branch hierarchy once

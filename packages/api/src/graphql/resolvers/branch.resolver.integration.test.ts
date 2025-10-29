@@ -8,6 +8,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { Branch as PrismaBranch, Campaign, User } from '@prisma/client';
 
+import { CampaignMembershipService } from '../../auth/services/campaign-membership.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
@@ -36,6 +37,12 @@ describe('BranchResolver Integration Tests', () => {
         VersionService,
         AuditService,
         PrismaService,
+        {
+          provide: CampaignMembershipService,
+          useValue: {
+            canEdit: jest.fn().mockResolvedValue(true),
+          },
+        },
         {
           provide: REDIS_PUBSUB,
           useValue: {
@@ -103,12 +110,20 @@ describe('BranchResolver Integration Tests', () => {
 
   afterAll(async () => {
     // Clean up test data in correct order (respecting foreign key constraints)
-    await prisma.audit.deleteMany({ where: { userId: dbUser.id } });
-    await prisma.version.deleteMany({ where: { createdBy: dbUser.id } });
-    await prisma.branch.deleteMany({ where: { campaignId: testCampaign.id } });
-    await prisma.campaign.deleteMany({ where: { id: testCampaign.id } });
-    await prisma.world.deleteMany({ where: { id: testWorld.id } });
-    await prisma.user.deleteMany({ where: { id: dbUser.id } });
+    if (dbUser) {
+      await prisma.audit.deleteMany({ where: { userId: dbUser.id } });
+      await prisma.version.deleteMany({ where: { createdBy: dbUser.id } });
+    }
+    if (testCampaign) {
+      await prisma.branch.deleteMany({ where: { campaignId: testCampaign.id } });
+      await prisma.campaign.deleteMany({ where: { id: testCampaign.id } });
+    }
+    if (testWorld) {
+      await prisma.world.deleteMany({ where: { id: testWorld.id } });
+    }
+    if (dbUser) {
+      await prisma.user.deleteMany({ where: { id: dbUser.id } });
+    }
 
     await app.close();
   });
@@ -182,7 +197,9 @@ describe('BranchResolver Integration Tests', () => {
     });
 
     afterAll(async () => {
-      await prisma.branch.delete({ where: { id: childBranch.id } });
+      if (childBranch) {
+        await prisma.branch.delete({ where: { id: childBranch.id } });
+      }
     });
 
     it('should return branch hierarchy tree structure', async () => {
@@ -278,7 +295,9 @@ describe('BranchResolver Integration Tests', () => {
     });
 
     afterAll(async () => {
-      await prisma.branch.deleteMany({ where: { id: branchToUpdate.id } });
+      if (branchToUpdate) {
+        await prisma.branch.deleteMany({ where: { id: branchToUpdate.id } });
+      }
     });
 
     it('should update branch name and description', async () => {
@@ -324,6 +343,7 @@ describe('BranchResolver Integration Tests', () => {
         data: {
           name: 'To Delete',
           campaignId: testCampaign.id,
+          parentId: mainBranch.id, // Must have a parent to be deletable
         },
       });
 
@@ -421,10 +441,16 @@ describe('BranchResolver Integration Tests', () => {
 
     afterAll(async () => {
       // Clean up all fork test data
-      await prisma.version.deleteMany({ where: { branchId: branchForFork.id } });
-      await prisma.branch.deleteMany({ where: { campaignId: campaignForFork.id } });
-      await prisma.campaign.deleteMany({ where: { id: campaignForFork.id } });
-      await prisma.world.deleteMany({ where: { id: worldForFork.id } });
+      if (branchForFork) {
+        await prisma.version.deleteMany({ where: { branchId: branchForFork.id } });
+      }
+      if (campaignForFork) {
+        await prisma.branch.deleteMany({ where: { campaignId: campaignForFork.id } });
+        await prisma.campaign.deleteMany({ where: { id: campaignForFork.id } });
+      }
+      if (worldForFork) {
+        await prisma.world.deleteMany({ where: { id: worldForFork.id } });
+      }
     });
 
     it('should fork a branch and copy versions', async () => {

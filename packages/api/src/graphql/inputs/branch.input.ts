@@ -14,6 +14,7 @@ import {
   IsBoolean,
   IsArray,
   Matches,
+  ValidateNested,
 } from 'class-validator';
 
 @InputType()
@@ -138,4 +139,75 @@ export class ForkBranchInput {
   @IsNotEmpty()
   @Type(() => Date)
   worldTime!: Date;
+}
+
+@InputType()
+export class PreviewMergeInput {
+  @Field(() => ID)
+  @IsUUID()
+  @IsNotEmpty()
+  sourceBranchId!: string;
+
+  @Field(() => ID)
+  @IsUUID()
+  @IsNotEmpty()
+  targetBranchId!: string;
+
+  @Field()
+  @IsDate()
+  @IsNotEmpty()
+  @Type(() => Date)
+  worldTime!: Date;
+}
+
+@InputType()
+export class ConflictResolution {
+  @Field({ description: 'Entity ID' })
+  @IsString()
+  @IsNotEmpty()
+  entityId!: string;
+
+  @Field({ description: 'Entity type' })
+  @IsString()
+  @IsNotEmpty()
+  entityType!: string;
+
+  @Field({ description: 'JSON path to the conflict' })
+  @IsString()
+  @IsNotEmpty()
+  path!: string;
+
+  @Field({ description: 'Resolved value as JSON string' })
+  @IsString()
+  @IsNotEmpty()
+  resolvedValue!: string;
+}
+
+@InputType()
+export class ExecuteMergeInput {
+  @Field(() => ID)
+  @IsUUID()
+  @IsNotEmpty()
+  sourceBranchId!: string;
+
+  @Field(() => ID)
+  @IsUUID()
+  @IsNotEmpty()
+  targetBranchId!: string;
+
+  @Field()
+  @IsDate()
+  @IsNotEmpty()
+  @Type(() => Date)
+  worldTime!: Date;
+
+  @Field(() => [ConflictResolution], {
+    description: 'Manual resolutions for conflicts',
+    nullable: true,
+  })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ConflictResolution)
+  resolutions?: ConflictResolution[];
 }

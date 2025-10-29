@@ -28,6 +28,7 @@ import { HealthResolver } from './resolvers/health.resolver';
 import { KingdomResolver } from './resolvers/kingdom.resolver';
 import { LinkResolver } from './resolvers/link.resolver';
 import { LocationResolver } from './resolvers/location.resolver';
+import { MergeResolver } from './resolvers/merge.resolver';
 import { PartyResolver } from './resolvers/party.resolver';
 import { SettlementResolver } from './resolvers/settlement.resolver';
 import { SpatialResolver } from './resolvers/spatial.resolver';
@@ -125,6 +126,7 @@ import { UploadScalar } from './scalars/upload.scalar';
     VersionResolver,
     AuditResolver,
     BranchResolver,
+    MergeResolver,
     WorldResolver,
     CampaignResolver,
     CharacterResolver,
