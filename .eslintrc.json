@@ -27,6 +27,14 @@
       }
     ]
   },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.spec.ts", "**/__tests__/**/*.ts"],
+      "rules": {
+        "import/no-unresolved": ["error", { "ignore": ["jest-mock-extended"] }]
+      }
+    }
+  ],
   "settings": {
     "import/resolver": {
       "typescript": {

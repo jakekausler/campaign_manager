@@ -470,8 +470,14 @@ describe('BranchHierarchyView', () => {
       vi.mocked(useCampaignStore).mockReturnValue({
         currentCampaignId: null,
         currentBranchId: 'branch-1',
+        campaign: null,
+        asOfTime: null,
+        campaignBranchMap: {},
+        setCurrentCampaign: vi.fn(),
         setCurrentBranch: mockSetCurrentBranch,
-      } as ReturnType<typeof useCampaignStore>);
+        setAsOfTime: vi.fn(),
+        clearCampaignContext: vi.fn(),
+      });
 
       const mocks = [
         {

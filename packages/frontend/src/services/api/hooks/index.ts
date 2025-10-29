@@ -117,5 +117,17 @@ export {
   type ForkResult,
 } from './branches';
 
+// Version Comparison hooks (for branch comparison)
+export {
+  useGetSettlementAsOf,
+  useGetStructureAsOf,
+  GET_SETTLEMENT_AS_OF,
+  GET_STRUCTURE_AS_OF,
+  type VersionableEntityType,
+  type EntityVersion,
+  type SettlementVersion,
+  type StructureVersion,
+} from './version-comparison';
+
 // Mutation hooks (Stage 8)
 export * from '../mutations';
