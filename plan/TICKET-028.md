@@ -7,6 +7,7 @@
   - Planning: 3362521 (Implementation plan created)
   - Stage 1: 17147d0 (3-way merge algorithm foundation)
   - Stage 2: ffcbc4b (Conflict detection logic)
+  - Stage 3: eba8236 (Settlement and Structure merge handlers)
 
 ## Implementation Notes
 
@@ -39,6 +40,20 @@
   - Leverages existing versioning system from TICKET-007 (version resolution algorithm)
   - Uses 3-way merge algorithm (common ancestor + source + target) for automatic conflict detection
   - Auto-resolves non-conflicting changes, requires manual resolution only when both branches modified same property
+- **2025-10-29**: Completed Stage 3 - Settlement & Structure Conflict Detection (commit eba8236)
+  - Created `SettlementMergeHandler` class extending base ConflictDetector via composition
+  - Created `StructureMergeHandler` class extending base ConflictDetector via composition
+  - Both handlers delegate core 3-way merge algorithm to ConflictDetector (follows Open/Closed Principle)
+  - Settlement handler detects conflicts in all properties: name, level, kingdomId, locationId, and nested variables
+  - Structure handler detects conflicts in all properties: name, type, level, settlementId, and nested variables
+  - Domain-specific conflict descriptions: human-readable messages for kingdom changes, location changes, type changes, etc.
+  - Domain-specific resolution suggestions: guidance for population conflicts, resource conflicts, defense rating conflicts, status conflicts
+  - Handles association changes (kingdomId → kingdom change, settlementId → settlement change) as property conflicts
+  - Comprehensive test coverage: 17 tests for Settlement (name, kingdom, location, level, nested variables, arrays, creation, deletion)
+  - Comprehensive test coverage: 19 tests for Structure (name, type, settlement, level, nested variables, status, complex scenarios)
+  - All 36 tests passing (17 Settlement + 19 Structure), code reviewed and approved
+  - Architecture: Generic ConflictDetector handles ALL property detection, entity handlers add semantic meaning
+  - Ready for GraphQL API integration in Stage 4
 
 ## Description
 

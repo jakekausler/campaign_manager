@@ -67,27 +67,37 @@ Implement comprehensive branch merging capabilities with 3-way merge algorithm, 
 - 29 comprehensive ConflictDetector unit tests + 9 MergeService tests = 38 total tests passing
 - Code Reviewer approved with optional enhancement suggestions for future (depth limits, additional docs, type guards)
 
-## Stage 3: Settlement & Structure Conflict Detection
+## Stage 3: Settlement & Structure Conflict Detection ✅ COMPLETE
 
 **Goal**: Implement entity-specific conflict detection for Settlement and Structure entities
 
 **Tasks**:
 
-- [ ] Create `SettlementMergeHandler` class extending base merge logic
-- [ ] Implement Settlement-specific conflict detection (population, resources, leaderName, etc.)
-- [ ] Handle Settlement association conflicts (parentSettlement changes, kingdom changes)
-- [ ] Create `StructureMergeHandler` class extending base merge logic
-- [ ] Implement Structure-specific conflict detection (defenseRating, capacity, status, etc.)
-- [ ] Handle Structure association conflicts (settlement changes, location changes)
-- [ ] Create unit tests for Settlement merge scenarios (15+ scenarios)
-- [ ] Create unit tests for Structure merge scenarios (15+ scenarios)
+- [x] Create `SettlementMergeHandler` class extending base merge logic
+- [x] Implement Settlement-specific conflict detection (population, resources, leaderName, etc.)
+- [x] Handle Settlement association conflicts (parentSettlement changes, kingdom changes)
+- [x] Create `StructureMergeHandler` class extending base merge logic
+- [x] Implement Structure-specific conflict detection (defenseRating, capacity, status, etc.)
+- [x] Handle Structure association conflicts (settlement changes, location changes)
+- [x] Create unit tests for Settlement merge scenarios (15+ scenarios)
+- [x] Create unit tests for Structure merge scenarios (15+ scenarios)
 
 **Success Criteria**:
 
-- [ ] Settlement property conflicts detected correctly
-- [ ] Structure property conflicts detected correctly
-- [ ] Association changes handled properly
-- [ ] All entity-specific tests passing
+- [x] Settlement property conflicts detected correctly
+- [x] Structure property conflicts detected correctly
+- [x] Association changes handled properly
+- [x] All entity-specific tests passing
+
+**Completion Notes** (commit eba8236):
+
+- SettlementMergeHandler and StructureMergeHandler use composition pattern (delegate to ConflictDetector)
+- Generic ConflictDetector already handles ALL property conflicts including associations (kingdomId, settlementId, etc.)
+- Entity handlers enhance generic detection with domain-specific descriptions and suggestions
+- Settlement: 17 comprehensive tests (name, kingdom, location, level, nested variables, arrays, creation, deletion)
+- Structure: 19 comprehensive tests (name, type, settlement, level, nested variables, status, complex scenarios)
+- All 36 tests passing, code reviewed and approved
+- Architecture follows Open/Closed Principle: base detector closed for modification, entity handlers extend via composition
 
 ## Stage 4: Merge Service GraphQL API
 
