@@ -66,3 +66,27 @@ export class BranchWhereInput {
   @IsOptional()
   parentId?: string;
 }
+
+@InputType()
+export class ForkBranchInput {
+  @Field(() => ID)
+  @IsUUID()
+  @IsNotEmpty()
+  sourceBranchId!: string;
+
+  @Field()
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @Field({ nullable: true })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @Field()
+  @IsDate()
+  @IsNotEmpty()
+  @Type(() => Date)
+  worldTime!: Date;
+}
