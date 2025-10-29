@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Branch as PrismaBranch, Version } from '@prisma/client';
 
 import { BranchService } from './branch.service';
+import { ConflictDetector } from './conflict-detector';
 import { VersionService } from './version.service';
 
 /**
@@ -78,10 +79,14 @@ export interface ThreeWayVersions {
  */
 @Injectable()
 export class MergeService {
+  private readonly conflictDetector: ConflictDetector;
+
   constructor(
     private readonly branchService: BranchService,
     private readonly versionService: VersionService
-  ) {}
+  ) {
+    this.conflictDetector = new ConflictDetector();
+  }
 
   /**
    * Find the common ancestor (merge base) between two branches.
@@ -172,17 +177,67 @@ export class MergeService {
    * @returns MergeResult with auto-resolved payload or conflicts
    */
   compareVersions(
-    _basePayload: Record<string, unknown> | null,
+    basePayload: Record<string, unknown> | null,
     sourcePayload: Record<string, unknown> | null,
-    _targetPayload: Record<string, unknown> | null
+    targetPayload: Record<string, unknown> | null
   ): MergeResult {
-    // This is a placeholder implementation for Stage 1
-    // Full implementation will be done in Stage 2 (Conflict Detection Logic)
+    // Use ConflictDetector to analyze the three versions
+    const result = this.conflictDetector.detectPropertyConflicts(
+      basePayload,
+      sourcePayload,
+      targetPayload
+    );
+
+    // Generate conflict details for UI display
+    const conflictDetails: ConflictDetail[] = result.conflicts.map((conflict) => ({
+      path: conflict.path,
+      description: this.generateConflictDescription(conflict),
+      suggestion: this.generateConflictSuggestion(conflict),
+    }));
+
     return {
-      success: true,
-      conflicts: [],
-      mergedPayload: sourcePayload,
-      conflictDetails: [],
+      success: !result.hasConflicts,
+      conflicts: result.conflicts,
+      mergedPayload: result.mergedPayload,
+      conflictDetails,
     };
+  }
+
+  /**
+   * Generate a human-readable description of a conflict
+   */
+  private generateConflictDescription(conflict: MergeConflict): string {
+    const { path, type } = conflict;
+
+    switch (type) {
+      case ConflictType.BOTH_MODIFIED:
+        return `Both branches modified "${path}" with different values`;
+      case ConflictType.BOTH_DELETED:
+        return `Both branches deleted "${path}"`;
+      case ConflictType.MODIFIED_DELETED:
+        return `Source branch modified "${path}" while target branch deleted it`;
+      case ConflictType.DELETED_MODIFIED:
+        return `Source branch deleted "${path}" while target branch modified it`;
+      default:
+        return `Conflict detected on "${path}"`;
+    }
+  }
+
+  /**
+   * Generate a suggested resolution for a conflict (if applicable)
+   */
+  private generateConflictSuggestion(conflict: MergeConflict): string | undefined {
+    const { type } = conflict;
+
+    switch (type) {
+      case ConflictType.BOTH_DELETED:
+        return 'Both branches deleted this property - safe to remove';
+      case ConflictType.MODIFIED_DELETED:
+        return 'Consider whether the modification is still relevant if the property was deleted';
+      case ConflictType.DELETED_MODIFIED:
+        return 'Consider whether the modification is still relevant if the property was deleted';
+      default:
+        return undefined;
+    }
   }
 }
