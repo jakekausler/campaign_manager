@@ -562,10 +562,19 @@ Part of TICKET-027 Stage 9.
   - ✅ Allows keeping same name (no validation error when name unchanged)
   - ✅ Refetches hierarchy after successful rename to update UI everywhere
   - ✅ Type-check and lint passing (0 errors)
-- [ ] Add branch metadata features
-  - Favorite/pin branches for quick access
-  - Color coding for branch categories (what-if, historical, experimental)
-  - Tags for organizing branches
+- [x] Add branch metadata features
+  - ✅ Database: Added isPinned (boolean), color (hex string), tags (string array) fields to Branch model
+  - ✅ Migration: Created 20251029185204_add_branch_metadata with composite index on (campaignId, isPinned)
+  - ✅ Backend DTOs: Extended CreateBranchInput and UpdateBranchInput with metadata fields
+  - ✅ Backend validation: Hex color regex pattern (#[0-9A-Fa-f]{6}) with descriptive error messages
+  - ✅ Backend service: Updated create() and update() methods with default values (isPinned=false, tags=[])
+  - ✅ GraphQL: Added metadata fields to Branch ObjectType and all queries/mutations
+  - ✅ Backend tests: Added 11 comprehensive unit tests (54 total BranchService tests, all passing)
+  - ✅ Frontend types: Extended Branch type and input types with metadata fields
+  - ✅ Frontend GraphQL: Updated all queries/mutations to include isPinned, color, tags
+  - ✅ Frontend tests: Updated all Branch mock objects with new required fields
+  - ✅ Type-check: Both API and frontend packages passing with zero errors
+  - ✅ Features: isPinned for quick access filtering, color for visual categorization, tags for flexible organization
 - [ ] Add branch permissions (if needed for campaign roles)
   - Only GM can fork/delete branches?
   - Players can view but not modify branch structure?
@@ -610,7 +619,7 @@ All edge cases tested and documented.
 Part of TICKET-027 Stage 10.
 ```
 
-**Status**: In Progress (2/8 tasks complete - Commits: ce06668, 64fde31)
+**Status**: In Progress (3/8 tasks complete - Commits: ce06668, 64fde31, c024317)
 
 ---
 
