@@ -6,6 +6,7 @@
 
 import { Module } from '@nestjs/common';
 
+import { AuthModule } from '../auth/auth.module';
 import { SpatialService } from '../common/services/spatial.service';
 import { TileCacheService } from '../common/services/tile-cache.service';
 import { DatabaseModule } from '../database/database.module';
@@ -20,6 +21,7 @@ import { SettlementDataLoader } from './dataloaders/settlement.dataloader';
 import { StructureDataLoader } from './dataloaders/structure.dataloader';
 import { createRedisPubSub, REDIS_PUBSUB } from './pubsub/redis-pubsub.provider';
 import { AuditService } from './services/audit.service';
+import { BranchService } from './services/branch.service';
 import { CampaignContextService } from './services/campaign-context.service';
 import { CampaignService } from './services/campaign.service';
 import { CharacterService } from './services/character.service';
@@ -48,7 +50,7 @@ import { WorldService } from './services/world.service';
 import { DependencyExtractor } from './utils/dependency-extractor';
 
 @Module({
-  imports: [DatabaseModule, GrpcModule, RulesModule],
+  imports: [DatabaseModule, GrpcModule, RulesModule, AuthModule],
   providers: [
     // Context factory
     GraphQLContextFactory,
@@ -64,6 +66,7 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     },
     // Services
     AuditService,
+    BranchService,
     VersionService,
     WorldService,
     CampaignService,
@@ -106,6 +109,7 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     REDIS_CACHE,
     // Export all services for use by resolvers in GraphQLConfigModule
     AuditService,
+    BranchService,
     VersionService,
     WorldService,
     CampaignService,

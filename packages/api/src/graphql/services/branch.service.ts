@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import type { Branch as PrismaBranch } from '@prisma/client';
 
+import { CampaignMembershipService } from '../../auth/services/campaign-membership.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import type {
@@ -59,7 +60,8 @@ export class BranchService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly versionService: VersionService
+    private readonly versionService: VersionService,
+    private readonly campaignMembershipService: CampaignMembershipService
   ) {}
 
   /**
@@ -141,8 +143,8 @@ export class BranchService {
       throw new NotFoundException(`Campaign with ID ${input.campaignId} not found`);
     }
 
-    // Verify user has access to the campaign
-    await this.checkCampaignAccess(input.campaignId, user);
+    // Verify user can create branches (OWNER or GM only)
+    await this.checkCanCreateBranch(input.campaignId, user);
 
     // Check for duplicate branch name within campaign
     const existingBranch = await this.prisma.branch.findFirst({
@@ -224,8 +226,8 @@ export class BranchService {
       throw new NotFoundException(`Branch with ID ${id} not found`);
     }
 
-    // Verify user has access to the campaign
-    await this.checkCampaignAccess(branch.campaignId, user);
+    // Verify user can update branches (OWNER or GM only)
+    await this.checkCanUpdateBranch(branch.campaignId, user);
 
     // Check for duplicate branch name within campaign (if name is being changed)
     if (input.name) {
@@ -281,8 +283,8 @@ export class BranchService {
       throw new NotFoundException(`Branch with ID ${id} not found`);
     }
 
-    // Verify user has access to the campaign
-    await this.checkCampaignAccess(branch.campaignId, user);
+    // Verify user can delete branches (OWNER only)
+    await this.checkCanDeleteBranch(branch.campaignId, user);
 
     // Prevent deletion of root branches (branches without a parent)
     if (!branch.parentId) {
@@ -438,8 +440,8 @@ export class BranchService {
       throw new NotFoundException(`Source branch with ID ${sourceBranchId} not found`);
     }
 
-    // Verify user has access to the campaign
-    await this.checkCampaignAccess(sourceBranch.campaignId, user);
+    // Verify user can create/fork branches (OWNER or GM only)
+    await this.checkCanCreateBranch(sourceBranch.campaignId, user);
 
     // Execute fork operation in transaction for atomicity
     return this.prisma.$transaction(async (tx) => {
@@ -600,6 +602,10 @@ export class BranchService {
    * Check if user has access to a campaign
    * Used by create, update, and delete operations
    */
+  /**
+   * Check if user has access to view branches in a campaign
+   * All roles (OWNER, GM, PLAYER, VIEWER) can view branches
+   */
   private async checkCampaignAccess(campaignId: string, user: AuthenticatedUser): Promise<void> {
     const campaign = await this.prisma.campaign.findFirst({
       where: {
@@ -620,6 +626,55 @@ export class BranchService {
 
     if (!campaign) {
       throw new ForbiddenException('You do not have access to this campaign');
+    }
+  }
+
+  /**
+   * Check if user can create/fork branches in a campaign
+   * Only OWNER and GM roles can create branches
+   */
+  private async checkCanCreateBranch(campaignId: string, user: AuthenticatedUser): Promise<void> {
+    await this.checkCampaignAccess(campaignId, user);
+
+    const canEdit = await this.campaignMembershipService.canEdit(campaignId, user.id);
+    if (!canEdit) {
+      throw new ForbiddenException('Only campaign OWNER and GM roles can create or fork branches');
+    }
+  }
+
+  /**
+   * Check if user can update branches in a campaign
+   * Only OWNER and GM roles can update branches
+   */
+  private async checkCanUpdateBranch(campaignId: string, user: AuthenticatedUser): Promise<void> {
+    await this.checkCampaignAccess(campaignId, user);
+
+    const canEdit = await this.campaignMembershipService.canEdit(campaignId, user.id);
+    if (!canEdit) {
+      throw new ForbiddenException(
+        'Only campaign OWNER and GM roles can rename or update branches'
+      );
+    }
+  }
+
+  /**
+   * Check if user can delete branches in a campaign
+   * Only OWNER role can delete branches
+   */
+  private async checkCanDeleteBranch(campaignId: string, user: AuthenticatedUser): Promise<void> {
+    await this.checkCampaignAccess(campaignId, user);
+
+    // Check if user is campaign owner
+    const campaign = await this.prisma.campaign.findFirst({
+      where: {
+        id: campaignId,
+        ownerId: user.id,
+        deletedAt: null,
+      },
+    });
+
+    if (!campaign) {
+      throw new ForbiddenException('Only campaign OWNER can delete branches');
     }
   }
 }

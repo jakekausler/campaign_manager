@@ -6,6 +6,7 @@
 import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { CampaignMembershipService } from '../../auth/services/campaign-membership.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 
@@ -18,10 +19,23 @@ describe('BranchService', () => {
   let prisma: PrismaService;
   let audit: AuditService;
   let versionService: VersionService;
+  let campaignMembershipService: CampaignMembershipService;
 
   const mockUser: AuthenticatedUser = {
     id: 'user-1',
     email: 'test@example.com',
+    role: 'user',
+  };
+
+  const mockGMUser: AuthenticatedUser = {
+    id: 'user-gm',
+    email: 'gm@example.com',
+    role: 'user',
+  };
+
+  const mockPlayerUser: AuthenticatedUser = {
+    id: 'user-player',
+    email: 'player@example.com',
     role: 'user',
   };
 
@@ -109,6 +123,12 @@ describe('BranchService', () => {
       resolveVersion: jest.fn(),
     };
 
+    // Create mock campaign membership service
+    const mockCampaignMembershipService = {
+      canEdit: jest.fn().mockResolvedValue(true), // Default: allow all operations (like OWNER/GM)
+      getUserRole: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BranchService,
@@ -124,6 +144,10 @@ describe('BranchService', () => {
           provide: VersionService,
           useValue: mockVersionService,
         },
+        {
+          provide: CampaignMembershipService,
+          useValue: mockCampaignMembershipService,
+        },
       ],
     }).compile();
 
@@ -131,6 +155,7 @@ describe('BranchService', () => {
     prisma = module.get<PrismaService>(PrismaService);
     audit = module.get<AuditService>(AuditService);
     versionService = module.get<VersionService>(VersionService);
+    campaignMembershipService = module.get<CampaignMembershipService>(CampaignMembershipService);
   });
 
   afterEach(() => {
@@ -1225,6 +1250,221 @@ describe('BranchService', () => {
             }),
           })
         );
+      });
+    });
+  });
+
+  describe('Role-Based Permission Tests', () => {
+    describe('create with role permissions', () => {
+      it('should allow OWNER to create branch', async () => {
+        const input = {
+          campaignId: 'campaign-1',
+          name: 'New Branch',
+          description: 'Test branch',
+        };
+
+        (prisma.campaign.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockCampaign) // Campaign exists check
+          .mockResolvedValueOnce(mockCampaign); // Owner check in checkCampaignAccess
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValue(null); // No duplicate name
+        (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(true); // OWNER can edit
+        (prisma.branch.create as jest.Mock).mockResolvedValue(mockBranch);
+
+        await service.create(input, mockUser);
+
+        expect(campaignMembershipService.canEdit).toHaveBeenCalledWith('campaign-1', 'user-1');
+      });
+
+      it('should allow GM to create branch', async () => {
+        const input = {
+          campaignId: 'campaign-1',
+          name: 'New Branch',
+          description: 'Test branch',
+        };
+
+        (prisma.campaign.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockCampaign) // Campaign exists check
+          .mockResolvedValueOnce(null) // Not owner
+          .mockResolvedValueOnce(null); // checkCampaignAccess - for membership
+        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
+          userId: 'user-gm',
+          campaignId: 'campaign-1',
+          role: 'GM',
+        });
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValue(null); // No duplicate name
+        (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(true); // GM can edit
+        (prisma.branch.create as jest.Mock).mockResolvedValue(mockBranch);
+
+        await service.create(input, mockGMUser);
+
+        expect(campaignMembershipService.canEdit).toHaveBeenCalledWith('campaign-1', 'user-gm');
+      });
+
+      it('should prevent PLAYER from creating branch', async () => {
+        const input = {
+          campaignId: 'campaign-1',
+          name: 'New Branch',
+          description: 'Test branch',
+        };
+
+        (prisma.campaign.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockCampaign) // Campaign exists check
+          .mockResolvedValueOnce(null) // Not owner
+          .mockResolvedValueOnce(null); // checkCampaignAccess - for membership
+        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
+          userId: 'user-player',
+          campaignId: 'campaign-1',
+          role: 'PLAYER',
+        });
+        (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(false); // PLAYER cannot edit
+
+        await expect(service.create(input, mockPlayerUser)).rejects.toThrow(ForbiddenException);
+        await expect(service.create(input, mockPlayerUser)).rejects.toThrow(
+          'Only campaign OWNER and GM roles can create or fork branches'
+        );
+      });
+    });
+
+    describe('update with role permissions', () => {
+      it('should allow GM to update branch', async () => {
+        const input = {
+          name: 'Updated Name',
+        };
+
+        (prisma.branch.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockBranch) // findById
+          .mockResolvedValueOnce(null) // No duplicate name in update check
+          .mockResolvedValueOnce(null); // checkCampaignAccess - for membership
+        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
+          userId: 'user-gm',
+          campaignId: 'campaign-1',
+          role: 'GM',
+        });
+        (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(true);
+        (prisma.branch.update as jest.Mock).mockResolvedValue({
+          ...mockBranch,
+          name: 'Updated Name',
+        });
+
+        await service.update('branch-1', input, mockGMUser);
+
+        expect(campaignMembershipService.canEdit).toHaveBeenCalledWith('campaign-1', 'user-gm');
+      });
+
+      it('should prevent PLAYER from updating branch', async () => {
+        const input = {
+          name: 'Updated Name',
+        };
+
+        (prisma.branch.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockBranch) // findById
+          .mockResolvedValueOnce(null) // checkCampaignAccess - for membership
+          .mockResolvedValueOnce(null);
+        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
+          userId: 'user-player',
+          campaignId: 'campaign-1',
+          role: 'PLAYER',
+        });
+        (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(false);
+
+        await expect(service.update('branch-1', input, mockPlayerUser)).rejects.toThrow(
+          ForbiddenException
+        );
+        await expect(service.update('branch-1', input, mockPlayerUser)).rejects.toThrow(
+          'Only campaign OWNER and GM roles can rename or update branches'
+        );
+      });
+    });
+
+    describe('delete with role permissions', () => {
+      it('should allow OWNER to delete branch', async () => {
+        (prisma.branch.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockChildBranch) // findById
+          .mockResolvedValueOnce(null) // checkCampaignAccess - membership
+          .mockResolvedValueOnce(mockCampaign); // checkCanDeleteBranch - owner check
+        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
+          userId: 'user-1',
+          campaignId: 'campaign-1',
+          role: 'OWNER',
+        });
+        (prisma.branch.count as jest.Mock).mockResolvedValue(0); // No children
+        (prisma.branch.update as jest.Mock).mockResolvedValue({
+          ...mockChildBranch,
+          deletedAt: new Date(),
+        });
+
+        await service.delete('branch-2', mockUser);
+
+        expect(prisma.campaign.findFirst).toHaveBeenCalledWith({
+          where: {
+            id: 'campaign-1',
+            ownerId: 'user-1',
+            deletedAt: null,
+          },
+        });
+      });
+
+      it('should prevent GM from deleting branch', async () => {
+        (prisma.branch.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockChildBranch) // findById
+          .mockResolvedValueOnce(null) // checkCampaignAccess - membership
+          .mockResolvedValueOnce(null); // checkCanDeleteBranch - not owner
+        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
+          userId: 'user-gm',
+          campaignId: 'campaign-1',
+          role: 'GM',
+        });
+
+        await expect(service.delete('branch-2', mockGMUser)).rejects.toThrow(ForbiddenException);
+        await expect(service.delete('branch-2', mockGMUser)).rejects.toThrow(
+          'Only campaign OWNER can delete branches'
+        );
+      });
+    });
+
+    describe('fork with role permissions', () => {
+      it('should allow GM to fork branch', async () => {
+        const worldTime = new Date('4707-03-15T12:00:00Z');
+
+        (prisma.branch.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockBranch) // findById in fork
+          .mockResolvedValueOnce(null) // checkCampaignAccess - membership
+          .mockResolvedValueOnce(null);
+        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
+          userId: 'user-gm',
+          campaignId: 'campaign-1',
+          role: 'GM',
+        });
+        (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(true);
+        (prisma.$transaction as jest.Mock).mockImplementation((callback: any) => callback(prisma));
+        (prisma.branch.create as jest.Mock).mockResolvedValue(mockChildBranch);
+        (versionService.resolveVersion as jest.Mock).mockResolvedValue(null);
+
+        await service.fork('branch-1', 'Forked Branch', 'Test fork', worldTime, mockGMUser);
+
+        expect(campaignMembershipService.canEdit).toHaveBeenCalledWith('campaign-1', 'user-gm');
+      });
+
+      it('should prevent PLAYER from forking branch', async () => {
+        const worldTime = new Date('4707-03-15T12:00:00Z');
+
+        (prisma.branch.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockBranch) // findById in fork
+          .mockResolvedValueOnce(null) // checkCampaignAccess - membership
+          .mockResolvedValueOnce(null);
+        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
+          userId: 'user-player',
+          campaignId: 'campaign-1',
+          role: 'PLAYER',
+        });
+        (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(false);
+
+        await expect(
+          service.fork('branch-1', 'Forked Branch', 'Test fork', worldTime, mockPlayerUser)
+        ).rejects.toThrow(ForbiddenException);
+        await expect(
+          service.fork('branch-1', 'Forked Branch', 'Test fork', worldTime, mockPlayerUser)
+        ).rejects.toThrow('Only campaign OWNER and GM roles can create or fork branches');
       });
     });
   });

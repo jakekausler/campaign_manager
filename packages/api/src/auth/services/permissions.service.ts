@@ -29,6 +29,12 @@ export enum Permission {
   ENCOUNTER_READ = 'encounter:read',
   ENCOUNTER_WRITE = 'encounter:write',
   ENCOUNTER_DELETE = 'encounter:delete',
+
+  // Branch permissions
+  BRANCH_READ = 'branch:read',
+  BRANCH_CREATE = 'branch:create',
+  BRANCH_WRITE = 'branch:write',
+  BRANCH_DELETE = 'branch:delete',
 }
 
 // Define permissions for each role
@@ -51,6 +57,10 @@ const ROLE_PERMISSIONS: Record<CampaignRole, Permission[]> = {
     Permission.ENCOUNTER_READ,
     Permission.ENCOUNTER_WRITE,
     Permission.ENCOUNTER_DELETE,
+    Permission.BRANCH_READ,
+    Permission.BRANCH_CREATE,
+    Permission.BRANCH_WRITE,
+    Permission.BRANCH_DELETE,
   ],
   [CampaignRole.GM]: [
     // Read/write access, but no delete or member management
@@ -64,6 +74,9 @@ const ROLE_PERMISSIONS: Record<CampaignRole, Permission[]> = {
     Permission.KINGDOM_WRITE,
     Permission.ENCOUNTER_READ,
     Permission.ENCOUNTER_WRITE,
+    Permission.BRANCH_READ,
+    Permission.BRANCH_CREATE,
+    Permission.BRANCH_WRITE,
   ],
   [CampaignRole.PLAYER]: [
     // Read access + own character edit
@@ -72,12 +85,14 @@ const ROLE_PERMISSIONS: Record<CampaignRole, Permission[]> = {
     Permission.EVENT_READ,
     Permission.KINGDOM_READ,
     Permission.ENCOUNTER_READ,
+    Permission.BRANCH_READ,
   ],
   [CampaignRole.VIEWER]: [
     // Read-only access to public content
     Permission.CAMPAIGN_READ,
     Permission.CHARACTER_READ,
     Permission.EVENT_READ,
+    Permission.BRANCH_READ,
   ],
 };
 
