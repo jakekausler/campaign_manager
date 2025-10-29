@@ -57,6 +57,25 @@ export class StructureResolver {
     return this.structureService.findBySettlement(settlementId, user) as unknown as Structure[];
   }
 
+  @Query(() => Structure, {
+    nullable: true,
+    description: 'Get structure state as of a specific world time in a branch (time-travel query)',
+  })
+  @UseGuards(JwtAuthGuard)
+  async structureAsOf(
+    @Args('id', { type: () => ID }) id: string,
+    @Args('branchId', { type: () => ID }) branchId: string,
+    @Args('asOf', { type: () => Date }) asOf: Date,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Structure | null> {
+    return this.structureService.getStructureAsOf(
+      id,
+      branchId,
+      asOf,
+      user
+    ) as unknown as Structure | null;
+  }
+
   @Mutation(() => Structure, { description: 'Create a new structure' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'gm')

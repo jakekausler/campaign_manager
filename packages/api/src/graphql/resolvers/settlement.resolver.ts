@@ -62,6 +62,25 @@ export class SettlementResolver {
     return this.settlementService.findByKingdom(kingdomId, user) as unknown as Settlement[];
   }
 
+  @Query(() => Settlement, {
+    nullable: true,
+    description: 'Get settlement state as of a specific world time in a branch (time-travel query)',
+  })
+  @UseGuards(JwtAuthGuard)
+  async settlementAsOf(
+    @Args('id', { type: () => ID }) id: string,
+    @Args('branchId', { type: () => ID }) branchId: string,
+    @Args('asOf', { type: () => Date }) asOf: Date,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Settlement | null> {
+    return this.settlementService.getSettlementAsOf(
+      id,
+      branchId,
+      asOf,
+      user
+    ) as unknown as Settlement | null;
+  }
+
   @Mutation(() => Settlement, { description: 'Create a new settlement' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('owner', 'gm')
