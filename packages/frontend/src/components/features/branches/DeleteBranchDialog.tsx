@@ -132,8 +132,8 @@ export function DeleteBranchDialog({
                     </p>
                     <p className="mt-1 text-sm text-amber-700">
                       To maintain data integrity, you must delete all child branches before deleting
-                      this branch. This prevents orphaned branches and ensures your campaign
-                      hierarchy remains valid.
+                      this branch. This <strong>prevents orphaned branches</strong> (branches
+                      without a parent) and ensures your campaign hierarchy remains valid.
                     </p>
                   </div>
                   <p className="text-sm text-muted-foreground">

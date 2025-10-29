@@ -274,7 +274,16 @@ export class BranchService {
 
   /**
    * Soft delete a branch
-   * Validates branch is not a root branch and has no children before deletion
+   *
+   * **Orphaned Branch Prevention:**
+   * This method implements cascading deletion requirements that make orphaned branches
+   * structurally impossible. Children must be deleted before parents, ensuring
+   * all branches always have a valid parent chain to the root.
+   *
+   * Validates:
+   * - Branch is not a root branch (parentId !== null)
+   * - Branch has no children (childCount === 0)
+   * - User has OWNER permission
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaBranch> {
     // Verify branch exists
@@ -293,7 +302,9 @@ export class BranchService {
       );
     }
 
-    // Validate branch has no children
+    // ORPHAN PREVENTION: Validate branch has no children
+    // This enforces cascading deletion (delete children before parents)
+    // ensuring branches can NEVER become orphaned (parent deleted but child remains)
     const childCount = await this.prisma.branch.count({
       where: {
         parentId: id,
@@ -364,7 +375,9 @@ export class BranchService {
         if (parent) {
           parent.children.push(node);
         } else {
-          // Parent not found (deleted or doesn't exist), treat as root
+          // DEFENSIVE: Parent not found (soft-deleted or corrupted data)
+          // Treat as root to prevent UI breakage. This should never occur through
+          // normal operations due to cascading deletion enforcement in delete() method.
           rootNodes.push(node);
         }
       } else {
