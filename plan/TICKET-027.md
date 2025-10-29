@@ -152,6 +152,28 @@
   - TypeScript compilation clean, no lint errors
   - Code reviewed and approved after addressing priority fixes (disabled buttons, accessibility)
 
+- **2025-10-29**: ✅ Completed Stage 8 (Frontend - Branch Comparison View) - Commit: 65fb8e8
+  - Created BranchComparisonView component with side-by-side diff visualization
+  - Uses react-diff-viewer-continued library for visual diff display with syntax highlighting
+  - Compares settlement and structure entities between any two branches at specific world time
+  - Smart defaults: auto-populates parent vs current branch comparison with current world time
+  - Form inputs: source/target branch selectors, entity type dropdown, entity ID input, world time (ISO 8601)
+  - Proper state management: useEffect for side effects, useMemo for computed values
+  - Conditional GraphQL queries with skip flags for performance optimization
+  - Created GraphQL hooks: useGetSettlementAsOf, useGetStructureAsOf (leveraging Stage 4 backend resolvers)
+  - Added Select UI component (shadcn/ui pattern with Radix UI primitives)
+  - Integrated into BranchesPage with scrollable layout below hierarchy view
+  - Comprehensive error handling: loading states, error alerts, empty state warnings, validation
+  - Help text explaining usage and providing guidance on finding entity IDs
+  - 24 comprehensive test scenarios covering all functionality (rendering, interaction, comparison, errors, clear)
+  - Fixed critical React bug: changed useMemo to useEffect for side effects (branch defaults)
+  - Type-safe entity type validation (no unchecked type assertions)
+  - TypeScript strict mode compliant, ESLint passing with zero frontend errors
+  - Code reviewed and approved after fixing critical issues (useMemo→useEffect, type validation)
+  - Dependencies added: react-diff-viewer-continued@3.4.0, @radix-ui/react-select@1.2.3
+  - Note: Commit blocked by unrelated pre-existing lint errors in rules-engine package (jest-mock-extended imports)
+  - All frontend code ready for commit once rules-engine lint issues are resolved
+
 ## Description
 
 Implement branching system that allows creating alternate timeline branches and viewing campaign state in different branches.
