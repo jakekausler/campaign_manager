@@ -1282,15 +1282,20 @@ describe('BranchService', () => {
           description: 'Test branch',
         };
 
+        const campaignWithMembership = {
+          ...mockCampaign,
+          memberships: [
+            {
+              userId: 'user-gm',
+              campaignId: 'campaign-1',
+              role: 'GM',
+            },
+          ],
+        };
+
         (prisma.campaign.findFirst as jest.Mock)
           .mockResolvedValueOnce(mockCampaign) // Campaign exists check
-          .mockResolvedValueOnce(null) // Not owner
-          .mockResolvedValueOnce(null); // checkCampaignAccess - for membership
-        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
-          userId: 'user-gm',
-          campaignId: 'campaign-1',
-          role: 'GM',
-        });
+          .mockResolvedValueOnce(campaignWithMembership); // checkCampaignAccess - GM as member
         (prisma.branch.findFirst as jest.Mock).mockResolvedValue(null); // No duplicate name
         (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(true); // GM can edit
         (prisma.branch.create as jest.Mock).mockResolvedValue(mockBranch);
@@ -1307,16 +1312,28 @@ describe('BranchService', () => {
           description: 'Test branch',
         };
 
+        const campaignWithMembership = {
+          ...mockCampaign,
+          memberships: [
+            {
+              userId: 'user-player',
+              campaignId: 'campaign-1',
+              role: 'PLAYER',
+            },
+          ],
+        };
+
+        // Mock setup for FIRST call (first expect statement)
         (prisma.campaign.findFirst as jest.Mock)
-          .mockResolvedValueOnce(mockCampaign) // Campaign exists check
-          .mockResolvedValueOnce(null) // Not owner
-          .mockResolvedValueOnce(null); // checkCampaignAccess - for membership
-        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
-          userId: 'user-player',
-          campaignId: 'campaign-1',
-          role: 'PLAYER',
-        });
+          .mockResolvedValueOnce(mockCampaign) // Campaign exists check in create()
+          .mockResolvedValueOnce(campaignWithMembership); // checkCampaignAccess - PLAYER as member
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValue(null); // No duplicate name
         (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(false); // PLAYER cannot edit
+
+        // Mock setup for SECOND call (second expect statement)
+        (prisma.campaign.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockCampaign) // Campaign exists check in create()
+          .mockResolvedValueOnce(campaignWithMembership); // checkCampaignAccess - PLAYER as member
 
         await expect(service.create(input, mockPlayerUser)).rejects.toThrow(ForbiddenException);
         await expect(service.create(input, mockPlayerUser)).rejects.toThrow(
@@ -1331,15 +1348,20 @@ describe('BranchService', () => {
           name: 'Updated Name',
         };
 
-        (prisma.branch.findFirst as jest.Mock)
-          .mockResolvedValueOnce(mockBranch) // findById
-          .mockResolvedValueOnce(null) // No duplicate name in update check
-          .mockResolvedValueOnce(null); // checkCampaignAccess - for membership
-        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
-          userId: 'user-gm',
-          campaignId: 'campaign-1',
-          role: 'GM',
-        });
+        const campaignWithMembership = {
+          ...mockCampaign,
+          memberships: [
+            {
+              userId: 'user-gm',
+              campaignId: 'campaign-1',
+              role: 'GM',
+            },
+          ],
+        };
+
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(mockBranch); // findById
+        (prisma.campaign.findFirst as jest.Mock).mockResolvedValueOnce(campaignWithMembership); // checkCampaignAccess
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(null); // No duplicate name in update check
         (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(true);
         (prisma.branch.update as jest.Mock).mockResolvedValue({
           ...mockBranch,
@@ -1356,16 +1378,25 @@ describe('BranchService', () => {
           name: 'Updated Name',
         };
 
-        (prisma.branch.findFirst as jest.Mock)
-          .mockResolvedValueOnce(mockBranch) // findById
-          .mockResolvedValueOnce(null) // checkCampaignAccess - for membership
-          .mockResolvedValueOnce(null);
-        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
-          userId: 'user-player',
-          campaignId: 'campaign-1',
-          role: 'PLAYER',
-        });
+        const campaignWithMembership = {
+          ...mockCampaign,
+          memberships: [
+            {
+              userId: 'user-player',
+              campaignId: 'campaign-1',
+              role: 'PLAYER',
+            },
+          ],
+        };
+
+        // Mock setup for FIRST call (first expect statement)
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(mockBranch); // findById
+        (prisma.campaign.findFirst as jest.Mock).mockResolvedValueOnce(campaignWithMembership); // checkCampaignAccess
         (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(false);
+
+        // Mock setup for SECOND call (second expect statement)
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(mockBranch); // findById
+        (prisma.campaign.findFirst as jest.Mock).mockResolvedValueOnce(campaignWithMembership); // checkCampaignAccess
 
         await expect(service.update('branch-1', input, mockPlayerUser)).rejects.toThrow(
           ForbiddenException
@@ -1378,15 +1409,10 @@ describe('BranchService', () => {
 
     describe('delete with role permissions', () => {
       it('should allow OWNER to delete branch', async () => {
-        (prisma.branch.findFirst as jest.Mock)
-          .mockResolvedValueOnce(mockChildBranch) // findById
-          .mockResolvedValueOnce(null) // checkCampaignAccess - membership
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(mockChildBranch); // findById
+        (prisma.campaign.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockCampaign) // checkCampaignAccess - owner
           .mockResolvedValueOnce(mockCampaign); // checkCanDeleteBranch - owner check
-        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
-          userId: 'user-1',
-          campaignId: 'campaign-1',
-          role: 'OWNER',
-        });
         (prisma.branch.count as jest.Mock).mockResolvedValue(0); // No children
         (prisma.branch.update as jest.Mock).mockResolvedValue({
           ...mockChildBranch,
@@ -1405,15 +1431,28 @@ describe('BranchService', () => {
       });
 
       it('should prevent GM from deleting branch', async () => {
-        (prisma.branch.findFirst as jest.Mock)
-          .mockResolvedValueOnce(mockChildBranch) // findById
-          .mockResolvedValueOnce(null) // checkCampaignAccess - membership
+        const campaignWithMembership = {
+          ...mockCampaign,
+          memberships: [
+            {
+              userId: 'user-gm',
+              campaignId: 'campaign-1',
+              role: 'GM',
+            },
+          ],
+        };
+
+        // Mock setup for FIRST call (first expect statement)
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(mockChildBranch); // findById
+        (prisma.campaign.findFirst as jest.Mock)
+          .mockResolvedValueOnce(campaignWithMembership) // checkCampaignAccess - GM as member
           .mockResolvedValueOnce(null); // checkCanDeleteBranch - not owner
-        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
-          userId: 'user-gm',
-          campaignId: 'campaign-1',
-          role: 'GM',
-        });
+
+        // Mock setup for SECOND call (second expect statement)
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(mockChildBranch); // findById
+        (prisma.campaign.findFirst as jest.Mock)
+          .mockResolvedValueOnce(campaignWithMembership) // checkCampaignAccess - GM as member
+          .mockResolvedValueOnce(null); // checkCanDeleteBranch - not owner
 
         await expect(service.delete('branch-2', mockGMUser)).rejects.toThrow(ForbiddenException);
         await expect(service.delete('branch-2', mockGMUser)).rejects.toThrow(
@@ -1426,15 +1465,19 @@ describe('BranchService', () => {
       it('should allow GM to fork branch', async () => {
         const worldTime = new Date('4707-03-15T12:00:00Z');
 
-        (prisma.branch.findFirst as jest.Mock)
-          .mockResolvedValueOnce(mockBranch) // findById in fork
-          .mockResolvedValueOnce(null) // checkCampaignAccess - membership
-          .mockResolvedValueOnce(null);
-        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
-          userId: 'user-gm',
-          campaignId: 'campaign-1',
-          role: 'GM',
-        });
+        const campaignWithMembership = {
+          ...mockCampaign,
+          memberships: [
+            {
+              userId: 'user-gm',
+              campaignId: 'campaign-1',
+              role: 'GM',
+            },
+          ],
+        };
+
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(mockBranch); // findById in fork
+        (prisma.campaign.findFirst as jest.Mock).mockResolvedValueOnce(campaignWithMembership); // checkCampaignAccess
         (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(true);
         (prisma.$transaction as jest.Mock).mockImplementation((callback: any) => callback(prisma));
         (prisma.branch.create as jest.Mock).mockResolvedValue(mockChildBranch);
@@ -1448,16 +1491,25 @@ describe('BranchService', () => {
       it('should prevent PLAYER from forking branch', async () => {
         const worldTime = new Date('4707-03-15T12:00:00Z');
 
-        (prisma.branch.findFirst as jest.Mock)
-          .mockResolvedValueOnce(mockBranch) // findById in fork
-          .mockResolvedValueOnce(null) // checkCampaignAccess - membership
-          .mockResolvedValueOnce(null);
-        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
-          userId: 'user-player',
-          campaignId: 'campaign-1',
-          role: 'PLAYER',
-        });
+        const campaignWithMembership = {
+          ...mockCampaign,
+          memberships: [
+            {
+              userId: 'user-player',
+              campaignId: 'campaign-1',
+              role: 'PLAYER',
+            },
+          ],
+        };
+
+        // Mock setup for FIRST call (first expect statement)
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(mockBranch); // findById in fork
+        (prisma.campaign.findFirst as jest.Mock).mockResolvedValueOnce(campaignWithMembership); // checkCampaignAccess
         (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(false);
+
+        // Mock setup for SECOND call (second expect statement)
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(mockBranch); // findById in fork
+        (prisma.campaign.findFirst as jest.Mock).mockResolvedValueOnce(campaignWithMembership); // checkCampaignAccess
 
         await expect(
           service.fork('branch-1', 'Forked Branch', 'Test fork', worldTime, mockPlayerUser)
