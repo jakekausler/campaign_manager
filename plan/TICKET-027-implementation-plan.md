@@ -301,7 +301,7 @@ Part of TICKET-027 Stage 5.
 
 **Tasks**:
 
-- [ ] Create `packages/frontend/src/components/branches/ForkBranchDialog.tsx`
+- [x] Create `packages/frontend/src/components/features/branches/ForkBranchDialog.tsx`
   - Modal dialog for fork operation
   - Input: new branch name (required)
   - Input: description (optional)
@@ -310,17 +310,18 @@ Part of TICKET-027 Stage 5.
   - Button: "Create Fork" (with loading state)
   - Show progress: "Copying versions..." with count
   - Show result: "Fork created successfully. X versions copied."
-- [ ] Create GraphQL mutation in `packages/frontend/src/graphql/mutations/branches.ts`
-  - `FORK_BRANCH` mutation with ForkBranchInput
-- [ ] Add fork action to BranchSelector
-  - Button/menu item "Fork this branch"
+- [x] GraphQL mutation already exists in `packages/frontend/src/services/api/hooks/branches.ts`
+  - `FORK_BRANCH` mutation with ForkBranchInput (already implemented in Stage 5)
+  - `useForkBranch` hook ready to use
+- [x] Add fork action to BranchSelector
+  - Button "Fork this branch" in Sheet header
   - Opens ForkBranchDialog with current branch as source
-- [ ] Add fork action to campaign settings
+- [ ] Add fork action to campaign settings (deferred to future stage)
   - Allow forking from any branch (not just current)
-- [ ] Handle errors gracefully
+- [x] Handle errors gracefully
   - Show error message if fork fails
-  - Validation: branch name required, must be unique within campaign
-- [ ] Create Vitest tests for ForkBranchDialog
+  - Validation: branch name required, source branch existence, world time availability
+- [x] Create Vitest tests for ForkBranchDialog
 
 **Success Criteria**:
 
@@ -347,7 +348,7 @@ Added component tests for fork dialog and user interactions.
 Part of TICKET-027 Stage 6.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: 52a20e3)
 
 ---
 
