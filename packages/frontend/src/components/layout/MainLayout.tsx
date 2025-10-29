@@ -1,7 +1,9 @@
+import { useRef } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
-import { BranchSelector } from '@/components/features';
+import { BranchSelector, type BranchSelectorHandle } from '@/components/features';
 import { Button } from '@/components/ui';
+import { useKeyboardShortcuts } from '@/hooks';
 import { useCampaignStore } from '@/stores';
 
 /**
@@ -9,11 +11,32 @@ import { useCampaignStore } from '@/stores';
  *
  * Used for public and authenticated pages with full navigation.
  * Includes branch selector when a campaign is active.
+ * Provides global keyboard shortcuts for branch operations.
  */
 export function MainLayout() {
   const location = useLocation();
   const isAuthenticated = !!localStorage.getItem('auth_token');
   const { currentCampaignId } = useCampaignStore();
+  const branchSelectorRef = useRef<BranchSelectorHandle>(null);
+
+  // Register global keyboard shortcuts for branch operations
+  useKeyboardShortcuts([
+    {
+      key: 'b',
+      ctrl: true,
+      handler: () => branchSelectorRef.current?.openBranchSelector(),
+      description: 'Open branch selector',
+      enabled: isAuthenticated && !!currentCampaignId,
+    },
+    {
+      key: 'f',
+      ctrl: true,
+      shift: true,
+      handler: () => branchSelectorRef.current?.openForkDialog(),
+      description: 'Fork current branch',
+      enabled: isAuthenticated && !!currentCampaignId,
+    },
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -63,7 +86,7 @@ export function MainLayout() {
 
           <div className="flex items-center gap-4">
             {/* Branch selector (shown when campaign is selected) */}
-            {isAuthenticated && currentCampaignId && <BranchSelector />}
+            {isAuthenticated && currentCampaignId && <BranchSelector ref={branchSelectorRef} />}
 
             {!isAuthenticated ? (
               <Link to="/auth/login">

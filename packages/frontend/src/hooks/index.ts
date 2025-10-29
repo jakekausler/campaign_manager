@@ -19,6 +19,10 @@ export type {
   FieldValidator,
 } from './useEditMode';
 
+// Keyboard shortcuts
+export { useKeyboardShortcuts } from './useKeyboardShortcuts';
+export type { KeyboardShortcut } from './useKeyboardShortcuts';
+
 // Export custom hooks here as they are created
 // Example:
 // export { useAuth } from './useAuth';

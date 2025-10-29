@@ -1,5 +1,5 @@
 import { ChevronDown, GitBranch, AlertCircle, Check, GitFork } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, forwardRef, useImperativeHandle } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,17 @@ import { useGetBranchHierarchy, type Branch } from '@/services/api/hooks';
 import { useCampaignStore } from '@/stores';
 
 import { ForkBranchDialog } from './ForkBranchDialog';
+
+/**
+ * Imperative handle for BranchSelector
+ * Allows parent components to programmatically open the branch selector or fork dialog
+ */
+export interface BranchSelectorHandle {
+  /** Open the branch selector sheet */
+  openBranchSelector: () => void;
+  /** Open the fork branch dialog */
+  openForkDialog: () => void;
+}
 
 /**
  * BranchSelector Component
@@ -24,147 +35,163 @@ import { ForkBranchDialog } from './ForkBranchDialog';
  * - Branch metadata (divergedAt timestamp, creation date)
  * - Loading and error states
  * - Mobile-friendly sheet/drawer UI
+ * - Programmatic control via ref (openBranchSelector, openForkDialog)
  *
  * @example
  * ```tsx
  * function Header() {
+ *   const branchSelectorRef = useRef<BranchSelectorHandle>(null);
+ *
+ *   // Programmatically open branch selector
+ *   const handleShortcut = () => {
+ *     branchSelectorRef.current?.openBranchSelector();
+ *   };
+ *
  *   return (
  *     <nav>
- *       <BranchSelector />
+ *       <BranchSelector ref={branchSelectorRef} />
  *     </nav>
  *   );
  * }
  * ```
  */
-export function BranchSelector() {
-  const { currentCampaignId, currentBranchId, setCurrentBranch } = useCampaignStore();
-  const [isOpen, setIsOpen] = useState(false);
-  const [isForkDialogOpen, setIsForkDialogOpen] = useState(false);
+export const BranchSelector = forwardRef<BranchSelectorHandle>(
+  function BranchSelector(_props, ref) {
+    const { currentCampaignId, currentBranchId, setCurrentBranch } = useCampaignStore();
+    const [isOpen, setIsOpen] = useState(false);
+    const [isForkDialogOpen, setIsForkDialogOpen] = useState(false);
 
-  // Fetch branch hierarchy for current campaign
-  const { flatBranches, loading, error } = useGetBranchHierarchy({
-    variables: { campaignId: currentCampaignId ?? '' },
-    skip: !currentCampaignId,
-  });
+    // Fetch branch hierarchy for current campaign
+    const { flatBranches, loading, error } = useGetBranchHierarchy({
+      variables: { campaignId: currentCampaignId ?? '' },
+      skip: !currentCampaignId,
+    });
 
-  // Find current branch object for display
-  const currentBranch = useMemo(() => {
-    return flatBranches.find((b) => b.id === currentBranchId) ?? null;
-  }, [flatBranches, currentBranchId]);
+    // Expose methods to parent via ref
+    useImperativeHandle(ref, () => ({
+      openBranchSelector: () => setIsOpen(true),
+      openForkDialog: () => setIsForkDialogOpen(true),
+    }));
 
-  // Handle branch selection with instant UI update
-  const handleSelectBranch = (branchId: string) => {
-    setCurrentBranch(branchId);
-    setIsOpen(false);
-  };
+    // Find current branch object for display
+    const currentBranch = useMemo(() => {
+      return flatBranches.find((b) => b.id === currentBranchId) ?? null;
+    }, [flatBranches, currentBranchId]);
 
-  // Handle fork button click
-  const handleForkClick = () => {
-    setIsForkDialogOpen(true);
-  };
+    // Handle branch selection with instant UI update
+    const handleSelectBranch = (branchId: string) => {
+      setCurrentBranch(branchId);
+      setIsOpen(false);
+    };
 
-  // Handle fork success
-  const handleForkSuccess = () => {
-    // Close both dialogs
-    setIsForkDialogOpen(false);
-    setIsOpen(false);
-  };
+    // Handle fork button click
+    const handleForkClick = () => {
+      setIsForkDialogOpen(true);
+    };
 
-  // If no campaign selected, don't render
-  if (!currentCampaignId) {
-    return null;
-  }
+    // Handle fork success
+    const handleForkSuccess = () => {
+      // Close both dialogs
+      setIsForkDialogOpen(false);
+      setIsOpen(false);
+    };
 
-  return (
-    <>
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="outline"
-            className="flex items-center gap-2 min-w-[200px]"
-            data-testid="branch-selector-trigger"
-          >
-            <GitBranch className="h-4 w-4" />
-            <span className="truncate flex-1 text-left">
-              {currentBranch?.name ?? 'Select Branch'}
-            </span>
-            <ChevronDown className="h-4 w-4 opacity-50" />
-          </Button>
-        </SheetTrigger>
+    // If no campaign selected, don't render
+    if (!currentCampaignId) {
+      return null;
+    }
 
-        <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-          <SheetHeader>
-            <div className="flex items-center justify-between">
-              <SheetTitle>Select Branch</SheetTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleForkClick}
-                disabled={!currentBranch}
-                title={currentBranch ? 'Fork this branch' : 'Select a branch first'}
-                data-testid="fork-branch-button"
-              >
-                <GitFork className="h-4 w-4 mr-2" />
-                Fork
-              </Button>
+    return (
+      <>
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              className="flex items-center gap-2 min-w-[200px]"
+              data-testid="branch-selector-trigger"
+            >
+              <GitBranch className="h-4 w-4" />
+              <span className="truncate flex-1 text-left">
+                {currentBranch?.name ?? 'Select Branch'}
+              </span>
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </Button>
+          </SheetTrigger>
+
+          <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+            <SheetHeader>
+              <div className="flex items-center justify-between">
+                <SheetTitle>Select Branch</SheetTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleForkClick}
+                  disabled={!currentBranch}
+                  title={currentBranch ? 'Fork this branch' : 'Select a branch first'}
+                  data-testid="fork-branch-button"
+                >
+                  <GitFork className="h-4 w-4 mr-2" />
+                  Fork
+                </Button>
+              </div>
+            </SheetHeader>
+
+            <div className="mt-6 space-y-4">
+              {/* Loading state */}
+              {loading && (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              )}
+
+              {/* Error state */}
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>Failed to load branches: {error.message}</AlertDescription>
+                </Alert>
+              )}
+
+              {/* Branch list */}
+              {!loading && !error && flatBranches.length === 0 && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    No branches found for this campaign. Create a branch to get started.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {!loading && !error && flatBranches.length > 0 && (
+                <div className="space-y-1" data-testid="branch-list">
+                  {flatBranches.map((branch) => (
+                    <BranchItem
+                      key={branch.id}
+                      branch={branch}
+                      depth={branch.depth}
+                      isSelected={branch.id === currentBranchId}
+                      onSelect={handleSelectBranch}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          </SheetHeader>
+          </SheetContent>
+        </Sheet>
 
-          <div className="mt-6 space-y-4">
-            {/* Loading state */}
-            {loading && (
-              <div className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            )}
-
-            {/* Error state */}
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>Failed to load branches: {error.message}</AlertDescription>
-              </Alert>
-            )}
-
-            {/* Branch list */}
-            {!loading && !error && flatBranches.length === 0 && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  No branches found for this campaign. Create a branch to get started.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {!loading && !error && flatBranches.length > 0 && (
-              <div className="space-y-1" data-testid="branch-list">
-                {flatBranches.map((branch) => (
-                  <BranchItem
-                    key={branch.id}
-                    branch={branch}
-                    depth={branch.depth}
-                    isSelected={branch.id === currentBranchId}
-                    onSelect={handleSelectBranch}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Fork Branch Dialog */}
-      <ForkBranchDialog
-        sourceBranch={currentBranch}
-        isOpen={isForkDialogOpen}
-        onClose={() => setIsForkDialogOpen(false)}
-        onSuccess={handleForkSuccess}
-      />
-    </>
-  );
-}
+        {/* Fork Branch Dialog */}
+        <ForkBranchDialog
+          sourceBranch={currentBranch}
+          isOpen={isForkDialogOpen}
+          onClose={() => setIsForkDialogOpen(false)}
+          onSuccess={handleForkSuccess}
+        />
+      </>
+    );
+  }
+);
 
 /**
  * BranchItem Component
