@@ -62,6 +62,40 @@
   - All tests passing, TypeScript compilation clean, no lint errors
   - Code reviewed and approved with zero issues - exemplary implementation following all patterns
 
+- **2025-10-29**: ✅ Completed Stage 5 (Frontend - Branch Selector Component) - Commit: ad01e75
+  - Created comprehensive GraphQL hooks in services/api/hooks/branches.ts
+    - useGetBranches, useGetBranchHierarchy, useGetBranch for queries
+    - useCreateBranch, useUpdateBranch, useDeleteBranch, useForkBranch for mutations
+    - Extensive JSDoc documentation with examples for all hooks
+    - useGetBranchHierarchy includes flatBranches memoized helper for easy iteration
+  - Implemented BranchSelector component with Sheet/drawer UI pattern
+    - Hierarchical branch display with indentation based on depth (12px + depth \* 24px)
+    - Shows branch metadata: divergedAt timestamp, description, creation date
+    - Loading, error, and empty states handled gracefully
+    - Mobile-friendly using Sheet component instead of traditional dropdown
+    - Proper accessibility with aria-current for selection indication
+  - Added per-campaign branch persistence to Zustand campaign store
+    - Introduced campaignBranchMap: Record<string, string> for per-campaign persistence
+    - Updated setCurrentBranch to persist selection to campaignBranchMap
+    - Updated setCurrentCampaign to restore branch from campaignBranchMap
+    - Prevents cross-campaign state leakage with isolated branch selections
+    - campaignBranchMap persisted to localStorage via store middleware
+  - Integrated BranchSelector in MainLayout header
+    - Shown conditionally when campaign is selected
+    - Positioned between nav links and auth buttons
+    - Clean conditional rendering with campaign context check
+  - Created comprehensive test suite with 12 test scenarios
+    - Visibility tests (shown/hidden based on campaign context)
+    - Trigger button tests (displays current branch name)
+    - Branch list tests (displays all branches with hierarchy, metadata, selection state)
+    - Selection tests (calls setCurrentBranch, closes sheet after selection)
+    - Loading/error/empty states
+    - Query skip logic (skips when no campaign)
+    - Fixed aria-current assertions (was incorrectly using aria-selected)
+    - Fixed hook call expectations to match actual signature
+  - TypeScript compilation clean, no lint errors
+  - Code reviewed and approved with minor test fixes applied
+
 ## Description
 
 Implement branching system that allows creating alternate timeline branches and viewing campaign state in different branches.
