@@ -33,27 +33,39 @@ Implement comprehensive branch merging capabilities with 3-way merge algorithm, 
 - 9 comprehensive unit tests with full coverage of edge cases
 - Code Reviewer approved with no critical issues
 
-## Stage 2: Conflict Detection Logic
+## Stage 2: Conflict Detection Logic ✅ COMPLETE
 
 **Goal**: Implement conflict detection for entity property changes
 
 **Tasks**:
 
-- [ ] Create `ConflictDetector` class for conflict analysis
-- [ ] Implement `detectPropertyConflicts(basePayload, sourcePayload, targetPayload)` for JSON property comparison
-- [ ] Create `ConflictType` enum: `BOTH_MODIFIED`, `BOTH_DELETED`, `MODIFIED_DELETED`, `DELETED_MODIFIED`
-- [ ] Create `Conflict` interface with `path`, `type`, `baseValue`, `sourceValue`, `targetValue`
-- [ ] Implement JSON path-based conflict representation (e.g., `settlement.population`, `structure.defenseRating`)
-- [ ] Handle nested property conflicts (e.g., changes within Settlement's `resources` object)
-- [ ] Implement auto-resolution for non-conflicting changes (only one branch modified)
-- [ ] Create unit tests for all conflict scenarios (property modified in both, deleted in one, etc.)
+- [x] Create `ConflictDetector` class for conflict analysis
+- [x] Implement `detectPropertyConflicts(basePayload, sourcePayload, targetPayload)` for JSON property comparison
+- [x] Create `ConflictType` enum: `BOTH_MODIFIED`, `BOTH_DELETED`, `MODIFIED_DELETED`, `DELETED_MODIFIED`
+- [x] Create `Conflict` interface with `path`, `type`, `baseValue`, `sourceValue`, `targetValue`
+- [x] Implement JSON path-based conflict representation (e.g., `settlement.population`, `structure.defenseRating`)
+- [x] Handle nested property conflicts (e.g., changes within Settlement's `resources` object)
+- [x] Implement auto-resolution for non-conflicting changes (only one branch modified)
+- [x] Create unit tests for all conflict scenarios (property modified in both, deleted in one, etc.)
 
 **Success Criteria**:
 
-- [ ] Detects conflicts when both branches modify same property
-- [ ] Auto-resolves when only one branch has changes
-- [ ] Provides detailed conflict information with JSON paths
-- [ ] All unit tests passing for conflict detection
+- [x] Detects conflicts when both branches modify same property
+- [x] Auto-resolves when only one branch has changes
+- [x] Provides detailed conflict information with JSON paths
+- [x] All unit tests passing for conflict detection
+
+**Completion Notes** (commit ffcbc4b):
+
+- ConflictDetector class implements sophisticated 3-way merge conflict detection
+- Recursive path traversal collects all nested property paths (e.g., "resources.gold", "config.settings.display.theme")
+- Deep equality checking handles objects, arrays, primitives with proper comparison logic
+- Auto-resolution logic: source only → source value, target only → target value, both identical → shared value, neither → base value
+- All conflict types implemented: BOTH_MODIFIED, MODIFIED_DELETED, DELETED_MODIFIED, BOTH_DELETED (auto-resolves)
+- Entity-level scenarios handled: creation in both branches (all properties conflict), deletion vs modification (major conflict), both deleted (auto-resolve)
+- MergeService.compareVersions() updated to use ConflictDetector with human-readable descriptions and suggestions
+- 29 comprehensive ConflictDetector unit tests + 9 MergeService tests = 38 total tests passing
+- Code Reviewer approved with optional enhancement suggestions for future (depth limits, additional docs, type guards)
 
 ## Stage 3: Settlement & Structure Conflict Detection
 
