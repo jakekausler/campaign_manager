@@ -229,6 +229,53 @@
     - Added backend validation to enforce security properly
     - This demonstrates importance of code review and defense in depth
 
+- **2025-10-29**: ✅ Completed Stage 10 Task 2 (Branch Rename Validation) - Commit: 64fde31
+  - **Task 2/8 Complete: Branch Rename Validation**
+  - Backend validation implementation (packages/api/src/graphql/services/):
+    - BranchService.create(): Added duplicate name check before creating branches
+    - BranchService.update(): Added duplicate name check with self-exclusion logic
+    - Validates uniqueness within campaign scope (same name allowed in different campaigns)
+    - Allows updating to same name (handles no-change scenario gracefully)
+    - Clear error messages: "A branch named 'X' already exists in this campaign"
+    - 3 new comprehensive unit tests covering all validation scenarios
+    - TDD approach: wrote tests first (RED), implemented validation (GREEN)
+    - All 43 BranchService tests passing
+  - Frontend validation implementation (packages/frontend/src/components/features/branches/):
+    - Created RenameBranchDialog.tsx: Full-featured rename dialog component
+    - Real-time duplicate name detection using branch hierarchy data
+    - Form validation: required name, duplicate checking, whitespace trimming
+    - Handles null/empty descriptions correctly (sends null to backend)
+    - Prevents submission when no changes made (button disabled)
+    - Created Textarea UI component (packages/frontend/src/components/ui/textarea.tsx)
+  - Integration with BranchHierarchyView:
+    - Enabled rename button (was disabled in Stage 7)
+    - Added onRename callback to node data and flow conversion
+    - State management for rename dialog (branchToRename, renameDialogOpen)
+    - handleRenameClick finds branch in hierarchy and opens dialog
+    - handleRenameSuccess shows toast and refetches hierarchy
+  - User experience features:
+    - Keyboard shortcuts: Enter to submit, Escape to cancel
+    - Loading states with progress indicators
+    - Success feedback with toast notifications
+    - Comprehensive error handling with clear validation messages
+    - Form resets when dialog opens/closes for clean state
+    - Prevents closing during loading operation
+  - Defense in depth security:
+    - Frontend provides immediate feedback before mutation
+    - Backend enforces uniqueness constraint (never trust client)
+    - Both layers validate with same error messages for consistency
+  - Testing and quality:
+    - Backend: 3 new tests (duplicate create, duplicate rename, allow same name)
+    - Frontend: 25 comprehensive test scenarios covering all functionality
+    - Type-check: 0 errors (both API and frontend)
+    - ESLint: 0 errors (only pre-existing warnings in unrelated files)
+    - Tests cover: rendering, form interaction, validation, mutations, loading/error/success states
+  - Implementation notes:
+    - Follows same patterns as DeleteBranchDialog and ForkBranchDialog for consistency
+    - Uses TDD methodology: tests written first, then implementation
+    - GraphQL refetchQueries ensures UI updates everywhere after rename
+    - checkDuplicateName() uses memoized flatten helper for efficient checking
+
 ## Description
 
 Implement branching system that allows creating alternate timeline branches and viewing campaign state in different branches.
