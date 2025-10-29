@@ -664,6 +664,7 @@ Complete feature documentation available in `docs/features/` and `docs/developme
 - **Rules Engine Worker** - High-performance condition evaluation microservice → [docs/features/rules-engine-worker.md](docs/features/rules-engine-worker.md)
 - **Scheduler Service** - Time-based operations and periodic events microservice → [docs/features/scheduler-service.md](docs/features/scheduler-service.md)
 - **Effect System** - World state mutation via JSON Patch operations → [docs/features/effect-system.md](docs/features/effect-system.md)
+- **Branching System** - Alternate timeline branches for "what-if" scenarios with fork/merge → [docs/features/branching-system.md](docs/features/branching-system.md)
 
 ---
 
