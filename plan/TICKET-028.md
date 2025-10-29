@@ -8,6 +8,7 @@
   - Stage 1: 17147d0 (3-way merge algorithm foundation)
   - Stage 2: ffcbc4b (Conflict detection logic)
   - Stage 3: eba8236 (Settlement and Structure merge handlers)
+  - Stage 4: 4740a4a (Merge Service GraphQL API)
 
 ## Implementation Notes
 
@@ -54,6 +55,22 @@
   - All 36 tests passing (17 Settlement + 19 Structure), code reviewed and approved
   - Architecture: Generic ConflictDetector handles ALL property detection, entity handlers add semantic meaning
   - Ready for GraphQL API integration in Stage 4
+- **2025-10-29**: Completed Stage 4 - Merge Service GraphQL API (commit 4740a4a)
+  - Created `MergeResolver` with GraphQL queries and mutations for merge operations
+  - Implemented `previewMerge` query: Shows conflicts and auto-resolved changes before execution
+  - Implemented `executeMerge` mutation: Placeholder for Stage 5 (validates input, enforces authorization)
+  - Authorization: previewMerge requires campaign access, executeMerge requires GM/OWNER role
+  - Validates branches exist, same campaign, and have common ancestor before proceeding
+  - Created comprehensive GraphQL types: MergePreview, EntityMergePreview, MergeConflict, AutoResolvedChange, MergeResult
+  - Created input types with validation: PreviewMergeInput, ExecuteMergeInput, ConflictResolution
+  - Added `@ValidateNested` decorators for proper nested validation of conflict resolutions
+  - Enhanced VersionService with `getVersionsForBranchAndType()` method for entity discovery
+  - Registered MergeResolver in GraphQL module
+  - 13+ integration test scenarios covering validation, authorization, preview, and conflicts
+  - Tests verify error handling (NotFoundException, BadRequestException, ForbiddenException)
+  - Tests validate conflict detection for simple and nested properties
+  - Code reviewed and approved (fixed duplicate JSDoc comments, added nested validation)
+  - Ready for merge execution implementation in Stage 5
 
 ## Description
 
