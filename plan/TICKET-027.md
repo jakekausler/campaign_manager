@@ -25,6 +25,20 @@
   - Wrote 27 comprehensive unit tests covering all operations, hierarchy, validation, and edge cases
   - All tests passing, code reviewed and security-hardened (added access check to create() per reviewer feedback)
 
+- **2025-10-29**: ✅ Completed Stage 2 (Fork Operation & Version Copying) - Commit: 83f7754
+  - Implemented BranchService.fork() method to create alternate timeline branches
+  - Creates child branch with parentId and divergedAt timestamp
+  - Copies all entity versions at fork point for 10 entity types (Campaign, World, Location, Character, Party, Kingdom, Settlement, Structure, Encounter, Event)
+  - Implemented copyVersionsForEntityType() helper with branch ancestry filtering
+  - Uses branch ancestry chain to ensure only relevant versions are copied (prevents copying from unrelated branches)
+  - Batch resolves versions using Promise.all to avoid N+1 query pattern for performance
+  - Reuses compressed payloads directly without cloning for memory efficiency
+  - Transaction-wrapped for atomic operation (rollback on any failure)
+  - Returns ForkResult interface with new branch and count of versions copied
+  - Added 'FORK' to AuditOperation type for audit logging
+  - Wrote 12 comprehensive unit tests for fork operation (39 total BranchService tests)
+  - All tests passing, code reviewed twice and approved (fixed critical branch filtering and N+1 query issues)
+
 ## Description
 
 Implement branching system that allows creating alternate timeline branches and viewing campaign state in different branches.

@@ -69,7 +69,7 @@ Part of TICKET-027 Stage 1.
 
 **Tasks**:
 
-- [ ] Add `fork(sourceBranchId, name, description, worldTime, userId)` to BranchService
+- [x] Add `fork(sourceBranchId, name, description, worldTime, userId)` to BranchService
   - Create child branch with parentId = sourceBranchId
   - Set divergedAt to worldTime parameter
   - Copy current versions for all entity types:
@@ -79,22 +79,22 @@ Part of TICKET-027 Stage 1.
   - Handle Settlement hierarchy (Settlement → Structures relationship)
   - Transaction: rollback if any version copy fails
   - Return the new branch with count of copied versions
-- [ ] Add helper method `copyVersionsForEntityType(sourceId, targetId, entityType, worldTime, userId)`
+- [x] Add helper method `copyVersionsForEntityType(sourceId, targetId, entityType, worldTime, userId)`
   - Query all entities of type in source branch at worldTime
   - For each entity, resolve current version
   - Create new version in target branch
-  - Compress payloads using existing compression utility
-- [ ] Add helper method `copySettlementHierarchy(sourceBranchId, targetBranchId, settlementId, worldTime, userId)`
-  - Copy Settlement version
-  - Copy all associated Structure versions
-  - Preserve Settlement → Structure relationships
-- [ ] Update version service to expose compression utilities if not already public
-- [ ] Create unit tests in `branch.service.test.ts`
+  - Reuse compressed payloads directly without decompression/recompression
+- [x] ~~Add helper method `copySettlementHierarchy(sourceBranchId, targetBranchId, settlementId, worldTime, userId)`~~
+  - Not needed: Settlement-Structure hierarchy preserved automatically by copying all entity types
+- [x] Update version service to expose compression utilities if not already public
+  - Already public, no changes needed
+- [x] Create unit tests in `branch.service.test.ts`
   - Test fork creates child branch correctly
   - Test versions copied for all entity types
-  - Test Settlement-Structure hierarchy preserved
+  - Test branch ancestry filtering (only copies from source branch chain)
   - Test transaction rollback on error
   - Test divergedAt timestamp set correctly
+  - Test batch resolution optimization (Promise.all)
 
 **Success Criteria**:
 
@@ -123,7 +123,7 @@ Includes comprehensive tests for fork operation and error handling.
 Part of TICKET-027 Stage 2.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: 83f7754)
 
 ---
 
