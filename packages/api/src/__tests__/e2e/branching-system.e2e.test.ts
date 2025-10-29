@@ -14,6 +14,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { Campaign, Kingdom, Location, User, World } from '@prisma/client';
 
+import { CampaignMembershipService } from '../../auth/services/campaign-membership.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../../graphql/context/graphql-context';
 import { REDIS_PUBSUB } from '../../graphql/pubsub/redis-pubsub.provider';
@@ -75,6 +76,12 @@ describe('Branching System E2E Tests', () => {
             publish: jest.fn(),
           },
         },
+        {
+          provide: CampaignMembershipService,
+          useValue: {
+            canEdit: jest.fn().mockResolvedValue(true),
+          },
+        },
       ],
     }).compile();
 
@@ -93,7 +100,7 @@ describe('Branching System E2E Tests', () => {
   beforeEach(async () => {
     // Clean up database before each test
     await prisma.version.deleteMany({});
-    await prisma.auditLog.deleteMany({});
+    await prisma.audit.deleteMany({});
     await prisma.structure.deleteMany({});
     await prisma.settlement.deleteMany({});
     await prisma.branch.deleteMany({});
@@ -107,7 +114,8 @@ describe('Branching System E2E Tests', () => {
     dbUser = await prisma.user.create({
       data: {
         email: 'test-branching-e2e@example.com',
-        passwordHash: 'hash',
+        name: 'Test User',
+        password: 'hash',
       },
     });
 
@@ -121,8 +129,17 @@ describe('Branching System E2E Tests', () => {
     testWorld = await prisma.world.create({
       data: {
         name: 'Test World',
-        description: 'World for branching E2E tests',
-        ownerId: dbUser.id,
+        calendars: {
+          calendars: [
+            {
+              id: 'default',
+              name: 'Standard Calendar',
+              daysPerWeek: 7,
+              monthsPerYear: 12,
+              daysPerMonth: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+            },
+          ],
+        },
       },
     });
 
@@ -149,11 +166,8 @@ describe('Branching System E2E Tests', () => {
     testLocation = await prisma.location.create({
       data: {
         name: 'Test Location',
-        campaignId: testCampaign.id,
-        geometry: {
-          type: 'Point',
-          coordinates: [0, 0],
-        },
+        worldId: testWorld.id,
+        type: 'point',
       },
     });
   });
@@ -161,7 +175,7 @@ describe('Branching System E2E Tests', () => {
   afterEach(async () => {
     // Clean up after each test
     await prisma.version.deleteMany({});
-    await prisma.auditLog.deleteMany({});
+    await prisma.audit.deleteMany({});
     await prisma.structure.deleteMany({});
     await prisma.settlement.deleteMany({});
     await prisma.branch.deleteMany({});
@@ -176,11 +190,14 @@ describe('Branching System E2E Tests', () => {
     it('should execute complete fork workflow: create campaign → create branch → fork → verify versions', async () => {
       // Step 1: Create main branch
       const mainBranch = await branchService.create(
-        testCampaign.id,
-        'main',
-        'Main timeline',
-        null,
-        null
+        {
+          campaignId: testCampaign.id,
+          name: 'main',
+          description: 'Main timeline',
+          parentId: undefined,
+          divergedAt: undefined,
+        },
+        testUser
       );
       expect(mainBranch).toBeDefined();
       expect(mainBranch.name).toBe('main');
@@ -190,7 +207,6 @@ describe('Branching System E2E Tests', () => {
       const settlement = await prisma.settlement.create({
         data: {
           name: 'Test Settlement',
-          campaignId: testCampaign.id,
           kingdomId: testKingdom.id,
           locationId: testLocation.id,
         },
@@ -198,16 +214,19 @@ describe('Branching System E2E Tests', () => {
 
       // Create initial version for settlement
       const settlementVersion1 = await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        mainBranch.id,
-        new Date('2025-01-01T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          population: 1000,
-          wealth: 500,
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-01T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            population: 1000,
+            wealth: 500,
+          },
         },
-        testUser.id
+        testUser
       );
       expect(settlementVersion1).toBeDefined();
 
@@ -215,24 +234,26 @@ describe('Branching System E2E Tests', () => {
       const structure = await prisma.structure.create({
         data: {
           name: 'Test Structure',
-          campaignId: testCampaign.id,
+          type: 'barracks',
           settlementId: settlement.id,
-          locationId: testLocation.id,
         },
       });
 
       // Create initial version for structure
       const structureVersion1 = await versionService.createVersion(
-        'structure',
-        structure.id,
-        mainBranch.id,
-        new Date('2025-01-01T00:00:00Z'),
         {
-          name: 'Test Structure',
-          type: 'barracks',
-          level: 1,
+          entityType: 'structure',
+          entityId: structure.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-01T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Structure',
+            type: 'barracks',
+            level: 1,
+          },
         },
-        testUser.id
+        testUser
       );
       expect(structureVersion1).toBeDefined();
 
@@ -243,7 +264,7 @@ describe('Branching System E2E Tests', () => {
         'alternate-timeline',
         'An alternate timeline for testing',
         forkWorldTime,
-        testUser.id
+        testUser
       );
 
       expect(forkResult.branch).toBeDefined();
@@ -260,7 +281,10 @@ describe('Branching System E2E Tests', () => {
         forkWorldTime
       );
       expect(forkedSettlementVersion).toBeDefined();
-      expect(forkedSettlementVersion?.payload).toMatchObject({
+      const forkedSettlementPayload = await versionService.decompressVersion(
+        forkedSettlementVersion!
+      );
+      expect(forkedSettlementPayload).toMatchObject({
         name: 'Test Settlement',
         population: 1000,
         wealth: 500,
@@ -273,7 +297,10 @@ describe('Branching System E2E Tests', () => {
         forkWorldTime
       );
       expect(forkedStructureVersion).toBeDefined();
-      expect(forkedStructureVersion?.payload).toMatchObject({
+      const forkedStructurePayload = await versionService.decompressVersion(
+        forkedStructureVersion!
+      );
+      expect(forkedStructurePayload).toMatchObject({
         name: 'Test Structure',
         type: 'barracks',
         level: 1,
@@ -281,16 +308,19 @@ describe('Branching System E2E Tests', () => {
 
       // Step 6: Make changes in forked branch
       const forkedSettlementVersion2 = await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        forkResult.branch.id,
-        new Date('2025-01-02T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          population: 1200, // Increased population in fork
-          wealth: 600,
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: forkResult.branch.id,
+          validFrom: new Date('2025-01-02T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            population: 1200, // Increased population in fork
+            wealth: 600,
+          },
         },
-        testUser.id
+        testUser
       );
       expect(forkedSettlementVersion2).toBeDefined();
 
@@ -302,7 +332,8 @@ describe('Branching System E2E Tests', () => {
         new Date('2025-01-02T00:00:00Z')
       );
       expect(mainSettlementVersion).toBeDefined();
-      expect(mainSettlementVersion?.payload).toMatchObject({
+      const mainSettlementPayload = await versionService.decompressVersion(mainSettlementVersion!);
+      expect(mainSettlementPayload).toMatchObject({
         name: 'Test Settlement',
         population: 1000, // Still original value
         wealth: 500,
@@ -316,7 +347,10 @@ describe('Branching System E2E Tests', () => {
         new Date('2025-01-02T00:00:00Z')
       );
       expect(forkedSettlementVersion2Check).toBeDefined();
-      expect(forkedSettlementVersion2Check?.payload).toMatchObject({
+      const forkedSettlementPayload2 = await versionService.decompressVersion(
+        forkedSettlementVersion2Check!
+      );
+      expect(forkedSettlementPayload2).toMatchObject({
         name: 'Test Settlement',
         population: 1200, // Updated value
         wealth: 600,
@@ -326,99 +360,117 @@ describe('Branching System E2E Tests', () => {
     it('should preserve Settlement-Structure hierarchy in forked branches', async () => {
       // Create main branch
       const mainBranch = await branchService.create(
-        testCampaign.id,
-        'main',
-        'Main timeline',
-        null,
-        null
+        {
+          campaignId: testCampaign.id,
+          name: 'main',
+          description: 'Main timeline',
+          parentId: undefined,
+          divergedAt: undefined,
+        },
+        testUser
       );
 
       // Create parent settlement
       const parentSettlement = await prisma.settlement.create({
         data: {
           name: 'Parent Settlement',
-          campaignId: testCampaign.id,
           kingdomId: testKingdom.id,
           locationId: testLocation.id,
         },
       });
 
       await versionService.createVersion(
-        'settlement',
-        parentSettlement.id,
-        mainBranch.id,
-        new Date('2025-01-01T00:00:00Z'),
         {
-          name: 'Parent Settlement',
-          population: 5000,
+          entityType: 'settlement',
+          entityId: parentSettlement.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-01T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Parent Settlement',
+            population: 5000,
+          },
         },
-        testUser.id
+        testUser
       );
 
-      // Create child settlement
+      // Create child settlement (need separate location for child settlement)
+      const childLocation = await prisma.location.create({
+        data: {
+          name: 'Child Location',
+          worldId: testWorld.id,
+          type: 'point',
+        },
+      });
+
       const childSettlement = await prisma.settlement.create({
         data: {
           name: 'Child Settlement',
-          campaignId: testCampaign.id,
           kingdomId: testKingdom.id,
-          locationId: testLocation.id,
-          parentSettlementId: parentSettlement.id,
+          locationId: childLocation.id,
         },
       });
 
       await versionService.createVersion(
-        'settlement',
-        childSettlement.id,
-        mainBranch.id,
-        new Date('2025-01-01T00:00:00Z'),
         {
-          name: 'Child Settlement',
-          population: 500,
+          entityType: 'settlement',
+          entityId: childSettlement.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-01T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Child Settlement',
+            population: 500,
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Create structures in both settlements
       const parentStructure = await prisma.structure.create({
         data: {
           name: 'Parent Structure',
-          campaignId: testCampaign.id,
+          type: 'castle',
           settlementId: parentSettlement.id,
-          locationId: testLocation.id,
         },
       });
 
       await versionService.createVersion(
-        'structure',
-        parentStructure.id,
-        mainBranch.id,
-        new Date('2025-01-01T00:00:00Z'),
         {
-          name: 'Parent Structure',
-          type: 'castle',
+          entityType: 'structure',
+          entityId: parentStructure.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-01T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Parent Structure',
+            type: 'castle',
+          },
         },
-        testUser.id
+        testUser
       );
 
       const childStructure = await prisma.structure.create({
         data: {
           name: 'Child Structure',
-          campaignId: testCampaign.id,
+          type: 'barracks',
           settlementId: childSettlement.id,
-          locationId: testLocation.id,
         },
       });
 
       await versionService.createVersion(
-        'structure',
-        childStructure.id,
-        mainBranch.id,
-        new Date('2025-01-01T00:00:00Z'),
         {
-          name: 'Child Structure',
-          type: 'barracks',
+          entityType: 'structure',
+          entityId: childStructure.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-01T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Child Structure',
+            type: 'barracks',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Fork the branch
@@ -428,7 +480,7 @@ describe('Branching System E2E Tests', () => {
         'fork-hierarchy-test',
         'Test hierarchy preservation',
         forkWorldTime,
-        testUser.id
+        testUser
       );
 
       // Verify all entities were copied
@@ -469,11 +521,6 @@ describe('Branching System E2E Tests', () => {
       expect(forkedChildStructure).toBeDefined();
 
       // Verify database relationships still exist
-      const dbChildSettlement = await prisma.settlement.findUnique({
-        where: { id: childSettlement.id },
-      });
-      expect(dbChildSettlement?.parentSettlementId).toBe(parentSettlement.id);
-
       const dbChildStructure = await prisma.structure.findUnique({
         where: { id: childStructure.id },
       });
@@ -485,103 +532,134 @@ describe('Branching System E2E Tests', () => {
     it('should resolve versions correctly across 3+ levels of branch hierarchy', async () => {
       // Create 4-level hierarchy: main → branch1 → branch2 → branch3
       const mainBranch = await branchService.create(
-        testCampaign.id,
-        'main',
-        'Main timeline',
-        null,
-        null
+        {
+          campaignId: testCampaign.id,
+          name: 'main',
+          description: 'Main timeline',
+          parentId: undefined,
+          divergedAt: undefined,
+        },
+        testUser
       );
+
+      const hierarchySettlementLocation = await prisma.location.create({
+        data: {
+          name: 'Hierarchy Settlement Location',
+          worldId: testWorld.id,
+          type: 'point',
+        },
+      });
 
       const settlement = await prisma.settlement.create({
         data: {
           name: 'Test Settlement',
-          campaignId: testCampaign.id,
           kingdomId: testKingdom.id,
-          locationId: testLocation.id,
+          locationId: hierarchySettlementLocation.id,
         },
       });
 
       // Create initial version in main
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        mainBranch.id,
-        new Date('2025-01-01T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          generation: 0,
-          value: 'main',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-01T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            generation: 0,
+            value: 'main',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Create branch1 (child of main)
       const branch1 = await branchService.create(
-        testCampaign.id,
-        'branch1',
-        'First branch',
-        mainBranch.id,
-        new Date('2025-01-02T00:00:00Z')
+        {
+          campaignId: testCampaign.id,
+          name: 'branch1',
+          description: 'First branch',
+          parentId: mainBranch.id,
+          divergedAt: new Date('2025-01-02T00:00:00Z'),
+        },
+        testUser
       );
 
       // Add version in branch1
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        branch1.id,
-        new Date('2025-01-03T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          generation: 1,
-          value: 'branch1',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: branch1.id,
+          validFrom: new Date('2025-01-03T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            generation: 1,
+            value: 'branch1',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Create branch2 (child of branch1)
       const branch2 = await branchService.create(
-        testCampaign.id,
-        'branch2',
-        'Second branch',
-        branch1.id,
-        new Date('2025-01-04T00:00:00Z')
+        {
+          campaignId: testCampaign.id,
+          name: 'branch2',
+          description: 'Second branch',
+          parentId: branch1.id,
+          divergedAt: new Date('2025-01-04T00:00:00Z'),
+        },
+        testUser
       );
 
       // Add version in branch2
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        branch2.id,
-        new Date('2025-01-05T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          generation: 2,
-          value: 'branch2',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: branch2.id,
+          validFrom: new Date('2025-01-05T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            generation: 2,
+            value: 'branch2',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Create branch3 (child of branch2)
       const branch3 = await branchService.create(
-        testCampaign.id,
-        'branch3',
-        'Third branch',
-        branch2.id,
-        new Date('2025-01-06T00:00:00Z')
+        {
+          campaignId: testCampaign.id,
+          name: 'branch3',
+          description: 'Third branch',
+          parentId: branch2.id,
+          divergedAt: new Date('2025-01-06T00:00:00Z'),
+        },
+        testUser
       );
 
       // Add version in branch3
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        branch3.id,
-        new Date('2025-01-07T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          generation: 3,
-          value: 'branch3',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: branch3.id,
+          validFrom: new Date('2025-01-07T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            generation: 3,
+            value: 'branch3',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Test resolution at different times and branches
@@ -593,8 +671,9 @@ describe('Branching System E2E Tests', () => {
         mainBranch.id,
         new Date('2025-01-10T00:00:00Z')
       );
-      expect(mainResolution?.payload.value).toBe('main');
-      expect(mainResolution?.payload.generation).toBe(0);
+      const mainPayload = await versionService.decompressVersion(mainResolution!);
+      expect(mainPayload.value).toBe('main');
+      expect(mainPayload.generation).toBe(0);
 
       // 2. In branch1, should see branch1 version (not branch2 or branch3)
       const branch1Resolution = await versionService.resolveVersion(
@@ -603,8 +682,9 @@ describe('Branching System E2E Tests', () => {
         branch1.id,
         new Date('2025-01-10T00:00:00Z')
       );
-      expect(branch1Resolution?.payload.value).toBe('branch1');
-      expect(branch1Resolution?.payload.generation).toBe(1);
+      const branch1Payload = await versionService.decompressVersion(branch1Resolution!);
+      expect(branch1Payload.value).toBe('branch1');
+      expect(branch1Payload.generation).toBe(1);
 
       // 3. In branch2, should see branch2 version (not branch3)
       const branch2Resolution = await versionService.resolveVersion(
@@ -613,8 +693,9 @@ describe('Branching System E2E Tests', () => {
         branch2.id,
         new Date('2025-01-10T00:00:00Z')
       );
-      expect(branch2Resolution?.payload.value).toBe('branch2');
-      expect(branch2Resolution?.payload.generation).toBe(2);
+      const branch2Payload = await versionService.decompressVersion(branch2Resolution!);
+      expect(branch2Payload.value).toBe('branch2');
+      expect(branch2Payload.generation).toBe(2);
 
       // 4. In branch3, should see branch3 version
       const branch3Resolution = await versionService.resolveVersion(
@@ -623,8 +704,9 @@ describe('Branching System E2E Tests', () => {
         branch3.id,
         new Date('2025-01-10T00:00:00Z')
       );
-      expect(branch3Resolution?.payload.value).toBe('branch3');
-      expect(branch3Resolution?.payload.generation).toBe(3);
+      const branch3Payload = await versionService.decompressVersion(branch3Resolution!);
+      expect(branch3Payload.value).toBe('branch3');
+      expect(branch3Payload.generation).toBe(3);
 
       // 5. In branch3 before its version was created, should inherit from branch2
       const branch3EarlyResolution = await versionService.resolveVersion(
@@ -633,8 +715,9 @@ describe('Branching System E2E Tests', () => {
         branch3.id,
         new Date('2025-01-06T12:00:00Z') // After branch3 created, before its version
       );
-      expect(branch3EarlyResolution?.payload.value).toBe('branch2');
-      expect(branch3EarlyResolution?.payload.generation).toBe(2);
+      const branch3EarlyPayload = await versionService.decompressVersion(branch3EarlyResolution!);
+      expect(branch3EarlyPayload.value).toBe('branch2');
+      expect(branch3EarlyPayload.generation).toBe(2);
 
       // 6. In branch2 before its version was created, should inherit from branch1
       const branch2EarlyResolution = await versionService.resolveVersion(
@@ -643,8 +726,9 @@ describe('Branching System E2E Tests', () => {
         branch2.id,
         new Date('2025-01-04T12:00:00Z') // After branch2 created, before its version
       );
-      expect(branch2EarlyResolution?.payload.value).toBe('branch1');
-      expect(branch2EarlyResolution?.payload.generation).toBe(1);
+      const branch2EarlyPayload = await versionService.decompressVersion(branch2EarlyResolution!);
+      expect(branch2EarlyPayload.value).toBe('branch1');
+      expect(branch2EarlyPayload.generation).toBe(1);
 
       // 7. In branch1 before its version was created, should inherit from main
       const branch1EarlyResolution = await versionService.resolveVersion(
@@ -653,82 +737,108 @@ describe('Branching System E2E Tests', () => {
         branch1.id,
         new Date('2025-01-02T12:00:00Z') // After branch1 created, before its version
       );
-      expect(branch1EarlyResolution?.payload.value).toBe('main');
-      expect(branch1EarlyResolution?.payload.generation).toBe(0);
+      const branch1EarlyPayload = await versionService.decompressVersion(branch1EarlyResolution!);
+      expect(branch1EarlyPayload.value).toBe('main');
+      expect(branch1EarlyPayload.generation).toBe(0);
     });
 
     it('should handle parallel branch hierarchies independently', async () => {
       // Create main branch with two parallel child branches
       const mainBranch = await branchService.create(
-        testCampaign.id,
-        'main',
-        'Main timeline',
-        null,
-        null
+        {
+          campaignId: testCampaign.id,
+          name: 'main',
+          description: 'Main timeline',
+          parentId: undefined,
+          divergedAt: undefined,
+        },
+        testUser
       );
+
+      const parallelSettlementLocation = await prisma.location.create({
+        data: {
+          name: 'Parallel Settlement Location',
+          worldId: testWorld.id,
+          type: 'point',
+        },
+      });
 
       const settlement = await prisma.settlement.create({
         data: {
           name: 'Test Settlement',
-          campaignId: testCampaign.id,
           kingdomId: testKingdom.id,
-          locationId: testLocation.id,
+          locationId: parallelSettlementLocation.id,
         },
       });
 
       // Create initial version in main
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        mainBranch.id,
-        new Date('2025-01-01T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          scenario: 'main',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-01T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            scenario: 'main',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Create parallel branch A
       const branchA = await branchService.create(
-        testCampaign.id,
-        'branch-a',
-        'Scenario A',
-        mainBranch.id,
-        new Date('2025-01-02T00:00:00Z')
+        {
+          campaignId: testCampaign.id,
+          name: 'branch-a',
+          description: 'Scenario A',
+          parentId: mainBranch.id,
+          divergedAt: new Date('2025-01-02T00:00:00Z'),
+        },
+        testUser
       );
 
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        branchA.id,
-        new Date('2025-01-03T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          scenario: 'A',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: branchA.id,
+          validFrom: new Date('2025-01-03T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            scenario: 'A',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Create parallel branch B
       const branchB = await branchService.create(
-        testCampaign.id,
-        'branch-b',
-        'Scenario B',
-        mainBranch.id,
-        new Date('2025-01-02T00:00:00Z')
+        {
+          campaignId: testCampaign.id,
+          name: 'branch-b',
+          description: 'Scenario B',
+          parentId: mainBranch.id,
+          divergedAt: new Date('2025-01-02T00:00:00Z'),
+        },
+        testUser
       );
 
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        branchB.id,
-        new Date('2025-01-03T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          scenario: 'B',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: branchB.id,
+          validFrom: new Date('2025-01-03T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            scenario: 'B',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Verify branches are independent
@@ -738,7 +848,8 @@ describe('Branching System E2E Tests', () => {
         branchA.id,
         new Date('2025-01-10T00:00:00Z')
       );
-      expect(resolutionA?.payload.scenario).toBe('A');
+      const payloadA = await versionService.decompressVersion(resolutionA!);
+      expect(payloadA.scenario).toBe('A');
 
       const resolutionB = await versionService.resolveVersion(
         'settlement',
@@ -746,7 +857,8 @@ describe('Branching System E2E Tests', () => {
         branchB.id,
         new Date('2025-01-10T00:00:00Z')
       );
-      expect(resolutionB?.payload.scenario).toBe('B');
+      const payloadB = await versionService.decompressVersion(resolutionB!);
+      expect(payloadB.scenario).toBe('B');
 
       const resolutionMain = await versionService.resolveVersion(
         'settlement',
@@ -754,47 +866,60 @@ describe('Branching System E2E Tests', () => {
         mainBranch.id,
         new Date('2025-01-10T00:00:00Z')
       );
-      expect(resolutionMain?.payload.scenario).toBe('main');
+      const payloadMain = await versionService.decompressVersion(resolutionMain!);
+      expect(payloadMain.scenario).toBe('main');
 
       // Create grandchildren of parallel branches
       const branchA1 = await branchService.create(
-        testCampaign.id,
-        'branch-a1',
-        'Scenario A1',
-        branchA.id,
-        new Date('2025-01-04T00:00:00Z')
+        {
+          campaignId: testCampaign.id,
+          name: 'branch-a1',
+          description: 'Scenario A1',
+          parentId: branchA.id,
+          divergedAt: new Date('2025-01-04T00:00:00Z'),
+        },
+        testUser
       );
 
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        branchA1.id,
-        new Date('2025-01-05T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          scenario: 'A1',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: branchA1.id,
+          validFrom: new Date('2025-01-05T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            scenario: 'A1',
+          },
         },
-        testUser.id
+        testUser
       );
 
       const branchB1 = await branchService.create(
-        testCampaign.id,
-        'branch-b1',
-        'Scenario B1',
-        branchB.id,
-        new Date('2025-01-04T00:00:00Z')
+        {
+          campaignId: testCampaign.id,
+          name: 'branch-b1',
+          description: 'Scenario B1',
+          parentId: branchB.id,
+          divergedAt: new Date('2025-01-04T00:00:00Z'),
+        },
+        testUser
       );
 
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        branchB1.id,
-        new Date('2025-01-05T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          scenario: 'B1',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: branchB1.id,
+          validFrom: new Date('2025-01-05T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            scenario: 'B1',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Verify grandchildren inherit from correct parents
@@ -804,7 +929,8 @@ describe('Branching System E2E Tests', () => {
         branchA1.id,
         new Date('2025-01-10T00:00:00Z')
       );
-      expect(resolutionA1?.payload.scenario).toBe('A1');
+      const payloadA1 = await versionService.decompressVersion(resolutionA1!);
+      expect(payloadA1.scenario).toBe('A1');
 
       const resolutionB1 = await versionService.resolveVersion(
         'settlement',
@@ -812,7 +938,8 @@ describe('Branching System E2E Tests', () => {
         branchB1.id,
         new Date('2025-01-10T00:00:00Z')
       );
-      expect(resolutionB1?.payload.scenario).toBe('B1');
+      const payloadB1 = await versionService.decompressVersion(resolutionB1!);
+      expect(payloadB1.scenario).toBe('B1');
 
       // Verify cross-contamination doesn't occur
       // branchA1 should not see branchB or branchB1 versions
@@ -822,42 +949,56 @@ describe('Branching System E2E Tests', () => {
         branchA1.id,
         new Date('2025-01-04T12:00:00Z') // Before A1's version
       );
-      expect(resolutionA1Early?.payload.scenario).toBe('A'); // Should inherit from A, not B
+      const payloadA1Early = await versionService.decompressVersion(resolutionA1Early!);
+      expect(payloadA1Early.scenario).toBe('A'); // Should inherit from A, not B
     });
   });
 
   describe('Concurrent Edits in Different Branches', () => {
     it('should allow concurrent edits in different branches without conflicts', async () => {
       const mainBranch = await branchService.create(
-        testCampaign.id,
-        'main',
-        'Main timeline',
-        null,
-        null
+        {
+          campaignId: testCampaign.id,
+          name: 'main',
+          description: 'Main timeline',
+          parentId: undefined,
+          divergedAt: undefined,
+        },
+        testUser
       );
+
+      const concurrentSettlementLocation = await prisma.location.create({
+        data: {
+          name: 'Concurrent Settlement Location',
+          worldId: testWorld.id,
+          type: 'point',
+        },
+      });
 
       const settlement = await prisma.settlement.create({
         data: {
           name: 'Test Settlement',
-          campaignId: testCampaign.id,
           kingdomId: testKingdom.id,
-          locationId: testLocation.id,
+          locationId: concurrentSettlementLocation.id,
         },
       });
 
       // Create initial version
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        mainBranch.id,
-        new Date('2025-01-01T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          population: 1000,
-          wealth: 500,
-          military: 100,
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-01T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            population: 1000,
+            wealth: 500,
+            military: 100,
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Fork into two parallel branches
@@ -867,7 +1008,7 @@ describe('Branching System E2E Tests', () => {
         'branch-1',
         'Branch 1',
         forkTime,
-        testUser.id
+        testUser
       );
 
       const forkResult2 = await branchService.fork(
@@ -875,7 +1016,7 @@ describe('Branching System E2E Tests', () => {
         'branch-2',
         'Branch 2',
         forkTime,
-        testUser.id
+        testUser
       );
 
       // Make concurrent edits to same entity in different branches
@@ -883,47 +1024,56 @@ describe('Branching System E2E Tests', () => {
 
       // Edit in branch 1: increase population
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        forkResult1.branch.id,
-        editTime,
         {
-          name: 'Test Settlement',
-          population: 1500, // Changed
-          wealth: 500,
-          military: 100,
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: forkResult1.branch.id,
+          validFrom: editTime,
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            population: 1500, // Changed
+            wealth: 500,
+            military: 100,
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Edit in branch 2: increase wealth
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        forkResult2.branch.id,
-        editTime,
         {
-          name: 'Test Settlement',
-          population: 1000,
-          wealth: 800, // Changed
-          military: 100,
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: forkResult2.branch.id,
+          validFrom: editTime,
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            population: 1000,
+            wealth: 800, // Changed
+            military: 100,
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Edit in main: increase military
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        mainBranch.id,
-        editTime,
         {
-          name: 'Test Settlement',
-          population: 1000,
-          wealth: 500,
-          military: 150, // Changed
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: mainBranch.id,
+          validFrom: editTime,
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            population: 1000,
+            wealth: 500,
+            military: 150, // Changed
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Verify all branches have their independent changes
@@ -933,7 +1083,8 @@ describe('Branching System E2E Tests', () => {
         mainBranch.id,
         new Date('2025-01-04T00:00:00Z')
       );
-      expect(mainResolution?.payload).toMatchObject({
+      const mainResolutionPayload = await versionService.decompressVersion(mainResolution!);
+      expect(mainResolutionPayload).toMatchObject({
         population: 1000,
         wealth: 500,
         military: 150, // Only military changed in main
@@ -945,7 +1096,8 @@ describe('Branching System E2E Tests', () => {
         forkResult1.branch.id,
         new Date('2025-01-04T00:00:00Z')
       );
-      expect(branch1Resolution?.payload).toMatchObject({
+      const branch1ResolutionPayload = await versionService.decompressVersion(branch1Resolution!);
+      expect(branch1ResolutionPayload).toMatchObject({
         population: 1500, // Only population changed in branch 1
         wealth: 500,
         military: 100,
@@ -957,7 +1109,8 @@ describe('Branching System E2E Tests', () => {
         forkResult2.branch.id,
         new Date('2025-01-04T00:00:00Z')
       );
-      expect(branch2Resolution?.payload).toMatchObject({
+      const branch2ResolutionPayload = await versionService.decompressVersion(branch2Resolution!);
+      expect(branch2ResolutionPayload).toMatchObject({
         population: 1000,
         wealth: 800, // Only wealth changed in branch 2
         military: 100,
@@ -968,45 +1121,61 @@ describe('Branching System E2E Tests', () => {
   describe('Branch Ancestry and Isolation', () => {
     it('should inherit parent versions correctly and isolate child changes', async () => {
       const mainBranch = await branchService.create(
-        testCampaign.id,
-        'main',
-        'Main timeline',
-        null,
-        null
+        {
+          campaignId: testCampaign.id,
+          name: 'main',
+          description: 'Main timeline',
+          parentId: undefined,
+          divergedAt: undefined,
+        },
+        testUser
       );
+
+      const ancestrySettlementLocation = await prisma.location.create({
+        data: {
+          name: 'Ancestry Settlement Location',
+          worldId: testWorld.id,
+          type: 'point',
+        },
+      });
 
       const settlement = await prisma.settlement.create({
         data: {
           name: 'Test Settlement',
-          campaignId: testCampaign.id,
           kingdomId: testKingdom.id,
-          locationId: testLocation.id,
+          locationId: ancestrySettlementLocation.id,
         },
       });
 
       // Create versions in main branch at different times
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        mainBranch.id,
-        new Date('2025-01-01T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          stage: 'initial',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-01T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            stage: 'initial',
+          },
         },
-        testUser.id
+        testUser
       );
 
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        mainBranch.id,
-        new Date('2025-01-03T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          stage: 'developed',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: mainBranch.id,
+          validFrom: new Date('2025-01-03T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            stage: 'developed',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Fork at a specific time (between the two versions)
@@ -1016,7 +1185,7 @@ describe('Branching System E2E Tests', () => {
         'child-branch',
         'Child branch',
         forkTime,
-        testUser.id
+        testUser
       );
 
       // Child branch should inherit the initial version (before fork)
@@ -1026,7 +1195,8 @@ describe('Branching System E2E Tests', () => {
         forkResult.branch.id,
         forkTime
       );
-      expect(childResolution1?.payload.stage).toBe('initial');
+      const childPayload1 = await versionService.decompressVersion(childResolution1!);
+      expect(childPayload1.stage).toBe('initial');
 
       // Child branch should NOT inherit the developed version (after fork in main)
       const childResolution2 = await versionService.resolveVersion(
@@ -1035,7 +1205,8 @@ describe('Branching System E2E Tests', () => {
         forkResult.branch.id,
         new Date('2025-01-04T00:00:00Z')
       );
-      expect(childResolution2?.payload.stage).toBe('initial'); // Still initial, not developed
+      const childPayload2 = await versionService.decompressVersion(childResolution2!);
+      expect(childPayload2.stage).toBe('initial'); // Still initial, not developed
 
       // Main branch should have developed version
       const mainResolution = await versionService.resolveVersion(
@@ -1044,19 +1215,23 @@ describe('Branching System E2E Tests', () => {
         mainBranch.id,
         new Date('2025-01-04T00:00:00Z')
       );
-      expect(mainResolution?.payload.stage).toBe('developed');
+      const mainResolutionPayload2 = await versionService.decompressVersion(mainResolution!);
+      expect(mainResolutionPayload2.stage).toBe('developed');
 
       // Make a change in child branch
       await versionService.createVersion(
-        'settlement',
-        settlement.id,
-        forkResult.branch.id,
-        new Date('2025-01-05T00:00:00Z'),
         {
-          name: 'Test Settlement',
-          stage: 'alternate',
+          entityType: 'settlement',
+          entityId: settlement.id,
+          branchId: forkResult.branch.id,
+          validFrom: new Date('2025-01-05T00:00:00Z'),
+          validTo: null,
+          payload: {
+            name: 'Test Settlement',
+            stage: 'alternate',
+          },
         },
-        testUser.id
+        testUser
       );
 
       // Child branch should have alternate version
@@ -1066,7 +1241,8 @@ describe('Branching System E2E Tests', () => {
         forkResult.branch.id,
         new Date('2025-01-06T00:00:00Z')
       );
-      expect(childResolution3?.payload.stage).toBe('alternate');
+      const childPayload3 = await versionService.decompressVersion(childResolution3!);
+      expect(childPayload3.stage).toBe('alternate');
 
       // Main branch should still have developed version (not affected by child)
       const mainResolution2 = await versionService.resolveVersion(
@@ -1075,7 +1251,8 @@ describe('Branching System E2E Tests', () => {
         mainBranch.id,
         new Date('2025-01-06T00:00:00Z')
       );
-      expect(mainResolution2?.payload.stage).toBe('developed');
+      const mainResolutionPayload3 = await versionService.decompressVersion(mainResolution2!);
+      expect(mainResolutionPayload3.stage).toBe('developed');
     });
   });
 });
