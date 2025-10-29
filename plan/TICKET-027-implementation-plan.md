@@ -537,15 +537,31 @@ Part of TICKET-027 Stage 9.
 
 **Tasks**:
 
-- [ ] Add branch deletion safeguards
-  - Confirmation dialog with warning about impact
-  - Prevent deletion of default/main branch
-  - Cascade delete or orphan child branches (decide policy)
-  - Archive instead of hard delete option
-- [ ] Add branch rename validation
-  - Check for name conflicts within campaign
-  - Update UI immediately when renamed
-  - Broadcast rename to other users via subscription (future: TICKET-029)
+- [x] Add branch deletion safeguards
+  - ✅ Created DeleteBranchDialog with comprehensive protection (3 levels)
+  - ✅ Prevents deletion of root branches (both frontend UI + backend validation)
+  - ✅ Prevents deletion of branches with children (must delete children first)
+  - ✅ Shows detailed warnings about data loss and impact
+  - ✅ Soft delete pattern (uses deletedAt, preserves data for potential recovery)
+  - ✅ Integrated into BranchHierarchyView with full state management
+  - ✅ 26 frontend tests + backend unit test for root branch protection
+  - ✅ Auto-switches to parent branch if deleting current branch
+  - ✅ Toast notifications for success/error feedback
+  - ✅ Defense in depth: frontend UX + backend security enforcement
+- [x] Add branch rename validation
+  - ✅ Backend validation: prevents duplicate branch names within campaign (BranchService.create/update)
+  - ✅ Frontend validation: real-time duplicate name checking in RenameBranchDialog
+  - ✅ Created RenameBranchDialog component with comprehensive validation and UX
+  - ✅ Defense in depth: both frontend and backend enforce unique names
+  - ✅ Backend: 3 new unit tests (43 total BranchService tests, all passing)
+  - ✅ Frontend: 25 comprehensive test scenarios covering all functionality
+  - ✅ Integrated into BranchHierarchyView with rename button (enabled)
+  - ✅ Form validation: required name, duplicate detection, whitespace trimming
+  - ✅ Loading states, error handling, success feedback with toast notifications
+  - ✅ Keyboard shortcuts: Enter to submit, Escape to cancel
+  - ✅ Allows keeping same name (no validation error when name unchanged)
+  - ✅ Refetches hierarchy after successful rename to update UI everywhere
+  - ✅ Type-check and lint passing (0 errors)
 - [ ] Add branch metadata features
   - Favorite/pin branches for quick access
   - Color coding for branch categories (what-if, historical, experimental)
@@ -594,7 +610,7 @@ All edge cases tested and documented.
 Part of TICKET-027 Stage 10.
 ```
 
-**Status**: Not Started
+**Status**: In Progress (2/8 tasks complete - Commits: ce06668, [pending])
 
 ---
 

@@ -8,4 +8,5 @@ export * from './label';
 export * from './sheet';
 export * from './skeleton';
 export * from './tabs';
+export * from './textarea';
 export * from './toaster';

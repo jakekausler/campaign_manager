@@ -263,9 +263,12 @@ describe('BranchService', () => {
       };
 
       (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
-      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
+      (prisma.branch.findFirst as jest.Mock)
+        .mockResolvedValueOnce(null) // Check for duplicate name (none found)
+        .mockResolvedValueOnce(mockBranch); // Find parent branch
       (prisma.branch.create as jest.Mock).mockResolvedValue({
         ...mockChildBranch,
+        name: 'Alternate', // Use the input name
         parent: mockBranch,
         children: [],
       });
@@ -320,6 +323,23 @@ describe('BranchService', () => {
       (prisma.branch.findFirst as jest.Mock).mockResolvedValue(null); // No match with campaignId filter
 
       await expect(service.create(input, mockUser)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when branch name already exists in campaign', async () => {
+      const input = {
+        campaignId: 'campaign-1',
+        name: 'Main', // Duplicate of existing branch name
+        description: 'New branch with duplicate name',
+      };
+
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      // Mock that a branch with this name already exists
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
+
+      await expect(service.create(input, mockUser)).rejects.toThrow(BadRequestException);
+      await expect(service.create(input, mockUser)).rejects.toThrow(
+        'A branch named "Main" already exists in this campaign'
+      );
     });
   });
 
@@ -386,6 +406,69 @@ describe('BranchService', () => {
       await expect(service.update('branch-1', { name: 'Test' }, mockUser)).rejects.toThrow(
         ForbiddenException
       );
+    });
+
+    it('should throw BadRequestException when renaming to existing branch name', async () => {
+      const input = {
+        name: 'Alternate Timeline', // Name that already exists
+      };
+
+      const branchWithRelations = {
+        ...mockBranch,
+        parent: null,
+        children: [],
+        campaign: mockCampaign,
+      };
+
+      const otherBranch = {
+        ...mockChildBranch,
+        name: 'Alternate Timeline',
+      };
+
+      (prisma.branch.findFirst as jest.Mock)
+        .mockResolvedValueOnce(branchWithRelations) // findById (current branch)
+        .mockResolvedValueOnce(otherBranch) // Check for duplicate name
+        .mockResolvedValueOnce(branchWithRelations) // findById (second call for error message assertion)
+        .mockResolvedValueOnce(otherBranch); // Check for duplicate name (second call)
+
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+
+      await expect(service.update('branch-1', input, mockUser)).rejects.toThrow(
+        BadRequestException
+      );
+      await expect(service.update('branch-1', input, mockUser)).rejects.toThrow(
+        'A branch named "Alternate Timeline" already exists in this campaign'
+      );
+    });
+
+    it('should allow updating to same name (no change)', async () => {
+      const input = {
+        name: 'Main', // Same as current name
+        description: 'Updated description',
+      };
+
+      const branchWithRelations = {
+        ...mockBranch,
+        parent: null,
+        children: [],
+        campaign: mockCampaign,
+      };
+
+      (prisma.branch.findFirst as jest.Mock)
+        .mockResolvedValueOnce(branchWithRelations) // findById
+        .mockResolvedValueOnce(branchWithRelations); // Check for duplicate (finds itself)
+
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.update as jest.Mock).mockResolvedValue({
+        ...branchWithRelations,
+        ...input,
+      });
+
+      const result = await service.update('branch-1', input, mockUser);
+
+      expect(result.name).toBe('Main');
+      expect(result.description).toBe('Updated description');
+      expect(prisma.branch.update).toHaveBeenCalled();
     });
   });
 

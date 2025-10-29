@@ -144,6 +144,21 @@ export class BranchService {
     // Verify user has access to the campaign
     await this.checkCampaignAccess(input.campaignId, user);
 
+    // Check for duplicate branch name within campaign
+    const existingBranch = await this.prisma.branch.findFirst({
+      where: {
+        campaignId: input.campaignId,
+        name: input.name,
+        deletedAt: null,
+      },
+    });
+
+    if (existingBranch) {
+      throw new BadRequestException(
+        `A branch named "${input.name}" already exists in this campaign`
+      );
+    }
+
     // If parentId provided, verify it exists and belongs to same campaign
     if (input.parentId) {
       const parent = await this.prisma.branch.findFirst({
@@ -208,6 +223,25 @@ export class BranchService {
 
     // Verify user has access to the campaign
     await this.checkCampaignAccess(branch.campaignId, user);
+
+    // Check for duplicate branch name within campaign (if name is being changed)
+    if (input.name) {
+      const existingBranch = await this.prisma.branch.findFirst({
+        where: {
+          campaignId: branch.campaignId,
+          name: input.name,
+          deletedAt: null,
+        },
+      });
+
+      // Allow update if the found branch is the current branch (no name change)
+      // or if no branch with that name exists
+      if (existingBranch && existingBranch.id !== id) {
+        throw new BadRequestException(
+          `A branch named "${input.name}" already exists in this campaign`
+        );
+      }
+    }
 
     // Update branch (only name and description allowed)
     const updated = await this.prisma.branch.update({

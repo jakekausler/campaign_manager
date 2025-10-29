@@ -20,6 +20,7 @@ import { useGetBranchHierarchy, useDeleteBranch } from '@/services/api/hooks/bra
 import { useCampaignStore } from '@/stores';
 
 import { DeleteBranchDialog, type BranchInfo } from './DeleteBranchDialog';
+import { RenameBranchDialog } from './RenameBranchDialog';
 
 // Types for branch data
 type BranchNodeType = {
@@ -48,6 +49,7 @@ type BranchFlowNodeData = {
   childrenIds: string[];
   versionCount?: number; // TODO: Add when backend provides statistics
   onDelete?: (branchId: string) => void;
+  onRename?: (branchId: string) => void;
 };
 
 /**
@@ -119,9 +121,12 @@ function BranchNode({ data, selected }: { data: BranchFlowNodeData; selected: bo
             size="sm"
             variant="ghost"
             className="h-7 w-7 p-0"
-            title="Rename branch (coming in future stage)"
+            title="Rename branch"
             aria-label="Rename branch"
-            disabled
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onRename?.(data.branchId);
+            }}
           >
             <Edit2 className="h-4 w-4" />
           </Button>
@@ -158,7 +163,8 @@ const nodeTypes = {
 function convertHierarchyToFlow(
   hierarchy: BranchNodeType[],
   currentBranchId?: string,
-  onDelete?: (branchId: string) => void
+  onDelete?: (branchId: string) => void,
+  onRename?: (branchId: string) => void
 ): { nodes: Node<BranchFlowNodeData>[]; edges: Edge[] } {
   const nodes: Node<BranchFlowNodeData>[] = [];
   const edges: Edge[] = [];
@@ -181,6 +187,7 @@ function convertHierarchyToFlow(
         parentId: branch.parentId,
         childrenIds: children.map((c) => c.branch.id),
         onDelete,
+        onRename,
       },
     });
 
@@ -265,6 +272,8 @@ export function BranchHierarchyView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [branchToDelete, setBranchToDelete] = useState<BranchInfo | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [branchToRename, setBranchToRename] = useState<BranchNodeType['branch'] | null>(null);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
 
   // Fetch branch hierarchy
   const { data, loading, error, refetch } = useGetBranchHierarchy({
@@ -304,6 +313,42 @@ export function BranchHierarchyView() {
     [data]
   );
 
+  // Handle rename button click
+  const handleRenameClick = useCallback(
+    (branchId: string) => {
+      if (!data?.branchHierarchy) return;
+
+      // Find branch in hierarchy
+      const findBranch = (nodes: BranchNodeType[]): BranchNodeType | null => {
+        for (const node of nodes) {
+          if (node.branch.id === branchId) return node;
+          const found = findBranch(node.children);
+          if (found) return found;
+        }
+        return null;
+      };
+
+      const branchNode = findBranch(data.branchHierarchy);
+      if (branchNode) {
+        setBranchToRename(branchNode.branch);
+        setRenameDialogOpen(true);
+      }
+    },
+    [data]
+  );
+
+  // Handle rename success
+  const handleRenameSuccess = useCallback(() => {
+    toast.success('Branch renamed', {
+      description: `Branch has been successfully renamed.`,
+    });
+
+    // Close dialog and refetch hierarchy
+    setRenameDialogOpen(false);
+    setBranchToRename(null);
+    refetch();
+  }, [refetch]);
+
   // Handle delete confirmation
   const handleDeleteConfirm = useCallback(async () => {
     if (!branchToDelete) return;
@@ -341,9 +386,10 @@ export function BranchHierarchyView() {
     return convertHierarchyToFlow(
       data.branchHierarchy,
       currentBranchId ?? undefined,
-      handleDeleteClick
+      handleDeleteClick,
+      handleRenameClick
     );
-  }, [data, currentBranchId, handleDeleteClick]);
+  }, [data, currentBranchId, handleDeleteClick, handleRenameClick]);
 
   // Apply layout
   const layoutedNodes = useMemo(() => {
@@ -511,6 +557,17 @@ export function BranchHierarchyView() {
       {/* Fork dialog - TODO: Implement when BranchSelector provides sourceBranch prop */}
       {/* ForkBranchDialog requires sourceBranch: Branch | null prop */}
       {/* Will be implemented in future ticket when BranchSelector integration is complete */}
+
+      {/* Rename Branch Dialog */}
+      <RenameBranchDialog
+        branch={branchToRename}
+        isOpen={renameDialogOpen}
+        onClose={() => {
+          setRenameDialogOpen(false);
+          setBranchToRename(null);
+        }}
+        onSuccess={handleRenameSuccess}
+      />
 
       {/* Delete Branch Dialog */}
       <DeleteBranchDialog
