@@ -8,7 +8,7 @@ import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 
-export type AuditOperation = 'CREATE' | 'UPDATE' | 'DELETE' | 'ARCHIVE' | 'RESTORE';
+export type AuditOperation = 'CREATE' | 'UPDATE' | 'DELETE' | 'ARCHIVE' | 'RESTORE' | 'FORK';
 
 @Injectable()
 export class AuditService {

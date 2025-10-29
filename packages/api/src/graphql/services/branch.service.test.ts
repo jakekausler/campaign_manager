@@ -11,11 +11,13 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 
 import { AuditService } from './audit.service';
 import { BranchService } from './branch.service';
+import { VersionService } from './version.service';
 
 describe('BranchService', () => {
   let service: BranchService;
   let prisma: PrismaService;
   let audit: AuditService;
+  let versionService: VersionService;
 
   const mockUser: AuthenticatedUser = {
     id: 'user-1',
@@ -63,23 +65,39 @@ describe('BranchService', () => {
   };
 
   beforeEach(async () => {
-    // Create mock prisma service
-    const mockPrismaService = {
+    // Create mock prisma service with proper typing
+    const mockPrismaService: any = {
       campaign: {
         findFirst: jest.fn(),
       },
       branch: {
         findFirst: jest.fn(),
+        findUnique: jest.fn(),
         findMany: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
         count: jest.fn(),
       },
+      version: {
+        findMany: jest.fn(),
+        create: jest.fn(),
+      },
+      $transaction: jest.fn(),
     };
+
+    // Configure transaction to pass through the callback
+    mockPrismaService.$transaction.mockImplementation((callback: any) =>
+      callback(mockPrismaService)
+    );
 
     // Create mock audit service
     const mockAuditService = {
       log: jest.fn(),
+    };
+
+    // Create mock version service
+    const mockVersionService = {
+      resolveVersion: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -93,12 +111,17 @@ describe('BranchService', () => {
           provide: AuditService,
           useValue: mockAuditService,
         },
+        {
+          provide: VersionService,
+          useValue: mockVersionService,
+        },
       ],
     }).compile();
 
     service = module.get<BranchService>(BranchService);
     prisma = module.get<PrismaService>(PrismaService);
     audit = module.get<AuditService>(AuditService);
+    versionService = module.get<VersionService>(VersionService);
   });
 
   afterEach(() => {
@@ -576,6 +599,297 @@ describe('BranchService', () => {
           }),
         })
       );
+    });
+  });
+
+  describe('fork', () => {
+    const worldTime = new Date('4707-03-15T12:00:00Z');
+    const mockVersion = {
+      id: 'version-1',
+      entityType: 'character',
+      entityId: 'character-1',
+      branchId: 'branch-1',
+      validFrom: new Date('4707-01-01T00:00:00Z'),
+      validTo: null,
+      payloadGz: Buffer.from('compressed-data'),
+      createdBy: 'user-1',
+      comment: null,
+      version: 1,
+      createdAt: new Date(),
+    };
+
+    beforeEach(() => {
+      // Setup default mocks for fork operation
+      const branchWithRelations = {
+        ...mockBranch,
+        parent: null,
+        children: [],
+        campaign: mockCampaign,
+      };
+
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(branchWithRelations);
+      (prisma.branch.findUnique as jest.Mock).mockResolvedValue({
+        campaignId: mockBranch.campaignId,
+      });
+      (prisma.branch.findMany as jest.Mock).mockResolvedValue([
+        { id: 'branch-1', parentId: null },
+        { id: 'branch-2', parentId: 'branch-1' },
+      ]);
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+      (prisma.branch.create as jest.Mock).mockResolvedValue({
+        ...mockChildBranch,
+        parent: mockBranch,
+        children: [],
+      });
+    });
+
+    it('should create child branch and copy versions successfully', async () => {
+      // Mock version data for multiple entity types
+      (prisma.version.findMany as jest.Mock).mockResolvedValue([
+        { entityId: 'character-1', branchId: 'branch-1' },
+        { entityId: 'location-1', branchId: 'branch-1' },
+      ]);
+
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue(mockVersion);
+      (prisma.version.create as jest.Mock).mockResolvedValue({});
+
+      const result = await service.fork(
+        'branch-1',
+        'Alternate Timeline',
+        'What if scenario',
+        worldTime,
+        mockUser
+      );
+
+      expect(result.branch.id).toBe('branch-2');
+      expect(result.branch.parentId).toBe('branch-1');
+      expect(result.branch.divergedAt).toEqual(worldTime);
+      expect(result.versionsCopied).toBeGreaterThan(0);
+
+      expect(prisma.branch.create).toHaveBeenCalledWith({
+        data: {
+          campaignId: 'campaign-1',
+          name: 'Alternate Timeline',
+          description: 'What if scenario',
+          parentId: 'branch-1',
+          divergedAt: worldTime,
+        },
+        include: {
+          parent: true,
+          children: true,
+        },
+      });
+
+      expect(audit.log).toHaveBeenCalledWith(
+        'branch',
+        'branch-2',
+        'FORK',
+        'user-1',
+        expect.objectContaining({
+          sourceBranchId: 'branch-1',
+          divergedAt: worldTime,
+        })
+      );
+    });
+
+    it('should copy versions for all entity types', async () => {
+      const entityTypes = [
+        'campaign',
+        'world',
+        'location',
+        'character',
+        'party',
+        'kingdom',
+        'settlement',
+        'structure',
+        'encounter',
+        'event',
+      ];
+
+      // Mock versions for each entity type
+      (prisma.version.findMany as jest.Mock).mockImplementation(({ where }) => {
+        const entityType = where.entityType;
+        if (entityTypes.includes(entityType)) {
+          return Promise.resolve([{ entityId: `${entityType}-1`, branchId: 'branch-1' }]);
+        }
+        return Promise.resolve([]);
+      });
+
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue(mockVersion);
+      (prisma.version.create as jest.Mock).mockResolvedValue({});
+
+      const result = await service.fork('branch-1', 'Test Fork', undefined, worldTime, mockUser);
+
+      // Should have attempted to copy versions for all entity types
+      expect(versionService.resolveVersion).toHaveBeenCalledTimes(entityTypes.length);
+      expect(result.versionsCopied).toBe(entityTypes.length);
+    });
+
+    it('should set validFrom to worldTime for copied versions', async () => {
+      (prisma.version.findMany as jest.Mock).mockResolvedValue([
+        { entityId: 'character-1', branchId: 'branch-1' },
+      ]);
+
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue(mockVersion);
+      (prisma.version.create as jest.Mock).mockResolvedValue({});
+
+      await service.fork('branch-1', 'Test Fork', undefined, worldTime, mockUser);
+
+      expect(prisma.version.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            validFrom: worldTime,
+            validTo: null,
+          }),
+        })
+      );
+    });
+
+    it('should reuse compressed payload without decompression', async () => {
+      (prisma.version.findMany as jest.Mock).mockResolvedValue([
+        { entityId: 'character-1', branchId: 'branch-1' },
+      ]);
+
+      const compressedPayload = Buffer.from('test-compressed-data');
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue({
+        ...mockVersion,
+        payloadGz: compressedPayload,
+      });
+      (prisma.version.create as jest.Mock).mockResolvedValue({});
+
+      await service.fork('branch-1', 'Test Fork', undefined, worldTime, mockUser);
+
+      expect(prisma.version.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            payloadGz: Buffer.from(compressedPayload),
+          }),
+        })
+      );
+    });
+
+    it('should set version number to 1 for first version in new branch', async () => {
+      (prisma.version.findMany as jest.Mock).mockResolvedValue([
+        { entityId: 'character-1', branchId: 'branch-1' },
+      ]);
+
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue(mockVersion);
+      (prisma.version.create as jest.Mock).mockResolvedValue({});
+
+      await service.fork('branch-1', 'Test Fork', undefined, worldTime, mockUser);
+
+      expect(prisma.version.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            version: 1,
+          }),
+        })
+      );
+    });
+
+    it('should include fork comment in copied versions', async () => {
+      (prisma.version.findMany as jest.Mock).mockResolvedValue([
+        { entityId: 'character-1', branchId: 'branch-1' },
+      ]);
+
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue(mockVersion);
+      (prisma.version.create as jest.Mock).mockResolvedValue({});
+
+      await service.fork('branch-1', 'Test Fork', undefined, worldTime, mockUser);
+
+      expect(prisma.version.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            comment: expect.stringContaining('Forked from branch branch-1'),
+          }),
+        })
+      );
+    });
+
+    it('should handle entities with no versions gracefully', async () => {
+      // No versions found for any entity type
+      (prisma.version.findMany as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.fork('branch-1', 'Empty Fork', undefined, worldTime, mockUser);
+
+      expect(result.versionsCopied).toBe(0);
+      expect(result.branch.id).toBe('branch-2');
+    });
+
+    it('should skip entities where version resolution returns null', async () => {
+      (prisma.version.findMany as jest.Mock).mockResolvedValue([
+        { entityId: 'character-1', branchId: 'branch-1' },
+        { entityId: 'character-2', branchId: 'branch-1' },
+      ]);
+
+      // First entity resolves, second doesn't
+      (versionService.resolveVersion as jest.Mock)
+        .mockResolvedValueOnce(mockVersion)
+        .mockResolvedValueOnce(null);
+
+      (prisma.version.create as jest.Mock).mockResolvedValue({});
+
+      const result = await service.fork('branch-1', 'Test Fork', undefined, worldTime, mockUser);
+
+      // Should only copy one version
+      expect(prisma.version.create).toHaveBeenCalledTimes(1);
+      expect(result.versionsCopied).toBe(1);
+    });
+
+    it('should throw NotFoundException when source branch does not exist', async () => {
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.fork('non-existent', 'Test Fork', undefined, worldTime, mockUser)
+      ).rejects.toThrow(NotFoundException);
+
+      await expect(
+        service.fork('non-existent', 'Test Fork', undefined, worldTime, mockUser)
+      ).rejects.toThrow('Source branch with ID non-existent not found');
+    });
+
+    it('should throw ForbiddenException when user lacks campaign access', async () => {
+      const branchWithRelations = {
+        ...mockBranch,
+        parent: null,
+        children: [],
+        campaign: mockCampaign,
+      };
+
+      (prisma.branch.findFirst as jest.Mock).mockResolvedValue(branchWithRelations);
+      (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(null); // No access
+
+      await expect(
+        service.fork('branch-1', 'Test Fork', undefined, worldTime, mockUser)
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should use transaction to ensure atomic operation', async () => {
+      (prisma.version.findMany as jest.Mock).mockResolvedValue([
+        { entityId: 'character-1', branchId: 'branch-1' },
+      ]);
+
+      (versionService.resolveVersion as jest.Mock).mockResolvedValue(mockVersion);
+      (prisma.version.create as jest.Mock).mockResolvedValue({});
+
+      await service.fork('branch-1', 'Test Fork', undefined, worldTime, mockUser);
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('should handle description as undefined', async () => {
+      (prisma.version.findMany as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.fork('branch-1', 'Test Fork', undefined, worldTime, mockUser);
+
+      expect(prisma.branch.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            description: undefined,
+          }),
+        })
+      );
+      expect(result.branch).toBeDefined();
     });
   });
 });

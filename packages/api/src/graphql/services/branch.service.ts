@@ -21,6 +21,7 @@ import type {
 } from '../inputs/branch.input';
 
 import { AuditService } from './audit.service';
+import { VersionService } from './version.service';
 
 /**
  * Branch node for hierarchy tree structure
@@ -30,13 +31,35 @@ export interface BranchNode {
   children: BranchNode[];
 }
 
+/**
+ * Result of fork operation with statistics
+ */
+export interface ForkResult {
+  branch: PrismaBranch;
+  versionsCopied: number;
+}
+
 @Injectable()
 export class BranchService {
   private static readonly MAX_ANCESTRY_DEPTH = 100;
+  // All entity types that support versioning
+  private static readonly ENTITY_TYPES = [
+    'campaign',
+    'world',
+    'location',
+    'character',
+    'party',
+    'kingdom',
+    'settlement',
+    'structure',
+    'encounter',
+    'event',
+  ] as const;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly versionService: VersionService
   ) {}
 
   /**
@@ -341,6 +364,189 @@ export class BranchService {
     }
 
     return ancestry;
+  }
+
+  /**
+   * Fork a branch to create an alternate timeline
+   * Creates child branch and copies all entity versions at the divergence point
+   * Uses transaction to ensure atomic operation
+   *
+   * @param sourceBranchId - Branch to fork from
+   * @param name - Name for the new branch
+   * @param description - Optional description for the new branch
+   * @param worldTime - World time when branch diverges (fork point)
+   * @param user - User creating the fork
+   * @returns ForkResult with new branch and count of copied versions
+   */
+  async fork(
+    sourceBranchId: string,
+    name: string,
+    description: string | undefined,
+    worldTime: Date,
+    user: AuthenticatedUser
+  ): Promise<ForkResult> {
+    // Validate source branch exists
+    const sourceBranch = await this.findById(sourceBranchId);
+    if (!sourceBranch) {
+      throw new NotFoundException(`Source branch with ID ${sourceBranchId} not found`);
+    }
+
+    // Verify user has access to the campaign
+    await this.checkCampaignAccess(sourceBranch.campaignId, user);
+
+    // Execute fork operation in transaction for atomicity
+    return this.prisma.$transaction(async (tx) => {
+      // Create child branch with divergedAt timestamp
+      const childBranch = await tx.branch.create({
+        data: {
+          campaignId: sourceBranch.campaignId,
+          name,
+          description,
+          parentId: sourceBranchId,
+          divergedAt: worldTime,
+        },
+        include: {
+          parent: true,
+          children: true,
+        },
+      });
+
+      // Create audit entry for branch creation
+      await this.audit.log('branch', childBranch.id, 'FORK', user.id, {
+        name: childBranch.name,
+        sourceBranchId,
+        divergedAt: worldTime,
+      });
+
+      let totalVersionsCopied = 0;
+
+      // Copy versions for each entity type
+      for (const entityType of BranchService.ENTITY_TYPES) {
+        const versionsCopied = await this.copyVersionsForEntityType(
+          sourceBranchId,
+          childBranch.id,
+          entityType,
+          worldTime,
+          user,
+          tx
+        );
+        totalVersionsCopied += versionsCopied;
+      }
+
+      return {
+        branch: childBranch,
+        versionsCopied: totalVersionsCopied,
+      };
+    });
+  }
+
+  /**
+   * Copy all versions for a specific entity type at fork point
+   * Queries resolved versions in source branch ancestry and creates new versions in target branch
+   *
+   * @param sourceBranchId - Source branch to copy from
+   * @param targetBranchId - Target branch to copy to
+   * @param entityType - Type of entity to copy
+   * @param worldTime - Fork point timestamp
+   * @param user - User performing the operation
+   * @param tx - Prisma transaction client
+   * @returns Count of versions copied
+   */
+  private async copyVersionsForEntityType(
+    sourceBranchId: string,
+    targetBranchId: string,
+    entityType: string,
+    worldTime: Date,
+    user: AuthenticatedUser,
+    tx: any
+  ): Promise<number> {
+    // Get the source branch to find its campaign
+    const sourceBranch = await tx.branch.findUnique({
+      where: { id: sourceBranchId },
+      select: { campaignId: true },
+    });
+
+    if (!sourceBranch) {
+      return 0;
+    }
+
+    // Get all branches in the campaign to build ancestry
+    const allBranches = await tx.branch.findMany({
+      where: { campaignId: sourceBranch.campaignId, deletedAt: null },
+      select: { id: true, parentId: true },
+    });
+
+    // Build branch ancestry chain for source branch
+    type BranchNode = { id: string; parentId: string | null };
+    const branchMap = new Map<string, BranchNode>(allBranches.map((b: BranchNode) => [b.id, b]));
+    const ancestryBranchIds: string[] = [];
+    let currentBranchId: string | null = sourceBranchId;
+
+    while (currentBranchId) {
+      ancestryBranchIds.push(currentBranchId);
+      const currentBranch = branchMap.get(currentBranchId);
+      currentBranchId = currentBranch?.parentId || null;
+    }
+
+    // Find all versions in the ancestry chain that are valid at fork point
+    // This correctly filters to only versions accessible from source branch
+    const versions = await tx.version.findMany({
+      where: {
+        entityType,
+        branchId: { in: ancestryBranchIds },
+        validFrom: { lte: worldTime },
+        OR: [{ validTo: { gt: worldTime } }, { validTo: null }],
+      },
+      select: {
+        entityId: true,
+        branchId: true,
+      },
+    });
+
+    // Get unique entity IDs
+    const entityIds: string[] = [
+      ...new Set<string>(versions.map((v: { entityId: string }) => v.entityId)),
+    ];
+
+    let versionsCopied = 0;
+
+    // Batch resolve all versions at once to avoid N+1 queries
+    const resolvedVersions = await Promise.all(
+      entityIds.map(async (entityId: string) => {
+        const version = await this.versionService.resolveVersion(
+          entityType,
+          entityId,
+          sourceBranchId,
+          worldTime
+        );
+        return { entityId, version };
+      })
+    );
+
+    // Create all new versions in a batch
+    for (const { entityId, version: resolvedVersion } of resolvedVersions) {
+      if (resolvedVersion) {
+        // Create new version in target branch with same payload
+        // Reuse compressed payload directly without cloning
+        await tx.version.create({
+          data: {
+            entityType,
+            entityId,
+            branchId: targetBranchId,
+            validFrom: worldTime,
+            validTo: null,
+            payloadGz: resolvedVersion.payloadGz,
+            createdBy: user.id,
+            comment: `Forked from branch ${sourceBranchId} at ${worldTime.toISOString()}`,
+            version: 1, // First version in new branch
+          },
+        });
+
+        versionsCopied++;
+      }
+    }
+
+    return versionsCopied;
   }
 
   /**
