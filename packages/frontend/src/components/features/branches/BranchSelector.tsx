@@ -52,7 +52,7 @@ export function BranchSelector() {
     return flatBranches.find((b) => b.id === currentBranchId) ?? null;
   }, [flatBranches, currentBranchId]);
 
-  // Handle branch selection
+  // Handle branch selection with instant UI update
   const handleSelectBranch = (branchId: string) => {
     setCurrentBranch(branchId);
     setIsOpen(false);

@@ -646,6 +646,8 @@ export function useUpdateBranch(
 /**
  * React hook to delete a branch (soft delete).
  *
+ * Automatically refetches branch queries to update the UI after deletion.
+ *
  * @param options - Additional Apollo mutation options
  * @returns Mutation function and result state
  *
