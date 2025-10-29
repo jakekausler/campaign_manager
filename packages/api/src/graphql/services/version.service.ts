@@ -10,7 +10,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import type { Version } from '@prisma/client';
+import type { Version, Branch } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
@@ -436,6 +436,23 @@ export class VersionService {
     });
 
     return restoredVersion;
+  }
+
+  /**
+   * Get branch by ID
+   * Helper method for branch service and resolution algorithm
+   */
+  async getBranchById(branchId: string): Promise<Branch | null> {
+    return this.prisma.branch.findFirst({
+      where: {
+        id: branchId,
+        deletedAt: null,
+      },
+      include: {
+        parent: true,
+        campaign: true,
+      },
+    });
   }
 
   /**
