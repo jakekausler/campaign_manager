@@ -51,6 +51,17 @@
   - All tests passing (4.8s execution), TypeScript compilation clean, no lint errors
   - Code reviewed and approved after addressing critical issues (N+1 queries, authorization pattern, test coverage)
 
+- **2025-10-29**: ✅ Completed Stage 4 (Version Resolution for Settlement & Structure) - Commit: ac87286
+  - Added settlementAsOf GraphQL query (id, branchId, asOf parameters) to SettlementResolver
+  - Added structureAsOf GraphQL query (id, branchId, asOf parameters) to StructureResolver
+  - Both queries delegate to existing getXxxAsOf() service methods (already implemented in services)
+  - Service methods use versionService.resolveVersion() with branch ancestry walking
+  - Returns entity state as it existed at specific world time in specific branch
+  - Created comprehensive integration test file: settlement-structure-branch-versioning.integration.test.ts
+  - 16 tests covering: version resolution from main branch, child branch inheritance, parent isolation, 3-level hierarchy, authorization
+  - All tests passing, TypeScript compilation clean, no lint errors
+  - Code reviewed and approved with zero issues - exemplary implementation following all patterns
+
 ## Description
 
 Implement branching system that allows creating alternate timeline branches and viewing campaign state in different branches.
