@@ -29,6 +29,7 @@ export type RootStore = AuthSlice & CampaignSlice & SelectionSlice;
  * - auth.token (for auto-login and attaching to GraphQL requests)
  * - auth.user (for immediate profile access on app reload)
  * - campaign.currentCampaignId (for restoring context)
+ * - campaign.campaignBranchMap (for restoring per-campaign branch selections)
  *
  * NOT persisted (ephemeral session state):
  * - selection.selectedEntities (resets on page reload)
@@ -45,11 +46,12 @@ export const useStore = create<RootStore>()(
         name: 'campaign-manager-storage', // localStorage key
         // Persist only necessary state (not entire store)
         // Auth: token + user for auto-login and immediate profile access
-        // Campaign: currentCampaignId for restoring context
+        // Campaign: currentCampaignId + campaignBranchMap for restoring context
         partialize: (state) => ({
           token: state.token,
           user: state.user,
           currentCampaignId: state.currentCampaignId,
+          campaignBranchMap: state.campaignBranchMap,
         }),
         // Restore isAuthenticated when hydrating from localStorage
         // This ensures the auth state is fully restored on app reload
@@ -102,6 +104,7 @@ export const useCampaignStore = () =>
   useStore((state) => ({
     currentCampaignId: state.currentCampaignId,
     currentBranchId: state.currentBranchId,
+    campaignBranchMap: state.campaignBranchMap,
     asOfTime: state.asOfTime,
     campaign: state.campaign,
     setCurrentCampaign: state.setCurrentCampaign,

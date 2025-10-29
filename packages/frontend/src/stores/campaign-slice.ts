@@ -16,7 +16,9 @@ import type { StateCreator } from 'zustand';
  *
  * State persistence:
  * - currentCampaignId is persisted to localStorage (restore context on reload)
- * - Other fields (campaign, branchId, asOfTime) are ephemeral (not persisted)
+ * - currentBranchId is persisted to localStorage per campaign (restore branch context)
+ * - Branch persistence uses campaignBranchMap to store per-campaign branch selections
+ * - Other fields (campaign, asOfTime) are ephemeral (not persisted)
  * - Campaign data should be refetched on app reload
  *
  * Integration with GraphQL:
@@ -59,9 +61,18 @@ export interface CampaignSlice {
   currentCampaignId: string | null;
 
   /**
-   * ID of the currently selected branch
+   * Map of campaign ID to selected branch ID
+   * Persisted to localStorage to remember branch selection per campaign
+   * This allows users to switch between campaigns and retain their branch context
+   * @internal - Use currentBranchId for reading current branch
+   */
+  campaignBranchMap: Record<string, string>;
+
+  /**
+   * ID of the currently selected branch for the current campaign
+   * Derived from campaignBranchMap[currentCampaignId]
    * Used for version control and branching workflows
-   * NOT persisted (ephemeral session state)
+   * Persisted per campaign via campaignBranchMap
    */
   currentBranchId: string | null;
 
@@ -117,7 +128,9 @@ export interface CampaignSlice {
    * Changes the active branch for version control workflows.
    * This affects which version of data is queried from the backend.
    *
-   * NOT persisted to localStorage (ephemeral session state).
+   * Persisted to localStorage per campaign via campaignBranchMap.
+   * When switching campaigns, the previously selected branch for that
+   * campaign will be automatically restored.
    *
    * @param branchId - The branch ID to set as current
    *
@@ -196,6 +209,7 @@ export interface CampaignSlice {
 export const createCampaignSlice: StateCreator<CampaignSlice> = (set) => ({
   // ==================== Initial State ====================
   currentCampaignId: null,
+  campaignBranchMap: {},
   currentBranchId: null,
   asOfTime: null,
   campaign: null,
@@ -203,18 +217,38 @@ export const createCampaignSlice: StateCreator<CampaignSlice> = (set) => ({
   // ==================== Actions ====================
 
   setCurrentCampaign: (campaignId, campaign) =>
-    set({
-      currentCampaignId: campaignId,
-      campaign,
-      // Reset branch and time-travel when switching campaigns
-      // This prevents stale branch/time context from previous campaign
-      currentBranchId: null,
-      asOfTime: null,
+    set((state) => {
+      // Restore previously selected branch for this campaign (if any)
+      const restoredBranchId = state.campaignBranchMap[campaignId] ?? null;
+
+      return {
+        currentCampaignId: campaignId,
+        campaign,
+        // Restore branch from campaignBranchMap or reset to null
+        currentBranchId: restoredBranchId,
+        // Reset time-travel when switching campaigns
+        // This prevents stale time context from previous campaign
+        asOfTime: null,
+      };
     }),
 
   setCurrentBranch: (branchId) =>
-    set({
-      currentBranchId: branchId,
+    set((state) => {
+      const { currentCampaignId } = state;
+
+      // If no campaign selected, can't persist branch selection
+      if (!currentCampaignId) {
+        return { currentBranchId: branchId };
+      }
+
+      // Update both currentBranchId and campaignBranchMap
+      return {
+        currentBranchId: branchId,
+        campaignBranchMap: {
+          ...state.campaignBranchMap,
+          [currentCampaignId]: branchId,
+        },
+      };
     }),
 
   setAsOfTime: (time) =>
@@ -228,5 +262,8 @@ export const createCampaignSlice: StateCreator<CampaignSlice> = (set) => ({
       currentBranchId: null,
       asOfTime: null,
       campaign: null,
+      // Note: campaignBranchMap is NOT cleared - we keep branch selections
+      // for all campaigns even when context is cleared. This allows
+      // restoring branch context when user returns to a campaign.
     }),
 });

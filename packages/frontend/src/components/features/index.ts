@@ -14,3 +14,4 @@
 export { Map } from './map';
 export { VariableNode, ConditionNode, EffectNode, EntityNode, CustomNode } from './flow';
 export { Timeline } from './timeline';
+export { BranchSelector } from './branches';

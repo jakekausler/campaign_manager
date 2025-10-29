@@ -1,15 +1,19 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
+import { BranchSelector } from '@/components/features';
 import { Button } from '@/components/ui';
+import { useCampaignStore } from '@/stores';
 
 /**
  * Main application layout with navigation header
  *
  * Used for public and authenticated pages with full navigation.
+ * Includes branch selector when a campaign is active.
  */
 export function MainLayout() {
   const location = useLocation();
   const isAuthenticated = !!localStorage.getItem('auth_token');
+  const { currentCampaignId } = useCampaignStore();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -58,6 +62,9 @@ export function MainLayout() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Branch selector (shown when campaign is selected) */}
+            {isAuthenticated && currentCampaignId && <BranchSelector />}
+
             {!isAuthenticated ? (
               <Link to="/auth/login">
                 <Button>Log In</Button>

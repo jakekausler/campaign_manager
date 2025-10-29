@@ -96,5 +96,26 @@ export {
 // Audit hooks
 export { useEntityAuditHistory, type AuditEntry } from './audit';
 
+// Branch hooks
+export {
+  useGetBranch,
+  useGetBranches,
+  useGetBranchHierarchy,
+  useCreateBranch,
+  useUpdateBranch,
+  useDeleteBranch,
+  useForkBranch,
+  GET_BRANCH,
+  GET_BRANCHES,
+  GET_BRANCH_HIERARCHY,
+  CREATE_BRANCH,
+  UPDATE_BRANCH,
+  DELETE_BRANCH,
+  FORK_BRANCH,
+  type Branch,
+  type BranchNode,
+  type ForkResult,
+} from './branches';
+
 // Mutation hooks (Stage 8)
 export * from '../mutations';
