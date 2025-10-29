@@ -53,6 +53,8 @@ describe('BranchComparisonView', () => {
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
       divergedAt: null,
+      isPinned: false,
+      tags: [],
       depth: 0,
     },
     {
@@ -64,6 +66,8 @@ describe('BranchComparisonView', () => {
       createdAt: '2024-01-15T00:00:00.000Z',
       updatedAt: '2024-01-15T00:00:00.000Z',
       divergedAt: '2024-01-15T00:00:00.000Z',
+      isPinned: false,
+      tags: [],
       depth: 1,
     },
   ];

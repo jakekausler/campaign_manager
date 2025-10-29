@@ -219,6 +219,12 @@ model Branch {
   name        String
   description String?
   divergedAt  DateTime? // World time when branch diverged from parent
+
+  // Metadata for organization and UI
+  isPinned    Boolean   @default(false) // Pin branch for quick access
+  color       String? // Hex color code for visual categorization
+  tags        String[]  @default([]) // Tags for organizing branches
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -229,6 +235,7 @@ model Branch {
   @@index([campaignId])
   @@index([parentId])
   @@index([deletedAt])
+  @@index([campaignId, isPinned]) // Optimize pinned branch queries
 }
 
 // =================================================================

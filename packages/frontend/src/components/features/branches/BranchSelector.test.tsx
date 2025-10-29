@@ -38,6 +38,8 @@ describe('BranchSelector', () => {
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-01T00:00:00.000Z',
       divergedAt: null,
+      isPinned: false,
+      tags: [],
       depth: 0,
     },
     {
@@ -49,6 +51,8 @@ describe('BranchSelector', () => {
       createdAt: '2024-02-01T00:00:00.000Z',
       updatedAt: '2024-02-01T00:00:00.000Z',
       divergedAt: '2024-01-15T12:00:00.000Z',
+      isPinned: false,
+      tags: [],
       depth: 1,
     },
     {
@@ -60,6 +64,8 @@ describe('BranchSelector', () => {
       createdAt: '2024-03-01T00:00:00.000Z',
       updatedAt: '2024-03-01T00:00:00.000Z',
       divergedAt: '2024-02-10T15:30:00.000Z',
+      isPinned: false,
+      tags: [],
       depth: 2,
     },
   ];

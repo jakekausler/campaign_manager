@@ -5,7 +5,16 @@
 
 import { InputType, Field, ID } from '@nestjs/graphql';
 import { Type } from 'class-transformer';
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsDate } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsDate,
+  IsBoolean,
+  IsArray,
+  Matches,
+} from 'class-validator';
 
 @InputType()
 export class CreateBranchInput {
@@ -34,6 +43,26 @@ export class CreateBranchInput {
   @IsOptional()
   @Type(() => Date)
   divergedAt?: Date;
+
+  // Metadata fields
+  @Field({ nullable: true })
+  @IsBoolean()
+  @IsOptional()
+  isPinned?: boolean;
+
+  @Field({ nullable: true })
+  @IsString()
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, {
+    message: 'Color must be a valid hex color code (e.g., #FF5733)',
+  })
+  color?: string;
+
+  @Field(() => [String], { nullable: true })
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  tags?: string[];
 }
 
 @InputType()
@@ -47,6 +76,26 @@ export class UpdateBranchInput {
   @IsString()
   @IsOptional()
   description?: string;
+
+  // Metadata fields
+  @Field({ nullable: true })
+  @IsBoolean()
+  @IsOptional()
+  isPinned?: boolean;
+
+  @Field({ nullable: true })
+  @IsString()
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, {
+    message: 'Color must be a valid hex color code (e.g., #FF5733)',
+  })
+  color?: string;
+
+  @Field(() => [String], { nullable: true })
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  tags?: string[];
 }
 
 @InputType()

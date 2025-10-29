@@ -41,6 +41,8 @@ describe('ForkBranchDialog', () => {
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
     divergedAt: null,
+    isPinned: false,
+    tags: [],
   };
 
   const mockCampaign: stores.Campaign = {
@@ -441,6 +443,8 @@ describe('ForkBranchDialog', () => {
         divergedAt: '2024-06-15T14:30:00.000Z',
         createdAt: '2024-06-15T14:30:05.000Z',
         updatedAt: '2024-06-15T14:30:05.000Z',
+        isPinned: false,
+        tags: [],
       },
       versionsCopied: 42,
     };

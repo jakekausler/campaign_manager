@@ -35,6 +35,9 @@ type Branch = {
   parent?: Branch | null;
   children?: Branch[];
   divergedAt?: string | null;
+  isPinned: boolean;
+  color?: string | null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -80,6 +83,9 @@ type CreateBranchInput = {
   description?: string | null;
   parentId?: string | null;
   divergedAt?: string | null;
+  isPinned?: boolean | null;
+  color?: string | null;
+  tags?: string[] | null;
 };
 
 type CreateBranchMutation = {
@@ -93,6 +99,9 @@ type CreateBranchMutationVariables = {
 type UpdateBranchInput = {
   name?: string | null;
   description?: string | null;
+  isPinned?: boolean | null;
+  color?: string | null;
+  tags?: string[] | null;
 };
 
 type UpdateBranchMutation = {
@@ -169,6 +178,9 @@ export const GET_BRANCH = gql`
         name
       }
       divergedAt
+      isPinned
+      color
+      tags
       createdAt
       updatedAt
     }
@@ -205,6 +217,9 @@ export const GET_BRANCHES = gql`
       description
       parentId
       divergedAt
+      isPinned
+      color
+      tags
       createdAt
       updatedAt
     }
@@ -246,6 +261,9 @@ export const GET_BRANCH_HIERARCHY = gql`
         name
         description
         divergedAt
+        isPinned
+        color
+        tags
         createdAt
         updatedAt
       }
@@ -255,6 +273,9 @@ export const GET_BRANCH_HIERARCHY = gql`
           name
           description
           divergedAt
+          isPinned
+          color
+          tags
           createdAt
           updatedAt
         }
@@ -263,11 +284,17 @@ export const GET_BRANCH_HIERARCHY = gql`
             id
             name
             divergedAt
+            isPinned
+            color
+            tags
           }
           children {
             branch {
               id
               name
+              isPinned
+              color
+              tags
             }
           }
         }
@@ -304,6 +331,9 @@ export const CREATE_BRANCH = gql`
       campaignId
       parentId
       divergedAt
+      isPinned
+      color
+      tags
       createdAt
       updatedAt
     }
@@ -332,6 +362,9 @@ export const UPDATE_BRANCH = gql`
       id
       name
       description
+      isPinned
+      color
+      tags
       updatedAt
     }
   }
@@ -384,6 +417,9 @@ export const FORK_BRANCH = gql`
         description
         parentId
         divergedAt
+        isPinned
+        color
+        tags
         createdAt
         updatedAt
       }

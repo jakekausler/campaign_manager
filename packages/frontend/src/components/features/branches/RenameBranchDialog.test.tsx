@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { MockedProvider } from '@apollo/client/testing';
+import { MockedProvider } from '@apollo/client/testing/react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -36,6 +36,8 @@ describe('RenameBranchDialog', () => {
     divergedAt: null,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
+    isPinned: false,
+    tags: [],
   };
 
   const mockHierarchy = [
@@ -52,6 +54,8 @@ describe('RenameBranchDialog', () => {
             divergedAt: '2024-01-15T00:00:00Z',
             createdAt: '2024-01-15T00:00:00Z',
             updatedAt: '2024-01-15T00:00:00Z',
+            isPinned: false,
+            tags: [],
           },
           children: [],
         },
@@ -85,7 +89,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -103,7 +107,7 @@ describe('RenameBranchDialog', () => {
 
   it('should not render when closed', () => {
     render(
-      <MockedProvider mocks={[]} addTypename={false}>
+      <MockedProvider mocks={[]}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={false}
@@ -132,7 +136,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -166,7 +170,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -200,7 +204,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -234,7 +238,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -270,7 +274,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -334,7 +338,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -406,7 +410,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -477,7 +481,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -548,7 +552,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -618,7 +622,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -680,7 +684,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -743,7 +747,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -807,7 +811,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -869,7 +873,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -917,7 +921,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -970,7 +974,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -1040,7 +1044,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -1089,7 +1093,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     const { rerender } = render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -1105,7 +1109,7 @@ describe('RenameBranchDialog', () => {
 
     // Close dialog
     rerender(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={false}
@@ -1117,7 +1121,7 @@ describe('RenameBranchDialog', () => {
 
     // Reopen dialog
     rerender(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -1169,7 +1173,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -1214,7 +1218,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -1246,7 +1250,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -1277,7 +1281,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}
@@ -1312,7 +1316,7 @@ describe('RenameBranchDialog', () => {
     ];
 
     render(
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={mocks}>
         <RenameBranchDialog
           branch={mockBranch}
           isOpen={true}

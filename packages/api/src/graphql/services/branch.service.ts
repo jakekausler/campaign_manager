@@ -188,6 +188,9 @@ export class BranchService {
         description: input.description,
         parentId: input.parentId,
         divergedAt: input.divergedAt,
+        isPinned: input.isPinned ?? false,
+        color: input.color,
+        tags: input.tags ?? [],
       },
       include: {
         parent: true,
@@ -243,12 +246,15 @@ export class BranchService {
       }
     }
 
-    // Update branch (only name and description allowed)
+    // Update branch (name, description, and metadata allowed)
     const updated = await this.prisma.branch.update({
       where: { id },
       data: {
         name: input.name,
         description: input.description,
+        isPinned: input.isPinned,
+        color: input.color,
+        tags: input.tags,
       },
       include: {
         parent: true,

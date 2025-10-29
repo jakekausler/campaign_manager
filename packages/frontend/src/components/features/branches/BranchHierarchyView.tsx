@@ -31,6 +31,9 @@ type BranchNodeType = {
     campaignId: string;
     parentId?: string | null;
     divergedAt?: string | null;
+    isPinned: boolean;
+    color?: string | null;
+    tags: string[];
     createdAt: string;
     updatedAt: string;
   };

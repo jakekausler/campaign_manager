@@ -28,6 +28,16 @@ export class Branch {
   })
   divergedAt?: Date;
 
+  // Metadata for organization and UI
+  @Field(() => Boolean, { description: 'Pin branch for quick access' })
+  isPinned!: boolean;
+
+  @Field({ nullable: true, description: 'Hex color code for visual categorization' })
+  color?: string;
+
+  @Field(() => [String], { description: 'Tags for organizing branches' })
+  tags!: string[];
+
   @Field(() => Date)
   createdAt!: Date;
 

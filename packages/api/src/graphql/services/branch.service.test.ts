@@ -47,6 +47,9 @@ describe('BranchService', () => {
     description: 'Primary timeline',
     parentId: null,
     divergedAt: null,
+    isPinned: false,
+    color: null,
+    tags: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -59,6 +62,9 @@ describe('BranchService', () => {
     description: 'What if the party saved the village',
     parentId: 'branch-1',
     divergedAt: new Date('4707-03-15T12:00:00Z'),
+    isPinned: false,
+    color: null,
+    tags: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -68,6 +74,9 @@ describe('BranchService', () => {
     // Create mock prisma service with proper typing
     const mockPrismaService: any = {
       campaign: {
+        findFirst: jest.fn(),
+      },
+      campaignMembership: {
         findFirst: jest.fn(),
       },
       branch: {
@@ -993,6 +1002,230 @@ describe('BranchService', () => {
         })
       );
       expect(result.branch).toBeDefined();
+    });
+  });
+
+  describe('Branch Metadata', () => {
+    describe('create with metadata', () => {
+      beforeEach(() => {
+        (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValue(null); // No existing branch with same name
+        (prisma.branch.create as jest.Mock).mockResolvedValue({
+          ...mockBranch,
+          parent: null,
+          children: [],
+        });
+      });
+
+      it('should create branch with isPinned=true', async () => {
+        const input = {
+          campaignId: 'campaign-1',
+          name: 'Test Branch',
+          description: 'Description',
+          isPinned: true,
+        };
+
+        await service.create(input, mockUser);
+
+        expect(prisma.branch.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              isPinned: true,
+            }),
+          })
+        );
+      });
+
+      it('should default isPinned to false if not provided', async () => {
+        const input = {
+          campaignId: 'campaign-1',
+          name: 'Test Branch',
+        };
+
+        await service.create(input, mockUser);
+
+        expect(prisma.branch.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              isPinned: false,
+            }),
+          })
+        );
+      });
+
+      it('should create branch with color', async () => {
+        const input = {
+          campaignId: 'campaign-1',
+          name: 'Test Branch',
+          color: '#FF5733',
+        };
+
+        await service.create(input, mockUser);
+
+        expect(prisma.branch.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              color: '#FF5733',
+            }),
+          })
+        );
+      });
+
+      it('should create branch with tags', async () => {
+        const input = {
+          campaignId: 'campaign-1',
+          name: 'Test Branch',
+          tags: ['what-if', 'experimental'],
+        };
+
+        await service.create(input, mockUser);
+
+        expect(prisma.branch.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              tags: ['what-if', 'experimental'],
+            }),
+          })
+        );
+      });
+
+      it('should default tags to empty array if not provided', async () => {
+        const input = {
+          campaignId: 'campaign-1',
+          name: 'Test Branch',
+        };
+
+        await service.create(input, mockUser);
+
+        expect(prisma.branch.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              tags: [],
+            }),
+          })
+        );
+      });
+
+      it('should create branch with all metadata fields', async () => {
+        const input = {
+          campaignId: 'campaign-1',
+          name: 'Test Branch',
+          description: 'Test description',
+          isPinned: true,
+          color: '#00AAFF',
+          tags: ['important', 'main-quest'],
+        };
+
+        await service.create(input, mockUser);
+
+        expect(prisma.branch.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              name: 'Test Branch',
+              description: 'Test description',
+              isPinned: true,
+              color: '#00AAFF',
+              tags: ['important', 'main-quest'],
+            }),
+          })
+        );
+      });
+    });
+
+    describe('update with metadata', () => {
+      beforeEach(() => {
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
+        (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(mockCampaign);
+        (prisma.campaignMembership.findFirst as jest.Mock).mockResolvedValue({
+          id: 'membership-1',
+        });
+      });
+
+      it('should update isPinned field', async () => {
+        const input = { isPinned: true };
+
+        await service.update('branch-1', input, mockUser);
+
+        expect(prisma.branch.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              isPinned: true,
+            }),
+          })
+        );
+      });
+
+      it('should update color field', async () => {
+        const input = { color: '#FF5733' };
+
+        await service.update('branch-1', input, mockUser);
+
+        expect(prisma.branch.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              color: '#FF5733',
+            }),
+          })
+        );
+      });
+
+      it('should update tags field', async () => {
+        const input = { tags: ['updated', 'tags'] };
+
+        await service.update('branch-1', input, mockUser);
+
+        expect(prisma.branch.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              tags: ['updated', 'tags'],
+            }),
+          })
+        );
+      });
+
+      it('should update multiple metadata fields at once', async () => {
+        const input = {
+          isPinned: true,
+          color: '#00AAFF',
+          tags: ['multi', 'update'],
+        };
+
+        await service.update('branch-1', input, mockUser);
+
+        expect(prisma.branch.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              isPinned: true,
+              color: '#00AAFF',
+              tags: ['multi', 'update'],
+            }),
+          })
+        );
+      });
+
+      it('should update metadata along with name and description', async () => {
+        const input = {
+          name: 'Updated Name',
+          description: 'Updated description',
+          isPinned: true,
+          color: '#123456',
+          tags: ['combined'],
+        };
+
+        await service.update('branch-1', input, mockUser);
+
+        expect(prisma.branch.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              name: 'Updated Name',
+              description: 'Updated description',
+              isPinned: true,
+              color: '#123456',
+              tags: ['combined'],
+            }),
+          })
+        );
+      });
     });
   });
 });
