@@ -4,6 +4,19 @@
 
 - [ ] Completed
 - **Commits**:
+  - Planning: 3362521 (Implementation plan created)
+
+## Implementation Notes
+
+- **2025-10-29**: Created comprehensive 10-stage implementation plan in `TICKET-028-implementation-plan.md`
+  - Stages 1-5: Backend (3-way merge algorithm, conflict detection, GraphQL API, merge execution, history tracking)
+  - Stages 6-7: Frontend (merge preview UI, conflict resolution UI)
+  - Stages 8-9: Advanced features (cherry-pick, merge history visualization)
+  - Stage 10: Integration testing, performance testing, and production polish
+  - Leverages existing branching system from TICKET-027 (fork & view functionality)
+  - Leverages existing versioning system from TICKET-007 (version resolution algorithm)
+  - Uses 3-way merge algorithm (common ancestor + source + target) for automatic conflict detection
+  - Auto-resolves non-conflicting changes, requires manual resolution only when both branches modified same property
 
 ## Description
 
