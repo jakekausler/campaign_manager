@@ -14,7 +14,7 @@ Implement the branching system that enables alternate timeline management. The d
 
 **Tasks**:
 
-- [ ] Create `packages/api/src/graphql/services/branch.service.ts`
+- [x] Create `packages/api/src/graphql/services/branch.service.ts`
   - Implement `create(campaignId, name, description, parentId?, divergedAt?)`
   - Implement `findById(id)` with parent/children relations
   - Implement `findByCampaign(campaignId)`
@@ -24,15 +24,14 @@ Implement the branching system that enables alternate timeline management. The d
   - Implement `getAncestry(branchId)` to walk up parent chain
   - Add validation: prevent circular parent references
   - Add validation: prevent deleting branch with children
-- [ ] Create `packages/api/src/graphql/dto/branch.dto.ts`
+- [x] Create `packages/api/src/graphql/inputs/branch.input.ts`
   - Define `CreateBranchInput`, `UpdateBranchInput`, `BranchWhereInput`
-  - Define `Branch` GraphQL type with computed fields
-- [ ] Create unit tests in `packages/api/src/graphql/services/branch.service.test.ts`
+- [x] Create unit tests in `packages/api/src/graphql/services/branch.service.test.ts`
   - Test CRUD operations
   - Test hierarchy retrieval
   - Test ancestry chain walking
   - Test validation rules (circular refs, delete with children)
-- [ ] Update `packages/api/src/graphql/services/version.service.ts`
+- [x] Update `packages/api/src/graphql/services/version.service.ts`
   - Add `getBranchById(branchId)` method for resolution algorithm to use
   - Ensure `resolveVersion` correctly handles branch ancestry
 
@@ -60,7 +59,7 @@ Added comprehensive unit tests covering all operations and edge cases.
 Part of TICKET-027 Stage 1.
 ```
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: aaf526e)
 
 ---
 
