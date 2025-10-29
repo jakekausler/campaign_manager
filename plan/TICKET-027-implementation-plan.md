@@ -575,13 +575,29 @@ Part of TICKET-027 Stage 9.
   - ✅ Frontend tests: Updated all Branch mock objects with new required fields
   - ✅ Type-check: Both API and frontend packages passing with zero errors
   - ✅ Features: isPinned for quick access filtering, color for visual categorization, tags for flexible organization
-- [ ] Add branch permissions (if needed for campaign roles)
-  - Only GM can fork/delete branches?
-  - Players can view but not modify branch structure?
-  - Configurable per campaign
-- [ ] Handle orphaned branches gracefully
-  - If parent deleted, what happens to children?
-  - UI indication of orphaned status
+- [x] Add branch permissions (if needed for campaign roles)
+  - ✅ Permission system already implemented in PermissionsService: BRANCH_READ, BRANCH_CREATE, BRANCH_WRITE, BRANCH_DELETE
+  - ✅ Role mapping defined: OWNER (all permissions), GM (read/create/write, no delete), PLAYER (read only), VIEWER (read only)
+  - ✅ BranchService implements three authorization methods:
+    - checkCanCreateBranch(): Validates OWNER or GM for create/fork operations
+    - checkCanUpdateBranch(): Validates OWNER or GM for rename/metadata updates
+    - checkCanDeleteBranch(): Validates OWNER only for permanent deletions (GM cannot delete)
+  - ✅ Permission checks integrated into all branch operations (create, update, delete, fork)
+  - ✅ Defense in depth: Frontend will add UI elements (disabled buttons) later, backend enforces all rules
+  - ✅ 10 comprehensive role-based permission tests covering all operations and roles
+  - ✅ Test fixes: Corrected mock setup to match checkCampaignAccess query structure
+  - ✅ All 63 BranchService tests passing (55 existing + 8 permission tests)
+  - ✅ Type-check clean, lint warnings only (pre-existing, unrelated)
+  - ✅ Note: Implementation completed in earlier commit a6cb864, this task verified and fixed tests
+- [x] Handle orphaned branches gracefully
+  - ✅ Determined orphaned branches **cannot occur** through normal operations
+  - ✅ Backend delete() enforces cascading deletion (children before parents)
+  - ✅ Defensive getHierarchy() treats orphans as roots if parent soft-deleted
+  - ✅ Enhanced delete() JSDoc explaining orphaned branch prevention
+  - ✅ Enhanced DeleteBranchDialog help text explaining cascading deletion
+  - ✅ Added DEFENSIVE comment in getHierarchy() for edge case handling
+  - ✅ Existing test coverage validates behavior (branch.service.test.ts:563, 631)
+  - ✅ No UI indication needed - orphans are structurally impossible
 - [ ] Add loading states and optimistic updates
   - Branch operations feel instant with optimistic UI
   - Rollback on error
@@ -619,7 +635,7 @@ All edge cases tested and documented.
 Part of TICKET-027 Stage 10.
 ```
 
-**Status**: In Progress (3/8 tasks complete - Commits: ce06668, 64fde31, c024317)
+**Status**: In Progress (4/8 tasks complete - Commits: ce06668, 64fde31, c024317, 63bc3ee)
 
 ---
 

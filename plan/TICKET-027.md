@@ -318,7 +318,7 @@
     - Hex color validation allows both uppercase and lowercase (could normalize to uppercase in future)
     - All GraphQL fragments consistently updated across nested hierarchy queries
 
-- **2025-10-29**: ✅ Completed Stage 10 Task 4 (Branch Permissions) - Commit: a6cb864
+- **2025-10-29**: ✅ Completed Stage 10 Task 4 (Branch Permissions) - Commits: a6cb864, 63bc3ee
   - **Task 4/8 Complete: Role-Based Permissions for Branch Operations**
   - Backend permission system (packages/api/src/auth/services/permissions.service.ts):
     - Added BRANCH_READ, BRANCH_CREATE, BRANCH_WRITE, BRANCH_DELETE permissions
@@ -344,7 +344,11 @@
       - GM can create/update/fork branches but NOT delete (management without permanent actions)
       - PLAYER prevented from all write operations (read-only enforcement)
     - Default mock returns true for canEdit() to maintain 55 existing tests compatibility
-    - Total: 63 tests (55 passing, 8 new permission tests need mock refinement)
+    - Total: 63 tests, all passing (55 existing + 8 permission tests)
+    - Test fixes (commit 63bc3ee): Corrected mock setup to match checkCampaignAccess query structure
+      - Added campaignWithMembership objects including memberships arrays
+      - Fixed mock sequencing for tests calling service methods twice
+      - All permission tests now properly validate authorization enforcement
   - Defense in depth security:
     - Frontend will add UI elements (disabled buttons, hidden actions) based on roles in future work
     - Backend enforces all authorization rules - never trust client-side checks alone
@@ -353,6 +357,31 @@
     - Follows existing campaign permission patterns (consistent with other services)
     - Permission model matches domain semantics: GMs manage timelines, OWNERs control permanence
     - Auto-fixed import ordering issues with ESLint for code consistency
+
+- **2025-10-29**: ✅ Completed Stage 10 Task 5 (Orphaned Branch Handling) - Commit: 70d719d
+  - **Task 5/8 Complete: Handle Orphaned Branches Gracefully**
+  - Determined orphaned branches **cannot occur** through normal operations
+  - Backend implementation:
+    - BranchService.delete() enforces cascading deletion (children before parents at lines 305-319)
+    - childCount validation prevents deletion of branches with children
+    - This makes orphaned branches structurally impossible through API
+    - Enhanced JSDoc (lines 275-287) explaining orphaned branch prevention mechanism
+    - Added DEFENSIVE comment in getHierarchy() (lines 378-381) for soft-deleted parent edge case
+  - Frontend implementation:
+    - Enhanced DeleteBranchDialog help text (lines 134-137) to explain cascading deletion
+    - Added inline definition of "orphaned branches" with emphasis
+    - Clarifies data integrity rationale for cascading deletion requirement
+  - Defense in depth strategy:
+    - Prevention: delete() enforces cascading deletion (childCount check)
+    - Defense: getHierarchy() treats orphans as roots if parent missing
+    - Soft Delete: Uses deletedAt for potential data recovery
+  - Existing test coverage validates behavior:
+    - branch.service.test.ts:563 - prevents deletion when branch has children
+    - branch.service.test.ts:631 - handles orphaned branches defensively
+  - Documentation-only changes (JSDoc, code comments, UI help text)
+  - Type-check: Both API and frontend passing with zero errors
+  - Lint: Only pre-existing warnings in unrelated files (no new errors)
+  - Code review: Approved with zero issues
 
 ## Description
 
