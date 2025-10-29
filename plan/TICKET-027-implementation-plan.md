@@ -604,9 +604,14 @@ Part of TICKET-027 Stage 9.
   - ✅ Dialogs use refetchQueries for reliable UI updates after mutations
   - ✅ Branch switching is instant via Zustand store (synchronous operation)
   - ✅ Type-check passing, lint warnings only (pre-existing, unrelated)
-- [ ] Add keyboard shortcuts for branch operations
-  - Ctrl+B to open branch selector
-  - Ctrl+Shift+F to fork current branch
+- [x] Add keyboard shortcuts for branch operations
+  - ✅ Created useKeyboardShortcuts custom hook for global keyboard event handling
+  - ✅ Enhanced BranchSelector with forwardRef and imperative API (openBranchSelector, openForkDialog)
+  - ✅ Ctrl+B (Cmd+B on Mac) to open branch selector
+  - ✅ Ctrl+Shift+F (Cmd+Shift+F on Mac) to fork current branch
+  - ✅ Smart context awareness (only enabled when authenticated and campaign selected)
+  - ✅ Respects input focus (ignores shortcuts when typing in form fields)
+  - ✅ Type-check passing, lint warnings only (pre-existing, unrelated)
 - [ ] Create release notes for branching feature
   - User-facing changelog entry
   - Migration notes if schema changes needed
@@ -638,7 +643,7 @@ All edge cases tested and documented.
 Part of TICKET-027 Stage 10.
 ```
 
-**Status**: In Progress (4/8 tasks complete - Commits: ce06668, 64fde31, c024317, 63bc3ee)
+**Status**: In Progress (7/8 tasks complete - Commits: ce06668, 64fde31, c024317, 63bc3ee, 70d719d, d10e7d5, e9cbba6)
 
 ---
 

@@ -406,6 +406,35 @@
     - Revised implementation addresses all reviewer concerns
     - Final code is simpler, faster, and more maintainable
 
+- **2025-10-29**: ✅ Completed Stage 10 Task 7 (Keyboard Shortcuts) - Commit: e9cbba6
+  - **Task 7/8 Complete: Add Keyboard Shortcuts for Branch Operations**
+  - Created useKeyboardShortcuts custom hook for global keyboard event handling:
+    - Supports modifier keys (Ctrl/Cmd, Shift, Alt) with cross-platform compatibility
+    - Intelligently ignores shortcuts when typing in input/textarea/contentEditable elements
+    - Prevents default browser behavior for registered shortcuts
+    - Automatic cleanup of event listeners on unmount
+    - Configurable enable/disable for conditional activation
+  - Enhanced BranchSelector component with imperative API:
+    - Converted to forwardRef to expose programmatic control methods
+    - Added BranchSelectorHandle interface: openBranchSelector(), openForkDialog()
+    - Maintains complete backward compatibility with existing usage
+    - Exported type through component index files for external use
+  - Keyboard shortcuts implemented in MainLayout:
+    - Ctrl+B (Cmd+B on Mac): Opens branch selector sheet
+    - Ctrl+Shift+F (Cmd+Shift+F on Mac): Opens fork branch dialog
+    - Shortcuts conditionally enabled only when authenticated and campaign selected
+    - Added ref to BranchSelector for programmatic control
+  - User experience benefits:
+    - Power users can quickly access branch operations without mouse
+    - Shortcuts follow platform conventions (Ctrl on Windows/Linux, Cmd on Mac)
+    - Smart context awareness prevents errors when no campaign active
+    - Non-intrusive: doesn't interfere with form inputs or text editing
+  - Code quality:
+    - Type-check: Passing (0 errors in frontend package)
+    - Lint: Only pre-existing warnings (0 new issues from this implementation)
+    - Clean separation of concerns: hook for logic, component API for integration
+    - Follows React patterns: forwardRef, useImperativeHandle, custom hooks
+
 ## Description
 
 Implement branching system that allows creating alternate timeline branches and viewing campaign state in different branches.
