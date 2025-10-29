@@ -649,6 +649,66 @@ Part of TICKET-027 Stage 10.
 
 ---
 
+## Stage 11: Test Suite Fixes
+
+**Goal**: Fix critical test failures identified by Project Manager before ticket closure.
+
+**Background**: Project Manager subagent identified that while implementation is complete, test verification is blocked by API signature drift between test code and current implementation.
+
+**Tasks**:
+
+- [ ] Fix E2E test TypeScript compilation errors (branching-system.e2e.test.ts)
+  - Change `version.payload` to `version.payloadGz` with decompression (6 occurrences)
+  - Fix `versionService.createVersion()` calls to match 2-parameter signature
+  - Fix `branchService.create()` calls to match 2-parameter input object signature
+  - Verify all 6 major E2E test describe blocks execute and pass
+- [ ] Fix integration test cleanup failures (branch.resolver.integration.test.ts)
+  - Investigate why `beforeAll` variables are undefined in `afterAll` hooks
+  - Fix cleanup hooks to handle undefined variables gracefully
+  - Ensure all 19 integration tests pass
+- [ ] Verify frontend test status
+  - Check if 35 failing tests are real issues or stale background processes
+  - Address any critical frontend test failures
+- [ ] Run full test suite and verify all tests pass
+  - Backend unit tests: 63 BranchService tests
+  - Backend integration tests: 16 settlement-structure + 19 branch resolver tests
+  - Backend E2E tests: 6 major test suites in branching-system.e2e.test.ts
+  - Frontend tests: 150+ component tests across all branch components
+
+**Success Criteria**:
+
+- ✅ E2E test file compiles without TypeScript errors
+- ✅ All E2E tests execute and pass (fork workflow, hierarchy resolution, etc.)
+- ✅ Integration tests pass without cleanup errors
+- ✅ All acceptance criteria verified through passing tests
+- ✅ TypeScript strict mode passing
+- ✅ No lint errors (warnings acceptable if pre-existing)
+
+**Commit Message Template**:
+
+```
+test(api): fix branching system test suite failures
+
+Fixed API signature drift between tests and implementation:
+- Updated E2E tests to use payloadGz instead of payload
+- Fixed versionService.createVersion() calls (2-parameter signature)
+- Fixed branchService.create() calls (input object pattern)
+- Fixed integration test cleanup hooks (handle undefined variables)
+
+All tests now passing:
+- E2E: 6 major test suites covering complete workflows
+- Integration: 19 branch resolver tests + 16 versioning tests
+- Unit: 63 BranchService tests
+
+All acceptance criteria now verified through passing E2E tests.
+
+Part of TICKET-027 Stage 11.
+```
+
+**Status**: Not Started
+
+---
+
 ## Notes
 
 ### Architecture Decisions
