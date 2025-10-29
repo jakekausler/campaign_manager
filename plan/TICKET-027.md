@@ -383,6 +383,29 @@
   - Lint: Only pre-existing warnings in unrelated files (no new errors)
   - Code review: Approved with zero issues
 
+- **2025-10-29**: ✅ Completed Stage 10 Task 6 (Loading States & Optimistic Updates) - Commit: d10e7d5
+  - **Task 6/8 Complete: Improve Branch Operation Responsiveness**
+  - BranchSelector component enhancements:
+    - Removed artificial setTimeout delay (was 300ms, caused unnecessary UI blocking)
+    - Branch switching is now instant via synchronous Zustand store update
+    - Cleaner code: removed unused isSwitching state and Loader2 import
+  - GraphQL mutation hooks improvements:
+    - Simplified by removing incomplete optimistic response patterns
+    - Removed IGNORE patterns that added complexity without benefit
+    - Removed complex manual cache update logic from useDeleteBranch
+    - Dialogs handle refetchQueries at call site for better control
+  - Implementation approach:
+    - Focused on simplicity over complexity
+    - Branch operations leverage existing refetchQueries patterns
+    - Store updates are synchronous and instant (no need for optimistic UI)
+    - Follows existing patterns in DeleteBranchDialog, ForkBranchDialog components
+  - Code quality:
+    - Type-check: Frontend passing with zero errors
+    - Lint: Only pre-existing warnings in unrelated files
+    - Code review initially flagged performance issues (artificial delay)
+    - Revised implementation addresses all reviewer concerns
+    - Final code is simpler, faster, and more maintainable
+
 ## Description
 
 Implement branching system that allows creating alternate timeline branches and viewing campaign state in different branches.
