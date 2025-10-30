@@ -11,6 +11,7 @@
   - Stage 4: 4740a4a (Merge Service GraphQL API)
   - Stage 5: d81a5c2 (Merge execution & version creation)
   - Stage 6: 5d6637a (Frontend merge preview UI)
+  - Stage 7: 2201d1a (Frontend conflict resolution UI)
 
 ## Implementation Notes
 
@@ -110,6 +111,29 @@
   - Code Reviewer approved with zero critical issues
   - World time selection deferred to Stage 7 (uses campaign.currentWorldTime for now)
   - Ready for conflict resolution UI in Stage 7
+- **2025-10-30**: Completed Stage 7 - Frontend Conflict Resolution UI (commit 2201d1a)
+  - Created ConflictResolutionDialog component with interactive resolution controls
+  - Three resolution options per conflict: Use Source, Use Target, Edit Manually
+  - Inline JSON editor with real-time validation and error messages
+  - Progress tracking with progress bar showing X/Y conflicts resolved
+  - Expandable 3-way diff visualization (Base/Source/Target) for each conflict
+  - Resolution preview displays parsed JSON value after selection
+  - Entity-level grouping with collapsible cards showing "X/Y resolved" badges
+  - Green checkmarks indicate fully resolved entities
+  - Success/warning alerts adapt based on resolution state
+  - Disabled execute button until all conflicts resolved
+  - Comprehensive state management using Map<string, ConflictResolutionState>
+  - Updated MergePreviewDialog to manage ConflictResolutionDialog lifecycle
+  - Unified workflow: Preview → Resolve → Execute with automatic transitions
+  - No-conflict merges execute directly from preview without resolution step
+  - Callbacks for merge completion and dialog management
+  - Keyboard shortcuts (Escape to close)
+  - 40+ comprehensive test scenarios for ConflictResolutionDialog
+  - Updated MergePreviewDialog tests to handle new integration and mock useExecuteMerge
+  - All tests passing with proper handling of duplicate text content
+  - Code Reviewer approved with zero critical issues
+  - Follows established patterns from MergePreviewDialog and ForkBranchDialog
+  - Ready for cherry-pick functionality in Stage 8
 
 ## Description
 

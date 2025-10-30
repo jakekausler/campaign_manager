@@ -224,30 +224,62 @@ Implement comprehensive branch merging capabilities with 3-way merge algorithm, 
 - World time selection deferred (uses campaign.currentWorldTime for now)
 - Ready for conflict resolution UI in Stage 7
 
-## Stage 7: Frontend - Conflict Resolution UI
+## Stage 7: Frontend - Conflict Resolution UI ✅ COMPLETE
 
 **Goal**: Create interactive UI for resolving merge conflicts
 
 **Tasks**:
 
-- [ ] Create `ConflictResolutionDialog` component for manual resolution
-- [ ] Display each conflict with "Choose Source", "Choose Target", "Edit Manually" options
-- [ ] Implement inline JSON editor for custom conflict resolution (with validation)
-- [ ] Show progress indicator (e.g., "3 of 12 conflicts resolved")
-- [ ] Validate all conflicts resolved before allowing merge execution
-- [ ] Create `useExecuteMerge(sourceBranchId, targetBranchId, worldTime, resolutions)` GraphQL hook
-- [ ] Implement merge execution with loading states and progress feedback
-- [ ] Show success message with count of entities merged
-- [ ] Refetch branch data after successful merge
-- [ ] Create 30+ comprehensive tests for conflict resolution UI
+- [x] Create `ConflictResolutionDialog` component for manual resolution
+- [x] Display each conflict with "Choose Source", "Choose Target", "Edit Manually" options
+- [x] Implement inline JSON editor for custom conflict resolution (with validation)
+- [x] Show progress indicator (e.g., "3 of 12 conflicts resolved")
+- [x] Validate all conflicts resolved before allowing merge execution
+- [x] Create `useExecuteMerge(sourceBranchId, targetBranchId, worldTime, resolutions)` GraphQL hook
+- [x] Implement merge execution with loading states and progress feedback
+- [x] Show success message with count of entities merged
+- [x] Refetch branch data after successful merge
+- [x] Create 30+ comprehensive tests for conflict resolution UI
 
 **Success Criteria**:
 
-- [ ] User can resolve each conflict individually
-- [ ] Can choose source/target values or edit manually
-- [ ] Cannot execute merge until all conflicts resolved
-- [ ] Merge execution creates versions in target branch
-- [ ] All UI tests passing
+- [x] User can resolve each conflict individually
+- [x] Can choose source/target values or edit manually
+- [x] Cannot execute merge until all conflicts resolved
+- [x] Merge execution creates versions in target branch
+- [x] All UI tests passing
+
+**Completion Notes** (commit 2201d1a):
+
+- Created ConflictResolutionDialog component with comprehensive resolution controls
+- Three resolution options: Use Source, Use Target, Edit Manually with button toggles
+- Inline JSON editor using Textarea component with real-time validation
+- JSON parsing wrapped in try-catch with error message display
+- Disabled Save button when JSON validation errors present
+- Progress bar showing X/Y conflicts resolved with visual feedback
+- Entity cards group conflicts with collapsible expand/collapse
+- Each entity shows "X/Y resolved" badge with green checkmark when complete
+- Resolution preview displays parsed JSON value after selection
+- Expandable 3-way diff (Base/Source/Target) for detailed comparison
+- Success/warning alerts adapt based on resolution state
+- Execute button disabled until all conflicts resolved
+- State management using Map<string, ConflictResolutionState> for efficient lookups
+- Key format: `${entityId}:${path}` for unique conflict identification
+- Updated MergePreviewDialog to manage ConflictResolutionDialog lifecycle
+- Preview dialog opens resolution dialog when conflicts detected
+- No-conflict merges execute directly without resolution step
+- Unified workflow: Preview → Resolve → Execute with callbacks
+- Keyboard shortcuts (Escape to close)
+- 40+ comprehensive test scenarios covering all functionality
+- Tests verify: visibility, resolution options, custom editing, progress tracking,
+  merge execution, error handling, keyboard shortcuts
+- Updated MergePreviewDialog tests to mock useExecuteMerge hook
+- Fixed test queries to handle duplicate text content using getAllByText and within
+- All tests passing (ConflictResolutionDialog and MergePreviewDialog)
+- Code Reviewer approved with zero critical issues
+- Follows established patterns from MergePreviewDialog and ForkBranchDialog
+- Uses UI components consistently from design system
+- Comprehensive JSDoc documentation with usage examples
 
 ## Stage 8: Cherry-Pick Functionality
 
