@@ -9,6 +9,7 @@
   - Stage 2: ffcbc4b (Conflict detection logic)
   - Stage 3: eba8236 (Settlement and Structure merge handlers)
   - Stage 4: 4740a4a (Merge Service GraphQL API)
+  - Stage 5: d81a5c2 (Merge execution & version creation)
 
 ## Implementation Notes
 
@@ -71,6 +72,22 @@
   - Tests validate conflict detection for simple and nested properties
   - Code reviewed and approved (fixed duplicate JSDoc comments, added nested validation)
   - Ready for merge execution implementation in Stage 5
+- **2025-10-30**: Completed Stage 5 - Merge Execution & Version Creation (commit d81a5c2)
+  - Implemented complete merge execution system with two-pass approach for efficiency and correctness
+  - PASS 1: Analyze all entities, detect conflicts, collect merge data (no database writes)
+  - Validation: Verify ALL conflicts have resolutions BEFORE any database writes (prevents wasted work)
+  - PASS 2: Create versions atomically after validation passes (all-or-nothing behavior)
+  - Created MergeHistory model in Prisma schema for comprehensive audit trail
+  - Added database migration 20251030000427_add_merge_history with proper indexes and relations
+  - Implemented helper methods: findDivergenceTime, discoverEntitiesForMerge, applyConflictResolutions, setValueAtPath, findUnresolvedConflicts
+  - Added MERGE operation type to AuditService for audit logging
+  - Updated MergeResolver.executeMerge() to call MergeService.executeMerge()
+  - Fixed critical bug: base version uses divergence time (when branches split) not worldTime for accurate 3-way merge
+  - Removed silent fallback in findDivergenceTime(): now throws explicit BadRequestException instead of new Date(0)
+  - Transaction wrapping ensures atomic behavior (rollback on any error)
+  - All 59 merge-related tests passing (9 MergeService unit + 50 integration/handler tests)
+  - Code Reviewer approved with all three critical issues addressed
+  - Ready for frontend merge preview UI in Stage 6
 
 ## Description
 

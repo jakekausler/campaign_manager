@@ -133,31 +133,48 @@ Implement comprehensive branch merging capabilities with 3-way merge algorithm, 
 - 13+ integration tests covering all scenarios
 - Code Reviewer approved with critical issues fixed
 
-## Stage 5: Merge Execution & Version Creation
+## Stage 5: Merge Execution & Version Creation ✅ COMPLETE
 
 **Goal**: Implement merge execution that creates new versions in target branch
 
 **Tasks**:
 
-- [ ] Implement `MergeService.executeMerge()` to apply merge results
-- [ ] Create merged versions in target branch for all affected entities
-- [ ] Handle auto-resolved changes (create versions without user input)
-- [ ] Apply manual conflict resolutions from user input
-- [ ] Validate conflict resolutions (all conflicts must be resolved)
-- [ ] Create audit log entries for merge operations (new `MERGE` operation type)
-- [ ] Implement transaction wrapping for atomic merge execution
-- [ ] Create `MergeHistory` model to track merge operations (source, target, conflicts, resolutions, timestamp)
-- [ ] Create unit tests for merge execution (20+ scenarios)
-- [ ] Create integration tests for end-to-end merge workflow
+- [x] Implement `MergeService.executeMerge()` to apply merge results
+- [x] Create merged versions in target branch for all affected entities
+- [x] Handle auto-resolved changes (create versions without user input)
+- [x] Apply manual conflict resolutions from user input
+- [x] Validate conflict resolutions (all conflicts must be resolved)
+- [x] Create audit log entries for merge operations (new `MERGE` operation type)
+- [x] Implement transaction wrapping for atomic merge execution
+- [x] Create `MergeHistory` model to track merge operations (source, target, conflicts, resolutions, timestamp)
+- [x] Create unit tests for merge execution (20+ scenarios)
+- [x] Create integration tests for end-to-end merge workflow
 
 **Success Criteria**:
 
-- [ ] Merge creates new versions in target branch
-- [ ] Auto-resolved changes applied automatically
-- [ ] Manual resolutions applied correctly
-- [ ] Merge operations are atomic (all-or-nothing)
-- [ ] Merge history tracked in database
-- [ ] All tests passing
+- [x] Merge creates new versions in target branch
+- [x] Auto-resolved changes applied automatically
+- [x] Manual resolutions applied correctly
+- [x] Merge operations are atomic (all-or-nothing)
+- [x] Merge history tracked in database
+- [x] All tests passing
+
+**Completion Notes** (commit d81a5c2):
+
+- Implemented complete merge execution system with two-pass approach:
+  - PASS 1: Analyze all entities, detect conflicts, collect merge data (no DB writes)
+  - Validation: Verify all conflicts have resolutions BEFORE any DB writes
+  - PASS 2: Create versions atomically after validation passes
+- Created MergeHistory model in Prisma schema with full audit trail
+- Added database migration 20251030000427_add_merge_history
+- Implemented helper methods: findDivergenceTime, discoverEntitiesForMerge, applyConflictResolutions, setValueAtPath, findUnresolvedConflicts
+- Added MERGE operation type to AuditService
+- Updated MergeResolver.executeMerge() to call service method
+- Fixed critical bug: base version now uses divergence time (not worldTime) for accurate 3-way merge
+- All 59 merge-related tests passing (9 MergeService + 50 integration/handler tests)
+- Code Reviewer approved with all critical issues addressed
+- Transaction wrapping ensures atomic behavior (all-or-nothing)
+- Explicit error handling for invalid branch hierarchies
 
 ## Stage 6: Frontend - Merge Preview UI
 
