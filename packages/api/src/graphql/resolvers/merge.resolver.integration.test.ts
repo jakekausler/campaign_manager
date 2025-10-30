@@ -17,6 +17,7 @@ import { BranchService } from '../services/branch.service';
 import { MergeService } from '../services/merge.service';
 import { VersionService } from '../services/version.service';
 import type { MergePreview, MergeResult } from '../types/branch.type';
+import { compressPayload } from '../utils/version.utils';
 
 import { MergeResolver } from './merge.resolver';
 
@@ -62,6 +63,7 @@ describe('MergeResolver Integration Tests', () => {
     resolver = moduleRef.get<MergeResolver>(MergeResolver);
 
     // Clean up any existing test data
+    await prisma.mergeHistory.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
     await prisma.audit.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
     await prisma.version.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
     await prisma.branch.deleteMany({ where: { campaign: { name: 'Merge Test Campaign' } } });
@@ -116,6 +118,7 @@ describe('MergeResolver Integration Tests', () => {
 
   afterAll(async () => {
     // Clean up test data
+    await prisma.mergeHistory.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
     await prisma.audit.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
     await prisma.version.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
     await prisma.branch.deleteMany({ where: { campaign: { name: 'Merge Test Campaign' } } });
@@ -328,10 +331,11 @@ describe('MergeResolver Integration Tests', () => {
             entityType: 'settlement',
             entityId: settlementId,
             branchId: childBranch.id,
-            payload: { name: 'Test Settlement', population: 1000 },
+            payloadGz: await compressPayload({ name: 'Test Settlement', population: 1000 }),
             validFrom: new Date('2024-01-02'),
             validTo: null,
-            userId: testUser.id,
+            createdBy: testUser.id,
+            version: 1,
           },
         });
 
@@ -378,10 +382,11 @@ describe('MergeResolver Integration Tests', () => {
             entityType: 'settlement',
             entityId: settlementId,
             branchId: mainBranch.id,
-            payload: { name: 'Base Settlement', population: 1000 },
+            payloadGz: await compressPayload({ name: 'Base Settlement', population: 1000 }),
             validFrom: new Date('2023-12-01'),
             validTo: null,
-            userId: testUser.id,
+            createdBy: testUser.id,
+            version: 1,
           },
         });
 
@@ -391,10 +396,11 @@ describe('MergeResolver Integration Tests', () => {
             entityType: 'settlement',
             entityId: settlementId,
             branchId: childBranch.id,
-            payload: { name: 'Base Settlement', population: 1500 }, // Changed population
+            payloadGz: await compressPayload({ name: 'Base Settlement', population: 1500 }), // Changed population
             validFrom: new Date('2024-01-02'),
             validTo: null,
-            userId: testUser.id,
+            createdBy: testUser.id,
+            version: 2,
           },
         });
 
@@ -404,10 +410,11 @@ describe('MergeResolver Integration Tests', () => {
             entityType: 'settlement',
             entityId: settlementId,
             branchId: mainBranch.id,
-            payload: { name: 'Base Settlement', population: 2000 }, // Different change
+            payloadGz: await compressPayload({ name: 'Base Settlement', population: 2000 }), // Different change
             validFrom: new Date('2024-01-02'),
             validTo: null,
-            userId: testUser.id,
+            createdBy: testUser.id,
+            version: 2,
           },
         });
 
@@ -459,13 +466,14 @@ describe('MergeResolver Integration Tests', () => {
             entityType: 'settlement',
             entityId: settlementId,
             branchId: mainBranch.id,
-            payload: {
+            payloadGz: await compressPayload({
               name: 'Resource Settlement',
               variables: { resources: { gold: 100, food: 200 } },
-            },
+            }),
             validFrom: new Date('2023-12-01'),
             validTo: null,
-            userId: testUser.id,
+            createdBy: testUser.id,
+            version: 1,
           },
         });
 
@@ -475,13 +483,14 @@ describe('MergeResolver Integration Tests', () => {
             entityType: 'settlement',
             entityId: settlementId,
             branchId: childBranch.id,
-            payload: {
+            payloadGz: await compressPayload({
               name: 'Resource Settlement',
               variables: { resources: { gold: 150, food: 200 } },
-            },
+            }),
             validFrom: new Date('2024-01-02'),
             validTo: null,
-            userId: testUser.id,
+            createdBy: testUser.id,
+            version: 2,
           },
         });
 
@@ -491,13 +500,14 @@ describe('MergeResolver Integration Tests', () => {
             entityType: 'settlement',
             entityId: settlementId,
             branchId: mainBranch.id,
-            payload: {
+            payloadGz: await compressPayload({
               name: 'Resource Settlement',
               variables: { resources: { gold: 200, food: 200 } },
-            },
+            }),
             validFrom: new Date('2024-01-02'),
             validTo: null,
-            userId: testUser.id,
+            createdBy: testUser.id,
+            version: 2,
           },
         });
 
@@ -614,15 +624,20 @@ describe('MergeResolver Integration Tests', () => {
         );
 
         expect(result).toBeDefined();
-        // Currently returns placeholder, but doesn't throw authorization error
+        // Should not throw authorization error since testUser is owner and canEdit is mocked to true
 
-        // Cleanup
+        // Cleanup - delete MergeHistory first to avoid foreign key constraint violation
+        await prisma.mergeHistory.deleteMany({
+          where: {
+            OR: [{ sourceBranchId: childBranch.id }, { targetBranchId: childBranch.id }],
+          },
+        });
         await prisma.branch.delete({ where: { id: childBranch.id } });
       });
     });
 
-    describe('merge execution (placeholder)', () => {
-      it('should return placeholder response until Stage 5 is implemented', async () => {
+    describe('merge execution', () => {
+      it('should successfully execute merge when no entities exist', async () => {
         // Create child branch
         const childBranch = await prisma.branch.create({
           data: {
@@ -646,11 +661,16 @@ describe('MergeResolver Integration Tests', () => {
         );
 
         expect(result).toBeDefined();
-        expect(result.success).toBe(false);
-        expect(result.error).toContain('not yet implemented');
+        expect(result.success).toBe(true);
         expect(result.versionsCreated).toBe(0);
+        expect(result.mergedEntityIds).toEqual([]);
 
-        // Cleanup
+        // Cleanup - delete MergeHistory first to avoid foreign key constraint violation
+        await prisma.mergeHistory.deleteMany({
+          where: {
+            OR: [{ sourceBranchId: childBranch.id }, { targetBranchId: childBranch.id }],
+          },
+        });
         await prisma.branch.delete({ where: { id: childBranch.id } });
       });
     });

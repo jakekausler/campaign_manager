@@ -1,6 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import type { Branch as PrismaBranch, Version } from '@prisma/client';
 
+import { PrismaService } from '../../database/prisma.service';
+import type { AuthenticatedUser } from '../context/graphql-context';
+import type { ConflictResolution } from '../inputs/branch.input';
+
+import { AuditService } from './audit.service';
 import { BranchService } from './branch.service';
 import { ConflictDetector } from './conflict-detector';
 import { VersionService } from './version.service';
@@ -74,6 +79,38 @@ export interface ThreeWayVersions {
 }
 
 /**
+ * Result of executing a merge operation
+ */
+export interface ExecuteMergeResult {
+  /** Whether the merge was successful */
+  success: boolean;
+  /** Number of entity versions created in target branch */
+  versionsCreated: number;
+  /** IDs of entities that were merged (entityType:entityId format) */
+  mergedEntityIds: string[];
+  /** Error message if merge failed */
+  error?: string;
+}
+
+/**
+ * Parameters for executing a merge operation
+ */
+export interface ExecuteMergeParams {
+  /** Source branch ID (branch to merge from) */
+  sourceBranchId: string;
+  /** Target branch ID (branch to merge into) */
+  targetBranchId: string;
+  /** Common ancestor branch ID */
+  commonAncestorId: string;
+  /** World time at which to perform the merge */
+  worldTime: Date;
+  /** Manual resolutions for conflicts */
+  resolutions: ConflictResolution[];
+  /** User performing the merge */
+  user: AuthenticatedUser;
+}
+
+/**
  * Service for handling branch merges with 3-way merge algorithm
  * and conflict detection/resolution.
  */
@@ -83,7 +120,9 @@ export class MergeService {
 
   constructor(
     private readonly branchService: BranchService,
-    private readonly versionService: VersionService
+    private readonly versionService: VersionService,
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
   ) {
     this.conflictDetector = new ConflictDetector();
   }
@@ -127,6 +166,83 @@ export class MergeService {
   }
 
   /**
+   * Find the divergence time for determining the base version in a 3-way merge.
+   * This is the point in time where the source and target branches diverged from
+   * the common ancestor.
+   *
+   * Algorithm:
+   * 1. Find which branch(es) are direct descendants of the common ancestor
+   * 2. Use the divergedAt time from the descendant branch(es)
+   * 3. If both branches diverged from the common ancestor, use the earlier divergence time
+   *
+   * @param sourceBranchId - ID of source branch
+   * @param targetBranchId - ID of target branch
+   * @param baseBranchId - ID of common ancestor branch
+   * @returns The divergence time to use for resolving the base version
+   */
+  private async findDivergenceTime(
+    sourceBranchId: string,
+    targetBranchId: string,
+    baseBranchId: string
+  ): Promise<Date> {
+    // Fetch source and target branches to check their divergedAt times
+    const [sourceBranch, targetBranch] = await Promise.all([
+      this.prisma.branch.findUnique({ where: { id: sourceBranchId } }),
+      this.prisma.branch.findUnique({ where: { id: targetBranchId } }),
+    ]);
+
+    if (!sourceBranch || !targetBranch) {
+      throw new Error('Source or target branch not found');
+    }
+
+    // Get ancestry chains to determine which branches diverged from the base
+    const sourceAncestry = await this.branchService.getAncestry(sourceBranchId);
+    const targetAncestry = await this.branchService.getAncestry(targetBranchId);
+
+    // Find which branch in each ancestry chain diverged from the common ancestor
+    let sourceDivergenceTime: Date | null = null;
+    let targetDivergenceTime: Date | null = null;
+
+    // Find the branch in source ancestry that has baseBranchId as parent
+    for (const branch of sourceAncestry) {
+      if (branch.parentId === baseBranchId && branch.divergedAt) {
+        sourceDivergenceTime = branch.divergedAt;
+        break;
+      }
+    }
+
+    // Find the branch in target ancestry that has baseBranchId as parent
+    for (const branch of targetAncestry) {
+      if (branch.parentId === baseBranchId && branch.divergedAt) {
+        targetDivergenceTime = branch.divergedAt;
+        break;
+      }
+    }
+
+    // Special case: if one branch IS the common ancestor, use the other's divergence time
+    if (sourceBranchId === baseBranchId && targetDivergenceTime) {
+      return targetDivergenceTime;
+    }
+    if (targetBranchId === baseBranchId && sourceDivergenceTime) {
+      return sourceDivergenceTime;
+    }
+
+    // Both branches diverged from the base - use the earlier divergence time
+    // This represents the point where both branches were last in sync
+    if (sourceDivergenceTime && targetDivergenceTime) {
+      return sourceDivergenceTime < targetDivergenceTime
+        ? sourceDivergenceTime
+        : targetDivergenceTime;
+    }
+
+    // If we reach here, we couldn't determine divergence time
+    // This indicates a structural problem with the branch hierarchy
+    throw new BadRequestException(
+      `Cannot determine divergence time: source branch ${sourceBranchId} and target branch ${targetBranchId} do not properly diverge from common ancestor ${baseBranchId}`
+    );
+  }
+
+  /**
    * Retrieve the three versions needed for a 3-way merge:
    * - base: version from common ancestor
    * - source: version from source branch
@@ -151,9 +267,18 @@ export class MergeService {
     baseBranchId: string,
     worldTime: Date
   ): Promise<ThreeWayVersions> {
-    // Fetch all three versions in parallel for performance
+    // Determine the divergence point for the base version
+    // The base version should be resolved at the point where the branches diverged
+    const divergenceTime = await this.findDivergenceTime(
+      sourceBranchId,
+      targetBranchId,
+      baseBranchId
+    );
+
+    // Fetch all three versions
+    // Base version is resolved at divergence time, source and target at worldTime
     const [base, source, target] = await Promise.all([
-      this.versionService.resolveVersion(entityType, entityId, baseBranchId, worldTime),
+      this.versionService.resolveVersion(entityType, entityId, baseBranchId, divergenceTime),
       this.versionService.resolveVersion(entityType, entityId, sourceBranchId, worldTime),
       this.versionService.resolveVersion(entityType, entityId, targetBranchId, worldTime),
     ]);
@@ -239,5 +364,336 @@ export class MergeService {
       default:
         return undefined;
     }
+  }
+
+  /**
+   * Execute a merge operation, creating new versions in the target branch.
+   *
+   * This method uses a two-pass approach for efficiency and correctness:
+   * PASS 1: Analyze all entities, detect conflicts, collect merge data
+   * PASS 2: After validation, create versions atomically
+   *
+   * Steps:
+   * 1. Discovers all entities that exist in source or target branches
+   * 2. For each entity, performs 3-way merge to detect conflicts (no DB writes)
+   * 3. Validates ALL conflicts have resolutions before any DB writes
+   * 4. Creates new versions in target branch for all affected entities
+   * 5. Records merge history and audit log entries
+   *
+   * The entire operation is wrapped in a database transaction for atomicity.
+   *
+   * @param params - Merge execution parameters
+   * @returns Result with success status, versions created count, and merged entity IDs
+   */
+  async executeMerge(params: ExecuteMergeParams): Promise<ExecuteMergeResult> {
+    const { sourceBranchId, targetBranchId, commonAncestorId, worldTime, resolutions, user } =
+      params;
+
+    try {
+      // Use Prisma transaction for atomicity
+      const result = await this.prisma.$transaction(async (tx) => {
+        // Discover all entities that exist in source or target branches
+        const entityIds = await this.discoverEntitiesForMerge(
+          sourceBranchId,
+          targetBranchId,
+          worldTime,
+          tx
+        );
+
+        // PASS 1: Analyze entities and collect conflicts (no DB writes)
+        interface EntityMergeData {
+          entityType: string;
+          entityId: string;
+          finalPayload: Record<string, unknown>;
+          conflictsResolved: number;
+          targetPayload: Record<string, unknown> | null;
+        }
+
+        const entitiesToMerge: EntityMergeData[] = [];
+        const allConflicts: Array<{
+          entityType: string;
+          entityId: string;
+          conflicts: MergeConflict[];
+        }> = [];
+
+        for (const { entityType, entityId } of entityIds) {
+          // Get three versions for 3-way merge
+          const versions = await this.getEntityVersionsForMerge(
+            entityType,
+            entityId,
+            sourceBranchId,
+            targetBranchId,
+            commonAncestorId,
+            worldTime
+          );
+
+          // Skip if entity doesn't exist in any branch
+          if (!versions.base && !versions.source && !versions.target) {
+            continue;
+          }
+
+          // Decompress payloads
+          const basePayload = versions.base
+            ? await this.versionService.decompressVersion(versions.base)
+            : null;
+          const sourcePayload = versions.source
+            ? await this.versionService.decompressVersion(versions.source)
+            : null;
+          const targetPayload = versions.target
+            ? await this.versionService.decompressVersion(versions.target)
+            : null;
+
+          // Perform 3-way merge to detect conflicts
+          const mergeResult = this.compareVersions(basePayload, sourcePayload, targetPayload);
+
+          // Collect conflicts for validation
+          if (mergeResult.conflicts.length > 0) {
+            allConflicts.push({
+              entityType,
+              entityId,
+              conflicts: mergeResult.conflicts,
+            });
+          }
+
+          // Apply manual conflict resolutions if provided
+          let finalPayload = mergeResult.mergedPayload;
+          if (mergeResult.conflicts.length > 0) {
+            finalPayload = this.applyConflictResolutions(
+              mergeResult.mergedPayload || targetPayload || sourcePayload || {},
+              mergeResult.conflicts,
+              resolutions,
+              entityType,
+              entityId
+            );
+          }
+
+          // Skip if no changes (payload identical to target)
+          if (
+            finalPayload &&
+            targetPayload &&
+            JSON.stringify(finalPayload) === JSON.stringify(targetPayload)
+          ) {
+            continue;
+          }
+
+          // Store merge data for second pass
+          if (finalPayload) {
+            entitiesToMerge.push({
+              entityType,
+              entityId,
+              finalPayload,
+              conflictsResolved: mergeResult.conflicts.length,
+              targetPayload,
+            });
+          }
+        }
+
+        // Validate all conflicts were resolved BEFORE any database writes
+        const unresolvedConflicts = this.findUnresolvedConflicts(allConflicts, resolutions);
+        if (unresolvedConflicts.length > 0) {
+          throw new BadRequestException(
+            `Cannot execute merge: ${unresolvedConflicts.length} conflicts remain unresolved. ` +
+              `Please provide resolutions for all conflicts.`
+          );
+        }
+
+        // PASS 2: Create versions now that validation passed
+        const mergedEntityIds: string[] = [];
+        let versionsCreated = 0;
+
+        for (const entity of entitiesToMerge) {
+          await this.versionService.createVersion(
+            {
+              entityType: entity.entityType,
+              entityId: entity.entityId,
+              branchId: targetBranchId,
+              validFrom: worldTime,
+              validTo: null,
+              payload: entity.finalPayload,
+              comment: `Merged from branch ${sourceBranchId}`,
+            },
+            user
+          );
+
+          versionsCreated++;
+          mergedEntityIds.push(`${entity.entityType}:${entity.entityId}`);
+
+          // Create audit log entry
+          await this.audit.log(
+            'version',
+            `${entity.entityType}:${entity.entityId}`,
+            'MERGE',
+            user.id,
+            {
+              sourceBranchId,
+              targetBranchId,
+              commonAncestorId,
+              worldTime: worldTime.toISOString(),
+              conflictsResolved: entity.conflictsResolved,
+            }
+          );
+        }
+
+        // Record merge history
+        await tx.mergeHistory.create({
+          data: {
+            sourceBranchId,
+            targetBranchId,
+            commonAncestorId,
+            worldTime,
+            mergedBy: user.id,
+            conflictsCount: allConflicts.reduce((sum, e) => sum + e.conflicts.length, 0),
+            entitiesMerged: versionsCreated,
+            resolutionsData: resolutions as any,
+            metadata: {},
+          },
+        });
+
+        return { versionsCreated, mergedEntityIds };
+      });
+
+      return {
+        success: true,
+        versionsCreated: result.versionsCreated,
+        mergedEntityIds: result.mergedEntityIds,
+      };
+    } catch (error) {
+      // Return error message
+      return {
+        success: false,
+        versionsCreated: 0,
+        mergedEntityIds: [],
+        error: error instanceof Error ? error.message : 'Unknown error occurred during merge',
+      };
+    }
+  }
+
+  /**
+   * Discover all entities that exist in either source or target branch at the given world time.
+   * This includes entities that may have been deleted in one branch but still exist in the other.
+   */
+  private async discoverEntitiesForMerge(
+    sourceBranchId: string,
+    targetBranchId: string,
+    worldTime: Date,
+    tx: any
+  ): Promise<Array<{ entityType: string; entityId: string }>> {
+    // Get all versions from both branches up to worldTime
+    const [sourceVersions, targetVersions] = await Promise.all([
+      tx.version.findMany({
+        where: {
+          branchId: sourceBranchId,
+          validFrom: { lte: worldTime },
+          OR: [{ validTo: null }, { validTo: { gte: worldTime } }],
+        },
+        select: { entityType: true, entityId: true },
+        distinct: ['entityType', 'entityId'],
+      }),
+      tx.version.findMany({
+        where: {
+          branchId: targetBranchId,
+          validFrom: { lte: worldTime },
+          OR: [{ validTo: null }, { validTo: { gte: worldTime } }],
+        },
+        select: { entityType: true, entityId: true },
+        distinct: ['entityType', 'entityId'],
+      }),
+    ]);
+
+    // Combine and deduplicate
+    const entitySet = new Set<string>();
+    const entities: Array<{ entityType: string; entityId: string }> = [];
+
+    for (const v of [...sourceVersions, ...targetVersions]) {
+      const key = `${v.entityType}:${v.entityId}`;
+      if (!entitySet.has(key)) {
+        entitySet.add(key);
+        entities.push({ entityType: v.entityType, entityId: v.entityId });
+      }
+    }
+
+    return entities;
+  }
+
+  /**
+   * Apply manual conflict resolutions to a payload.
+   * Each resolution specifies a JSON path and the resolved value to use.
+   */
+  private applyConflictResolutions(
+    payload: Record<string, unknown>,
+    conflicts: MergeConflict[],
+    resolutions: ConflictResolution[],
+    entityType: string,
+    entityId: string
+  ): Record<string, unknown> {
+    const result = { ...payload };
+
+    // Build resolution map for quick lookup
+    const resolutionMap = new Map<string, string>();
+    for (const resolution of resolutions) {
+      if (resolution.entityType === entityType && resolution.entityId === entityId) {
+        resolutionMap.set(resolution.path, resolution.resolvedValue);
+      }
+    }
+
+    // Apply each resolution
+    for (const conflict of conflicts) {
+      const resolvedValue = resolutionMap.get(conflict.path);
+      if (resolvedValue !== undefined) {
+        // Parse the resolved value (it's a JSON string)
+        const parsedValue = JSON.parse(resolvedValue);
+
+        // Set the value at the specified path
+        this.setValueAtPath(result, conflict.path, parsedValue);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Set a value at a nested path in an object (e.g., "resources.gold" = 100)
+   */
+  private setValueAtPath(obj: Record<string, unknown>, path: string, value: unknown): void {
+    const parts = path.split('.');
+    let current: any = obj;
+
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
+      if (!(part in current)) {
+        current[part] = {};
+      }
+      current = current[part];
+    }
+
+    current[parts[parts.length - 1]] = value;
+  }
+
+  /**
+   * Find conflicts that have not been resolved by the provided resolutions.
+   */
+  private findUnresolvedConflicts(
+    allConflicts: Array<{ entityType: string; entityId: string; conflicts: MergeConflict[] }>,
+    resolutions: ConflictResolution[]
+  ): MergeConflict[] {
+    const unresolved: MergeConflict[] = [];
+
+    // Build resolution set for quick lookup
+    const resolutionSet = new Set<string>();
+    for (const resolution of resolutions) {
+      resolutionSet.add(`${resolution.entityType}:${resolution.entityId}:${resolution.path}`);
+    }
+
+    // Check each conflict
+    for (const { entityType, entityId, conflicts } of allConflicts) {
+      for (const conflict of conflicts) {
+        const key = `${entityType}:${entityId}:${conflict.path}`;
+        if (!resolutionSet.has(key)) {
+          unresolved.push(conflict);
+        }
+      }
+    }
+
+    return unresolved;
   }
 }

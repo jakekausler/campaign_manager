@@ -137,8 +137,7 @@ export class MergeResolver {
     @Args('input', { type: () => ExecuteMergeInput }) input: ExecuteMergeInput,
     @CurrentUser() user: AuthenticatedUser
   ): Promise<MergeResult> {
-    const { sourceBranchId, targetBranchId } = input;
-    // worldTime and resolutions will be used in Stage 5
+    const { sourceBranchId, targetBranchId, worldTime, resolutions = [] } = input;
 
     // Validate branches exist
     const [sourceBranch, targetBranch] = await Promise.all([
@@ -174,13 +173,17 @@ export class MergeResolver {
       );
     }
 
-    // For now, return placeholder - Stage 5 will implement actual merge execution
-    return {
-      success: false,
-      versionsCreated: 0,
-      mergedEntityIds: [],
-      error: 'Merge execution not yet implemented. This will be completed in Stage 5.',
-    };
+    // Execute merge
+    const result = await this.mergeService.executeMerge({
+      sourceBranchId,
+      targetBranchId,
+      commonAncestorId: commonAncestor.id,
+      worldTime,
+      resolutions,
+      user,
+    });
+
+    return result;
   }
 
   /**

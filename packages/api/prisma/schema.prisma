@@ -38,6 +38,7 @@ model User {
   // Relations
   versions               Version[]
   audits                 Audit[]
+  mergeHistory           MergeHistory[]
   ownedCampaigns         Campaign[]
   campaignMemberships    CampaignMembership[]
   refreshTokens          RefreshToken[]
@@ -230,7 +231,9 @@ model Branch {
   deletedAt   DateTime?
 
   // Relations
-  versions Version[]
+  versions          Version[]
+  mergesAsSource    MergeHistory[] @relation("MergeSource")
+  mergesAsTarget    MergeHistory[] @relation("MergeTarget")
 
   @@index([campaignId])
   @@index([parentId])
@@ -674,6 +677,32 @@ model Version {
   @@index([entityType, entityId, version])
   @@index([branchId])
   @@index([createdBy])
+}
+
+// =================================================================
+// Merge History - Track Branch Merge Operations
+// =================================================================
+
+model MergeHistory {
+  id               String   @id @default(cuid())
+  sourceBranchId   String
+  sourceBranch     Branch   @relation("MergeSource", fields: [sourceBranchId], references: [id])
+  targetBranchId   String
+  targetBranch     Branch   @relation("MergeTarget", fields: [targetBranchId], references: [id])
+  commonAncestorId String // Branch ID of common ancestor at time of merge
+  worldTime        DateTime // World time at which merge was performed
+  mergedBy         String
+  user             User     @relation(fields: [mergedBy], references: [id])
+  mergedAt         DateTime @default(now()) // System time when merge completed
+  conflictsCount   Int // Number of conflicts that were manually resolved
+  entitiesMerged   Int // Number of entities that had versions created
+  resolutionsData  Json // Conflict resolutions applied (for audit trail)
+  metadata         Json     @default("{}") // Additional context (merge strategy, notes, etc.)
+
+  @@index([sourceBranchId])
+  @@index([targetBranchId])
+  @@index([mergedBy])
+  @@index([mergedAt])
 }
 
 // =================================================================

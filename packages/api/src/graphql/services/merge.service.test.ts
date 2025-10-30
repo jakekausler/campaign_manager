@@ -3,6 +3,7 @@ import type { Branch as PrismaBranch } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 
+import { AuditService } from './audit.service';
 import { BranchService } from './branch.service';
 import { MergeService } from './merge.service';
 import { VersionService } from './version.service';
@@ -31,6 +32,10 @@ describe('MergeService', () => {
     decompressVersion: jest.fn(),
   };
 
+  const mockAuditService = {
+    createAuditLog: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -38,6 +43,7 @@ describe('MergeService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: BranchService, useValue: mockBranchService },
         { provide: VersionService, useValue: mockVersionService },
+        { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();
 
@@ -300,6 +306,51 @@ describe('MergeService', () => {
   describe('getEntityVersionsForMerge', () => {
     it('should retrieve base, source, and target versions for 3-way merge', async () => {
       // Arrange
+      const baseBranch: PrismaBranch = {
+        id: 'branch-base',
+        campaignId: 'campaign-1',
+        parentId: null,
+        name: 'Main',
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      const sourceBranch: PrismaBranch = {
+        id: 'branch-source',
+        campaignId: 'campaign-1',
+        parentId: 'branch-base',
+        name: 'Source Branch',
+        description: null,
+        divergedAt: new Date('2025-01-02'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-02'),
+        updatedAt: new Date('2025-01-02'),
+        deletedAt: null,
+      };
+
+      const targetBranch: PrismaBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-base',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-03'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-03'),
+        updatedAt: new Date('2025-01-03'),
+        deletedAt: null,
+      };
+
       const baseVersion = {
         id: 'version-base',
         entityType: 'settlement',
@@ -344,6 +395,16 @@ describe('MergeService', () => {
 
       const worldTime = new Date('2025-01-10');
 
+      // Mock branch lookups for findDivergenceTime
+      mockPrisma.branch.findUnique
+        .mockResolvedValueOnce(sourceBranch) // source branch lookup
+        .mockResolvedValueOnce(targetBranch); // target branch lookup
+
+      // Mock ancestry lookups for findDivergenceTime
+      mockBranchService.getAncestry
+        .mockResolvedValueOnce([baseBranch, sourceBranch]) // source ancestry
+        .mockResolvedValueOnce([baseBranch, targetBranch]); // target ancestry
+
       mockVersionService.resolveVersion
         .mockResolvedValueOnce(baseVersion) // base
         .mockResolvedValueOnce(sourceVersion) // source
@@ -365,11 +426,12 @@ describe('MergeService', () => {
         source: sourceVersion,
         target: targetVersion,
       });
+      // Base version should be resolved at divergence time (earliest of source and target)
       expect(mockVersionService.resolveVersion).toHaveBeenCalledWith(
         'settlement',
         'settlement-1',
         'branch-base',
-        worldTime
+        new Date('2025-01-02') // earliest divergence time
       );
       expect(mockVersionService.resolveVersion).toHaveBeenCalledWith(
         'settlement',
@@ -387,6 +449,51 @@ describe('MergeService', () => {
 
     it('should handle missing base version (entity created after branch divergence)', async () => {
       // Arrange: Entity was created in source branch after fork, doesn't exist in base
+      const baseBranch: PrismaBranch = {
+        id: 'branch-base',
+        campaignId: 'campaign-1',
+        parentId: null,
+        name: 'Main',
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      const sourceBranch: PrismaBranch = {
+        id: 'branch-source',
+        campaignId: 'campaign-1',
+        parentId: 'branch-base',
+        name: 'Source Branch',
+        description: null,
+        divergedAt: new Date('2025-01-02'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-02'),
+        updatedAt: new Date('2025-01-02'),
+        deletedAt: null,
+      };
+
+      const targetBranch: PrismaBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-base',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-03'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-03'),
+        updatedAt: new Date('2025-01-03'),
+        deletedAt: null,
+      };
+
       const sourceVersion = {
         id: 'version-source',
         entityType: 'settlement',
@@ -417,6 +524,16 @@ describe('MergeService', () => {
 
       const worldTime = new Date('2025-01-10');
 
+      // Mock branch lookups
+      mockPrisma.branch.findUnique
+        .mockResolvedValueOnce(sourceBranch)
+        .mockResolvedValueOnce(targetBranch);
+
+      // Mock ancestry lookups
+      mockBranchService.getAncestry
+        .mockResolvedValueOnce([baseBranch, sourceBranch])
+        .mockResolvedValueOnce([baseBranch, targetBranch]);
+
       mockVersionService.resolveVersion
         .mockResolvedValueOnce(null) // base (doesn't exist)
         .mockResolvedValueOnce(sourceVersion) // source
@@ -442,6 +559,51 @@ describe('MergeService', () => {
 
     it('should handle missing source version (entity only exists in target)', async () => {
       // Arrange: Entity only exists in target branch
+      const baseBranch: PrismaBranch = {
+        id: 'branch-base',
+        campaignId: 'campaign-1',
+        parentId: null,
+        name: 'Main',
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      const sourceBranch: PrismaBranch = {
+        id: 'branch-source',
+        campaignId: 'campaign-1',
+        parentId: 'branch-base',
+        name: 'Source Branch',
+        description: null,
+        divergedAt: new Date('2025-01-02'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-02'),
+        updatedAt: new Date('2025-01-02'),
+        deletedAt: null,
+      };
+
+      const targetBranch: PrismaBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-base',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-03'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-03'),
+        updatedAt: new Date('2025-01-03'),
+        deletedAt: null,
+      };
+
       const baseVersion = {
         id: 'version-base',
         entityType: 'settlement',
@@ -472,6 +634,16 @@ describe('MergeService', () => {
 
       const worldTime = new Date('2025-01-10');
 
+      // Mock branch lookups
+      mockPrisma.branch.findUnique
+        .mockResolvedValueOnce(sourceBranch)
+        .mockResolvedValueOnce(targetBranch);
+
+      // Mock ancestry lookups
+      mockBranchService.getAncestry
+        .mockResolvedValueOnce([baseBranch, sourceBranch])
+        .mockResolvedValueOnce([baseBranch, targetBranch]);
+
       mockVersionService.resolveVersion
         .mockResolvedValueOnce(baseVersion) // base
         .mockResolvedValueOnce(null) // source (doesn't exist)
@@ -497,6 +669,51 @@ describe('MergeService', () => {
 
     it('should handle entity that exists only in source (new entity to be merged)', async () => {
       // Arrange: Entity created in source, doesn't exist in base or target
+      const baseBranch: PrismaBranch = {
+        id: 'branch-base',
+        campaignId: 'campaign-1',
+        parentId: null,
+        name: 'Main',
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      const sourceBranch: PrismaBranch = {
+        id: 'branch-source',
+        campaignId: 'campaign-1',
+        parentId: 'branch-base',
+        name: 'Source Branch',
+        description: null,
+        divergedAt: new Date('2025-01-02'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-02'),
+        updatedAt: new Date('2025-01-02'),
+        deletedAt: null,
+      };
+
+      const targetBranch: PrismaBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-base',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-03'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-03'),
+        updatedAt: new Date('2025-01-03'),
+        deletedAt: null,
+      };
+
       const sourceVersion = {
         id: 'version-source',
         entityType: 'settlement',
@@ -512,6 +729,16 @@ describe('MergeService', () => {
       };
 
       const worldTime = new Date('2025-01-10');
+
+      // Mock branch lookups
+      mockPrisma.branch.findUnique
+        .mockResolvedValueOnce(sourceBranch)
+        .mockResolvedValueOnce(targetBranch);
+
+      // Mock ancestry lookups
+      mockBranchService.getAncestry
+        .mockResolvedValueOnce([baseBranch, sourceBranch])
+        .mockResolvedValueOnce([baseBranch, targetBranch]);
 
       mockVersionService.resolveVersion
         .mockResolvedValueOnce(null) // base
