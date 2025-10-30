@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import { renderWithApollo as render } from '@/__tests__/utils/test-utils';
 import * as mergeHooks from '@/services/api/hooks/merge';
 
 import { MergeHistoryView, type MergeHistoryViewProps } from './MergeHistoryView';

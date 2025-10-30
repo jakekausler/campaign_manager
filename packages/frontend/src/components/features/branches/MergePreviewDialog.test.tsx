@@ -867,11 +867,9 @@ describe('MergePreviewDialog', () => {
 
       await user.keyboard('{Escape}');
 
-      // The dialog closes via two mechanisms:
-      // 1. Custom keydown handler in component (line 418-421)
-      // 2. Radix Dialog's built-in Escape handler
-      // Both call onClose, resulting in 2 calls
-      expect(mockOnClose).toHaveBeenCalledTimes(2);
+      // The dialog uses Radix Dialog's built-in Escape handler via onOpenChange
+      // which calls handleClose, resulting in 1 call to onClose
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
     it('should not close dialog when Escape is pressed during loading', async () => {
@@ -904,8 +902,8 @@ describe('MergePreviewDialog', () => {
 
       await user.keyboard('{Escape}');
 
-      // Should still call onClose (dialog component handles the disabled state)
-      expect(mockOnClose).toHaveBeenCalledTimes(1);
+      // handleClose checks loading state and prevents onClose call when loading
+      expect(mockOnClose).toHaveBeenCalledTimes(0);
     });
   });
 

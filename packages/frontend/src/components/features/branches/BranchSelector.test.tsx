@@ -1,7 +1,8 @@
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+import { renderWithApollo as render } from '@/__tests__/utils/test-utils';
 import * as hooks from '@/services/api/hooks';
 import * as stores from '@/stores';
 
