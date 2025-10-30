@@ -391,6 +391,7 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
     await prisma.party.deleteMany({});
     // Delete user-related records that reference branches/campaigns
     await prisma.audit.deleteMany({});
+    await prisma.mergeHistory.deleteMany({});
     await prisma.version.deleteMany({});
     await prisma.refreshToken.deleteMany({});
     await prisma.campaignMembership.deleteMany({}); // References branchId

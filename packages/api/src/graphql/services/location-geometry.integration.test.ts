@@ -128,6 +128,8 @@ describe('LocationService - Geometry Operations (Integration)', () => {
     // Clean up test data after each test to ensure isolation
     // Delete in correct order to respect foreign key constraints
     if (testBranchId) {
+      await prisma.mergeHistory.deleteMany({ where: { sourceBranchId: testBranchId } });
+      await prisma.mergeHistory.deleteMany({ where: { targetBranchId: testBranchId } });
       await prisma.version.deleteMany({ where: { branchId: testBranchId } });
     }
     if (testWorldId) {

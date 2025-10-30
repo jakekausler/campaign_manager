@@ -100,6 +100,7 @@ describe('Branching System E2E Tests', () => {
   beforeEach(async () => {
     // Clean up database before each test in correct order to avoid FK violations
     // Delete child entities first, then parents
+    await prisma.mergeHistory.deleteMany({});
     await prisma.version.deleteMany({});
     await prisma.audit.deleteMany({});
     await prisma.structure.deleteMany({});
@@ -177,6 +178,7 @@ describe('Branching System E2E Tests', () => {
   afterEach(async () => {
     // Clean up after each test in correct order to avoid FK violations
     // Delete child entities first, then parents
+    await prisma.mergeHistory.deleteMany({});
     await prisma.version.deleteMany({});
     await prisma.audit.deleteMany({});
     await prisma.structure.deleteMany({});

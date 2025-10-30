@@ -153,8 +153,8 @@ describe('Merge System E2E Tests', () => {
     await prisma.audit.deleteMany({});
     await prisma.structure.deleteMany({});
     await prisma.settlement.deleteMany({});
-    await prisma.kingdom.deleteMany({});
     await prisma.location.deleteMany({});
+    await prisma.kingdom.deleteMany({});
     await prisma.branch.deleteMany({});
     await prisma.campaignMembership.deleteMany({});
     await prisma.campaign.deleteMany({});
@@ -231,8 +231,8 @@ describe('Merge System E2E Tests', () => {
     await prisma.audit.deleteMany({});
     await prisma.structure.deleteMany({});
     await prisma.settlement.deleteMany({});
-    await prisma.kingdom.deleteMany({});
     await prisma.location.deleteMany({});
+    await prisma.kingdom.deleteMany({});
     await prisma.branch.deleteMany({});
     await prisma.campaignMembership.deleteMany({});
     await prisma.campaign.deleteMany({});

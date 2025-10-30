@@ -762,13 +762,13 @@ export class MergeService {
     // Step 3: Get source payload
     const sourcePayload = await this.versionService.decompressVersion(sourceVersion);
 
-    // Step 4: Get current/latest state of entity in target branch
-    // Use far-future date to get the most recent version (not historical)
+    // Step 4: Get state of entity in target branch at source version's world time
+    // This ensures we're comparing the same point in time across branches
     const targetVersion = await this.versionService.resolveVersion(
       sourceVersion.entityType,
       sourceVersion.entityId,
       targetBranchId,
-      new Date('2999-12-31') // Far future to get latest version
+      sourceVersion.validFrom // Use source version's world time for comparison
     );
 
     // Step 5: Detect conflicts if target has a version

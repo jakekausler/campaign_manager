@@ -125,22 +125,20 @@ describe('MergeResolver Integration Tests', () => {
   });
 
   afterAll(async () => {
-    // Clean up test data
-    await prisma.mergeHistory.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
-    await prisma.audit.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
-    await prisma.version.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
-    await prisma.branch.deleteMany({ where: { campaign: { name: 'Merge Test Campaign' } } });
-    await prisma.structure.deleteMany({
-      where: { settlement: { kingdom: { campaign: { name: 'Merge Test Campaign' } } } },
-    });
-    await prisma.settlement.deleteMany({
-      where: { kingdom: { campaign: { name: 'Merge Test Campaign' } } },
-    });
-    await prisma.kingdom.deleteMany({ where: { campaign: { name: 'Merge Test Campaign' } } });
-    await prisma.campaign.deleteMany({ where: { name: 'Merge Test Campaign' } });
-    await prisma.location.deleteMany({ where: { world: { name: 'Merge Test World' } } });
-    await prisma.world.deleteMany({ where: { name: 'Merge Test World' } });
-    await prisma.user.deleteMany({ where: { email: 'merge-test@example.com' } });
+    // Clean up test data in correct dependency order
+    // Delete child entities first, then parents
+    await prisma.mergeHistory.deleteMany({});
+    await prisma.version.deleteMany({});
+    await prisma.audit.deleteMany({});
+    await prisma.structure.deleteMany({});
+    await prisma.settlement.deleteMany({});
+    await prisma.location.deleteMany({});
+    await prisma.kingdom.deleteMany({});
+    await prisma.branch.deleteMany({});
+    await prisma.campaignMembership.deleteMany({});
+    await prisma.campaign.deleteMany({});
+    await prisma.world.deleteMany({});
+    await prisma.user.deleteMany({});
 
     await app.close();
   });
@@ -1113,12 +1111,14 @@ describe('MergeResolver Integration Tests', () => {
           population: 1000,
         });
 
+        const conflictWorldTime = new Date('2025-01-15T12:00:00Z');
+
         const sourceVersion = await prisma.version.create({
           data: {
             entityType: 'settlement',
             entityId: testEntity.id,
             branchId: sourceBranch.id,
-            validFrom: new Date(),
+            validFrom: conflictWorldTime,
             validTo: null,
             payloadGz: sourceCompressed,
             createdBy: testUser.id,
@@ -1139,7 +1139,7 @@ describe('MergeResolver Integration Tests', () => {
             entityType: 'settlement',
             entityId: testEntity.id,
             branchId: targetBranch.id,
-            validFrom: new Date(),
+            validFrom: conflictWorldTime,
             validTo: null,
             payloadGz: targetCompressed,
             createdBy: testUser.id,
