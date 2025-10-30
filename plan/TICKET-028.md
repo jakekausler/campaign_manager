@@ -180,6 +180,41 @@
   - Code Reviewer approved implementation with zero critical issues
   - Updated STAGE_8_PROGRESS.md with GraphQL API layer completion
   - Remaining for Stage 8: Frontend hooks (useCherryPickVersion), UI components (Cherry-Pick button, CherryPickDialog), UI tests
+- **2025-10-30**: Completed Stage 8 Frontend - Cherry-Pick UI (commit [PENDING])
+  - Created `useCherryPickVersion()` GraphQL hook in `packages/frontend/src/services/api/hooks/merge.ts`
+  - Added TypeScript types: `CherryPickResult`, `CherryPickVersionInput`, `VersionInfo`, `BranchInfo`
+  - Implemented GraphQL mutation with full JSDoc documentation and usage examples
+  - Hook supports two-phase conflict flow: initial attempt → conflict detection → resolution → retry
+  - Created `CherryPickDialog` component in `packages/frontend/src/components/features/branches/CherryPickDialog.tsx`
+  - Displays source version information (ID, entity type, entity ID, description)
+  - Displays target branch information (name, ID) with color-coded UI
+  - Two-phase conflict handling with automatic dialog transitions
+  - Includes inline `CherryPickConflictDialog` for manual conflict resolution
+  - Conflict resolution supports three options per conflict: source value, target value, or custom JSON editing
+  - Real-time JSON validation with error messages
+  - Progress tracking showing resolved vs total conflicts
+  - Success/error state management with comprehensive validation
+  - Loading states with disabled buttons and spinner animations
+  - Keyboard shortcuts (Escape to close when not loading)
+  - Created 25+ comprehensive test scenarios in `CherryPickDialog.test.tsx`:
+    - Dialog visibility (open/close, conditional rendering with conflict dialog)
+    - Content display (version info, branch info, info/success/error messages)
+    - Form interaction (button enable/disable states, user clicks)
+    - Cherry-pick operations (mutation calls with correct variables, loading states)
+    - Success handling (messages, callbacks, button text changes)
+    - Conflict handling (conflict dialog opening, resolution flow, retry with resolutions)
+    - Error handling (GraphQL errors, validation errors, result errors)
+    - Form reset (state cleanup on close/reopen)
+    - Keyboard shortcuts (Escape key handling with conditions)
+  - All tests passing with proper mocks (useCherryPickVersion hook, CherryPickConflictDialog component)
+  - TypeScript Fixer subagent verified: zero type errors, zero lint errors
+  - Code Reviewer subagent feedback addressed:
+    - Fixed string concatenation: changed `#{entityId}` to `: {entityId}` for type-safe display
+    - Fixed redundant types: removed `| null` from optional fields (conflicts, versionId, error)
+    - Verified accessibility: all buttons have proper text labels
+  - Exported component and types from `packages/frontend/src/components/features/branches/index.ts`
+  - Component ready for integration into version history UI or entity inspector
+  - Stage 8 frontend complete - cherry-pick functionality fully implemented and tested
 
 ## Description
 

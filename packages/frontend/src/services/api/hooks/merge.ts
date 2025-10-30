@@ -387,10 +387,161 @@ export function useExecuteMerge(
   return useMutation<ExecuteMergeMutation, ExecuteMergeMutationVariables>(EXECUTE_MERGE, options);
 }
 
+/**
+ * Cherry-pick result information
+ */
+export type CherryPickResult = {
+  /** Whether the cherry-pick was successful */
+  success: boolean;
+  /** Whether conflicts were detected */
+  hasConflict: boolean;
+  /** Conflicts detected during cherry-pick (if any) */
+  conflicts?: MergeConflict[];
+  /** ID of the version created in target branch (if no conflicts) */
+  versionId?: string;
+  /** Error message if cherry-pick failed */
+  error?: string;
+};
+
+/**
+ * Input for cherry-picking a version
+ */
+export type CherryPickVersionInput = {
+  /** ID of the version to cherry-pick */
+  sourceVersionId: string;
+  /** ID of the branch to apply the version to */
+  targetBranchId: string;
+  /** Manual resolutions for conflicts (required if conflicts exist) */
+  resolutions?: ConflictResolution[];
+};
+
+type CherryPickVersionMutation = {
+  cherryPickVersion: CherryPickResult;
+};
+
+type CherryPickVersionMutationVariables = {
+  input: CherryPickVersionInput;
+};
+
+/**
+ * GraphQL mutation to cherry-pick a specific version.
+ *
+ * This mutation selectively applies a single version from one branch to
+ * another branch. If conflicts are detected, they must be resolved via
+ * the resolutions input before the version can be applied.
+ *
+ * @example
+ * Mutation:
+ * ```graphql
+ * mutation CherryPickVersion($input: CherryPickVersionInput!) {
+ *   cherryPickVersion(input: $input) {
+ *     success
+ *     hasConflict
+ *     conflicts {
+ *       path
+ *       type
+ *       description
+ *       suggestion
+ *       baseValue
+ *       sourceValue
+ *       targetValue
+ *     }
+ *     versionId
+ *     error
+ *   }
+ * }
+ * ```
+ */
+export const CHERRY_PICK_VERSION = gql`
+  mutation CherryPickVersion($input: CherryPickVersionInput!) {
+    cherryPickVersion(input: $input) {
+      success
+      hasConflict
+      conflicts {
+        path
+        type
+        description
+        suggestion
+        baseValue
+        sourceValue
+        targetValue
+      }
+      versionId
+      error
+    }
+  }
+`;
+
+/**
+ * React hook to cherry-pick a specific version to another branch.
+ *
+ * Selectively applies a single entity version from one branch to another.
+ * If conflicts are detected, they must be resolved before the operation
+ * completes successfully.
+ *
+ * @param options - Additional Apollo mutation options
+ * @returns Mutation function and result state
+ *
+ * @example
+ * ```typescript
+ * function VersionHistoryItem({ version, targetBranch }: Props) {
+ *   const [cherryPick, { loading, data, error }] = useCherryPickVersion({
+ *     onCompleted: (result) => {
+ *       if (result.cherryPickVersion.success && !result.cherryPickVersion.hasConflict) {
+ *         console.log(`Cherry-pick complete! Version ID: ${result.cherryPickVersion.versionId}`);
+ *       } else if (result.cherryPickVersion.hasConflict) {
+ *         console.log(`Conflicts detected: ${result.cherryPickVersion.conflicts?.length}`);
+ *         // Open conflict resolution dialog
+ *       }
+ *     },
+ *     refetchQueries: ['GetBranchVersions', 'GetBranch'],
+ *     awaitRefetchQueries: true,
+ *   });
+ *
+ *   const handleCherryPick = async (resolutions?: ConflictResolution[]) => {
+ *     await cherryPick({
+ *       variables: {
+ *         input: {
+ *           sourceVersionId: version.id,
+ *           targetBranchId: targetBranch.id,
+ *           resolutions,
+ *         }
+ *       }
+ *     });
+ *   };
+ *
+ *   return (
+ *     <div>
+ *       <button onClick={() => handleCherryPick()} disabled={loading}>
+ *         {loading ? 'Cherry-picking...' : 'Cherry-Pick to Branch'}
+ *       </button>
+ *       {error && <div>Error: {error.message}</div>}
+ *       {data?.cherryPickVersion.hasConflict && (
+ *         <ConflictResolutionDialog
+ *           conflicts={data.cherryPickVersion.conflicts || []}
+ *           onResolve={(resolutions) => handleCherryPick(resolutions)}
+ *         />
+ *       )}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useCherryPickVersion(
+  options?: MutationHookOptions<CherryPickVersionMutation, CherryPickVersionMutationVariables>
+) {
+  return useMutation<CherryPickVersionMutation, CherryPickVersionMutationVariables>(
+    CHERRY_PICK_VERSION,
+    options
+  );
+}
+
 // Export types for convenience
 export type {
   PreviewMergeQuery,
   PreviewMergeQueryVariables,
   ExecuteMergeMutation,
   ExecuteMergeMutationVariables,
+  CherryPickVersionMutation,
+  CherryPickVersionMutationVariables,
 };

@@ -12,3 +12,5 @@ export { BranchComparisonView } from './BranchComparisonView';
 export { DeleteBranchDialog } from './DeleteBranchDialog';
 export { MergePreviewDialog } from './MergePreviewDialog';
 export { ConflictResolutionDialog } from './ConflictResolutionDialog';
+export { CherryPickDialog } from './CherryPickDialog';
+export type { VersionInfo, BranchInfo, CherryPickDialogProps } from './CherryPickDialog';
