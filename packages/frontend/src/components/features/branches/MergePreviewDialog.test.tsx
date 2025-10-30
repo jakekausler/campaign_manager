@@ -22,6 +22,7 @@ vi.mock('@/services/api/hooks', async (importOriginal) => {
   return {
     ...actual,
     usePreviewMerge: vi.fn(),
+    useExecuteMerge: vi.fn(),
   };
 });
 
@@ -137,7 +138,7 @@ describe('MergePreviewDialog', () => {
     targetBranch: mockTargetBranch,
     isOpen: true,
     onClose: mockOnClose,
-    onProceedToResolve: mockOnProceedToResolve,
+    onMergeComplete: mockOnProceedToResolve,
   };
 
   beforeEach(() => {
@@ -160,11 +161,34 @@ describe('MergePreviewDialog', () => {
       refetch: vi.fn(),
       networkStatus: 7,
       client: {} as never,
-      called: true,
       previousData: undefined,
-      variables: undefined,
+      variables: {
+        input: {
+          sourceBranchId: 'branch-feature',
+          targetBranchId: 'branch-main',
+          worldTime: '2024-06-15T14:30:00.000Z',
+        },
+      },
       observable: {} as never,
+      startPolling: vi.fn(),
+      stopPolling: vi.fn(),
+      subscribeToMore: vi.fn(),
+      updateQuery: vi.fn(),
+      fetchMore: vi.fn(),
+      dataState: 'complete' as const,
     });
+
+    vi.mocked(hooks.useExecuteMerge).mockReturnValue([
+      vi.fn(),
+      {
+        loading: false,
+        error: undefined,
+        data: undefined,
+        called: false,
+        client: {} as never,
+        reset: vi.fn(),
+      },
+    ]);
   });
 
   afterEach(() => {
@@ -197,8 +221,10 @@ describe('MergePreviewDialog', () => {
   describe('Dialog Content', () => {
     it('should display source and target branch names', () => {
       render(<MergePreviewDialog {...defaultProps} />);
-      expect(screen.getByText('Feature Branch')).toBeInTheDocument();
-      expect(screen.getByText('Main Timeline')).toBeInTheDocument();
+      const sourceBranchCards = screen.getAllByText('Feature Branch');
+      expect(sourceBranchCards.length).toBeGreaterThan(0);
+      const targetBranchCards = screen.getAllByText('Main Timeline');
+      expect(targetBranchCards.length).toBeGreaterThan(0);
     });
 
     it('should display source and target branch labels', () => {
@@ -225,10 +251,21 @@ describe('MergePreviewDialog', () => {
         refetch: vi.fn(),
         networkStatus: 1,
         client: {} as never,
-        called: true,
         previousData: undefined,
-        variables: undefined,
+        variables: {
+          input: {
+            sourceBranchId: 'branch-feature',
+            targetBranchId: 'branch-main',
+            worldTime: '2024-06-15T14:30:00.000Z',
+          },
+        },
         observable: {} as never,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        dataState: 'empty' as const,
       });
 
       render(<MergePreviewDialog {...defaultProps} />);
@@ -246,10 +283,21 @@ describe('MergePreviewDialog', () => {
         refetch: vi.fn(),
         networkStatus: 1,
         client: {} as never,
-        called: true,
         previousData: undefined,
-        variables: undefined,
+        variables: {
+          input: {
+            sourceBranchId: 'branch-feature',
+            targetBranchId: 'branch-main',
+            worldTime: '2024-06-15T14:30:00.000Z',
+          },
+        },
         observable: {} as never,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        dataState: 'empty' as const,
       });
 
       render(<MergePreviewDialog {...defaultProps} />);
@@ -268,10 +316,21 @@ describe('MergePreviewDialog', () => {
         refetch: vi.fn(),
         networkStatus: 8,
         client: {} as never,
-        called: true,
         previousData: undefined,
-        variables: undefined,
+        variables: {
+          input: {
+            sourceBranchId: 'branch-feature',
+            targetBranchId: 'branch-main',
+            worldTime: '2024-06-15T14:30:00.000Z',
+          },
+        },
         observable: {} as never,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        dataState: 'empty' as const,
       });
 
       render(<MergePreviewDialog {...defaultProps} />);
@@ -283,20 +342,29 @@ describe('MergePreviewDialog', () => {
   describe('Merge Preview Summary', () => {
     it('should display total entities count', () => {
       render(<MergePreviewDialog {...defaultProps} />);
-      expect(screen.getByText('2')).toBeInTheDocument(); // 2 entities
-      expect(screen.getByText('Total Entities')).toBeInTheDocument();
+      const totalEntitiesLabel = screen.getByText('Total Entities');
+      expect(totalEntitiesLabel).toBeInTheDocument();
+      // Find the stat value in the same container
+      const statsContainer = totalEntitiesLabel.closest('div');
+      expect(within(statsContainer!).getByText('2')).toBeInTheDocument();
     });
 
     it('should display total conflicts count', () => {
       render(<MergePreviewDialog {...defaultProps} />);
-      expect(screen.getByText('2')).toBeInTheDocument(); // 2 conflicts
-      expect(screen.getByText('Conflicts')).toBeInTheDocument();
+      const conflictsLabel = screen.getByText('Conflicts');
+      expect(conflictsLabel).toBeInTheDocument();
+      // Find the stat value in the same container
+      const statsContainer = conflictsLabel.closest('div');
+      expect(within(statsContainer!).getByText('2')).toBeInTheDocument();
     });
 
     it('should display total auto-resolved count', () => {
       render(<MergePreviewDialog {...defaultProps} />);
-      expect(screen.getByText('3')).toBeInTheDocument(); // 3 auto-resolved
-      expect(screen.getByText('Auto-Resolved')).toBeInTheDocument();
+      const autoResolvedLabel = screen.getByText('Auto-Resolved');
+      expect(autoResolvedLabel).toBeInTheDocument();
+      // Find the stat value in the same container
+      const statsContainer = autoResolvedLabel.closest('div');
+      expect(within(statsContainer!).getByText('3')).toBeInTheDocument();
     });
 
     it('should display manual resolution warning when conflicts exist', () => {
@@ -321,15 +389,28 @@ describe('MergePreviewDialog', () => {
         refetch: vi.fn(),
         networkStatus: 7,
         client: {} as never,
-        called: true,
         previousData: undefined,
-        variables: undefined,
+        variables: {
+          input: {
+            sourceBranchId: 'branch-feature',
+            targetBranchId: 'branch-main',
+            worldTime: '2024-06-15T14:30:00.000Z',
+          },
+        },
         observable: {} as never,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        dataState: 'complete' as const,
       });
 
       render(<MergePreviewDialog {...defaultProps} />);
-      expect(screen.getByText(/All changes can be auto-resolved/)).toBeInTheDocument();
-      expect(screen.getByText(/No conflicts detected!/)).toBeInTheDocument();
+      // Check for the full success message text
+      expect(
+        screen.getByText(/All changes can be auto-resolved\. No conflicts detected!/)
+      ).toBeInTheDocument();
     });
 
     it('should display empty state when no entity changes detected', () => {
@@ -348,10 +429,21 @@ describe('MergePreviewDialog', () => {
         refetch: vi.fn(),
         networkStatus: 7,
         client: {} as never,
-        called: true,
         previousData: undefined,
-        variables: undefined,
+        variables: {
+          input: {
+            sourceBranchId: 'branch-feature',
+            targetBranchId: 'branch-main',
+            worldTime: '2024-06-15T14:30:00.000Z',
+          },
+        },
         observable: {} as never,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        dataState: 'complete' as const,
       });
 
       render(<MergePreviewDialog {...defaultProps} />);
@@ -435,8 +527,11 @@ describe('MergePreviewDialog', () => {
       await waitFor(() => {
         expect(screen.getByText('Base (Ancestor)')).toBeInTheDocument();
       });
-      expect(screen.getByText('Source Branch')).toBeInTheDocument();
-      expect(screen.getByText('Target Branch')).toBeInTheDocument();
+      // Check for labels in the conflict details section (will appear multiple times)
+      const sourceBranchLabels = screen.getAllByText('Source Branch');
+      expect(sourceBranchLabels.length).toBeGreaterThan(0);
+      const targetBranchLabels = screen.getAllByText('Target Branch');
+      expect(targetBranchLabels.length).toBeGreaterThan(0);
     });
 
     it('should collapse conflict details when chevron is clicked again', async () => {
@@ -575,10 +670,21 @@ describe('MergePreviewDialog', () => {
         refetch: vi.fn(),
         networkStatus: 7,
         client: {} as never,
-        called: true,
         previousData: undefined,
-        variables: undefined,
+        variables: {
+          input: {
+            sourceBranchId: 'branch-feature',
+            targetBranchId: 'branch-main',
+            worldTime: '2024-06-15T14:30:00.000Z',
+          },
+        },
         observable: {} as never,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        dataState: 'complete' as const,
       });
 
       render(<MergePreviewDialog {...defaultProps} />);
@@ -613,10 +719,21 @@ describe('MergePreviewDialog', () => {
         refetch: vi.fn(),
         networkStatus: 7,
         client: {} as never,
-        called: true,
         previousData: undefined,
-        variables: undefined,
+        variables: {
+          input: {
+            sourceBranchId: 'branch-feature',
+            targetBranchId: 'branch-main',
+            worldTime: '2024-06-15T14:30:00.000Z',
+          },
+        },
         observable: {} as never,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        dataState: 'complete' as const,
       });
 
       render(<MergePreviewDialog {...defaultProps} />);
@@ -644,16 +761,30 @@ describe('MergePreviewDialog', () => {
         refetch: vi.fn(),
         networkStatus: 7,
         client: {} as never,
-        called: true,
         previousData: undefined,
-        variables: undefined,
+        variables: {
+          input: {
+            sourceBranchId: 'branch-feature',
+            targetBranchId: 'branch-main',
+            worldTime: '2024-06-15T14:30:00.000Z',
+          },
+        },
         observable: {} as never,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        dataState: 'complete' as const,
       });
 
       render(<MergePreviewDialog {...defaultProps} />);
 
-      // Conflicts tab should show empty state
-      expect(screen.getByText('No conflicts detected!')).toBeInTheDocument();
+      // Conflicts tab should show empty state (as opposed to the success alert)
+      // Find the standalone "No conflicts detected!" text (not part of longer message)
+      const noConflictsTexts = screen.getAllByText('No conflicts detected!');
+      // Should find it in the empty state card (not in the alert which has more text)
+      expect(noConflictsTexts.length).toBeGreaterThan(0);
     });
 
     it('should display empty state for auto-resolved tab when none exist', async () => {
@@ -671,10 +802,21 @@ describe('MergePreviewDialog', () => {
         refetch: vi.fn(),
         networkStatus: 7,
         client: {} as never,
-        called: true,
         previousData: undefined,
-        variables: undefined,
+        variables: {
+          input: {
+            sourceBranchId: 'branch-feature',
+            targetBranchId: 'branch-main',
+            worldTime: '2024-06-15T14:30:00.000Z',
+          },
+        },
         observable: {} as never,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        dataState: 'complete' as const,
       });
 
       render(<MergePreviewDialog {...defaultProps} />);
@@ -706,10 +848,21 @@ describe('MergePreviewDialog', () => {
         refetch: vi.fn(),
         networkStatus: 1,
         client: {} as never,
-        called: true,
         previousData: undefined,
-        variables: undefined,
+        variables: {
+          input: {
+            sourceBranchId: 'branch-feature',
+            targetBranchId: 'branch-main',
+            worldTime: '2024-06-15T14:30:00.000Z',
+          },
+        },
         observable: {} as never,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        dataState: 'empty' as const,
       });
 
       render(<MergePreviewDialog {...defaultProps} />);

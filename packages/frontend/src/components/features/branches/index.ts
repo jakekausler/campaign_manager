@@ -10,3 +10,5 @@ export { BranchHierarchyViewWrapper as BranchHierarchyView } from './BranchHiera
 export { ForkBranchDialog } from './ForkBranchDialog';
 export { BranchComparisonView } from './BranchComparisonView';
 export { DeleteBranchDialog } from './DeleteBranchDialog';
+export { MergePreviewDialog } from './MergePreviewDialog';
+export { ConflictResolutionDialog } from './ConflictResolutionDialog';

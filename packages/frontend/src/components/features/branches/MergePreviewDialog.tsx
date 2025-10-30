@@ -25,12 +25,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   usePreviewMerge,
+  useExecuteMerge,
   type Branch,
   type MergeConflict,
   type AutoResolvedChange,
   type EntityMergePreview,
 } from '@/services/api/hooks';
 import { useCampaignStore } from '@/stores';
+
+import { ConflictResolutionDialog } from './ConflictResolutionDialog';
 
 /**
  * Props for MergePreviewDialog component
@@ -44,8 +47,8 @@ export interface MergePreviewDialogProps {
   isOpen: boolean;
   /** Callback when the dialog is closed or cancelled */
   onClose: () => void;
-  /** Callback when user wants to proceed with merge */
-  onProceedToResolve?: (entityPreviews: EntityMergePreview[]) => void;
+  /** Callback when merge is successfully completed */
+  onMergeComplete?: () => void;
 }
 
 /**
@@ -353,9 +356,9 @@ function EntityPreviewCard({ entity }: { entity: EntityMergePreview }) {
  *         targetBranch={targetBranch.data?.branch}
  *         isOpen={isOpen}
  *         onClose={() => setIsOpen(false)}
- *         onProceedToResolve={(entityPreviews) => {
- *           // Open conflict resolution dialog
- *           console.log('Proceeding to resolve', entityPreviews);
+ *         onMergeComplete={() => {
+ *           console.log('Merge completed successfully!');
+ *           // Refetch data or navigate
  *         }}
  *       />
  *     </>
@@ -368,10 +371,11 @@ export function MergePreviewDialog({
   targetBranch,
   isOpen,
   onClose,
-  onProceedToResolve,
+  onMergeComplete,
 }: MergePreviewDialogProps): JSX.Element {
   const { campaign } = useCampaignStore();
   const [activeTab, setActiveTab] = useState<'conflicts' | 'resolved'>('conflicts');
+  const [showResolutionDialog, setShowResolutionDialog] = useState(false);
 
   // Fetch merge preview
   const { data, loading, error } = usePreviewMerge(
@@ -385,10 +389,23 @@ export function MergePreviewDialog({
     }
   );
 
-  // Reset active tab when dialog opens
+  // Execute merge mutation (for no-conflict merges)
+  const [executeMerge, { loading: executing, error: executeError }] = useExecuteMerge({
+    onCompleted: (result) => {
+      if (result.executeMerge.success && onMergeComplete) {
+        onMergeComplete();
+        onClose();
+      }
+    },
+    refetchQueries: ['GetBranchHierarchy', 'GetBranch'],
+    awaitRefetchQueries: true,
+  });
+
+  // Reset state when dialog opens
   useEffect(() => {
     if (isOpen) {
       setActiveTab('conflicts');
+      setShowResolutionDialog(false);
     }
   }, [isOpen]);
 
@@ -410,17 +427,50 @@ export function MergePreviewDialog({
 
   // Handle dialog close
   const handleClose = () => {
-    if (!loading) {
+    if (!loading && !executing) {
       onClose();
     }
   };
 
-  // Handle proceed to resolution
-  const handleProceed = useCallback(() => {
-    if (data?.previewMerge && onProceedToResolve) {
-      onProceedToResolve(data.previewMerge.entities);
+  // Handle proceed to resolution (for conflicts) or execute (for no conflicts)
+  const handleProceed = useCallback(async () => {
+    if (!data?.previewMerge || !sourceBranch || !targetBranch || !campaign?.currentWorldTime) {
+      return;
     }
-  }, [data, onProceedToResolve]);
+
+    const preview = data.previewMerge;
+
+    // If there are conflicts, open resolution dialog
+    if (preview.requiresManualResolution) {
+      setShowResolutionDialog(true);
+    } else {
+      // No conflicts - execute merge directly with empty resolutions
+      await executeMerge({
+        variables: {
+          input: {
+            sourceBranchId: sourceBranch.id,
+            targetBranchId: targetBranch.id,
+            worldTime: campaign.currentWorldTime,
+            resolutions: [], // No conflicts to resolve
+          },
+        },
+      });
+    }
+  }, [data, sourceBranch, targetBranch, campaign?.currentWorldTime, executeMerge]);
+
+  // Handle resolution dialog close
+  const handleResolutionClose = useCallback(() => {
+    setShowResolutionDialog(false);
+  }, []);
+
+  // Handle merge complete from resolution dialog
+  const handleResolutionComplete = useCallback(() => {
+    setShowResolutionDialog(false);
+    if (onMergeComplete) {
+      onMergeComplete();
+    }
+    onClose();
+  }, [onMergeComplete, onClose]);
 
   const preview = data?.previewMerge;
 
@@ -474,7 +524,7 @@ export function MergePreviewDialog({
             </Card>
           )}
 
-          {/* Error State */}
+          {/* Error States */}
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -482,6 +532,30 @@ export function MergePreviewDialog({
                 Preview failed: {error.message || 'Unknown error occurred'}
               </AlertDescription>
             </Alert>
+          )}
+
+          {executeError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Merge failed: {executeError.message || 'Unknown error occurred'}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Executing State */}
+          {executing && (
+            <Card className="border-blue-200 bg-blue-50 p-4">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-800">Executing merge...</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Creating versions in target branch and updating history.
+                  </p>
+                </div>
+              </div>
+            </Card>
           )}
 
           {/* Preview Results */}
@@ -591,7 +665,7 @@ export function MergePreviewDialog({
             type="button"
             onClick={handleClose}
             variant="outline"
-            disabled={loading}
+            disabled={loading || executing}
             title="Cancel and close dialog (Escape)"
           >
             <X className="mr-2 h-4 w-4" />
@@ -600,7 +674,7 @@ export function MergePreviewDialog({
           {preview && preview.requiresManualResolution && (
             <Button
               onClick={handleProceed}
-              disabled={loading}
+              disabled={loading || executing}
               title="Proceed to conflict resolution"
               data-testid="merge-preview-proceed"
             >
@@ -610,16 +684,35 @@ export function MergePreviewDialog({
           {preview && !preview.requiresManualResolution && preview.totalAutoResolved > 0 && (
             <Button
               onClick={handleProceed}
-              disabled={loading}
+              disabled={loading || executing}
               title="Proceed to execute merge"
               data-testid="merge-preview-execute"
             >
-              <GitMerge className="mr-2 h-4 w-4" />
-              Execute Merge
+              {executing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Merging...
+                </>
+              ) : (
+                <>
+                  <GitMerge className="mr-2 h-4 w-4" />
+                  Execute Merge
+                </>
+              )}
             </Button>
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Conflict Resolution Dialog */}
+      <ConflictResolutionDialog
+        sourceBranch={sourceBranch}
+        targetBranch={targetBranch}
+        entityPreviews={data?.previewMerge?.entities ?? []}
+        isOpen={showResolutionDialog}
+        onClose={handleResolutionClose}
+        onMergeComplete={handleResolutionComplete}
+      />
     </Dialog>
   );
 }
