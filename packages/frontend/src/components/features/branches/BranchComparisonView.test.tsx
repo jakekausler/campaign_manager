@@ -3,6 +3,7 @@ import { userEvent } from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import * as hooks from '@/services/api/hooks';
+import * as versionHooks from '@/services/api/hooks/version-comparison';
 import * as stores from '@/stores';
 
 import { BranchComparisonView } from './BranchComparisonView';
@@ -22,6 +23,14 @@ vi.mock('@/services/api/hooks', async (importOriginal) => {
   return {
     ...actual,
     useGetBranchHierarchy: vi.fn(),
+  };
+});
+
+// Mock the version comparison hooks
+vi.mock('@/services/api/hooks/version-comparison', async (importOriginal) => {
+  const actual = (await importOriginal()) as typeof versionHooks;
+  return {
+    ...actual,
     useGetSettlementAsOf: vi.fn(),
     useGetStructureAsOf: vi.fn(),
   };
@@ -132,14 +141,14 @@ describe('BranchComparisonView', () => {
     } as any);
 
     // Mock entity query hooks with default skipped state
-    vi.mocked(hooks.useGetSettlementAsOf).mockReturnValue({
+    vi.mocked(versionHooks.useGetSettlementAsOf).mockReturnValue({
       data: undefined,
       loading: false,
       error: undefined,
       refetch: vi.fn(),
     } as any);
 
-    vi.mocked(hooks.useGetStructureAsOf).mockReturnValue({
+    vi.mocked(versionHooks.useGetStructureAsOf).mockReturnValue({
       data: undefined,
       loading: false,
       error: undefined,

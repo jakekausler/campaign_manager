@@ -177,8 +177,9 @@ describe('ConflictResolutionDialog', () => {
   describe('Dialog Content', () => {
     it('should display source and target branch names', () => {
       render(<ConflictResolutionDialog {...defaultProps} />);
-      expect(screen.getByText('Feature Branch')).toBeInTheDocument();
-      expect(screen.getByText('Main Timeline')).toBeInTheDocument();
+      // Check in dialog description (multiple instances exist, so we verify at least one)
+      expect(screen.getAllByText('Feature Branch').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Main Timeline').length).toBeGreaterThanOrEqual(1);
     });
 
     it('should display progress (0 of total conflicts resolved initially)', () => {
@@ -212,18 +213,24 @@ describe('ConflictResolutionDialog', () => {
       render(<ConflictResolutionDialog {...defaultProps} />);
 
       // Entity cards start expanded
-      expect(screen.getByText('population')).toBeVisible();
+      expect(screen.getByText('population')).toBeInTheDocument();
 
-      // Find the collapse button for settlement-1
-      const settlementCard = screen
-        .getByText('settlement #settlement-1')
-        .closest('div')!.parentElement!;
-      const collapseButton = within(settlementCard).getAllByRole('button')[0];
+      // Find the collapse button for settlement-1 by finding all chevron buttons
+      // The first button with chevron down/right icon should be the entity card toggle
+      const allButtons = screen.getAllByRole('button');
+      // Find the button that contains a chevron icon (collapse/expand button)
+      const collapseButton = allButtons.find(
+        (button) =>
+          button.querySelector('svg.lucide-chevron-down') ||
+          button.querySelector('svg.lucide-chevron-right')
+      );
 
-      await user.click(collapseButton);
+      await user.click(collapseButton!);
 
-      // Conflict should now be hidden
-      expect(screen.queryByText('population')).not.toBeVisible();
+      // Conflict should now be hidden (not in the document after collapse)
+      await waitFor(() => {
+        expect(screen.queryByText('population')).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -332,11 +339,12 @@ describe('ConflictResolutionDialog', () => {
       const expandButtons = screen.getAllByTitle(/expand details/i);
       await user.click(expandButtons[0]);
 
-      // Check that 3-way diff is shown
+      // Check that 3-way diff is shown (multiple "Source Branch" exist, check for all)
       await waitFor(() => {
         expect(screen.getByText('Base (Ancestor)')).toBeInTheDocument();
-        expect(screen.getByText('Source Branch')).toBeInTheDocument();
-        expect(screen.getByText('Target Branch')).toBeInTheDocument();
+        // There should be at least 2 instances now (card + 3-way diff)
+        expect(screen.getAllByText('Source Branch').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText('Target Branch').length).toBeGreaterThanOrEqual(2);
       });
     });
   });
@@ -355,9 +363,12 @@ describe('ConflictResolutionDialog', () => {
         expect(screen.getByPlaceholderText('{"example": "value"}')).toBeInTheDocument();
       });
 
-      // Check that Save/Cancel buttons appear
+      // Check that Save/Cancel buttons appear (using title attribute to distinguish)
       expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^cancel$/i })).toBeInTheDocument();
+      // There are 2 cancel buttons, get the one with "Cancel" title (not "Cancel and close dialog")
+      const cancelButtons = screen.getAllByRole('button', { name: /^cancel$/i });
+      const customEditorCancelButton = cancelButtons.find((btn) => btn.title === 'Cancel');
+      expect(customEditorCancelButton).toBeInTheDocument();
     });
 
     it('should validate JSON and show error for invalid JSON', async () => {
@@ -368,10 +379,12 @@ describe('ConflictResolutionDialog', () => {
       const manualButtons = screen.getAllByRole('button', { name: /edit manually/i });
       await user.click(manualButtons[0]);
 
-      // Enter invalid JSON
+      // Enter invalid JSON using paste event to avoid userEvent parsing issues
       const textarea = screen.getByPlaceholderText('{"example": "value"}');
       await user.clear(textarea);
-      await user.type(textarea, '{invalid json');
+      await user.click(textarea);
+      // Use paste to bypass userEvent's special character parsing
+      await user.paste('not valid json at all');
 
       // Check that error message appears
       await waitFor(() => {
@@ -422,9 +435,10 @@ describe('ConflictResolutionDialog', () => {
       await user.clear(textarea);
       await user.type(textarea, '999');
 
-      // Click Cancel
-      const cancelButton = screen.getByRole('button', { name: /^cancel$/i });
-      await user.click(cancelButton);
+      // Click Cancel - there are 2, find the one with "Cancel" title (not "Cancel and close dialog")
+      const cancelButtons = screen.getAllByRole('button', { name: /^cancel$/i });
+      const customEditorCancelButton = cancelButtons.find((btn) => btn.title === 'Cancel');
+      await user.click(customEditorCancelButton!);
 
       // Textarea should be hidden
       await waitFor(() => {
