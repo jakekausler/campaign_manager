@@ -176,30 +176,53 @@ Implement comprehensive branch merging capabilities with 3-way merge algorithm, 
 - Transaction wrapping ensures atomic behavior (all-or-nothing)
 - Explicit error handling for invalid branch hierarchies
 
-## Stage 6: Frontend - Merge Preview UI
+## Stage 6: Frontend - Merge Preview UI ✅ COMPLETE
 
 **Goal**: Create UI for previewing merge changes and conflicts
 
 **Tasks**:
 
-- [ ] Create GraphQL hooks: `usePreviewMerge(sourceBranchId, targetBranchId, worldTime)`
-- [ ] Create `MergePreviewDialog` component with source/target branch selection
-- [ ] Display auto-resolved changes with visual diff (green highlighting)
-- [ ] Display conflicts with detailed information (red highlighting)
-- [ ] Show JSON path for each conflict (e.g., `settlement.population`)
-- [ ] Show base, source, and target values side-by-side for conflicts
-- [ ] Create expandable conflict details with syntax-highlighted JSON
-- [ ] Add "Conflicts" and "Auto-Resolved" tabs for organization
-- [ ] Implement world time selector for merge point
-- [ ] Create 25+ comprehensive tests for merge preview UI
+- [x] Create GraphQL hooks: `usePreviewMerge(sourceBranchId, targetBranchId, worldTime)`
+- [x] Create `MergePreviewDialog` component with source/target branch selection
+- [x] Display auto-resolved changes with visual diff (green highlighting)
+- [x] Display conflicts with detailed information (red highlighting)
+- [x] Show JSON path for each conflict (e.g., `settlement.population`)
+- [x] Show base, source, and target values side-by-side for conflicts
+- [x] Create expandable conflict details with syntax-highlighted JSON
+- [x] Add "Conflicts" and "Auto-Resolved" tabs for organization
+- [ ] Implement world time selector for merge point (deferred - uses campaign.currentWorldTime)
+- [x] Create 25+ comprehensive tests for merge preview UI
 
 **Success Criteria**:
 
-- [ ] User can preview merge before execution
-- [ ] Conflicts displayed clearly with context
-- [ ] Auto-resolved changes shown separately
-- [ ] UI is responsive and user-friendly
-- [ ] All UI tests passing
+- [x] User can preview merge before execution
+- [x] Conflicts displayed clearly with context
+- [x] Auto-resolved changes shown separately
+- [x] UI is responsive and user-friendly
+- [x] All UI tests passing
+
+**Completion Notes** (commit 5d6637a):
+
+- Created comprehensive GraphQL hooks with TypeScript types (usePreviewMerge, useExecuteMerge)
+- Implemented MergePreviewDialog component with full visualization:
+  - Source/target branch display with color coding (blue/green)
+  - Summary statistics (total entities, conflicts, auto-resolved)
+  - Tabbed interface separating conflicts from auto-resolved changes
+  - Expandable conflict details with 3-way diff (base/source/target)
+  - Expandable auto-resolved details with 4-way diff (base/source/target/resolved)
+  - Entity cards group changes by entity with expand/collapse
+  - Syntax-highlighted JSON for all values
+  - JSON paths shown for each conflict (e.g., "resources.gold")
+  - Human-readable descriptions and resolution suggestions
+- Comprehensive state management: loading, error, empty states
+- Action buttons adapt: "Proceed to Resolve" vs "Execute Merge" based on conflicts
+- Keyboard shortcuts (Escape to close)
+- Progressive disclosure pattern for better UX
+- 40+ test scenarios covering all functionality
+- Code Reviewer approved with zero critical issues
+- Follows patterns from ForkBranchDialog and DeleteBranchDialog
+- World time selection deferred (uses campaign.currentWorldTime for now)
+- Ready for conflict resolution UI in Stage 7
 
 ## Stage 7: Frontend - Conflict Resolution UI
 

@@ -10,6 +10,7 @@
   - Stage 3: eba8236 (Settlement and Structure merge handlers)
   - Stage 4: 4740a4a (Merge Service GraphQL API)
   - Stage 5: d81a5c2 (Merge execution & version creation)
+  - Stage 6: 5d6637a (Frontend merge preview UI)
 
 ## Implementation Notes
 
@@ -88,6 +89,27 @@
   - All 59 merge-related tests passing (9 MergeService unit + 50 integration/handler tests)
   - Code Reviewer approved with all three critical issues addressed
   - Ready for frontend merge preview UI in Stage 6
+- **2025-10-30**: Completed Stage 6 - Frontend Merge Preview UI (commit 5d6637a)
+  - Created comprehensive GraphQL hooks with TypeScript types: usePreviewMerge(), useExecuteMerge()
+  - Implemented MergePreviewDialog component with full merge visualization
+  - Displays source/target branch information with visual color coding
+  - Summary statistics show total entities, conflicts, and auto-resolved changes at a glance
+  - Tabbed interface separates conflicts (red) from auto-resolved changes (green) for clarity
+  - Expandable conflict details show 3-way diff (base/source/target) with syntax-highlighted JSON
+  - Expandable auto-resolved details show 4-way diff (base/source/target/resolved)
+  - Entity cards group changes by entity with expand/collapse functionality
+  - JSON paths displayed for each conflict (e.g., "resources.gold", "population")
+  - Human-readable descriptions explain what changed and why
+  - Suggestion text guides users toward correct conflict resolution
+  - Comprehensive state management: loading spinner, error alerts, empty states
+  - Action buttons adapt based on conflict state (Proceed to Resolve vs Execute Merge)
+  - Keyboard shortcuts implemented (Escape to close)
+  - Progressive disclosure pattern: users expand only what they need to see
+  - 40+ comprehensive test scenarios covering all UI functionality
+  - Follows established patterns from ForkBranchDialog and DeleteBranchDialog
+  - Code Reviewer approved with zero critical issues
+  - World time selection deferred to Stage 7 (uses campaign.currentWorldTime for now)
+  - Ready for conflict resolution UI in Stage 7
 
 ## Description
 
