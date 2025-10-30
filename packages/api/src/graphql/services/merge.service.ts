@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Branch as PrismaBranch, Version } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
@@ -89,6 +89,22 @@ export interface ExecuteMergeResult {
   /** IDs of entities that were merged (entityType:entityId format) */
   mergedEntityIds: string[];
   /** Error message if merge failed */
+  error?: string;
+}
+
+/**
+ * Result of a cherry-pick operation
+ */
+export interface CherryPickResult {
+  /** Whether the cherry-pick was successful */
+  success: boolean;
+  /** Whether the cherry-pick has conflicts */
+  hasConflict: boolean;
+  /** List of conflicts (if any) */
+  conflicts?: MergeConflict[];
+  /** Version that was created (if successful) */
+  versionCreated?: any;
+  /** Error message if cherry-pick failed */
   error?: string;
 }
 
@@ -695,5 +711,150 @@ export class MergeService {
     }
 
     return unresolved;
+  }
+
+  /**
+   * Cherry-pick a specific version from one branch to another.
+   *
+   * This operation applies a single version change from a source branch to a target branch.
+   * Unlike a full merge which compares against a common ancestor, cherry-pick performs a
+   * simpler 2-way comparison:
+   * - If the entity doesn't exist in target → apply source version directly
+   * - If the entity exists in target and differs → detect conflicts
+   * - Conflicts must be resolved manually before the version can be created
+   *
+   * Similar to `git cherry-pick`, this allows selectively applying specific changes
+   * between branches without merging the entire branch history.
+   *
+   * @param sourceVersionId - ID of the version to cherry-pick
+   * @param targetBranchId - ID of the branch to apply the version to
+   * @param user - User performing the cherry-pick operation
+   * @param resolutions - Optional conflict resolutions (required if conflicts exist)
+   * @returns Result indicating success, conflicts, and created version
+   */
+  async cherryPickVersion(
+    sourceVersionId: string,
+    targetBranchId: string,
+    user: AuthenticatedUser,
+    resolutions: ConflictResolution[] = []
+  ): Promise<CherryPickResult> {
+    // Step 1: Validate source version exists
+    const sourceVersion = await this.prisma.version.findUnique({
+      where: { id: sourceVersionId },
+    });
+
+    if (!sourceVersion) {
+      throw new NotFoundException(`Version ${sourceVersionId} not found`);
+    }
+
+    // Step 2: Validate target branch exists
+    const targetBranch = await this.prisma.branch.findUnique({
+      where: { id: targetBranchId },
+    });
+
+    if (!targetBranch) {
+      throw new BadRequestException(`Target branch ${targetBranchId} not found`);
+    }
+
+    // Step 3: Get source payload
+    const sourcePayload = await this.versionService.decompressVersion(sourceVersion);
+
+    // Step 4: Get current/latest state of entity in target branch
+    // Use far-future date to get the most recent version (not historical)
+    const targetVersion = await this.versionService.resolveVersion(
+      sourceVersion.entityType,
+      sourceVersion.entityId,
+      targetBranchId,
+      new Date('2999-12-31') // Far future to get latest version
+    );
+
+    // Step 5: Detect conflicts if target has a version
+    let conflicts: MergeConflict[] = [];
+    let finalPayload = sourcePayload;
+
+    if (targetVersion) {
+      // Target branch has this entity - check for conflicts
+      const targetPayload = await this.versionService.decompressVersion(targetVersion);
+
+      // Use ConflictDetector to compare source and target
+      // For cherry-pick, we use an empty base since there's no common ancestor
+      // Any property that differs between source and target is a conflict
+      const result = this.conflictDetector.detectPropertyConflicts(
+        {}, // base (empty - no common ancestor for cherry-pick)
+        sourcePayload, // source (what we want to apply)
+        targetPayload // target (current state in target branch)
+      );
+
+      conflicts = result.conflicts;
+
+      if (conflicts.length > 0 && resolutions.length > 0) {
+        // Conflicts detected and resolutions were provided - apply them
+        // Apply resolutions
+        finalPayload = this.applyConflictResolutions(
+          sourcePayload,
+          conflicts,
+          resolutions,
+          sourceVersion.entityType,
+          sourceVersion.entityId
+        );
+
+        // Verify all conflicts were resolved
+        const unresolvedConflicts = this.findUnresolvedConflicts(
+          [{ entityType: sourceVersion.entityType, entityId: sourceVersion.entityId, conflicts }],
+          resolutions
+        );
+
+        if (unresolvedConflicts.length > 0) {
+          throw new BadRequestException(
+            `Cannot cherry-pick: ${unresolvedConflicts.length} conflict(s) remain unresolved, ` +
+              `but not all conflicts have been resolved. Please provide resolutions for all conflicts.`
+          );
+        }
+      }
+    }
+
+    // Step 6: If conflicts exist but not resolved, return conflict information
+    if (conflicts.length > 0 && resolutions.length === 0) {
+      return {
+        success: false,
+        hasConflict: true,
+        conflicts,
+      };
+    }
+
+    // Step 7: Create new version in target branch
+    const createdVersion = await this.versionService.createVersion(
+      {
+        entityType: sourceVersion.entityType,
+        entityId: sourceVersion.entityId,
+        branchId: targetBranchId,
+        validFrom: sourceVersion.validFrom,
+        validTo: null,
+        payload: finalPayload,
+        comment: `Cherry-picked from version ${sourceVersionId}`,
+      },
+      user
+    );
+
+    // Step 8: Create audit log entry
+    await this.audit.log(
+      'version',
+      `${sourceVersion.entityType}:${sourceVersion.entityId}`,
+      'CHERRY_PICK',
+      user.id,
+      {
+        sourceVersionId,
+        sourceBranchId: sourceVersion.branchId,
+        targetBranchId,
+        worldTime: sourceVersion.validFrom.toISOString(),
+        conflictsResolved: conflicts.length,
+      }
+    );
+
+    return {
+      success: true,
+      hasConflict: false,
+      versionCreated: createdVersion,
+    };
   }
 }

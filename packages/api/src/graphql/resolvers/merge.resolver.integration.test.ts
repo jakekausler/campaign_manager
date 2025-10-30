@@ -67,7 +67,15 @@ describe('MergeResolver Integration Tests', () => {
     await prisma.audit.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
     await prisma.version.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
     await prisma.branch.deleteMany({ where: { campaign: { name: 'Merge Test Campaign' } } });
+    await prisma.structure.deleteMany({
+      where: { settlement: { kingdom: { campaign: { name: 'Merge Test Campaign' } } } },
+    });
+    await prisma.settlement.deleteMany({
+      where: { kingdom: { campaign: { name: 'Merge Test Campaign' } } },
+    });
+    await prisma.kingdom.deleteMany({ where: { campaign: { name: 'Merge Test Campaign' } } });
     await prisma.campaign.deleteMany({ where: { name: 'Merge Test Campaign' } });
+    await prisma.location.deleteMany({ where: { world: { name: 'Merge Test World' } } });
     await prisma.world.deleteMany({ where: { name: 'Merge Test World' } });
     await prisma.user.deleteMany({ where: { email: 'merge-test@example.com' } });
 
@@ -122,7 +130,15 @@ describe('MergeResolver Integration Tests', () => {
     await prisma.audit.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
     await prisma.version.deleteMany({ where: { user: { email: 'merge-test@example.com' } } });
     await prisma.branch.deleteMany({ where: { campaign: { name: 'Merge Test Campaign' } } });
+    await prisma.structure.deleteMany({
+      where: { settlement: { kingdom: { campaign: { name: 'Merge Test Campaign' } } } },
+    });
+    await prisma.settlement.deleteMany({
+      where: { kingdom: { campaign: { name: 'Merge Test Campaign' } } },
+    });
+    await prisma.kingdom.deleteMany({ where: { campaign: { name: 'Merge Test Campaign' } } });
     await prisma.campaign.deleteMany({ where: { name: 'Merge Test Campaign' } });
+    await prisma.location.deleteMany({ where: { world: { name: 'Merge Test World' } } });
     await prisma.world.deleteMany({ where: { name: 'Merge Test World' } });
     await prisma.user.deleteMany({ where: { email: 'merge-test@example.com' } });
 
@@ -672,6 +688,616 @@ describe('MergeResolver Integration Tests', () => {
           },
         });
         await prisma.branch.delete({ where: { id: childBranch.id } });
+      });
+    });
+  });
+
+  describe('cherryPickVersion', () => {
+    describe('validation', () => {
+      it('should throw NotFoundException for non-existent source version', async () => {
+        await expect(
+          resolver.cherryPickVersion(
+            {
+              sourceVersionId: '00000000-0000-0000-0000-000000000000',
+              targetBranchId: mainBranch.id,
+              resolutions: [],
+            },
+            testUser
+          )
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('should throw NotFoundException for non-existent target branch', async () => {
+        // Create a test version first
+        // First create Kingdom and Location since Settlement requires them
+        const testKingdom = await prisma.kingdom.create({
+          data: {
+            campaignId: testCampaign.id,
+            name: 'Test Kingdom',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        const testLocation = await prisma.location.create({
+          data: {
+            worldId: testWorld.id,
+            type: 'point',
+            name: 'Test Location',
+          },
+        });
+
+        const testEntity = await prisma.settlement.create({
+          data: {
+            kingdomId: testKingdom.id,
+            locationId: testLocation.id,
+            name: 'Test Settlement',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        const compressed = await compressPayload({
+          id: testEntity.id,
+          name: 'Test Settlement',
+          level: 1,
+        });
+
+        const testVersion = await prisma.version.create({
+          data: {
+            entityType: 'settlement',
+            entityId: testEntity.id,
+            branchId: mainBranch.id,
+            validFrom: new Date(),
+            validTo: null,
+            payloadGz: compressed,
+            createdBy: testUser.id,
+            version: 1,
+          },
+        });
+
+        await expect(
+          resolver.cherryPickVersion(
+            {
+              sourceVersionId: testVersion.id,
+              targetBranchId: '00000000-0000-0000-0000-000000000000',
+              resolutions: [],
+            },
+            testUser
+          )
+        ).rejects.toThrow(NotFoundException);
+
+        // Cleanup
+        await prisma.version.delete({ where: { id: testVersion.id } });
+        await prisma.settlement.delete({ where: { id: testEntity.id } });
+        await prisma.location.delete({ where: { id: testLocation.id } });
+        await prisma.kingdom.delete({ where: { id: testKingdom.id } });
+      });
+
+      it('should throw BadRequestException for cherry-pick between different campaigns', async () => {
+        // Create another campaign
+        const otherCampaign = await prisma.campaign.create({
+          data: {
+            name: 'Other Cherry-Pick Campaign',
+            worldId: testWorld.id,
+            ownerId: testUser.id,
+          },
+        });
+
+        const otherBranch = await prisma.branch.create({
+          data: {
+            name: 'Other Branch',
+            campaignId: otherCampaign.id,
+            isPinned: false,
+            tags: [],
+          },
+        });
+
+        // Create entity in first campaign
+        const testKingdom = await prisma.kingdom.create({
+          data: {
+            campaignId: testCampaign.id,
+            name: 'Test Kingdom',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        const testLocation = await prisma.location.create({
+          data: {
+            worldId: testWorld.id,
+            type: 'point',
+            name: 'Test Location',
+          },
+        });
+
+        const testEntity = await prisma.settlement.create({
+          data: {
+            kingdomId: testKingdom.id,
+            locationId: testLocation.id,
+            name: 'Test Settlement',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        const compressed = await compressPayload({
+          id: testEntity.id,
+          name: 'Test Settlement',
+          level: 1,
+        });
+
+        const testVersion = await prisma.version.create({
+          data: {
+            entityType: 'settlement',
+            entityId: testEntity.id,
+            branchId: mainBranch.id,
+            validFrom: new Date(),
+            validTo: null,
+            payloadGz: compressed,
+            createdBy: testUser.id,
+            version: 1,
+          },
+        });
+
+        await expect(
+          resolver.cherryPickVersion(
+            {
+              sourceVersionId: testVersion.id,
+              targetBranchId: otherBranch.id,
+              resolutions: [],
+            },
+            testUser
+          )
+        ).rejects.toThrow(BadRequestException);
+
+        // Cleanup
+        await prisma.version.delete({ where: { id: testVersion.id } });
+        await prisma.settlement.delete({ where: { id: testEntity.id } });
+        await prisma.location.delete({ where: { id: testLocation.id } });
+        await prisma.kingdom.delete({ where: { id: testKingdom.id } });
+        await prisma.branch.deleteMany({ where: { campaignId: otherCampaign.id } });
+        await prisma.campaign.delete({ where: { id: otherCampaign.id } });
+      });
+    });
+
+    describe('authorization', () => {
+      it('should throw ForbiddenException for user without campaign access', async () => {
+        // Create another user without campaign access
+        const otherUser = await prisma.user.create({
+          data: {
+            email: 'other-cherrypick-test@example.com',
+            name: 'Other User',
+            password: 'hash',
+          },
+        });
+
+        const otherAuthUser: AuthenticatedUser = {
+          id: otherUser.id,
+          email: otherUser.email,
+          role: 'user',
+        };
+
+        // Create a test entity and version
+        const testKingdom = await prisma.kingdom.create({
+          data: {
+            campaignId: testCampaign.id,
+            name: 'Test Kingdom',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        const testLocation = await prisma.location.create({
+          data: {
+            worldId: testWorld.id,
+            type: 'point',
+            name: 'Test Location',
+          },
+        });
+
+        const testEntity = await prisma.settlement.create({
+          data: {
+            kingdomId: testKingdom.id,
+            locationId: testLocation.id,
+            name: 'Test Settlement',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        const compressed = await compressPayload({
+          id: testEntity.id,
+          name: 'Test Settlement',
+          level: 1,
+        });
+
+        const testVersion = await prisma.version.create({
+          data: {
+            entityType: 'settlement',
+            entityId: testEntity.id,
+            branchId: mainBranch.id,
+            validFrom: new Date(),
+            validTo: null,
+            payloadGz: compressed,
+            createdBy: testUser.id,
+            version: 1,
+          },
+        });
+
+        await expect(
+          resolver.cherryPickVersion(
+            {
+              sourceVersionId: testVersion.id,
+              targetBranchId: mainBranch.id,
+              resolutions: [],
+            },
+            otherAuthUser
+          )
+        ).rejects.toThrow(ForbiddenException);
+
+        // Cleanup
+        await prisma.version.delete({ where: { id: testVersion.id } });
+        await prisma.settlement.delete({ where: { id: testEntity.id } });
+        await prisma.location.delete({ where: { id: testLocation.id } });
+        await prisma.kingdom.delete({ where: { id: testKingdom.id } });
+        await prisma.user.delete({ where: { id: otherUser.id } });
+      });
+    });
+
+    describe('successful cherry-pick', () => {
+      it('should cherry-pick version without conflicts', async () => {
+        // Create source branch
+        const sourceBranch = await prisma.branch.create({
+          data: {
+            name: 'Source Branch',
+            campaignId: testCampaign.id,
+            parentId: mainBranch.id,
+            divergedAt: new Date(),
+            isPinned: false,
+            tags: [],
+          },
+        });
+
+        // Create target branch
+        const targetBranch = await prisma.branch.create({
+          data: {
+            name: 'Target Branch',
+            campaignId: testCampaign.id,
+            parentId: mainBranch.id,
+            divergedAt: new Date(),
+            isPinned: false,
+            tags: [],
+          },
+        });
+
+        // Create entity in source branch
+        const testKingdom = await prisma.kingdom.create({
+          data: {
+            campaignId: testCampaign.id,
+            name: 'Test Kingdom',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        const testLocation = await prisma.location.create({
+          data: {
+            worldId: testWorld.id,
+            type: 'point',
+            name: 'Test Location',
+          },
+        });
+
+        const testEntity = await prisma.settlement.create({
+          data: {
+            kingdomId: testKingdom.id,
+            locationId: testLocation.id,
+            name: 'Cherry-Pick Settlement',
+            level: 1,
+            variables: { population: 1000 },
+          },
+        });
+
+        const compressed = await compressPayload({
+          id: testEntity.id,
+          name: 'Cherry-Pick Settlement',
+          level: 1,
+          population: 1000,
+        });
+
+        const sourceVersion = await prisma.version.create({
+          data: {
+            entityType: 'settlement',
+            entityId: testEntity.id,
+            branchId: sourceBranch.id,
+            validFrom: new Date(),
+            validTo: null,
+            payloadGz: compressed,
+            createdBy: testUser.id,
+            version: 1,
+          },
+        });
+
+        const result = await resolver.cherryPickVersion(
+          {
+            sourceVersionId: sourceVersion.id,
+            targetBranchId: targetBranch.id,
+            resolutions: [],
+          },
+          testUser
+        );
+
+        expect(result).toBeDefined();
+        expect(result.success).toBe(true);
+        expect(result.hasConflict).toBe(false);
+        expect(result.versionId).toBeDefined();
+        expect(result.conflicts).toBeUndefined();
+
+        // Verify version was created in target branch
+        const createdVersion = await prisma.version.findUnique({
+          where: { id: result.versionId! },
+        });
+        expect(createdVersion).toBeDefined();
+        expect(createdVersion?.branchId).toBe(targetBranch.id);
+
+        // Cleanup
+        await prisma.audit.deleteMany({ where: { userId: testUser.id } });
+        await prisma.version.deleteMany({ where: { entityId: testEntity.id } });
+        await prisma.settlement.delete({ where: { id: testEntity.id } });
+        await prisma.location.delete({ where: { id: testLocation.id } });
+        await prisma.kingdom.delete({ where: { id: testKingdom.id } });
+        await prisma.branch.deleteMany({
+          where: { id: { in: [sourceBranch.id, targetBranch.id] } },
+        });
+      });
+
+      it('should detect conflicts during cherry-pick', async () => {
+        // Create source branch
+        const sourceBranch = await prisma.branch.create({
+          data: {
+            name: 'Source Branch',
+            campaignId: testCampaign.id,
+            parentId: mainBranch.id,
+            divergedAt: new Date(),
+            isPinned: false,
+            tags: [],
+          },
+        });
+
+        // Create target branch
+        const targetBranch = await prisma.branch.create({
+          data: {
+            name: 'Target Branch',
+            campaignId: testCampaign.id,
+            parentId: mainBranch.id,
+            divergedAt: new Date(),
+            isPinned: false,
+            tags: [],
+          },
+        });
+
+        // Create entity
+        const testKingdom = await prisma.kingdom.create({
+          data: {
+            campaignId: testCampaign.id,
+            name: 'Test Kingdom',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        const testLocation = await prisma.location.create({
+          data: {
+            worldId: testWorld.id,
+            type: 'point',
+            name: 'Test Location',
+          },
+        });
+
+        const testEntity = await prisma.settlement.create({
+          data: {
+            kingdomId: testKingdom.id,
+            locationId: testLocation.id,
+            name: 'Conflict Settlement',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        // Create version in source branch with population: 1000
+        const sourceCompressed = await compressPayload({
+          id: testEntity.id,
+          name: 'Conflict Settlement',
+          level: 1,
+          population: 1000,
+        });
+
+        const sourceVersion = await prisma.version.create({
+          data: {
+            entityType: 'settlement',
+            entityId: testEntity.id,
+            branchId: sourceBranch.id,
+            validFrom: new Date(),
+            validTo: null,
+            payloadGz: sourceCompressed,
+            createdBy: testUser.id,
+            version: 1,
+          },
+        });
+
+        // Create conflicting version in target branch with population: 2000
+        const targetCompressed = await compressPayload({
+          id: testEntity.id,
+          name: 'Conflict Settlement',
+          level: 1,
+          population: 2000,
+        });
+
+        await prisma.version.create({
+          data: {
+            entityType: 'settlement',
+            entityId: testEntity.id,
+            branchId: targetBranch.id,
+            validFrom: new Date(),
+            validTo: null,
+            payloadGz: targetCompressed,
+            createdBy: testUser.id,
+            version: 1,
+          },
+        });
+
+        const result = await resolver.cherryPickVersion(
+          {
+            sourceVersionId: sourceVersion.id,
+            targetBranchId: targetBranch.id,
+            resolutions: [],
+          },
+          testUser
+        );
+
+        expect(result).toBeDefined();
+        expect(result.success).toBe(false);
+        expect(result.hasConflict).toBe(true);
+        expect(result.conflicts).toBeDefined();
+        expect(result.conflicts!.length).toBeGreaterThan(0);
+        expect(result.versionId).toBeUndefined();
+
+        // Cleanup
+        await prisma.version.deleteMany({ where: { entityId: testEntity.id } });
+        await prisma.settlement.delete({ where: { id: testEntity.id } });
+        await prisma.location.delete({ where: { id: testLocation.id } });
+        await prisma.kingdom.delete({ where: { id: testKingdom.id } });
+        await prisma.branch.deleteMany({
+          where: { id: { in: [sourceBranch.id, targetBranch.id] } },
+        });
+      });
+
+      it('should resolve conflicts with manual resolutions', async () => {
+        // Create source branch
+        const sourceBranch = await prisma.branch.create({
+          data: {
+            name: 'Source Branch',
+            campaignId: testCampaign.id,
+            parentId: mainBranch.id,
+            divergedAt: new Date(),
+            isPinned: false,
+            tags: [],
+          },
+        });
+
+        // Create target branch
+        const targetBranch = await prisma.branch.create({
+          data: {
+            name: 'Target Branch',
+            campaignId: testCampaign.id,
+            parentId: mainBranch.id,
+            divergedAt: new Date(),
+            isPinned: false,
+            tags: [],
+          },
+        });
+
+        // Create entity
+        const testKingdom = await prisma.kingdom.create({
+          data: {
+            campaignId: testCampaign.id,
+            name: 'Test Kingdom',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        const testLocation = await prisma.location.create({
+          data: {
+            worldId: testWorld.id,
+            type: 'point',
+            name: 'Test Location',
+          },
+        });
+
+        const testEntity = await prisma.settlement.create({
+          data: {
+            kingdomId: testKingdom.id,
+            locationId: testLocation.id,
+            name: 'Resolution Settlement',
+            level: 1,
+            variables: {},
+          },
+        });
+
+        // Create version in source branch with population: 1000
+        const sourceCompressed = await compressPayload({
+          id: testEntity.id,
+          name: 'Resolution Settlement',
+          level: 1,
+          population: 1000,
+        });
+
+        const sourceVersion = await prisma.version.create({
+          data: {
+            entityType: 'settlement',
+            entityId: testEntity.id,
+            branchId: sourceBranch.id,
+            validFrom: new Date(),
+            validTo: null,
+            payloadGz: sourceCompressed,
+            createdBy: testUser.id,
+            version: 1,
+          },
+        });
+
+        // Create conflicting version in target branch with population: 2000
+        const targetCompressed = await compressPayload({
+          id: testEntity.id,
+          name: 'Resolution Settlement',
+          level: 1,
+          population: 2000,
+        });
+
+        await prisma.version.create({
+          data: {
+            entityType: 'settlement',
+            entityId: testEntity.id,
+            branchId: targetBranch.id,
+            validFrom: new Date(),
+            validTo: null,
+            payloadGz: targetCompressed,
+            createdBy: testUser.id,
+            version: 1,
+          },
+        });
+
+        const result = await resolver.cherryPickVersion(
+          {
+            sourceVersionId: sourceVersion.id,
+            targetBranchId: targetBranch.id,
+            resolutions: [
+              {
+                entityId: testEntity.id,
+                entityType: 'settlement',
+                path: 'population',
+                resolvedValue: '1500',
+              },
+            ],
+          },
+          testUser
+        );
+
+        expect(result).toBeDefined();
+        expect(result.success).toBe(true);
+        expect(result.hasConflict).toBe(false);
+        expect(result.versionId).toBeDefined();
+
+        // Cleanup
+        await prisma.audit.deleteMany({ where: { userId: testUser.id } });
+        await prisma.version.deleteMany({ where: { entityId: testEntity.id } });
+        await prisma.settlement.delete({ where: { id: testEntity.id } });
+        await prisma.location.delete({ where: { id: testLocation.id } });
+        await prisma.kingdom.delete({ where: { id: testKingdom.id } });
+        await prisma.branch.deleteMany({
+          where: { id: { in: [sourceBranch.id, targetBranch.id] } },
+        });
       });
     });
   });

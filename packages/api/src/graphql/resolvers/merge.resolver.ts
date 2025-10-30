@@ -16,13 +16,18 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CampaignMembershipService } from '../../auth/services/campaign-membership.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
-import { PreviewMergeInput, ExecuteMergeInput } from '../inputs/branch.input';
+import {
+  PreviewMergeInput,
+  ExecuteMergeInput,
+  CherryPickVersionInput,
+} from '../inputs/branch.input';
 import { BranchService } from '../services/branch.service';
 import { MergeService } from '../services/merge.service';
 import { VersionService } from '../services/version.service';
 import {
   MergePreview,
   MergeResult,
+  CherryPickResult,
   EntityMergePreview,
   MergeConflict,
   AutoResolvedChange,
@@ -184,6 +189,73 @@ export class MergeResolver {
     });
 
     return result;
+  }
+
+  @Mutation(() => CherryPickResult, {
+    description: 'Cherry-pick a specific version from one branch to another',
+  })
+  @UseGuards(JwtAuthGuard)
+  async cherryPickVersion(
+    @Args('input', { type: () => CherryPickVersionInput }) input: CherryPickVersionInput,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<CherryPickResult> {
+    const { sourceVersionId, targetBranchId, resolutions = [] } = input;
+
+    // Validate source version exists
+    const sourceVersion = await this.prisma.version.findUnique({
+      where: { id: sourceVersionId },
+      include: { branch: true },
+    });
+
+    if (!sourceVersion) {
+      throw new NotFoundException(`Source version ${sourceVersionId} not found`);
+    }
+
+    // Validate target branch exists
+    const targetBranch = await this.branchService.findById(targetBranchId);
+    if (!targetBranch) {
+      throw new NotFoundException(`Target branch ${targetBranchId} not found`);
+    }
+
+    // Verify both branches are in the same campaign
+    if (sourceVersion.branch.campaignId !== targetBranch.campaignId) {
+      throw new BadRequestException('Cannot cherry-pick between branches from different campaigns');
+    }
+
+    // Verify user can edit (GM or OWNER role required)
+    await this.checkCanMerge(targetBranch.campaignId, user);
+
+    // Execute cherry-pick
+    const result = await this.mergeService.cherryPickVersion(
+      sourceVersionId,
+      targetBranchId,
+      user,
+      resolutions
+    );
+
+    // Convert service result to GraphQL type
+    const graphqlResult: CherryPickResult = {
+      success: result.success,
+      hasConflict: result.hasConflict,
+      conflicts: result.conflicts
+        ? result.conflicts.map((conflict) => ({
+            path: conflict.path,
+            type: conflict.type,
+            description: `Conflict at ${conflict.path}`,
+            suggestion: undefined,
+            baseValue:
+              conflict.baseValue !== undefined ? JSON.stringify(conflict.baseValue) : undefined,
+            sourceValue:
+              conflict.sourceValue !== undefined ? JSON.stringify(conflict.sourceValue) : undefined,
+            targetValue:
+              conflict.targetValue !== undefined ? JSON.stringify(conflict.targetValue) : undefined,
+          }))
+        : undefined,
+      versionId: result.versionCreated?.id,
+      error: result.error,
+    };
+
+    return graphqlResult;
   }
 
   /**

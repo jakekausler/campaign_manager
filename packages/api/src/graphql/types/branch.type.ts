@@ -203,3 +203,27 @@ export class MergeResult {
   @Field({ nullable: true, description: 'Error message if merge failed' })
   error?: string;
 }
+
+@ObjectType()
+export class CherryPickResult {
+  @Field(() => Boolean, { description: 'Whether the cherry-pick was successful' })
+  success!: boolean;
+
+  @Field(() => Boolean, { description: 'Whether conflicts were detected' })
+  hasConflict!: boolean;
+
+  @Field(() => [MergeConflict], {
+    nullable: true,
+    description: 'Conflicts detected during cherry-pick (if any)',
+  })
+  conflicts?: MergeConflict[];
+
+  @Field(() => ID, {
+    nullable: true,
+    description: 'ID of the version created in target branch (if no conflicts)',
+  })
+  versionId?: string;
+
+  @Field({ nullable: true, description: 'Error message if cherry-pick failed' })
+  error?: string;
+}

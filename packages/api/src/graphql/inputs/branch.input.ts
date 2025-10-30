@@ -211,3 +211,26 @@ export class ExecuteMergeInput {
   @Type(() => ConflictResolution)
   resolutions?: ConflictResolution[];
 }
+
+@InputType()
+export class CherryPickVersionInput {
+  @Field(() => ID, { description: 'ID of the version to cherry-pick' })
+  @IsUUID()
+  @IsNotEmpty()
+  sourceVersionId!: string;
+
+  @Field(() => ID, { description: 'ID of the branch to apply the version to' })
+  @IsUUID()
+  @IsNotEmpty()
+  targetBranchId!: string;
+
+  @Field(() => [ConflictResolution], {
+    description: 'Manual resolutions for conflicts (required if conflicts exist)',
+    nullable: true,
+  })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ConflictResolution)
+  resolutions?: ConflictResolution[];
+}
