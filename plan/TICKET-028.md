@@ -12,6 +12,8 @@
   - Stage 5: d81a5c2 (Merge execution & version creation)
   - Stage 6: 5d6637a (Frontend merge preview UI)
   - Stage 7: 2201d1a (Frontend conflict resolution UI)
+  - Stage 8: 70c5a89 (Cherry-pick functionality with conflict resolution UI)
+  - Stage 9 (backend): f772344 (Merge history tracking GraphQL API)
 
 ## Implementation Notes
 
@@ -215,6 +217,28 @@
   - Exported component and types from `packages/frontend/src/components/features/branches/index.ts`
   - Component ready for integration into version history UI or entity inspector
   - Stage 8 frontend complete - cherry-pick functionality fully implemented and tested
+- **2025-10-30**: Completed Stage 9 Backend - Merge History Tracking GraphQL API (commit f772344)
+  - Added `MergeHistoryEntry` GraphQL type to `packages/api/src/graphql/types/branch.type.ts`
+  - Comprehensive fields for audit trail: source/target branches, timestamps, conflict counts, resolutions
+  - Added GraphQLJSON import for resolutionsData and metadata fields
+  - Implemented `getMergeHistory` query in MergeResolver
+  - Fetches history where branch was source OR target with OR query
+  - Includes related branch data via Prisma `include` for efficient single query
+  - Sorts by `mergedAt DESC` for most-recent-first display
+  - Authorization via `checkCampaignAccess()` before returning data
+  - Validates branch existence with NotFoundException
+  - Added type mapping for Prisma → GraphQL compatibility (null → undefined, JsonValue → Record)
+  - Created 6 comprehensive integration tests:
+    - Empty results when no merge history exists
+    - History retrieval for branch as source
+    - History retrieval for branch as target
+    - Multiple entries with correct DESC sorting by mergedAt
+    - NotFoundException for non-existent branch ID
+    - ForbiddenException for unauthorized campaign access
+  - All 27 merge resolver integration tests passing
+  - TypeScript Fixer verified: zero compilation errors, zero lint errors
+  - Code Reviewer approved with zero critical issues
+  - Ready for frontend integration (useGetMergeHistory hook, MergeHistoryView component pending)
 
 ## Description
 
