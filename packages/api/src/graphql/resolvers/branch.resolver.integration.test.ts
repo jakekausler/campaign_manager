@@ -116,6 +116,7 @@ describe('BranchResolver Integration Tests', () => {
     }
     if (testCampaign) {
       await prisma.branch.deleteMany({ where: { campaignId: testCampaign.id } });
+      await prisma.campaignMembership.deleteMany({ where: { campaignId: testCampaign.id } });
       await prisma.campaign.deleteMany({ where: { id: testCampaign.id } });
     }
     if (testWorld) {
@@ -446,6 +447,7 @@ describe('BranchResolver Integration Tests', () => {
       }
       if (campaignForFork) {
         await prisma.branch.deleteMany({ where: { campaignId: campaignForFork.id } });
+        await prisma.campaignMembership.deleteMany({ where: { campaignId: campaignForFork.id } });
         await prisma.campaign.deleteMany({ where: { id: campaignForFork.id } });
       }
       if (worldForFork) {

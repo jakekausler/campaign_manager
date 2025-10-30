@@ -270,6 +270,11 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
   });
 
   beforeEach(async () => {
+    // Clean up any existing test user first to avoid unique constraint violations
+    await prisma.user.deleteMany({
+      where: { email: 'test-e2e@example.com' },
+    });
+
     // Create test user first (required for foreign key constraints)
     const user = await prisma.user.create({
       data: {

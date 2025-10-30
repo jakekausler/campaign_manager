@@ -25,6 +25,7 @@ describe('LocationService - Geometry Operations (Integration)', () => {
   let testCampaignId: string;
   let testBranchId: string;
   let mockUser: AuthenticatedUser;
+  let testUserId: string;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -47,8 +48,33 @@ describe('LocationService - Geometry Operations (Integration)', () => {
     locationService = module.get<LocationService>(LocationService);
     spatialService = module.get<SpatialService>(SpatialService);
     prisma = module.get<PrismaService>(PrismaService);
+  });
 
-    // Create test user in database (or get existing one)
+  beforeEach(async () => {
+    // Delete any existing test data first
+    await prisma.version.deleteMany({
+      where: { branch: { campaign: { owner: { email: 'test-geometry@example.com' } } } },
+    });
+    await prisma.location.deleteMany({
+      where: { world: { name: 'Test World for Geometry' } },
+    });
+    await prisma.branch.deleteMany({
+      where: { campaign: { owner: { email: 'test-geometry@example.com' } } },
+    });
+    await prisma.campaignMembership.deleteMany({
+      where: { campaign: { owner: { email: 'test-geometry@example.com' } } },
+    });
+    await prisma.campaign.deleteMany({
+      where: { owner: { email: 'test-geometry@example.com' } },
+    });
+    await prisma.world.deleteMany({
+      where: { name: 'Test World for Geometry' },
+    });
+    await prisma.audit.deleteMany({
+      where: { user: { email: 'test-geometry@example.com' } },
+    });
+
+    // Create test user (or get existing one)
     const testUser = await prisma.user.upsert({
       where: { email: 'test-geometry@example.com' },
       update: {},
@@ -58,6 +84,8 @@ describe('LocationService - Geometry Operations (Integration)', () => {
         password: 'test-hash', // Hashed password
       },
     });
+
+    testUserId = testUser.id;
 
     // Create mock user for service calls
     mockUser = {
@@ -96,46 +124,36 @@ describe('LocationService - Geometry Operations (Integration)', () => {
     testBranchId = branch.id;
   });
 
-  afterAll(async () => {
-    // Clean up test data respecting foreign key constraints
-    // Handle both current test data and any orphaned data from previous runs
-
-    // 1. Delete versions for all branches owned by campaigns of this user
-    const userCampaigns = await prisma.campaign.findMany({
-      where: { ownerId: mockUser.id },
-      select: { id: true },
-    });
-    const campaignIds = userCampaigns.map((c) => c.id);
-
-    if (campaignIds.length > 0) {
-      const branches = await prisma.branch.findMany({
-        where: { campaignId: { in: campaignIds } },
-        select: { id: true },
-      });
-      const branchIds = branches.map((b) => b.id);
-
-      if (branchIds.length > 0) {
-        await prisma.version.deleteMany({ where: { branchId: { in: branchIds } } });
-      }
-
-      // 2. Delete branches for all user's campaigns
-      await prisma.branch.deleteMany({ where: { campaignId: { in: campaignIds } } });
+  afterEach(async () => {
+    // Clean up test data after each test to ensure isolation
+    // Delete in correct order to respect foreign key constraints
+    if (testBranchId) {
+      await prisma.version.deleteMany({ where: { branchId: testBranchId } });
     }
+    if (testWorldId) {
+      await prisma.location.deleteMany({ where: { worldId: testWorldId } });
+    }
+    if (testCampaignId) {
+      await prisma.branch.deleteMany({ where: { campaignId: testCampaignId } });
+      await prisma.campaignMembership.deleteMany({ where: { campaignId: testCampaignId } });
+      await prisma.campaign.deleteMany({ where: { id: testCampaignId } });
+    }
+    if (testUserId) {
+      await prisma.audit.deleteMany({ where: { userId: testUserId } });
+    }
+    if (testWorldId) {
+      await prisma.world.deleteMany({ where: { id: testWorldId } });
+    }
+  });
 
-    // 3. Delete locations for this world
-    await prisma.location.deleteMany({ where: { worldId: testWorldId } });
-
-    // 4. Delete all campaigns owned by this user
-    await prisma.campaign.deleteMany({ where: { ownerId: mockUser.id } });
-
-    // 5. Delete audit records for this user
-    await prisma.audit.deleteMany({ where: { userId: mockUser.id } });
-
-    // 6. Delete world
-    await prisma.world.deleteMany({ where: { id: testWorldId } });
-
-    // 7. Delete user last
-    await prisma.user.deleteMany({ where: { id: mockUser.id } });
+  afterAll(async () => {
+    // Clean up test user at the very end
+    const testUser = await prisma.user.findUnique({
+      where: { email: 'test-geometry@example.com' },
+    });
+    if (testUser) {
+      await prisma.user.delete({ where: { id: testUser.id } });
+    }
 
     await prisma.$disconnect();
   });

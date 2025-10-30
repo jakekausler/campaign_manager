@@ -16,6 +16,7 @@ import type {
   World,
 } from '@prisma/client';
 
+import { CampaignMembershipService } from '../../auth/services/campaign-membership.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
@@ -58,6 +59,7 @@ describe('Settlement & Structure Branch-Aware Version Resolution', () => {
         VersionService,
         AuditService,
         PrismaService,
+        CampaignMembershipService,
         {
           provide: CampaignContextService,
           useValue: {

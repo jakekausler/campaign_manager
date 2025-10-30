@@ -146,15 +146,17 @@ describe('Merge System E2E Tests', () => {
   });
 
   beforeEach(async () => {
-    // Clean up database before each test
+    // Clean up database before each test in correct order to avoid FK violations
+    // Delete child entities first, then parents
     await prisma.mergeHistory.deleteMany({});
     await prisma.version.deleteMany({});
     await prisma.audit.deleteMany({});
     await prisma.structure.deleteMany({});
     await prisma.settlement.deleteMany({});
-    await prisma.branch.deleteMany({});
-    await prisma.location.deleteMany({});
     await prisma.kingdom.deleteMany({});
+    await prisma.location.deleteMany({});
+    await prisma.branch.deleteMany({});
+    await prisma.campaignMembership.deleteMany({});
     await prisma.campaign.deleteMany({});
     await prisma.world.deleteMany({});
     await prisma.user.deleteMany({});
@@ -222,15 +224,17 @@ describe('Merge System E2E Tests', () => {
   });
 
   afterEach(async () => {
-    // Clean up after each test
+    // Clean up after each test in correct order to avoid FK violations
+    // Delete child entities first, then parents
     await prisma.mergeHistory.deleteMany({});
     await prisma.version.deleteMany({});
     await prisma.audit.deleteMany({});
     await prisma.structure.deleteMany({});
     await prisma.settlement.deleteMany({});
-    await prisma.branch.deleteMany({});
-    await prisma.location.deleteMany({});
     await prisma.kingdom.deleteMany({});
+    await prisma.location.deleteMany({});
+    await prisma.branch.deleteMany({});
+    await prisma.campaignMembership.deleteMany({});
     await prisma.campaign.deleteMany({});
     await prisma.world.deleteMany({});
     await prisma.user.deleteMany({});
