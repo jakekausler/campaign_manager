@@ -129,5 +129,22 @@ export {
   type StructureVersion,
 } from './version-comparison';
 
+// Merge hooks
+export {
+  usePreviewMerge,
+  useExecuteMerge,
+  PREVIEW_MERGE,
+  EXECUTE_MERGE,
+  ConflictTypeEnum,
+  type MergeConflict,
+  type AutoResolvedChange,
+  type EntityMergePreview,
+  type MergePreview,
+  type MergeResult,
+  type PreviewMergeInput,
+  type ConflictResolution,
+  type ExecuteMergeInput,
+} from './merge';
+
 // Mutation hooks (Stage 8)
 export * from '../mutations';
