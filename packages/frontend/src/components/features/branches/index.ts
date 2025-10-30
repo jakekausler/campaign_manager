@@ -14,3 +14,5 @@ export { MergePreviewDialog } from './MergePreviewDialog';
 export { ConflictResolutionDialog } from './ConflictResolutionDialog';
 export { CherryPickDialog } from './CherryPickDialog';
 export type { VersionInfo, BranchInfo, CherryPickDialogProps } from './CherryPickDialog';
+export { MergeHistoryView } from './MergeHistoryView';
+export type { MergeHistoryViewProps } from './MergeHistoryView';

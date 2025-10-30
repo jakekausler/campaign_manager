@@ -536,6 +536,203 @@ export function useCherryPickVersion(
   );
 }
 
+/**
+ * Branch information nested in merge history
+ */
+export type BranchInfo = {
+  /** Branch ID */
+  id: string;
+  /** Branch name */
+  name: string;
+  /** Branch description */
+  description?: string;
+  /** Parent branch ID */
+  parentId?: string;
+  /** Campaign ID */
+  campaignId: string;
+  /** World time when branch diverged from parent */
+  divergedAt?: string;
+  /** Branch color for UI visualization */
+  color?: string;
+  /** Creation timestamp */
+  createdAt: string;
+  /** Soft deletion timestamp */
+  deletedAt?: string;
+};
+
+/**
+ * Merge history entry information
+ */
+export type MergeHistoryEntry = {
+  /** Unique identifier for this merge history entry */
+  id: string;
+  /** ID of the source branch that was merged from */
+  sourceBranchId: string;
+  /** Source branch that was merged from */
+  sourceBranch: BranchInfo;
+  /** ID of the target branch that was merged into */
+  targetBranchId: string;
+  /** Target branch that was merged into */
+  targetBranch: BranchInfo;
+  /** ID of the common ancestor branch at time of merge */
+  commonAncestorId: string;
+  /** World time at which the merge was performed */
+  worldTime: string;
+  /** ID of the user who performed the merge */
+  mergedBy: string;
+  /** System timestamp when merge completed */
+  mergedAt: string;
+  /** Number of conflicts that were manually resolved */
+  conflictsCount: number;
+  /** Number of entities that had versions created */
+  entitiesMerged: number;
+  /** Conflict resolutions applied (for audit trail) */
+  resolutionsData: Record<string, unknown>;
+  /** Additional context (merge strategy, notes, etc.) */
+  metadata: Record<string, unknown>;
+};
+
+type GetMergeHistoryQuery = {
+  getMergeHistory: MergeHistoryEntry[];
+};
+
+type GetMergeHistoryQueryVariables = {
+  branchId: string;
+};
+
+/**
+ * GraphQL query to retrieve merge history for a branch.
+ *
+ * Returns all merge operations where the specified branch was either
+ * the source or target, sorted by most recent first.
+ *
+ * @example
+ * Query:
+ * ```graphql
+ * query GetMergeHistory($branchId: ID!) {
+ *   getMergeHistory(branchId: $branchId) {
+ *     id
+ *     sourceBranchId
+ *     sourceBranch {
+ *       id
+ *       name
+ *       color
+ *     }
+ *     targetBranchId
+ *     targetBranch {
+ *       id
+ *       name
+ *       color
+ *     }
+ *     commonAncestorId
+ *     worldTime
+ *     mergedBy
+ *     mergedAt
+ *     conflictsCount
+ *     entitiesMerged
+ *     resolutionsData
+ *     metadata
+ *   }
+ * }
+ * ```
+ */
+export const GET_MERGE_HISTORY = gql`
+  query GetMergeHistory($branchId: ID!) {
+    getMergeHistory(branchId: $branchId) {
+      id
+      sourceBranchId
+      sourceBranch {
+        id
+        name
+        description
+        parentId
+        campaignId
+        divergedAt
+        color
+        createdAt
+        deletedAt
+      }
+      targetBranchId
+      targetBranch {
+        id
+        name
+        description
+        parentId
+        campaignId
+        divergedAt
+        color
+        createdAt
+        deletedAt
+      }
+      commonAncestorId
+      worldTime
+      mergedBy
+      mergedAt
+      conflictsCount
+      entitiesMerged
+      resolutionsData
+      metadata
+    }
+  }
+`;
+
+/**
+ * React hook to retrieve merge history for a specific branch.
+ *
+ * Returns all merge operations where the branch was either the source
+ * or target, including full details about conflicts, resolutions, and
+ * affected entities.
+ *
+ * @param branchId - ID of the branch to get merge history for
+ * @param options - Additional Apollo query options
+ * @returns Query result with merge history data, loading state, and error
+ *
+ * @example
+ * ```typescript
+ * function MergeHistoryPanel({ branchId }: Props) {
+ *   const { data, loading, error } = useGetMergeHistory(branchId, {
+ *     pollInterval: 30000, // Refresh every 30 seconds
+ *   });
+ *
+ *   if (loading) return <div>Loading merge history...</div>;
+ *   if (error) return <div>Error: {error.message}</div>;
+ *
+ *   const history = data?.getMergeHistory ?? [];
+ *
+ *   return (
+ *     <div>
+ *       <h2>Merge History</h2>
+ *       {history.length === 0 ? (
+ *         <p>No merge operations yet</p>
+ *       ) : (
+ *         <ul>
+ *           {history.map(entry => (
+ *             <li key={entry.id}>
+ *               <strong>{entry.sourceBranch.name}</strong> → <strong>{entry.targetBranch.name}</strong>
+ *               <br />
+ *               {new Date(entry.mergedAt).toLocaleString()}
+ *               <br />
+ *               {entry.entitiesMerged} entities merged, {entry.conflictsCount} conflicts resolved
+ *             </li>
+ *           ))}
+ *         </ul>
+ *       )}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useGetMergeHistory(
+  branchId: string,
+  options?: Omit<QueryHookOptions<GetMergeHistoryQuery, GetMergeHistoryQueryVariables>, 'variables'>
+) {
+  return useQuery<GetMergeHistoryQuery, GetMergeHistoryQueryVariables>(GET_MERGE_HISTORY, {
+    ...options,
+    variables: { branchId },
+    skip: !branchId || options?.skip,
+  });
+}
+
 // Export types for convenience
 export type {
   PreviewMergeQuery,
@@ -544,4 +741,6 @@ export type {
   ExecuteMergeMutationVariables,
   CherryPickVersionMutation,
   CherryPickVersionMutationVariables,
+  GetMergeHistoryQuery,
+  GetMergeHistoryQueryVariables,
 };
