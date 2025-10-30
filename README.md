@@ -16,10 +16,14 @@ A full-stack campaign management tool for tabletop RPGs that unifies map, flowch
 - **Rules Engine**: JSONLogic-based conditional system for dynamic content
 - **Effect System**: JSON Patch-based state mutations when events/encounters resolve with 3-phase execution
 - **Branching System**: Create alternate timeline branches for "what-if" scenarios
-  - Fork branches to explore different outcomes without affecting main timeline
-  - Version resolution automatically inherits from parent branches
-  - Visual branch hierarchy and side-by-side comparison tools
-  - Settlement and Structure entities fully versioned across branches
+  - **Fork Branches** - Explore different outcomes without affecting main timeline
+  - **3-Way Merge** - Combine changes from different branches with automatic conflict detection
+  - **Conflict Resolution UI** - Interactive conflict resolution with source/target/custom options
+  - **Cherry-Pick** - Selectively apply specific versions between branches
+  - **Merge History Tracking** - Complete audit trail of all merge operations
+  - **Version Resolution** - Automatically inherits from parent branches
+  - **Visual Tools** - Branch hierarchy, side-by-side comparison, and merge preview
+  - **Entity Support** - Settlement and Structure entities fully versioned across branches
   - See [Branching System Documentation](docs/features/branching-system.md) for details
 - **Real-time Updates**: WebSocket-based synchronization
 - **Event Scheduling**: Cron-based automated event processing

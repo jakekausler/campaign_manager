@@ -453,6 +453,677 @@ const { data: targetData, loading: targetLoading } = useGetSettlementAsOf(
 - Empty state warnings when no data found
 - Validation messages for missing inputs
 
+## Branch Merging & Conflict Resolution
+
+The merge system enables combining changes from different branches, with automatic conflict detection and resolution UI. Completed in **TICKET-028**.
+
+### Merge Algorithm: 3-Way Merge
+
+The system uses a **3-way merge algorithm** to intelligently detect conflicts:
+
+```
+Common Ancestor (Base)
+       ↓
+    Divergence
+    /        \
+Source       Target
+Branch       Branch
+```
+
+**Key Concepts:**
+
+1. **Common Ancestor (Base)** - The state where branches diverged (merge base)
+2. **Source Branch** - Branch being merged from (changes to apply)
+3. **Target Branch** - Branch being merged into (destination)
+4. **Auto-Resolution** - If only one branch modified a property, use that value
+5. **Conflict** - Both branches modified the same property → requires manual resolution
+
+**Algorithm:**
+
+For each entity property path (e.g., `settlement.population`, `resources.gold`):
+
+```typescript
+if (source === target) {
+  // Both made identical changes
+  resolved = source; // Auto-resolve
+} else if (base === source && base !== target) {
+  // Only target changed
+  resolved = target; // Auto-resolve
+} else if (base === target && base !== source) {
+  // Only source changed
+  resolved = source; // Auto-resolve
+} else if (base !== source && base !== target) {
+  // Both changed differently
+  CONFLICT; // Requires manual resolution
+}
+```
+
+### Backend: MergeService
+
+Location: `packages/api/src/graphql/services/merge.service.ts`
+
+#### Core Methods
+
+**`findCommonAncestor(sourceBranchId, targetBranchId)`**
+
+Finds the merge base using O(n+m) ancestry walking algorithm:
+
+```typescript
+// Build ancestry chains
+const sourceAncestry = await buildBranchAncestry(sourceBranchId);
+const targetAncestry = await buildBranchAncestry(targetBranchId);
+
+// Find first common branch using Set for O(1) lookups
+const targetSet = new Set(targetAncestry);
+for (const ancestorId of sourceAncestry) {
+  if (targetSet.has(ancestorId)) {
+    return ancestorId; // Common ancestor found
+  }
+}
+```
+
+**`executeMerge(input: ExecuteMergeInput)`**
+
+Two-pass merge execution for efficiency and correctness:
+
+```typescript
+// PASS 1: Analyze all entities, detect conflicts
+const entities = await discoverEntitiesForMerge(sourceBranch, targetBranch);
+const conflicts: MergeConflict[] = [];
+const mergeData: Map<string, any> = new Map();
+
+for (const entity of entities) {
+  const versions = await getEntityVersionsForMerge(/* ... */);
+  const result = await compareVersions(versions.base, versions.source, versions.target);
+
+  if (result.conflicts.length > 0) {
+    conflicts.push(...result.conflicts);
+  }
+  mergeData.set(entity.key, result.mergedPayload);
+}
+
+// Validate ALL conflicts resolved before any DB writes
+const unresolved = findUnresolvedConflicts(conflicts, resolutions);
+if (unresolved.length > 0) {
+  throw new BadRequestException('Not all conflicts resolved');
+}
+
+// PASS 2: Create versions atomically (transaction-wrapped)
+await prisma.$transaction(async (tx) => {
+  for (const [key, payload] of mergeData) {
+    await tx.version.create({
+      data: {
+        entityType,
+        entityId,
+        branchId: targetBranch.id,
+        validFrom: worldTime,
+        compressedState: await compressPayload(payload),
+        userId,
+      },
+    });
+  }
+
+  // Record merge history for audit trail
+  await tx.mergeHistory.create({
+    data: {
+      sourceBranchId,
+      targetBranchId,
+      mergedAt: worldTime,
+      userId,
+      entitiesMergedCount: mergeData.size,
+      conflictsResolvedCount: conflicts.length,
+      resolutionsData: resolutions,
+    },
+  });
+});
+```
+
+**`cherryPickVersion(versionId, targetBranchId, resolutions?)`**
+
+Selectively applies a specific version to another branch using 2-way conflict detection:
+
+```typescript
+// Cherry-pick uses empty base for 2-way conflict detection
+const basePayload = {}; // No common ancestor for cherry-pick
+const sourcePayload = await decompressPayload(version.compressedState);
+const targetPayload = await getCurrentPayloadInBranch(
+  targetBranch,
+  version.entityType,
+  version.entityId
+);
+
+const result = await compareVersions(basePayload, sourcePayload, targetPayload);
+
+if (result.conflicts.length === 0) {
+  // Auto-apply when no conflicts
+  await createVersion(targetBranch, version.entityType, version.entityId, sourcePayload);
+  return { success: true, versionId: newVersion.id };
+} else {
+  // Return conflicts for manual resolution
+  return { success: false, conflicts: result.conflicts };
+}
+```
+
+#### Conflict Detection Classes
+
+**ConflictDetector** (Base)
+
+Generic conflict detection for all entity types:
+
+- Recursive path traversal for nested properties (e.g., `resources.gold.amount`)
+- Deep equality checking (objects, arrays, primitives)
+- JSON path notation for precise conflict identification
+- Auto-resolution logic for non-conflicting changes
+
+**SettlementMergeHandler**
+
+Extends ConflictDetector with Settlement-specific semantics:
+
+- Domain-specific conflict descriptions (e.g., "Population changed from 1000 to 800")
+- Resolution suggestions (e.g., "Consider averaging population values")
+- Handles all Settlement properties: name, level, kingdom, location, variables
+
+**StructureMergeHandler**
+
+Extends ConflictDetector with Structure-specific semantics:
+
+- Domain-specific conflict descriptions (e.g., "Defense rating increased by 20")
+- Resolution suggestions (e.g., "Use higher defense value for safety")
+- Handles all Structure properties: name, type, settlement, level, status, variables
+
+### Database Schema: MergeHistory
+
+```prisma
+model MergeHistory {
+  id                     String   @id @default(uuid())
+  sourceBranchId         String
+  sourceBranch           Branch   @relation("MergeHistorySource", fields: [sourceBranchId], references: [id])
+  targetBranchId         String
+  targetBranch           Branch   @relation("MergeHistoryTarget", fields: [targetBranchId], references: [id])
+  mergedAt               DateTime // World time when merge occurred
+  userId                 String
+  entitiesMergedCount    Int
+  conflictsResolvedCount Int
+  resolutionsData        Json     // Manual conflict resolutions applied
+  metadata               Json?    // Additional merge metadata
+  createdAt              DateTime @default(now())
+
+  @@index([sourceBranchId])
+  @@index([targetBranchId])
+  @@index([mergedAt])
+}
+```
+
+### GraphQL API: Merge Operations
+
+**Queries:**
+
+```graphql
+type Query {
+  # Preview merge before execution (shows conflicts)
+  previewMerge(input: PreviewMergeInput!): MergePreview!
+
+  # Get merge history for a branch
+  getMergeHistory(branchId: ID!): [MergeHistoryEntry!]!
+}
+
+input PreviewMergeInput {
+  sourceBranchId: ID!
+  targetBranchId: ID!
+  worldTime: DateTime!
+}
+
+type MergePreview {
+  sourceBranch: Branch!
+  targetBranch: Branch!
+  commonAncestor: Branch
+  entities: [EntityMergePreview!]!
+  requiresManualResolution: Boolean!
+}
+
+type EntityMergePreview {
+  entityType: String!
+  entityId: String!
+  conflicts: [MergeConflict!]!
+  autoResolvedChanges: [AutoResolvedChange!]!
+}
+
+type MergeConflict {
+  path: String! # JSON path (e.g., "resources.gold")
+  type: ConflictType!
+  baseValue: JSON
+  sourceValue: JSON
+  targetValue: JSON
+  description: String!
+  suggestion: String
+}
+
+enum ConflictType {
+  BOTH_MODIFIED
+  MODIFIED_DELETED
+  DELETED_MODIFIED
+  BOTH_DELETED
+}
+
+type AutoResolvedChange {
+  path: String!
+  oldValue: JSON
+  newValue: JSON
+  reason: String!
+}
+
+type MergeHistoryEntry {
+  id: ID!
+  sourceBranch: BranchInfo!
+  targetBranch: BranchInfo!
+  mergedAt: DateTime!
+  userId: String!
+  entitiesMergedCount: Int!
+  conflictsResolvedCount: Int!
+  resolutionsData: JSON
+  metadata: JSON
+  createdAt: DateTime!
+}
+```
+
+**Mutations:**
+
+```graphql
+type Mutation {
+  # Execute merge with conflict resolutions
+  executeMerge(input: ExecuteMergeInput!): MergeResult!
+
+  # Cherry-pick a specific version to another branch
+  cherryPickVersion(input: CherryPickVersionInput!): CherryPickResult!
+}
+
+input ExecuteMergeInput {
+  sourceBranchId: ID!
+  targetBranchId: ID!
+  worldTime: DateTime!
+  resolutions: [ConflictResolution!]
+}
+
+input ConflictResolution {
+  entityType: String!
+  entityId: String!
+  path: String!
+  resolvedValue: JSON!
+}
+
+type MergeResult {
+  success: Boolean!
+  entitiesMerged: Int!
+  conflictsResolved: Int!
+  errors: [String!]
+}
+
+input CherryPickVersionInput {
+  versionId: ID!
+  targetBranchId: ID!
+  resolutions: [ConflictResolution!]
+}
+
+type CherryPickResult {
+  success: Boolean!
+  versionId: String
+  conflicts: [MergeConflict!]
+  error: String
+}
+```
+
+**Authorization:**
+
+- `previewMerge` requires campaign access
+- `executeMerge` requires GM/OWNER role
+- `cherryPickVersion` requires GM/OWNER role
+- `getMergeHistory` requires campaign access
+
+### Frontend: Merge UI Components
+
+#### MergePreviewDialog
+
+Location: `packages/frontend/src/components/features/branches/MergePreviewDialog.tsx`
+
+Comprehensive merge preview with conflict visualization:
+
+**Features:**
+
+- **Source/Target Display** - Visual color coding (blue/green) with branch names
+- **Summary Statistics** - Total entities, conflicts count, auto-resolved count
+- **Tabbed Interface** - Separates "Conflicts" (red) from "Auto-Resolved" (green)
+- **Expandable Conflict Details** - 3-way diff showing Base/Source/Target values
+- **Expandable Auto-Resolved Details** - 4-way diff showing Base/Source/Target/Resolved
+- **Entity Grouping** - Changes grouped by entity with expand/collapse
+- **JSON Path Display** - Shows exact property paths (e.g., `resources.gold`)
+- **Human-Readable Descriptions** - Explains what changed and why
+- **Resolution Suggestions** - Guides users toward correct resolution
+- **Action Buttons** - "Proceed to Resolve" (if conflicts) or "Execute Merge" (if clean)
+
+**GraphQL Integration:**
+
+```typescript
+const { data, loading, error } = usePreviewMerge(sourceBranchId, targetBranchId, worldTime);
+
+const handleProceedToResolve = () => {
+  // Open ConflictResolutionDialog
+  setShowResolutionDialog(true);
+};
+
+const handleExecuteMerge = async () => {
+  // No conflicts - execute directly
+  await executeMergeMutation({
+    variables: { input: { sourceBranchId, targetBranchId, worldTime } },
+  });
+};
+```
+
+#### ConflictResolutionDialog
+
+Location: `packages/frontend/src/components/features/branches/ConflictResolutionDialog.tsx`
+
+Interactive conflict resolution with manual editing:
+
+**Features:**
+
+- **Three Resolution Options per Conflict:**
+  - **Use Source** - Apply source branch value
+  - **Use Target** - Keep target branch value
+  - **Edit Manually** - JSON editor with validation
+- **Progress Tracking** - Progress bar showing X/Y conflicts resolved
+- **Expandable 3-Way Diff** - View Base/Source/Target for each conflict
+- **Resolution Preview** - Shows parsed JSON value after selection
+- **Entity Grouping** - Collapsible cards showing "X/Y resolved" badges
+- **Green Checkmarks** - Indicate fully resolved entities
+- **Success/Warning Alerts** - Adapt based on resolution state
+- **Disabled Execute Button** - Until all conflicts resolved
+- **Real-Time JSON Validation** - Error messages for invalid custom values
+
+**State Management:**
+
+```typescript
+const [resolutionState, setResolutionState] = useState<Map<string, ConflictResolutionState>>(
+  new Map()
+);
+
+// Key format: `${entityId}:${path}` for unique conflict identification
+const handleResolveConflict = (conflict: MergeConflict, value: any) => {
+  const key = `${conflict.entityId}:${conflict.path}`;
+  setResolutionState((prev) =>
+    new Map(prev).set(key, {
+      method: 'source' | 'target' | 'custom',
+      value,
+      isValid: true,
+    })
+  );
+};
+
+// Execute merge when all resolved
+const handleExecute = async () => {
+  const resolutions = Array.from(resolutionState.entries()).map(([key, state]) => {
+    const [entityId, path] = key.split(':');
+    return { entityId, path, resolvedValue: state.value };
+  });
+
+  await executeMergeMutation({
+    variables: { input: { sourceBranchId, targetBranchId, worldTime, resolutions } },
+  });
+};
+```
+
+#### CherryPickDialog
+
+Location: `packages/frontend/src/components/features/branches/CherryPickDialog.tsx`
+
+Cherry-pick individual versions with conflict handling:
+
+**Features:**
+
+- **Version Information Display** - Shows entity type, ID, and description
+- **Target Branch Selection** - Color-coded branch display
+- **Two-Phase Conflict Flow:**
+  1. Initial attempt → detect conflicts
+  2. Manual resolution → retry with resolutions
+- **Inline Conflict Resolution** - Embedded `CherryPickConflictDialog` for conflicts
+- **JSON Editor with Validation** - Real-time parsing and error messages
+- **Progress Tracking** - Resolved vs total conflicts
+- **Success/Error State Management** - Comprehensive validation
+- **Loading States** - Disabled buttons and spinner animations
+
+**GraphQL Integration:**
+
+```typescript
+const [cherryPickVersion, { loading, error }] = useCherryPickVersion();
+
+const handleCherryPick = async () => {
+  const result = await cherryPickVersion({
+    variables: { input: { versionId, targetBranchId } },
+  });
+
+  if (result.data?.cherryPickVersion.success) {
+    // Success - no conflicts
+    onSuccess?.();
+    onClose();
+  } else if (result.data?.cherryPickVersion.conflicts) {
+    // Conflicts detected - show resolution dialog
+    setConflicts(result.data.cherryPickVersion.conflicts);
+    setShowConflictDialog(true);
+  }
+};
+```
+
+#### MergeHistoryView
+
+Location: `packages/frontend/src/components/features/branches/MergeHistoryView.tsx`
+
+Timeline visualization of merge operations:
+
+**Features:**
+
+- **Timeline-Style Display** - Merge operations chronologically (most recent first)
+- **Visual Flow** - Source → Target branch with direction indicator
+- **Color-Coded Badges:**
+  - Amber badge with AlertTriangle icon for conflicts
+  - Green badge with Check icon for clean merges
+- **Merge Statistics:**
+  - Timestamp and world time
+  - User ID
+  - Entities merged count
+  - Conflicts resolved count
+- **Optional "View Details" Button** - Via `onViewDetails` callback prop
+- **Loading Skeletons** - During data fetch
+- **Empty State** - "No merge history for this branch"
+- **Error State** - With retry button for network failures
+- **Fully Responsive** - Card-based layout using shadcn/ui components
+
+**GraphQL Integration:**
+
+```typescript
+const { data, loading, error, refetch } = useGetMergeHistory(branchId);
+
+return (
+  <div className="space-y-4">
+    {data?.getMergeHistory.map((entry) => (
+      <Card key={entry.id}>
+        <div className="flex items-center gap-2">
+          <Badge variant={entry.conflictsResolvedCount > 0 ? "warning" : "success"}>
+            {entry.conflictsResolvedCount > 0 ? (
+              <>
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                {entry.conflictsResolvedCount} conflict{entry.conflictsResolvedCount === 1 ? '' : 's'}
+              </>
+            ) : (
+              <>
+                <Check className="w-3 h-3 mr-1" />
+                Clean merge
+              </>
+            )}
+          </Badge>
+          <span className="text-blue-600">{entry.sourceBranch.name}</span>
+          <ArrowRight className="w-4 h-4" />
+          <span className="text-green-600">{entry.targetBranch.name}</span>
+        </div>
+      </Card>
+    ))}
+  </div>
+);
+```
+
+### Merge Workflow Examples
+
+#### Example 1: Clean Merge (No Conflicts)
+
+```
+1. User navigates to BranchHierarchyView
+2. User clicks "Merge" button on a branch
+3. MergePreviewDialog opens:
+   - Shows source and target branches
+   - Lists auto-resolved changes (green)
+   - No conflicts detected
+   - Button text: "Execute Merge"
+4. User clicks "Execute Merge"
+5. Merge executes immediately (no resolution needed)
+6. Success message: "Merged 12 entities from 'feature-branch' into 'main'"
+7. Branch hierarchy refetched
+8. Dialog closes
+```
+
+#### Example 2: Merge with Conflicts
+
+```
+1. User initiates merge from BranchHierarchyView
+2. MergePreviewDialog opens:
+   - Shows source and target branches
+   - Summary: "5 entities, 3 conflicts, 2 auto-resolved"
+   - Lists conflicts (red tab) and auto-resolved (green tab)
+   - Button text: "Proceed to Resolve"
+3. User clicks "Proceed to Resolve"
+4. ConflictResolutionDialog opens:
+   - Shows all 3 conflicts grouped by entity
+   - Progress: "0 of 3 conflicts resolved"
+5. User resolves Conflict 1:
+   - Clicks "Use Source" button
+   - Resolution preview shows source value
+   - Progress: "1 of 3 conflicts resolved"
+6. User resolves Conflict 2:
+   - Clicks "Edit Manually"
+   - Enters custom JSON: {"gold": 1500, "silver": 3000}
+   - JSON validates successfully
+   - Clicks "Save"
+   - Progress: "2 of 3 conflicts resolved"
+7. User resolves Conflict 3:
+   - Clicks "Use Target"
+   - Progress: "3 of 3 conflicts resolved"
+8. "Execute Merge" button becomes enabled
+9. User clicks "Execute Merge"
+10. Merge executes with resolutions
+11. Success message: "Merged 5 entities with 3 conflicts resolved"
+12. Dialog closes
+```
+
+#### Example 3: Cherry-Pick Workflow
+
+```
+1. User views version history for a Settlement
+2. User clicks "Cherry-Pick" button on a specific version
+3. CherryPickDialog opens:
+   - Shows version information
+   - Target branch: "main"
+4. User clicks "Cherry-Pick"
+5. No conflicts detected
+6. Version applied automatically
+7. Success message: "Version cherry-picked successfully"
+8. Dialog closes
+```
+
+#### Example 4: Cherry-Pick with Conflicts
+
+```
+1. User initiates cherry-pick
+2. CherryPickDialog opens
+3. User clicks "Cherry-Pick"
+4. Conflicts detected!
+5. CherryPickConflictDialog opens inline:
+   - Shows 2 conflicts
+   - Progress: "0 of 2 conflicts resolved"
+6. User resolves conflicts using source/target/custom
+7. Progress: "2 of 2 conflicts resolved"
+8. User clicks "Retry Cherry-Pick"
+9. Cherry-pick executes with resolutions
+10. Success message displayed
+11. Dialog closes
+```
+
+### Testing: Merge System
+
+**Backend Unit Tests:**
+
+- MergeService (20 tests): common ancestor, version retrieval, conflict detection, cherry-pick
+- ConflictDetector (29 tests): property conflicts, nested properties, auto-resolution, all conflict types
+- SettlementMergeHandler (17 tests): Settlement-specific conflicts, associations, domain descriptions
+- StructureMergeHandler (19 tests): Structure-specific conflicts, associations, domain descriptions
+
+**Backend Integration Tests:**
+
+- MergeResolver (27 tests): GraphQL queries/mutations, authorization, validation, error handling
+- Cherry-pick API (7 tests): validation, authorization, success scenarios, conflict resolution
+
+**Backend E2E Tests:**
+
+- Complete merge workflow (13 scenarios):
+  1. Fork → modify → preview → resolve → merge
+  2. Settlement property and association conflicts
+  3. Structure property conflicts
+  4. Cherry-pick without conflicts
+  5. Cherry-pick with conflict resolution
+  6. Multi-level branch merging (grandchild → child → parent)
+  7. Merge history tracking and retrieval
+  8. Error handling (incomplete resolutions, invalid ancestor)
+  9. Edge cases (no-op merge, concurrent non-conflicting changes, deep nesting)
+  10. Performance (100+ entities with conflicts in ~1.3 seconds)
+
+**Frontend Component Tests:**
+
+- MergePreviewDialog (40+ tests): display, tabs, conflicts, auto-resolved, actions, errors
+- ConflictResolutionDialog (40+ tests): resolution options, custom editing, progress, execution
+- CherryPickDialog (25+ tests): form, operations, conflicts, errors, keyboard shortcuts
+- MergeHistoryView (38 tests): loading, empty/error states, content display, badges, interactions
+
+**Total Merge Test Coverage:** 275+ tests
+
+### Performance & Optimization
+
+**Two-Pass Merge Execution:**
+
+- Pass 1: Analyze and detect conflicts (no DB writes)
+- Validation: All conflicts resolved before any DB writes
+- Pass 2: Create versions atomically (transaction-wrapped)
+- Benefits: Prevents wasted work, ensures consistency
+
+**Batch Processing:**
+
+- All entity versions resolved in parallel with `Promise.all`
+- Avoids N+1 query pattern
+- Efficient for large merges (100+ entities)
+
+**Payload Reuse:**
+
+- Compressed payloads copied directly
+- No unnecessary decompression/recompression
+- Reduces CPU overhead
+
+**Transaction Safety:**
+
+- All merge operations wrapped in Prisma transactions
+- Rollback on any error
+- Atomic all-or-nothing behavior
+
+**Performance Benchmark:**
+
+- 100 entities with conflicts: ~1.3 seconds
+- Clean merge (no conflicts): <500ms
+- Cherry-pick single entity: <200ms
+
 ## Usage Examples
 
 ### Example 1: Creating a "What-If" Scenario
@@ -637,8 +1308,6 @@ Version resolution is optimized with:
 
 ### Future Tickets
 
-- **Branch Merging** (TICKET-028) - Merge changes from one branch into another
-- **Conflict Resolution** - UI for resolving conflicts during merge
 - **Branch Templates** - Create branches from predefined templates
 - **Automatic Branching** - Auto-create branches on major events
 - **Branch Analytics** - Divergence metrics, activity tracking
