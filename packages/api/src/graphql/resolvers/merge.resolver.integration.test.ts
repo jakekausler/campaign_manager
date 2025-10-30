@@ -1301,4 +1301,363 @@ describe('MergeResolver Integration Tests', () => {
       });
     });
   });
+
+  describe('getMergeHistory', () => {
+    it('should return empty array when branch has no merge history', async () => {
+      // Create test entities
+      const testKingdom = await prisma.kingdom.create({
+        data: {
+          name: 'Test Kingdom',
+          level: 1,
+          campaignId: testCampaign.id,
+        },
+      });
+
+      const testLocation = await prisma.location.create({
+        data: {
+          name: 'Test Location',
+          worldId: testWorld.id,
+          type: 'point',
+        },
+      });
+
+      const testEntity = await prisma.settlement.create({
+        data: {
+          name: 'Test Settlement',
+          level: 1,
+          kingdomId: testKingdom.id,
+          locationId: testLocation.id,
+          variables: { population: 1000 },
+        },
+      });
+
+      // Create a feature branch with no merges
+      const branch = await prisma.branch.create({
+        data: {
+          name: 'feature/no-merges',
+          campaignId: testCampaign.id,
+          parentId: mainBranch.id,
+          divergedAt: new Date(),
+        },
+      });
+
+      const history = await resolver.getMergeHistory(branch.id, testUser);
+
+      expect(history).toBeDefined();
+      expect(history).toEqual([]);
+
+      // Cleanup
+      await prisma.branch.delete({ where: { id: branch.id } });
+      await prisma.settlement.delete({ where: { id: testEntity.id } });
+      await prisma.location.delete({ where: { id: testLocation.id } });
+      await prisma.kingdom.delete({ where: { id: testKingdom.id } });
+    });
+
+    it('should return merge history for branch as source', async () => {
+      // Create test entities
+      const testKingdom = await prisma.kingdom.create({
+        data: {
+          name: 'Test Kingdom',
+          level: 1,
+          campaignId: testCampaign.id,
+        },
+      });
+
+      const testLocation = await prisma.location.create({
+        data: {
+          name: 'Test Location',
+          worldId: testWorld.id,
+          type: 'point',
+        },
+      });
+
+      const testEntity = await prisma.settlement.create({
+        data: {
+          name: 'Test Settlement',
+          level: 1,
+          kingdomId: testKingdom.id,
+          locationId: testLocation.id,
+          variables: { population: 1000 },
+        },
+      });
+
+      // Create source and target branches
+      const sourceBranch = await prisma.branch.create({
+        data: {
+          name: 'feature/source',
+          campaignId: testCampaign.id,
+          parentId: mainBranch.id,
+          divergedAt: new Date(),
+        },
+      });
+
+      const targetBranch = await prisma.branch.create({
+        data: {
+          name: 'feature/target',
+          campaignId: testCampaign.id,
+          parentId: mainBranch.id,
+          divergedAt: new Date(),
+        },
+      });
+
+      // Create a merge history entry manually
+      const mergeEntry = await prisma.mergeHistory.create({
+        data: {
+          sourceBranchId: sourceBranch.id,
+          targetBranchId: targetBranch.id,
+          commonAncestorId: mainBranch.id,
+          worldTime: new Date(),
+          mergedBy: testUser.id,
+          conflictsCount: 0,
+          entitiesMerged: 1,
+          resolutionsData: {},
+          metadata: {},
+        },
+      });
+
+      const history = await resolver.getMergeHistory(sourceBranch.id, testUser);
+
+      expect(history).toBeDefined();
+      expect(history).toHaveLength(1);
+      expect(history[0].id).toBe(mergeEntry.id);
+      expect(history[0].sourceBranchId).toBe(sourceBranch.id);
+      expect(history[0].targetBranchId).toBe(targetBranch.id);
+      expect(history[0].commonAncestorId).toBe(mainBranch.id);
+      expect(history[0].conflictsCount).toBe(0);
+      expect(history[0].entitiesMerged).toBe(1);
+
+      // Cleanup
+      await prisma.mergeHistory.delete({ where: { id: mergeEntry.id } });
+      await prisma.branch.deleteMany({
+        where: { id: { in: [sourceBranch.id, targetBranch.id] } },
+      });
+      await prisma.settlement.delete({ where: { id: testEntity.id } });
+      await prisma.location.delete({ where: { id: testLocation.id } });
+      await prisma.kingdom.delete({ where: { id: testKingdom.id } });
+    });
+
+    it('should return merge history for branch as target', async () => {
+      // Create test entities
+      const testKingdom = await prisma.kingdom.create({
+        data: {
+          name: 'Test Kingdom',
+          level: 1,
+          campaignId: testCampaign.id,
+        },
+      });
+
+      const testLocation = await prisma.location.create({
+        data: {
+          name: 'Test Location',
+          worldId: testWorld.id,
+          type: 'point',
+        },
+      });
+
+      const testEntity = await prisma.settlement.create({
+        data: {
+          name: 'Test Settlement',
+          level: 1,
+          kingdomId: testKingdom.id,
+          locationId: testLocation.id,
+          variables: { population: 1000 },
+        },
+      });
+
+      // Create source and target branches
+      const sourceBranch = await prisma.branch.create({
+        data: {
+          name: 'feature/source',
+          campaignId: testCampaign.id,
+          parentId: mainBranch.id,
+          divergedAt: new Date(),
+        },
+      });
+
+      const targetBranch = await prisma.branch.create({
+        data: {
+          name: 'feature/target',
+          campaignId: testCampaign.id,
+          parentId: mainBranch.id,
+          divergedAt: new Date(),
+        },
+      });
+
+      // Create a merge history entry manually
+      const mergeEntry = await prisma.mergeHistory.create({
+        data: {
+          sourceBranchId: sourceBranch.id,
+          targetBranchId: targetBranch.id,
+          commonAncestorId: mainBranch.id,
+          worldTime: new Date(),
+          mergedBy: testUser.id,
+          conflictsCount: 2,
+          entitiesMerged: 3,
+          resolutionsData: { 'entity1:population': 1500 },
+          metadata: { note: 'test merge' },
+        },
+      });
+
+      const history = await resolver.getMergeHistory(targetBranch.id, testUser);
+
+      expect(history).toBeDefined();
+      expect(history).toHaveLength(1);
+      expect(history[0].id).toBe(mergeEntry.id);
+      expect(history[0].sourceBranchId).toBe(sourceBranch.id);
+      expect(history[0].targetBranchId).toBe(targetBranch.id);
+      expect(history[0].conflictsCount).toBe(2);
+      expect(history[0].entitiesMerged).toBe(3);
+      expect(history[0].resolutionsData).toEqual({ 'entity1:population': 1500 });
+      expect(history[0].metadata).toEqual({ note: 'test merge' });
+
+      // Cleanup
+      await prisma.mergeHistory.delete({ where: { id: mergeEntry.id } });
+      await prisma.branch.deleteMany({
+        where: { id: { in: [sourceBranch.id, targetBranch.id] } },
+      });
+      await prisma.settlement.delete({ where: { id: testEntity.id } });
+      await prisma.location.delete({ where: { id: testLocation.id } });
+      await prisma.kingdom.delete({ where: { id: testKingdom.id } });
+    });
+
+    it('should return multiple merge history entries sorted by most recent first', async () => {
+      // Create test entities
+      const testKingdom = await prisma.kingdom.create({
+        data: {
+          name: 'Test Kingdom',
+          level: 1,
+          campaignId: testCampaign.id,
+        },
+      });
+
+      const testLocation = await prisma.location.create({
+        data: {
+          name: 'Test Location',
+          worldId: testWorld.id,
+          type: 'point',
+        },
+      });
+
+      const testEntity = await prisma.settlement.create({
+        data: {
+          name: 'Test Settlement',
+          level: 1,
+          kingdomId: testKingdom.id,
+          locationId: testLocation.id,
+          variables: { population: 1000 },
+        },
+      });
+
+      // Create branches
+      const branch = await prisma.branch.create({
+        data: {
+          name: 'feature/multi-merge',
+          campaignId: testCampaign.id,
+          parentId: mainBranch.id,
+          divergedAt: new Date(),
+        },
+      });
+
+      const otherBranch = await prisma.branch.create({
+        data: {
+          name: 'feature/other',
+          campaignId: testCampaign.id,
+          parentId: mainBranch.id,
+          divergedAt: new Date(),
+        },
+      });
+
+      // Create multiple merge entries with different timestamps
+      const now = new Date();
+      const merge1 = await prisma.mergeHistory.create({
+        data: {
+          sourceBranchId: branch.id,
+          targetBranchId: mainBranch.id,
+          commonAncestorId: mainBranch.id,
+          worldTime: now,
+          mergedBy: testUser.id,
+          mergedAt: new Date(now.getTime() - 2000), // 2 seconds ago
+          conflictsCount: 0,
+          entitiesMerged: 1,
+          resolutionsData: {},
+          metadata: {},
+        },
+      });
+
+      const merge2 = await prisma.mergeHistory.create({
+        data: {
+          sourceBranchId: otherBranch.id,
+          targetBranchId: branch.id,
+          commonAncestorId: mainBranch.id,
+          worldTime: now,
+          mergedBy: testUser.id,
+          mergedAt: new Date(now.getTime() - 1000), // 1 second ago (more recent)
+          conflictsCount: 1,
+          entitiesMerged: 2,
+          resolutionsData: {},
+          metadata: {},
+        },
+      });
+
+      const history = await resolver.getMergeHistory(branch.id, testUser);
+
+      expect(history).toBeDefined();
+      expect(history).toHaveLength(2);
+      // Most recent first
+      expect(history[0].id).toBe(merge2.id);
+      expect(history[1].id).toBe(merge1.id);
+
+      // Cleanup
+      await prisma.mergeHistory.deleteMany({
+        where: { id: { in: [merge1.id, merge2.id] } },
+      });
+      await prisma.branch.deleteMany({
+        where: { id: { in: [branch.id, otherBranch.id] } },
+      });
+      await prisma.settlement.delete({ where: { id: testEntity.id } });
+      await prisma.location.delete({ where: { id: testLocation.id } });
+      await prisma.kingdom.delete({ where: { id: testKingdom.id } });
+    });
+
+    it('should throw NotFoundException when branch does not exist', async () => {
+      await expect(resolver.getMergeHistory('nonexistent-id', testUser)).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('should throw ForbiddenException when user has no campaign access', async () => {
+      // Create a user without campaign access
+      const otherUser = await prisma.user.create({
+        data: {
+          email: 'no-access@example.com',
+          name: 'No Access User',
+          password: 'hash',
+        },
+      });
+
+      const otherAuthUser: AuthenticatedUser = {
+        id: otherUser.id,
+        email: otherUser.email,
+        role: 'player',
+      };
+
+      // Create a branch
+      const branch = await prisma.branch.create({
+        data: {
+          name: 'feature/private',
+          campaignId: testCampaign.id,
+          parentId: mainBranch.id,
+          divergedAt: new Date(),
+        },
+      });
+
+      await expect(resolver.getMergeHistory(branch.id, otherAuthUser)).rejects.toThrow(
+        ForbiddenException
+      );
+
+      // Cleanup
+      await prisma.branch.delete({ where: { id: branch.id } });
+      await prisma.user.delete({ where: { id: otherUser.id } });
+    });
+  });
 });

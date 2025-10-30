@@ -4,6 +4,7 @@
  */
 
 import { ObjectType, Field, ID, Int } from '@nestjs/graphql';
+import { GraphQLJSON } from 'graphql-type-json';
 
 @ObjectType()
 export class Branch {
@@ -226,4 +227,52 @@ export class CherryPickResult {
 
   @Field({ nullable: true, description: 'Error message if cherry-pick failed' })
   error?: string;
+}
+
+/**
+ * MergeHistoryEntry - Represents a recorded merge operation for audit trail
+ */
+@ObjectType()
+export class MergeHistoryEntry {
+  @Field(() => ID, { description: 'Unique identifier for this merge history entry' })
+  id!: string;
+
+  @Field(() => ID, { description: 'ID of the source branch that was merged from' })
+  sourceBranchId!: string;
+
+  @Field(() => Branch, { description: 'Source branch that was merged from' })
+  sourceBranch!: Branch;
+
+  @Field(() => ID, { description: 'ID of the target branch that was merged into' })
+  targetBranchId!: string;
+
+  @Field(() => Branch, { description: 'Target branch that was merged into' })
+  targetBranch!: Branch;
+
+  @Field(() => ID, { description: 'ID of the common ancestor branch at time of merge' })
+  commonAncestorId!: string;
+
+  @Field(() => Date, { description: 'World time at which the merge was performed' })
+  worldTime!: Date;
+
+  @Field(() => ID, { description: 'ID of the user who performed the merge' })
+  mergedBy!: string;
+
+  @Field(() => Date, { description: 'System timestamp when merge completed' })
+  mergedAt!: Date;
+
+  @Field(() => Int, { description: 'Number of conflicts that were manually resolved' })
+  conflictsCount!: number;
+
+  @Field(() => Int, { description: 'Number of entities that had versions created' })
+  entitiesMerged!: number;
+
+  @Field(() => GraphQLJSON, { description: 'Conflict resolutions applied (for audit trail)' })
+  resolutionsData!: Record<string, unknown>;
+
+  @Field(() => GraphQLJSON, {
+    description: 'Additional context (merge strategy, notes, etc.)',
+    defaultValue: {},
+  })
+  metadata!: Record<string, unknown>;
 }

@@ -9,7 +9,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -31,6 +31,7 @@ import {
   EntityMergePreview,
   MergeConflict,
   AutoResolvedChange,
+  MergeHistoryEntry,
 } from '../types/branch.type';
 @Resolver()
 export class MergeResolver {
@@ -256,6 +257,74 @@ export class MergeResolver {
     };
 
     return graphqlResult;
+  }
+
+  /**
+   * Get merge history for a specific branch
+   * Returns all completed merge operations involving the branch
+   * @param branchId - The branch to get merge history for
+   * @param user - The authenticated user
+   * @returns Array of merge history entries
+   */
+  @Query(() => [MergeHistoryEntry], {
+    description: 'Get merge history for a specific branch showing completed merge operations',
+  })
+  @UseGuards(JwtAuthGuard)
+  async getMergeHistory(
+    @Args('branchId', { type: () => ID }) branchId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<MergeHistoryEntry[]> {
+    // Validate branch exists
+    const branch = await this.branchService.findById(branchId);
+    if (!branch) {
+      throw new NotFoundException(`Branch ${branchId} not found`);
+    }
+
+    // Verify user has access to the campaign
+    await this.checkCampaignAccess(branch.campaignId, user);
+
+    // Query merge history where this branch was source or target
+    const mergeHistory = await this.prisma.mergeHistory.findMany({
+      where: {
+        OR: [{ sourceBranchId: branchId }, { targetBranchId: branchId }],
+      },
+      include: {
+        sourceBranch: true,
+        targetBranch: true,
+      },
+      orderBy: {
+        mergedAt: 'desc', // Most recent merges first
+      },
+    });
+
+    // Map Prisma result to GraphQL type (convert null to undefined, handle JsonValue)
+    return mergeHistory.map((entry) => ({
+      ...entry,
+      sourceBranch: {
+        ...entry.sourceBranch,
+        description: entry.sourceBranch.description ?? undefined,
+        parentId: entry.sourceBranch.parentId ?? undefined,
+        divergedAt: entry.sourceBranch.divergedAt ?? undefined,
+        color: entry.sourceBranch.color ?? undefined,
+        deletedAt: entry.sourceBranch.deletedAt ?? undefined,
+      },
+      targetBranch: {
+        ...entry.targetBranch,
+        description: entry.targetBranch.description ?? undefined,
+        parentId: entry.targetBranch.parentId ?? undefined,
+        divergedAt: entry.targetBranch.divergedAt ?? undefined,
+        color: entry.targetBranch.color ?? undefined,
+        deletedAt: entry.targetBranch.deletedAt ?? undefined,
+      },
+      resolutionsData:
+        entry.resolutionsData && typeof entry.resolutionsData === 'object'
+          ? (entry.resolutionsData as Record<string, unknown>)
+          : {},
+      metadata:
+        entry.metadata && typeof entry.metadata === 'object'
+          ? (entry.metadata as Record<string, unknown>)
+          : {},
+    }));
   }
 
   /**
