@@ -273,6 +273,40 @@
   - Exported component and types from `packages/frontend/src/components/features/branches/index.ts`
   - Component ready for integration into branch management UI
   - Stage 9 complete - merge history tracking fully implemented (backend + frontend)
+- **2025-10-30**: Committed Stage 8 test improvements (commit d730c0d)
+  - Added CHERRY_PICK operation type to AuditService for proper audit trail tracking
+  - Added 11 comprehensive unit tests for MergeService.cherryPickVersion() method
+  - Tests cover: validation errors, no-conflict auto-apply, conflict detection, manual resolution, partial resolution errors, nested properties, world time usage, audit logging
+  - Fixed type consistency in CherryPickDialog.test.tsx (null → undefined for optional fields)
+  - All tests passing, TypeScript compilation clean, linting clean (no new warnings)
+  - Code Reviewer approved with no critical issues
+  - Stage 8 test coverage now comprehensive with 20+ total tests for cherry-pick functionality
+- **2025-10-30**: Stage 10 - Integration Testing & Polish (commit 618e1b9) - IN PROGRESS
+  - Created comprehensive E2E test suite with 13 test scenarios (all passing):
+    1. Complete merge workflow (fork, modify, preview, resolve, merge)
+    2. Settlement property and association conflicts
+    3. Structure property conflicts
+    4. Cherry-pick without conflicts
+    5. Cherry-pick with conflicts and resolution
+    6. Multi-level branch merging (grandchild → child → parent)
+    7. Merge history tracking and retrieval
+    8. Error handling: incomplete conflict resolutions
+    9. Error handling: invalid common ancestor
+    10. Edge case: no-op merge (branch with no changes)
+    11. Edge case: concurrent non-conflicting changes (auto-resolve)
+    12. Edge case: deep nested property conflicts
+    13. Performance: 100+ entities with conflicts (~1.3 seconds)
+  - Fixed critical bugs discovered during testing:
+    - executeMerge() error propagation (removed try-catch wrapper for proper exception handling)
+    - Added common ancestor validation with BadRequestException
+    - Validates commonAncestorId matches actual common ancestor
+  - Test infrastructure improvements:
+    - Created detectEntityConflicts() helper function for conflict preview
+    - Comprehensive test data setup patterns
+    - Performance benchmarking for large-scale operations
+  - All E2E tests passing (13/13)
+  - Loading states and error handling already comprehensive from Stages 6-9
+  - Remaining tasks: keyboard shortcuts (optional), documentation updates
 
 ## Description
 
