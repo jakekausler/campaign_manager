@@ -168,16 +168,12 @@ export function ForkBranchDialog({
         e.preventDefault();
         handleSubmit();
       }
-      // Escape to cancel
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
+      // Escape is handled by Dialog component via onOpenChange
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, loading, successMessage, name, handleSubmit, onClose]);
+  }, [isOpen, loading, successMessage, name, handleSubmit]);
 
   // Handle dialog close
   const handleClose = () => {

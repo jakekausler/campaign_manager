@@ -578,23 +578,7 @@ export function ConflictResolutionDialog({
     executeMerge,
   ]);
 
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape to close
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        if (!executing) {
-          onClose();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, executing, onClose]);
+  // Keyboard shortcuts are handled by the Dialog component (Escape key via onOpenChange)
 
   // Handle dialog close
   const handleClose = () => {

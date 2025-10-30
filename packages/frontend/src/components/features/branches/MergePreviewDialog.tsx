@@ -409,21 +409,7 @@ export function MergePreviewDialog({
     }
   }, [isOpen]);
 
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape to close
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  // Keyboard shortcuts are handled by the Dialog component (Escape key via onOpenChange)
 
   // Handle dialog close
   const handleClose = () => {

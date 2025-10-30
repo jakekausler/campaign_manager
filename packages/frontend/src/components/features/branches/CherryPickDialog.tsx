@@ -324,19 +324,7 @@ export function CherryPickDialog({
     }
   }, [loading, onClose]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
-
-      if (e.key === 'Escape' && !loading && !showConflictDialog) {
-        handleClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, loading, showConflictDialog, handleClose]);
+  // Keyboard shortcuts are handled by the Dialog component (Escape key via onOpenChange)
 
   return (
     <>
