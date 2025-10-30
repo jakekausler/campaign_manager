@@ -405,183 +405,186 @@ export class MergeService {
     const { sourceBranchId, targetBranchId, commonAncestorId, worldTime, resolutions, user } =
       params;
 
-    try {
-      // Use Prisma transaction for atomicity
-      const result = await this.prisma.$transaction(async (tx) => {
-        // Discover all entities that exist in source or target branches
-        const entityIds = await this.discoverEntitiesForMerge(
+    // Validate that the commonAncestorId is actually a valid common ancestor
+    const actualCommonAncestor = await this.findCommonAncestor(sourceBranchId, targetBranchId);
+    if (!actualCommonAncestor) {
+      throw new BadRequestException(
+        `Cannot merge: branches ${sourceBranchId} and ${targetBranchId} do not have a common ancestor.`
+      );
+    }
+    if (actualCommonAncestor.id !== commonAncestorId) {
+      throw new BadRequestException(
+        `Invalid commonAncestorId: provided ${commonAncestorId} but actual common ancestor is ${actualCommonAncestor.id}`
+      );
+    }
+
+    // Use Prisma transaction for atomicity
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Discover all entities that exist in source or target branches
+      const entityIds = await this.discoverEntitiesForMerge(
+        sourceBranchId,
+        targetBranchId,
+        worldTime,
+        tx
+      );
+
+      // PASS 1: Analyze entities and collect conflicts (no DB writes)
+      interface EntityMergeData {
+        entityType: string;
+        entityId: string;
+        finalPayload: Record<string, unknown>;
+        conflictsResolved: number;
+        targetPayload: Record<string, unknown> | null;
+      }
+
+      const entitiesToMerge: EntityMergeData[] = [];
+      const allConflicts: Array<{
+        entityType: string;
+        entityId: string;
+        conflicts: MergeConflict[];
+      }> = [];
+
+      for (const { entityType, entityId } of entityIds) {
+        // Get three versions for 3-way merge
+        const versions = await this.getEntityVersionsForMerge(
+          entityType,
+          entityId,
           sourceBranchId,
           targetBranchId,
-          worldTime,
-          tx
+          commonAncestorId,
+          worldTime
         );
 
-        // PASS 1: Analyze entities and collect conflicts (no DB writes)
-        interface EntityMergeData {
-          entityType: string;
-          entityId: string;
-          finalPayload: Record<string, unknown>;
-          conflictsResolved: number;
-          targetPayload: Record<string, unknown> | null;
+        // Skip if entity doesn't exist in any branch
+        if (!versions.base && !versions.source && !versions.target) {
+          continue;
         }
 
-        const entitiesToMerge: EntityMergeData[] = [];
-        const allConflicts: Array<{
-          entityType: string;
-          entityId: string;
-          conflicts: MergeConflict[];
-        }> = [];
+        // Decompress payloads
+        const basePayload = versions.base
+          ? await this.versionService.decompressVersion(versions.base)
+          : null;
+        const sourcePayload = versions.source
+          ? await this.versionService.decompressVersion(versions.source)
+          : null;
+        const targetPayload = versions.target
+          ? await this.versionService.decompressVersion(versions.target)
+          : null;
 
-        for (const { entityType, entityId } of entityIds) {
-          // Get three versions for 3-way merge
-          const versions = await this.getEntityVersionsForMerge(
+        // Perform 3-way merge to detect conflicts
+        const mergeResult = this.compareVersions(basePayload, sourcePayload, targetPayload);
+
+        // Collect conflicts for validation
+        if (mergeResult.conflicts.length > 0) {
+          allConflicts.push({
             entityType,
             entityId,
-            sourceBranchId,
-            targetBranchId,
-            commonAncestorId,
-            worldTime
-          );
-
-          // Skip if entity doesn't exist in any branch
-          if (!versions.base && !versions.source && !versions.target) {
-            continue;
-          }
-
-          // Decompress payloads
-          const basePayload = versions.base
-            ? await this.versionService.decompressVersion(versions.base)
-            : null;
-          const sourcePayload = versions.source
-            ? await this.versionService.decompressVersion(versions.source)
-            : null;
-          const targetPayload = versions.target
-            ? await this.versionService.decompressVersion(versions.target)
-            : null;
-
-          // Perform 3-way merge to detect conflicts
-          const mergeResult = this.compareVersions(basePayload, sourcePayload, targetPayload);
-
-          // Collect conflicts for validation
-          if (mergeResult.conflicts.length > 0) {
-            allConflicts.push({
-              entityType,
-              entityId,
-              conflicts: mergeResult.conflicts,
-            });
-          }
-
-          // Apply manual conflict resolutions if provided
-          let finalPayload = mergeResult.mergedPayload;
-          if (mergeResult.conflicts.length > 0) {
-            finalPayload = this.applyConflictResolutions(
-              mergeResult.mergedPayload || targetPayload || sourcePayload || {},
-              mergeResult.conflicts,
-              resolutions,
-              entityType,
-              entityId
-            );
-          }
-
-          // Skip if no changes (payload identical to target)
-          if (
-            finalPayload &&
-            targetPayload &&
-            JSON.stringify(finalPayload) === JSON.stringify(targetPayload)
-          ) {
-            continue;
-          }
-
-          // Store merge data for second pass
-          if (finalPayload) {
-            entitiesToMerge.push({
-              entityType,
-              entityId,
-              finalPayload,
-              conflictsResolved: mergeResult.conflicts.length,
-              targetPayload,
-            });
-          }
+            conflicts: mergeResult.conflicts,
+          });
         }
 
-        // Validate all conflicts were resolved BEFORE any database writes
-        const unresolvedConflicts = this.findUnresolvedConflicts(allConflicts, resolutions);
-        if (unresolvedConflicts.length > 0) {
-          throw new BadRequestException(
-            `Cannot execute merge: ${unresolvedConflicts.length} conflicts remain unresolved. ` +
-              `Please provide resolutions for all conflicts.`
+        // Apply manual conflict resolutions if provided
+        let finalPayload = mergeResult.mergedPayload;
+        if (mergeResult.conflicts.length > 0) {
+          finalPayload = this.applyConflictResolutions(
+            mergeResult.mergedPayload || targetPayload || sourcePayload || {},
+            mergeResult.conflicts,
+            resolutions,
+            entityType,
+            entityId
           );
         }
 
-        // PASS 2: Create versions now that validation passed
-        const mergedEntityIds: string[] = [];
-        let versionsCreated = 0;
-
-        for (const entity of entitiesToMerge) {
-          await this.versionService.createVersion(
-            {
-              entityType: entity.entityType,
-              entityId: entity.entityId,
-              branchId: targetBranchId,
-              validFrom: worldTime,
-              validTo: null,
-              payload: entity.finalPayload,
-              comment: `Merged from branch ${sourceBranchId}`,
-            },
-            user
-          );
-
-          versionsCreated++;
-          mergedEntityIds.push(`${entity.entityType}:${entity.entityId}`);
-
-          // Create audit log entry
-          await this.audit.log(
-            'version',
-            `${entity.entityType}:${entity.entityId}`,
-            'MERGE',
-            user.id,
-            {
-              sourceBranchId,
-              targetBranchId,
-              commonAncestorId,
-              worldTime: worldTime.toISOString(),
-              conflictsResolved: entity.conflictsResolved,
-            }
-          );
+        // Skip if no changes (payload identical to target)
+        if (
+          finalPayload &&
+          targetPayload &&
+          JSON.stringify(finalPayload) === JSON.stringify(targetPayload)
+        ) {
+          continue;
         }
 
-        // Record merge history
-        await tx.mergeHistory.create({
-          data: {
-            sourceBranchId,
-            targetBranchId,
-            commonAncestorId,
-            worldTime,
-            mergedBy: user.id,
-            conflictsCount: allConflicts.reduce((sum, e) => sum + e.conflicts.length, 0),
-            entitiesMerged: versionsCreated,
-            resolutionsData: resolutions as any,
-            metadata: {},
+        // Store merge data for second pass
+        if (finalPayload) {
+          entitiesToMerge.push({
+            entityType,
+            entityId,
+            finalPayload,
+            conflictsResolved: mergeResult.conflicts.length,
+            targetPayload,
+          });
+        }
+      }
+
+      // Validate all conflicts were resolved BEFORE any database writes
+      const unresolvedConflicts = this.findUnresolvedConflicts(allConflicts, resolutions);
+      if (unresolvedConflicts.length > 0) {
+        throw new BadRequestException(
+          `Cannot execute merge: ${unresolvedConflicts.length} conflicts remain unresolved. ` +
+            `Please provide resolutions for all conflicts.`
+        );
+      }
+
+      // PASS 2: Create versions now that validation passed
+      const mergedEntityIds: string[] = [];
+      let versionsCreated = 0;
+
+      for (const entity of entitiesToMerge) {
+        await this.versionService.createVersion(
+          {
+            entityType: entity.entityType,
+            entityId: entity.entityId,
+            branchId: targetBranchId,
+            validFrom: worldTime,
+            validTo: null,
+            payload: entity.finalPayload,
+            comment: `Merged from branch ${sourceBranchId}`,
           },
-        });
+          user
+        );
 
-        return { versionsCreated, mergedEntityIds };
+        versionsCreated++;
+        mergedEntityIds.push(`${entity.entityType}:${entity.entityId}`);
+
+        // Create audit log entry
+        await this.audit.log(
+          'version',
+          `${entity.entityType}:${entity.entityId}`,
+          'MERGE',
+          user.id,
+          {
+            sourceBranchId,
+            targetBranchId,
+            commonAncestorId,
+            worldTime: worldTime.toISOString(),
+            conflictsResolved: entity.conflictsResolved,
+          }
+        );
+      }
+
+      // Record merge history
+      await tx.mergeHistory.create({
+        data: {
+          sourceBranchId,
+          targetBranchId,
+          commonAncestorId,
+          worldTime,
+          mergedBy: user.id,
+          conflictsCount: allConflicts.reduce((sum, e) => sum + e.conflicts.length, 0),
+          entitiesMerged: versionsCreated,
+          resolutionsData: resolutions as any,
+          metadata: {},
+        },
       });
 
-      return {
-        success: true,
-        versionsCreated: result.versionsCreated,
-        mergedEntityIds: result.mergedEntityIds,
-      };
-    } catch (error) {
-      // Return error message
-      return {
-        success: false,
-        versionsCreated: 0,
-        mergedEntityIds: [],
-        error: error instanceof Error ? error.message : 'Unknown error occurred during merge',
-      };
-    }
+      return { versionsCreated, mergedEntityIds };
+    });
+
+    return {
+      success: true,
+      versionsCreated: result.versionsCreated,
+      mergedEntityIds: result.mergedEntityIds,
+    };
   }
 
   /**
