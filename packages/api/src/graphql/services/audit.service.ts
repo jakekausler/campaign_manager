@@ -15,7 +15,8 @@ export type AuditOperation =
   | 'ARCHIVE'
   | 'RESTORE'
   | 'FORK'
-  | 'MERGE';
+  | 'MERGE'
+  | 'CHERRY_PICK';
 
 @Injectable()
 export class AuditService {
@@ -28,7 +29,7 @@ export class AuditService {
    *
    * @param entityType - The type of entity (e.g., 'campaign', 'world', 'event')
    * @param entityId - The ID of the entity
-   * @param operation - The operation performed (CREATE, UPDATE, DELETE, ARCHIVE, RESTORE, FORK, MERGE)
+   * @param operation - The operation performed (CREATE, UPDATE, DELETE, ARCHIVE, RESTORE, FORK, MERGE, CHERRY_PICK)
    * @param userId - The ID of the user who performed the operation
    * @param changes - The changes made (for CREATE: new values, for UPDATE: diff, for DELETE/ARCHIVE: timestamp)
    * @param metadata - Optional metadata (IP address, user agent, etc.)

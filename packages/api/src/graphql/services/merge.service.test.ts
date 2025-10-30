@@ -20,6 +20,7 @@ describe('MergeService', () => {
     version: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
     },
   };
 
@@ -30,10 +31,12 @@ describe('MergeService', () => {
   const mockVersionService = {
     resolveVersion: jest.fn(),
     decompressVersion: jest.fn(),
+    createVersion: jest.fn(),
   };
 
   const mockAuditService = {
     createAuditLog: jest.fn(),
+    log: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -761,6 +764,474 @@ describe('MergeService', () => {
         source: sourceVersion,
         target: null,
       });
+    });
+  });
+
+  describe('cherryPickVersion', () => {
+    const sourceVersion = {
+      id: 'version-source',
+      entityType: 'settlement',
+      entityId: 'settlement-1',
+      branchId: 'branch-source',
+      validFrom: new Date('2025-01-02'),
+      validTo: null,
+      payloadCompressed: Buffer.from('compressed'),
+      payloadCompressionType: 'gzip',
+      comment: 'Source change',
+      createdBy: 'user-1',
+      createdAt: new Date('2025-01-02'),
+    };
+
+    const targetVersion = {
+      id: 'version-target',
+      entityType: 'settlement',
+      entityId: 'settlement-1',
+      branchId: 'branch-target',
+      validFrom: new Date('2025-01-01'),
+      validTo: null,
+      payloadCompressed: Buffer.from('compressed'),
+      payloadCompressionType: 'gzip',
+      comment: 'Target state',
+      createdBy: 'user-1',
+      createdAt: new Date('2025-01-01'),
+    };
+
+    const mockUser = {
+      id: 'user-1',
+      email: 'user@example.com',
+      username: 'testuser',
+      role: 'USER',
+    };
+
+    it('should throw NotFoundException if source version does not exist', async () => {
+      // Arrange
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(
+        service.cherryPickVersion('version-nonexistent', 'branch-target', mockUser as any)
+      ).rejects.toThrow('Version version-nonexistent not found');
+    });
+
+    it('should throw BadRequestException if target branch does not exist', async () => {
+      // Arrange
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(sourceVersion);
+      mockPrisma.branch.findUnique = jest.fn().mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(
+        service.cherryPickVersion('version-source', 'branch-nonexistent', mockUser as any)
+      ).rejects.toThrow('Target branch branch-nonexistent not found');
+    });
+
+    it('should create new version in target branch when no conflict exists', async () => {
+      // Arrange
+      const sourcePayload = { name: 'New Name', population: 1000 };
+      const targetBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-main',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-01'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(sourceVersion);
+      mockPrisma.branch.findUnique = jest.fn().mockResolvedValue(targetBranch);
+      mockVersionService.resolveVersion = jest.fn().mockResolvedValue(null); // No existing version in target
+      mockVersionService.decompressVersion = jest.fn().mockResolvedValue(sourcePayload);
+      mockVersionService.createVersion = jest.fn().mockResolvedValue({
+        ...sourceVersion,
+        id: 'version-new',
+        branchId: 'branch-target',
+      });
+      mockAuditService.log = jest.fn().mockResolvedValue(undefined);
+
+      // Act
+      const result = await service.cherryPickVersion(
+        'version-source',
+        'branch-target',
+        mockUser as any
+      );
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.hasConflict).toBe(false);
+      expect(result.versionCreated).toBeTruthy();
+      expect(mockVersionService.createVersion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: 'settlement',
+          entityId: 'settlement-1',
+          branchId: 'branch-target',
+          payload: sourcePayload,
+        }),
+        mockUser
+      );
+    });
+
+    it('should detect conflict when target branch has modified the same entity', async () => {
+      // Arrange
+      const sourcePayload = { name: 'Name from Source', population: 1000 };
+      const targetPayload = { name: 'Name from Target', population: 800 };
+      const targetBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-main',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-01'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(sourceVersion);
+      mockPrisma.branch.findUnique = jest.fn().mockResolvedValue(targetBranch);
+      mockVersionService.resolveVersion = jest.fn().mockResolvedValue(targetVersion);
+      mockVersionService.decompressVersion
+        .mockResolvedValueOnce(sourcePayload) // source
+        .mockResolvedValueOnce(targetPayload); // target
+
+      // Act
+      const result = await service.cherryPickVersion(
+        'version-source',
+        'branch-target',
+        mockUser as any
+      );
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.hasConflict).toBe(true);
+      expect(result.conflicts).toHaveLength(2); // name and population conflicts
+      expect(result.conflicts?.some((c) => c.path === 'name')).toBe(true);
+      expect(result.conflicts?.some((c) => c.path === 'population')).toBe(true);
+    });
+
+    it('should create version when manually resolving cherry-pick conflict', async () => {
+      // Arrange
+      const sourcePayload = { name: 'Name from Source', population: 1000 };
+      const targetPayload = { name: 'Name from Target', population: 800 };
+      const resolvedPayload = { name: 'Name from Source', population: 1000 }; // Choose source for both
+      const targetBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-main',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-01'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(sourceVersion);
+      mockPrisma.branch.findUnique = jest.fn().mockResolvedValue(targetBranch);
+      mockVersionService.resolveVersion = jest.fn().mockResolvedValue(targetVersion);
+      mockVersionService.decompressVersion
+        .mockResolvedValueOnce(sourcePayload) // source
+        .mockResolvedValueOnce(targetPayload); // target
+      mockVersionService.createVersion = jest.fn().mockResolvedValue({
+        ...sourceVersion,
+        id: 'version-new',
+        branchId: 'branch-target',
+      });
+      mockAuditService.log = jest.fn().mockResolvedValue(undefined);
+
+      const resolutions = [
+        {
+          entityType: 'settlement',
+          entityId: 'settlement-1',
+          path: 'name',
+          resolvedValue: JSON.stringify('Name from Source'),
+        },
+        {
+          entityType: 'settlement',
+          entityId: 'settlement-1',
+          path: 'population',
+          resolvedValue: JSON.stringify(1000),
+        },
+      ];
+
+      // Act
+      const result = await service.cherryPickVersion(
+        'version-source',
+        'branch-target',
+        mockUser as any,
+        resolutions
+      );
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.hasConflict).toBe(false);
+      expect(result.versionCreated).toBeTruthy();
+      expect(mockVersionService.createVersion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: resolvedPayload,
+        }),
+        mockUser
+      );
+    });
+
+    it('should return conflict information if conflicts exist but no resolutions provided', async () => {
+      // Arrange
+      const sourcePayload = { name: 'Name from Source', population: 1000 };
+      const targetPayload = { name: 'Name from Target', population: 800 };
+      const targetBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-main',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-01'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(sourceVersion);
+      mockPrisma.branch.findUnique = jest.fn().mockResolvedValue(targetBranch);
+      mockVersionService.resolveVersion = jest.fn().mockResolvedValue(targetVersion);
+      mockVersionService.decompressVersion
+        .mockResolvedValueOnce(sourcePayload)
+        .mockResolvedValueOnce(targetPayload);
+
+      // Act
+      const result = await service.cherryPickVersion(
+        'version-source',
+        'branch-target',
+        mockUser as any
+      );
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.hasConflict).toBe(true);
+      expect(result.conflicts).toHaveLength(2);
+      expect(result.conflicts?.some((c) => c.path === 'name')).toBe(true);
+      expect(result.conflicts?.some((c) => c.path === 'population')).toBe(true);
+    });
+
+    it('should handle cherry-picking entity that does not exist in target branch', async () => {
+      // Arrange
+      const sourcePayload = { name: 'New Settlement', population: 500 };
+      const targetBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-main',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-01'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(sourceVersion);
+      mockPrisma.branch.findUnique = jest.fn().mockResolvedValue(targetBranch);
+      mockVersionService.resolveVersion = jest.fn().mockResolvedValue(null); // No version in target
+      mockVersionService.decompressVersion = jest.fn().mockResolvedValue(sourcePayload);
+      mockVersionService.createVersion = jest.fn().mockResolvedValue({
+        ...sourceVersion,
+        id: 'version-new',
+        branchId: 'branch-target',
+      });
+      mockAuditService.log = jest.fn().mockResolvedValue(undefined);
+
+      // Act
+      const result = await service.cherryPickVersion(
+        'version-source',
+        'branch-target',
+        mockUser as any
+      );
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.hasConflict).toBe(false);
+      expect(mockVersionService.createVersion).toHaveBeenCalled();
+    });
+
+    it('should use the correct world time from source version for cherry-pick', async () => {
+      // Arrange
+      const sourcePayload = { name: 'Settlement', population: 1000 };
+      const targetBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-main',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-01'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(sourceVersion);
+      mockPrisma.branch.findUnique = jest.fn().mockResolvedValue(targetBranch);
+      mockVersionService.resolveVersion = jest.fn().mockResolvedValue(null);
+      mockVersionService.decompressVersion = jest.fn().mockResolvedValue(sourcePayload);
+      mockVersionService.createVersion = jest.fn().mockResolvedValue({
+        ...sourceVersion,
+        id: 'version-new',
+        branchId: 'branch-target',
+      });
+      mockAuditService.log = jest.fn().mockResolvedValue(undefined);
+
+      // Act
+      await service.cherryPickVersion('version-source', 'branch-target', mockUser as any);
+
+      // Assert
+      expect(mockVersionService.resolveVersion).toHaveBeenCalledWith(
+        'settlement',
+        'settlement-1',
+        'branch-target',
+        sourceVersion.validFrom
+      );
+    });
+
+    it('should create audit log entry for cherry-pick operation', async () => {
+      // Arrange
+      const sourcePayload = { name: 'Settlement', population: 1000 };
+      const targetBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-main',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-01'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(sourceVersion);
+      mockPrisma.branch.findUnique = jest.fn().mockResolvedValue(targetBranch);
+      mockVersionService.resolveVersion = jest.fn().mockResolvedValue(null);
+      mockVersionService.decompressVersion = jest.fn().mockResolvedValue(sourcePayload);
+      mockVersionService.createVersion = jest.fn().mockResolvedValue({
+        ...sourceVersion,
+        id: 'version-new',
+        branchId: 'branch-target',
+      });
+      mockAuditService.log = jest.fn().mockResolvedValue(undefined);
+
+      // Act
+      await service.cherryPickVersion('version-source', 'branch-target', mockUser as any);
+
+      // Assert
+      expect(mockAuditService.log).toHaveBeenCalledWith(
+        'version',
+        'settlement:settlement-1',
+        'CHERRY_PICK',
+        'user-1',
+        expect.objectContaining({
+          sourceVersionId: 'version-source',
+          targetBranchId: 'branch-target',
+        })
+      );
+    });
+
+    it('should handle cherry-picking with partial resolutions', async () => {
+      // Arrange
+      const sourcePayload = { name: 'Name from Source', population: 1000 };
+      const targetPayload = { name: 'Name from Target', population: 800 };
+      const targetBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-main',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-01'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(sourceVersion);
+      mockPrisma.branch.findUnique = jest.fn().mockResolvedValue(targetBranch);
+      mockVersionService.resolveVersion = jest.fn().mockResolvedValue(targetVersion);
+      mockVersionService.decompressVersion
+        .mockResolvedValueOnce(sourcePayload)
+        .mockResolvedValueOnce(targetPayload);
+
+      // Only resolve one of the two conflicts
+      const resolutions = [
+        {
+          entityType: 'settlement',
+          entityId: 'settlement-1',
+          path: 'name',
+          resolvedValue: JSON.stringify('Name from Source'),
+        },
+      ];
+
+      // Act & Assert
+      await expect(
+        service.cherryPickVersion('version-source', 'branch-target', mockUser as any, resolutions)
+      ).rejects.toThrow('not all conflicts have been resolved');
+    });
+
+    it('should handle cherry-picking nested property conflicts', async () => {
+      // Arrange
+      const sourcePayload = { name: 'Settlement', resources: { gold: 1000, food: 500 } };
+      const targetPayload = { name: 'Settlement', resources: { gold: 800, food: 500 } };
+      const targetBranch = {
+        id: 'branch-target',
+        campaignId: 'campaign-1',
+        parentId: 'branch-main',
+        name: 'Target Branch',
+        description: null,
+        divergedAt: new Date('2025-01-01'),
+        isPinned: false,
+        color: null,
+        tags: [],
+        createdAt: new Date('2025-01-01'),
+        updatedAt: new Date('2025-01-01'),
+        deletedAt: null,
+      };
+
+      mockPrisma.version.findUnique = jest.fn().mockResolvedValue(sourceVersion);
+      mockPrisma.branch.findUnique = jest.fn().mockResolvedValue(targetBranch);
+      mockVersionService.resolveVersion = jest.fn().mockResolvedValue(targetVersion);
+      mockVersionService.decompressVersion
+        .mockResolvedValueOnce(sourcePayload)
+        .mockResolvedValueOnce(targetPayload);
+
+      // Act
+      const result = await service.cherryPickVersion(
+        'version-source',
+        'branch-target',
+        mockUser as any
+      );
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.hasConflict).toBe(true);
+      expect(result.conflicts?.some((c) => c.path === 'resources.gold')).toBe(true);
     });
   });
 });

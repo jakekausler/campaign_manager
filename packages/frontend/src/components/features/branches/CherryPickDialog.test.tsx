@@ -121,8 +121,8 @@ describe('CherryPickDialog', () => {
                   targetValue: '1200',
                 },
               ],
-              versionId: null,
-              error: null,
+              versionId: undefined,
+              error: undefined,
             },
           },
           reset: mockReset,
@@ -291,9 +291,9 @@ describe('CherryPickDialog', () => {
             cherryPickVersion: {
               success: true,
               hasConflict: false,
-              conflicts: null,
+              conflicts: undefined,
               versionId: 'new-version-789',
-              error: null,
+              error: undefined,
             },
           },
           reset: mockReset,
@@ -316,9 +316,9 @@ describe('CherryPickDialog', () => {
             cherryPickVersion: {
               success: true,
               hasConflict: false,
-              conflicts: null,
+              conflicts: undefined,
               versionId: 'new-version-789',
-              error: null,
+              error: undefined,
             },
           });
         }
@@ -350,9 +350,9 @@ describe('CherryPickDialog', () => {
             cherryPickVersion: {
               success: true,
               hasConflict: false,
-              conflicts: null,
+              conflicts: undefined,
               versionId: 'new-version-789',
-              error: null,
+              error: undefined,
             },
           },
           reset: mockReset,
@@ -389,8 +389,8 @@ describe('CherryPickDialog', () => {
                   targetValue: '1200',
                 },
               ],
-              versionId: null,
-              error: null,
+              versionId: undefined,
+              error: undefined,
             },
           });
         }
@@ -436,8 +436,8 @@ describe('CherryPickDialog', () => {
                   targetValue: '1200',
                 },
               ],
-              versionId: null,
-              error: null,
+              versionId: undefined,
+              error: undefined,
             },
           });
         }
@@ -497,8 +497,8 @@ describe('CherryPickDialog', () => {
                   targetValue: '1200',
                 },
               ],
-              versionId: null,
-              error: null,
+              versionId: undefined,
+              error: undefined,
             },
           });
         }
@@ -588,8 +588,8 @@ describe('CherryPickDialog', () => {
             cherryPickVersion: {
               success: false,
               hasConflict: false,
-              conflicts: null,
-              versionId: null,
+              conflicts: undefined,
+              versionId: undefined,
               error: 'Permission denied',
             },
           });
@@ -627,9 +627,9 @@ describe('CherryPickDialog', () => {
             cherryPickVersion: {
               success: true,
               hasConflict: false,
-              conflicts: null,
+              conflicts: undefined,
               versionId: 'new-version-789',
-              error: null,
+              error: undefined,
             },
           },
           reset: mockReset,
@@ -719,8 +719,8 @@ describe('CherryPickDialog', () => {
                   targetValue: '1200',
                 },
               ],
-              versionId: null,
-              error: null,
+              versionId: undefined,
+              error: undefined,
             },
           });
         }
