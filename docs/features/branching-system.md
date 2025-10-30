@@ -635,18 +635,20 @@ Extends ConflictDetector with Structure-specific semantics:
 
 ```prisma
 model MergeHistory {
-  id                     String   @id @default(uuid())
-  sourceBranchId         String
-  sourceBranch           Branch   @relation("MergeHistorySource", fields: [sourceBranchId], references: [id])
-  targetBranchId         String
-  targetBranch           Branch   @relation("MergeHistoryTarget", fields: [targetBranchId], references: [id])
-  mergedAt               DateTime // World time when merge occurred
-  userId                 String
-  entitiesMergedCount    Int
-  conflictsResolvedCount Int
-  resolutionsData        Json     // Manual conflict resolutions applied
-  metadata               Json?    // Additional merge metadata
-  createdAt              DateTime @default(now())
+  id               String   @id @default(cuid())
+  sourceBranchId   String
+  sourceBranch     Branch   @relation("MergeSource", fields: [sourceBranchId], references: [id])
+  targetBranchId   String
+  targetBranch     Branch   @relation("MergeTarget", fields: [targetBranchId], references: [id])
+  commonAncestorId String   // Branch ID of common ancestor at time of merge
+  worldTime        DateTime // World time at which merge was performed
+  mergedBy         String
+  user             User     @relation(fields: [mergedBy], references: [id])
+  mergedAt         DateTime @default(now()) // System time when merge completed
+  conflictsCount   Int      // Number of conflicts that were manually resolved
+  entitiesMerged   Int      // Number of entities that had versions created
+  resolutionsData  Json     // Conflict resolutions applied (for audit trail)
+  metadata         Json     @default("{}") // Additional context (merge strategy, notes, etc.)
 
   @@index([sourceBranchId])
   @@index([targetBranchId])
@@ -714,15 +716,18 @@ type AutoResolvedChange {
 
 type MergeHistoryEntry {
   id: ID!
-  sourceBranch: BranchInfo!
-  targetBranch: BranchInfo!
-  mergedAt: DateTime!
-  userId: String!
-  entitiesMergedCount: Int!
-  conflictsResolvedCount: Int!
-  resolutionsData: JSON
-  metadata: JSON
-  createdAt: DateTime!
+  sourceBranchId: ID!
+  sourceBranch: Branch!
+  targetBranchId: ID!
+  targetBranch: Branch!
+  commonAncestorId: ID!
+  worldTime: Date!
+  mergedBy: ID!
+  mergedAt: Date!
+  conflictsCount: Int!
+  entitiesMerged: Int!
+  resolutionsData: JSON!
+  metadata: JSON!
 }
 ```
 
@@ -753,9 +758,9 @@ input ConflictResolution {
 
 type MergeResult {
   success: Boolean!
-  entitiesMerged: Int!
-  conflictsResolved: Int!
-  errors: [String!]
+  versionsCreated: Int!
+  mergedEntityIds: [String!]!
+  error: String
 }
 
 input CherryPickVersionInput {
@@ -1347,12 +1352,12 @@ Version resolution is optimized with:
 
 ## API Reference
 
-See [GraphQL Schema](../api/graphql-schema.md) for complete API documentation.
+The GraphQL schema is defined in TypeScript using decorators:
+
+- `packages/api/src/graphql/types/branch.type.ts` - Branch, merge, and history types
+- `packages/api/src/graphql/resolvers/branch.resolver.ts` - Branch queries and mutations
+- `packages/api/src/graphql/resolvers/merge.resolver.ts` - Merge queries and mutations
 
 ## Related Documentation
 
-- [Versioning System](./versioning-system.md) - Core version resolution algorithm
-- [Settlement Management](./settlement-management.md) - Settlement entity operations
-- [Structure Management](./structure-management.md) - Structure entity operations
-- [World Time System](./world-time-system.md) - Campaign time tracking
-- [Audit Logging](./audit-logging.md) - Change tracking and history
+- [World Time System](./world-time-system.md) - Campaign time tracking used for merge operations
