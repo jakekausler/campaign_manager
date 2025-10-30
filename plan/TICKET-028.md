@@ -134,6 +134,52 @@
   - Code Reviewer approved with zero critical issues
   - Follows established patterns from MergePreviewDialog and ForkBranchDialog
   - Ready for cherry-pick functionality in Stage 8
+- **2025-10-30**: Started Stage 8 - Cherry-Pick Functionality (backend service layer complete)
+  - Implemented `MergeService.cherryPickVersion()` method with complete validation and conflict detection
+  - Uses 2-way conflict detection (source vs target) with empty base `{}` for proper cherry-pick semantics
+  - Returns conflict information when conflicts detected (allows UI to preview before requiring resolution)
+  - Auto-applies version when no conflicts exist (seamless operation)
+  - Manual conflict resolution via optional `resolutions` parameter
+  - Creates audit trail with 'CHERRY_PICK' operation type for full traceability
+  - Added `CherryPickResult` interface with success/conflict status fields
+  - Added `CherryPickVersionInput` GraphQL input type with UUID validation
+  - Created 11 comprehensive unit tests covering all scenarios:
+    - Error handling (missing source version, missing target branch)
+    - No-conflict auto-apply scenario
+    - Conflict detection when target branch has modifications
+    - Manual conflict resolution with validation
+    - Partial resolution error handling
+    - Nested property conflict detection
+    - Correct world time usage for version resolution
+    - Audit log creation verification
+  - All 20 MergeService tests passing (9 existing merge tests + 11 new cherry-pick tests)
+  - TypeScript Tester subagent verified all tests passing and fixed conflict detection logic
+  - Backend service layer complete and ready for GraphQL/Frontend integration
+  - Created STAGE_8_PROGRESS.md documenting completed work and remaining tasks
+  - Remaining for Stage 8: GraphQL mutation with authorization, integration tests, frontend hooks and UI
+- **2025-10-30**: Completed Stage 8 Backend - Cherry-Pick GraphQL API (commit c2e9f22)
+  - Added `cherryPickVersion` GraphQL mutation to MergeResolver with full authorization
+  - Created `CherryPickResult` GraphQL type with success/conflict status fields
+  - Validates source version and target branch existence before execution
+  - Enforces same-campaign constraint (prevents cross-campaign cherry-pick)
+  - Requires GM/OWNER authorization via checkCanMerge() method
+  - Converts service `MergeConflict` to GraphQL types with JSON serialization
+  - Returns conflict information for UI to display before requiring resolution
+  - Auto-applies when no conflicts exist, returns conflicts when detected
+  - Delegates business logic to MergeService.cherryPickVersion() layer
+  - Created 7 comprehensive integration tests covering:
+    - Validation: non-existent source version, non-existent target branch, cross-campaign cherry-pick
+    - Authorization: user without campaign access (ForbiddenException)
+    - Success scenarios: no conflicts, conflict detection, conflict resolution
+  - All 21 integration tests passing (7 new cherry-pick + 14 existing merge/preview)
+  - Fixed bugs discovered during testing:
+    - Prisma model name: entityVersion → version (resolver:205)
+    - Conflict mapping: service MergeConflict lacks description/suggestion, resolver generates them (resolver:244-245)
+    - Cherry-pick semantics: fixed to compare against current target state not historical (service:768)
+    - Test cleanup: fixed foreign key constraint violations with proper deletion order
+  - Code Reviewer approved implementation with zero critical issues
+  - Updated STAGE_8_PROGRESS.md with GraphQL API layer completion
+  - Remaining for Stage 8: Frontend hooks (useCherryPickVersion), UI components (Cherry-Pick button, CherryPickDialog), UI tests
 
 ## Description
 
