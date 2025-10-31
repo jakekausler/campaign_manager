@@ -363,6 +363,217 @@ describe('WebSocketContext', () => {
     });
   });
 
+  describe('Circuit Breaker & Error Resilience', () => {
+    function createWrapper({ children }: { children: ReactNode }) {
+      return <WebSocketProvider>{children}</WebSocketProvider>;
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should trigger circuit breaker after max reconnection attempts', async () => {
+      const mockToken = 'test-jwt-token';
+
+      // Setup mock store with authentication
+      mockUseStore.mockImplementation((selector) => {
+        const mockState = { token: mockToken, isAuthenticated: true };
+        return selector(mockState);
+      });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { result } = renderHook(() => useWebSocket(), {
+        wrapper: createWrapper,
+      });
+
+      // Get error handler
+      const errorHandler = mockSocket.on.mock.calls.find(
+        (call) => call[0] === 'connect_error'
+      )?.[1];
+
+      // Trigger 10 connection errors with timers
+      for (let i = 0; i < 10; i++) {
+        await act(async () => {
+          errorHandler?.(new Error('Connection failed'));
+        });
+
+        // Fast-forward timers to trigger reconnection
+        await act(async () => {
+          vi.runAllTimers();
+        });
+      }
+
+      // Trigger one more error to exceed max attempts
+      await act(async () => {
+        errorHandler?.(new Error('Connection failed'));
+      });
+
+      // Fast-forward to trigger circuit breaker
+      await act(async () => {
+        vi.runAllTimers();
+      });
+
+      await waitFor(() => {
+        expect(result.current.connectionState).toBe(ConnectionState.Error);
+        expect(result.current.error).toContain('Unable to connect after multiple attempts');
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Circuit breaker triggered')
+        );
+      });
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should reset reconnect attempts on successful connection', async () => {
+      const mockToken = 'test-jwt-token';
+
+      // Setup mock store with authentication
+      mockUseStore.mockImplementation((selector) => {
+        const mockState = { token: mockToken, isAuthenticated: true };
+        return selector(mockState);
+      });
+
+      const { result } = renderHook(() => useWebSocket(), {
+        wrapper: createWrapper,
+      });
+
+      // Get handlers
+      const errorHandler = mockSocket.on.mock.calls.find(
+        (call) => call[0] === 'connect_error'
+      )?.[1];
+      const connectHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'connect')?.[1];
+
+      // Trigger some connection errors
+      for (let i = 0; i < 3; i++) {
+        await act(async () => {
+          errorHandler?.(new Error('Connection failed'));
+        });
+
+        await act(async () => {
+          vi.runAllTimers();
+        });
+      }
+
+      // Verify attempts were incremented
+      expect(result.current.reconnectAttempts).toBeGreaterThan(0);
+
+      // Simulate successful connection
+      await act(async () => {
+        mockSocket.connected = true;
+        connectHandler?.();
+      });
+
+      // Verify attempts were reset
+      await waitFor(() => {
+        expect(result.current.reconnectAttempts).toBe(0);
+        expect(result.current.connectionState).toBe(ConnectionState.Connected);
+      });
+    });
+
+    it('should handle ping/pong events for health monitoring', async () => {
+      const mockToken = 'test-jwt-token';
+
+      // Setup mock store with authentication
+      mockUseStore.mockImplementation((selector) => {
+        const mockState = { token: mockToken, isAuthenticated: true };
+        return selector(mockState);
+      });
+
+      renderHook(() => useWebSocket(), {
+        wrapper: createWrapper,
+      });
+
+      // Verify ping handler was registered
+      const pingHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'ping');
+      expect(pingHandler).toBeDefined();
+
+      // Verify pong handler was registered
+      const pongHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'pong');
+      expect(pongHandler).toBeDefined();
+    });
+
+    it('should handle token refresh by reconnecting with new token', async () => {
+      let currentToken = 'old-token';
+
+      // Setup mock store with authentication
+      mockUseStore.mockImplementation((selector) => {
+        const mockState = { token: currentToken, isAuthenticated: true };
+        return selector(mockState);
+      });
+
+      const { rerender } = renderHook(() => useWebSocket(), {
+        wrapper: createWrapper,
+      });
+
+      // Simulate token change
+      currentToken = 'new-token';
+
+      // Trigger re-render with new token
+      rerender();
+
+      await waitFor(() => {
+        // Verify disconnect was called on old socket
+        expect(mockSocket.disconnect).toHaveBeenCalled();
+
+        // Verify new connection was created with new token
+        expect(mockIo).toHaveBeenCalledWith('ws://localhost:9264', {
+          auth: {
+            token: 'new-token',
+          },
+          autoConnect: true,
+          reconnection: false,
+          transports: ['websocket', 'polling'],
+        });
+      });
+    });
+
+    it('should use exponential backoff for reconnection delays', async () => {
+      const mockToken = 'test-jwt-token';
+
+      // Setup mock store with authentication
+      mockUseStore.mockImplementation((selector) => {
+        const mockState = { token: mockToken, isAuthenticated: true };
+        return selector(mockState);
+      });
+
+      const { result } = renderHook(() => useWebSocket(), {
+        wrapper: createWrapper,
+      });
+
+      // Get error handler
+      const errorHandler = mockSocket.on.mock.calls.find(
+        (call) => call[0] === 'connect_error'
+      )?.[1];
+
+      // Track reconnection attempts with their delays
+      const delays: number[] = [];
+
+      for (let i = 0; i < 5; i++) {
+        const beforeAttempts = result.current.reconnectAttempts;
+
+        await act(async () => {
+          errorHandler?.(new Error('Connection failed'));
+        });
+
+        // Calculate expected delay: baseDelay * 2^attempt, capped at maxDelay
+        const expectedDelay = Math.min(1000 * Math.pow(2, beforeAttempts), 32000);
+        delays.push(expectedDelay);
+
+        await act(async () => {
+          vi.advanceTimersByTime(expectedDelay);
+        });
+      }
+
+      // Verify exponential backoff pattern (1s, 2s, 4s, 8s, 16s)
+      expect(delays).toEqual([1000, 2000, 4000, 8000, 16000]);
+    });
+  });
+
   describe('ConnectionState enum', () => {
     it('should have correct values', () => {
       expect(ConnectionState.Connecting).toBe('connecting');

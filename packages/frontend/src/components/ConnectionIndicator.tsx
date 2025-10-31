@@ -93,6 +93,13 @@ export function ConnectionIndicator() {
    * Get additional status details
    */
   const getStatusDetails = () => {
+    // Check if circuit breaker triggered (error with message about max attempts)
+    if (
+      connectionState === ConnectionState.Error &&
+      error?.includes('Unable to connect after multiple attempts')
+    ) {
+      return '(Max retries reached)';
+    }
     if (connectionState === ConnectionState.Error && reconnectAttempts > 0) {
       return `(Reconnect attempt ${reconnectAttempts})`;
     }

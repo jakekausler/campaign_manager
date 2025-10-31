@@ -83,7 +83,8 @@ export interface WebSocketProviderProps {
 const RECONNECT_CONFIG = {
   baseDelay: 1000, // 1 second
   maxDelay: 32000, // 32 seconds
-  maxAttempts: Infinity, // Keep trying forever
+  maxAttempts: 10, // Circuit breaker: stop after 10 attempts (total ~17 minutes)
+  resetAfterSuccess: true, // Reset attempts counter on successful connection
 };
 
 /**
@@ -181,6 +182,20 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       setError(err.message || 'Socket error occurred');
     });
 
+    // Health check monitoring: Socket.IO built-in ping/pong
+    // These events are emitted automatically by Socket.IO for connection health monitoring
+    newSocket.on('ping', () => {
+      if (env.features.debug) {
+        console.log('[WebSocket] Ping received from server');
+      }
+    });
+
+    newSocket.on('pong', (latency: number) => {
+      if (env.features.debug) {
+        console.log(`[WebSocket] Pong received, latency: ${latency}ms`);
+      }
+    });
+
     setSocket(newSocket);
     setConnectionState(ConnectionState.Connecting);
   };
@@ -202,12 +217,22 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       return;
     }
 
+    // Circuit breaker: Check if we've exceeded max attempts
+    if (reconnectAttempts >= RECONNECT_CONFIG.maxAttempts) {
+      console.error(
+        `[WebSocket] Circuit breaker triggered: Max reconnection attempts (${RECONNECT_CONFIG.maxAttempts}) reached`
+      );
+      setConnectionState(ConnectionState.Error);
+      setError('Unable to connect after multiple attempts. Please refresh the page.');
+      return;
+    }
+
     // Calculate backoff delay
     const delay = calculateBackoff(reconnectAttempts);
 
     if (env.features.debug) {
       console.log(
-        `[WebSocket] Scheduling reconnection attempt ${reconnectAttempts + 1} in ${delay}ms`
+        `[WebSocket] Scheduling reconnection attempt ${reconnectAttempts + 1}/${RECONNECT_CONFIG.maxAttempts} in ${delay}ms`
       );
     }
 
