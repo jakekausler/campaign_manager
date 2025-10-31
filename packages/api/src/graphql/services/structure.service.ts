@@ -16,8 +16,11 @@ import {
 import type { Structure as PrismaStructure, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
+import { createStructureUpdatedEvent } from '@campaign/shared';
+
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
+import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
 import type { CreateStructureInput, UpdateStructureData } from '../inputs/structure.input';
@@ -43,7 +46,8 @@ export class StructureService {
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub,
     private readonly conditionEvaluation: ConditionEvaluationService,
     private readonly rulesEngineClient: RulesEngineClientService,
-    private readonly dependencyGraph: DependencyGraphService
+    private readonly dependencyGraph: DependencyGraphService,
+    private readonly websocketPublisher: WebSocketPublisherService
   ) {}
 
   /**
@@ -283,6 +287,13 @@ export class StructureService {
           },
         },
       },
+      include: {
+        kingdom: {
+          include: {
+            campaign: true,
+          },
+        },
+      },
     });
 
     if (!settlement) {
@@ -309,6 +320,21 @@ export class StructureService {
       type: structure.type,
       level: structure.level,
     });
+
+    // Publish WebSocket event for real-time updates
+    this.websocketPublisher.publishStructureUpdated(
+      createStructureUpdatedEvent(
+        structure.id,
+        input.settlementId,
+        settlement.kingdom.campaign.id,
+        'create',
+        {
+          changedFields: ['name', 'settlementId', 'type', 'level'],
+          userId: user.id,
+          source: 'api',
+        }
+      )
+    );
 
     return structure;
   }
@@ -395,13 +421,27 @@ export class StructureService {
     const updateData: Prisma.StructureUpdateInput = {
       version: structure.version + 1,
     };
-    if (input.name !== undefined) updateData.name = input.name;
-    if (input.type !== undefined) updateData.type = input.type;
-    if (input.level !== undefined) updateData.level = input.level;
-    if (input.variables !== undefined)
+    const changedFields: string[] = [];
+    if (input.name !== undefined) {
+      updateData.name = input.name;
+      changedFields.push('name');
+    }
+    if (input.type !== undefined) {
+      updateData.type = input.type;
+      changedFields.push('type');
+    }
+    if (input.level !== undefined) {
+      updateData.level = input.level;
+      changedFields.push('level');
+    }
+    if (input.variables !== undefined) {
       updateData.variables = input.variables as Prisma.InputJsonValue;
-    if (input.variableSchemas !== undefined)
+      changedFields.push('variables');
+    }
+    if (input.variableSchemas !== undefined) {
       updateData.variableSchemas = input.variableSchemas as Prisma.InputJsonValue;
+      changedFields.push('variableSchemas');
+    }
 
     // Create new version payload (all fields)
     const newPayload: Record<string, unknown> = {
@@ -462,6 +502,21 @@ export class StructureService {
       this.logger.error(`Failed to invalidate dependency graph for structure ${id}:`, error);
     }
 
+    // Publish WebSocket event for real-time updates
+    this.websocketPublisher.publishStructureUpdated(
+      createStructureUpdatedEvent(
+        id,
+        structureWithRelations!.settlementId,
+        structureWithRelations!.settlement.kingdom.campaignId,
+        'update',
+        {
+          changedFields,
+          userId: user.id,
+          source: 'api',
+        }
+      )
+    );
+
     return updated;
   }
 
@@ -476,6 +531,12 @@ export class StructureService {
     if (!structure) {
       throw new NotFoundException(`Structure with ID ${id} not found`);
     }
+
+    // Get structure with settlement and kingdom to access campaignId
+    const structureWithRelations = await this.prisma.structure.findUnique({
+      where: { id },
+      include: { settlement: { include: { kingdom: true } } },
+    });
 
     // Verify user has delete permissions
     const hasPermission = await this.prisma.structure.findFirst({
@@ -516,6 +577,21 @@ export class StructureService {
 
     // Create audit entry
     await this.audit.log('structure', id, 'DELETE', user.id, { deletedAt });
+
+    // Publish WebSocket event for real-time updates
+    this.websocketPublisher.publishStructureUpdated(
+      createStructureUpdatedEvent(
+        id,
+        structureWithRelations!.settlementId,
+        structureWithRelations!.settlement.kingdom.campaignId,
+        'delete',
+        {
+          changedFields: ['deletedAt'],
+          userId: user.id,
+          source: 'api',
+        }
+      )
+    );
 
     return deleted;
   }

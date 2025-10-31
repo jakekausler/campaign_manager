@@ -14,7 +14,10 @@ import {
 import type { Campaign as PrismaCampaign, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
+import { createEntityUpdatedEvent } from '@campaign/shared';
+
 import { PrismaService } from '../../database/prisma.service';
+import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
 import type { CreateCampaignInput, UpdateCampaignData } from '../inputs/campaign.input';
@@ -29,7 +32,8 @@ export class CampaignService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
-    @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
+    @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub,
+    private readonly websocketPublisher: WebSocketPublisherService
   ) {}
 
   /**
@@ -150,6 +154,15 @@ export class CampaignService {
       isActive: campaign.isActive,
     });
 
+    // Publish WebSocket event for real-time updates
+    this.websocketPublisher.publishEntityUpdated(
+      createEntityUpdatedEvent('campaign', campaign.id, campaign.id, {
+        changedFields: ['name', 'worldId', 'settings', 'isActive'],
+        userId: user.id,
+        source: 'api',
+      })
+    );
+
     return campaign;
   }
 
@@ -201,9 +214,19 @@ export class CampaignService {
     const updateData: Prisma.CampaignUpdateInput = {
       version: campaign.version + 1,
     };
-    if (input.name !== undefined) updateData.name = input.name;
-    if (input.settings !== undefined) updateData.settings = input.settings as Prisma.InputJsonValue;
-    if (input.isActive !== undefined) updateData.isActive = input.isActive;
+    const changedFields: string[] = [];
+    if (input.name !== undefined) {
+      updateData.name = input.name;
+      changedFields.push('name');
+    }
+    if (input.settings !== undefined) {
+      updateData.settings = input.settings as Prisma.InputJsonValue;
+      changedFields.push('settings');
+    }
+    if (input.isActive !== undefined) {
+      updateData.isActive = input.isActive;
+      changedFields.push('isActive');
+    }
 
     // Create new version payload (all fields)
     const newPayload: Record<string, unknown> = {
@@ -248,6 +271,15 @@ export class CampaignService {
       },
     });
 
+    // Publish WebSocket event for real-time updates
+    this.websocketPublisher.publishEntityUpdated(
+      createEntityUpdatedEvent('campaign', id, id, {
+        changedFields,
+        userId: user.id,
+        source: 'api',
+      })
+    );
+
     return updated;
   }
 
@@ -282,6 +314,15 @@ export class CampaignService {
 
     // Create audit entry
     await this.audit.log('campaign', id, 'DELETE', user.id, { deletedAt });
+
+    // Publish WebSocket event for real-time updates
+    this.websocketPublisher.publishEntityUpdated(
+      createEntityUpdatedEvent('campaign', id, id, {
+        changedFields: ['deletedAt'],
+        userId: user.id,
+        source: 'api',
+      })
+    );
 
     return deleted;
   }

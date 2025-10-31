@@ -6,7 +6,10 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
+import { createWorldTimeChangedEvent } from '@campaign/shared';
+
 import { PrismaService } from '../../database/prisma.service';
+import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions/optimistic-lock.exception';
 import type { WorldTimeResult } from '../types/world-time.type';
@@ -17,7 +20,8 @@ import { CampaignContextService } from './campaign-context.service';
 export class WorldTimeService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly campaignContext: CampaignContextService
+    private readonly campaignContext: CampaignContextService,
+    private readonly websocketPublisher: WebSocketPublisherService
   ) {}
 
   /**
@@ -124,6 +128,24 @@ export class WorldTimeService {
     const message = previousWorldTime
       ? `World time advanced from ${previousWorldTime.toISOString()} to ${to.toISOString()}`
       : `World time set to ${to.toISOString()}`;
+
+    // Calculate elapsed time
+    const elapsedMs = previousWorldTime ? to.getTime() - previousWorldTime.getTime() : 0;
+    const elapsedSeconds = Math.floor(elapsedMs / 1000);
+
+    // Publish WebSocket event for real-time updates
+    this.websocketPublisher.publishWorldTimeChanged(
+      createWorldTimeChangedEvent(
+        campaignId,
+        previousWorldTime?.toISOString() ?? to.toISOString(),
+        to.toISOString(),
+        {
+          elapsed: elapsedSeconds > 0 ? { value: elapsedSeconds, unit: 'seconds' } : undefined,
+          userId,
+          source: 'api',
+        }
+      )
+    );
 
     return {
       campaignId,

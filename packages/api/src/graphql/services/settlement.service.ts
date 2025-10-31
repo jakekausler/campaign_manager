@@ -16,8 +16,11 @@ import {
 import type { Settlement as PrismaSettlement, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
+import { createSettlementUpdatedEvent } from '@campaign/shared';
+
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
+import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
 import type { CreateSettlementInput, UpdateSettlementData } from '../inputs/settlement.input';
@@ -43,7 +46,8 @@ export class SettlementService {
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub,
     private readonly conditionEvaluation: ConditionEvaluationService,
     private readonly rulesEngineClient: RulesEngineClientService,
-    private readonly dependencyGraph: DependencyGraphService
+    private readonly dependencyGraph: DependencyGraphService,
+    private readonly websocketPublisher: WebSocketPublisherService
   ) {}
 
   /**
@@ -304,6 +308,15 @@ export class SettlementService {
       level: settlement.level,
     });
 
+    // Publish WebSocket event for real-time updates
+    this.websocketPublisher.publishSettlementUpdated(
+      createSettlementUpdatedEvent(settlement.id, kingdom.campaign.id, 'create', {
+        changedFields: ['name', 'kingdomId', 'locationId', 'level'],
+        userId: user.id,
+        source: 'api',
+      })
+    );
+
     return settlement;
   }
 
@@ -387,12 +400,23 @@ export class SettlementService {
     const updateData: Prisma.SettlementUpdateInput = {
       version: settlement.version + 1,
     };
-    if (input.name !== undefined) updateData.name = input.name;
-    if (input.level !== undefined) updateData.level = input.level;
-    if (input.variables !== undefined)
+    const changedFields: string[] = [];
+    if (input.name !== undefined) {
+      updateData.name = input.name;
+      changedFields.push('name');
+    }
+    if (input.level !== undefined) {
+      updateData.level = input.level;
+      changedFields.push('level');
+    }
+    if (input.variables !== undefined) {
       updateData.variables = input.variables as Prisma.InputJsonValue;
-    if (input.variableSchemas !== undefined)
+      changedFields.push('variables');
+    }
+    if (input.variableSchemas !== undefined) {
       updateData.variableSchemas = input.variableSchemas as Prisma.InputJsonValue;
+      changedFields.push('variableSchemas');
+    }
 
     // Create new version payload (all fields)
     const newPayload: Record<string, unknown> = {
@@ -450,6 +474,15 @@ export class SettlementService {
       this.logger.error(`Failed to invalidate dependency graph for settlement ${id}:`, error);
     }
 
+    // Publish WebSocket event for real-time updates
+    this.websocketPublisher.publishSettlementUpdated(
+      createSettlementUpdatedEvent(id, settlementWithKingdom!.kingdom.campaignId, 'update', {
+        changedFields,
+        userId: user.id,
+        source: 'api',
+      })
+    );
+
     return updated;
   }
 
@@ -464,6 +497,12 @@ export class SettlementService {
     if (!settlement) {
       throw new NotFoundException(`Settlement with ID ${id} not found`);
     }
+
+    // Get settlement with kingdom to access campaignId
+    const settlementWithKingdom = await this.prisma.settlement.findUnique({
+      where: { id },
+      include: { kingdom: true },
+    });
 
     // Verify user has delete permissions
     const hasPermission = await this.prisma.settlement.findFirst({
@@ -509,6 +548,15 @@ export class SettlementService {
 
     // Create audit entry
     await this.audit.log('settlement', id, 'DELETE', user.id, { deletedAt });
+
+    // Publish WebSocket event for real-time updates
+    this.websocketPublisher.publishSettlementUpdated(
+      createSettlementUpdatedEvent(id, settlementWithKingdom!.kingdom.campaignId, 'delete', {
+        changedFields: ['deletedAt'],
+        userId: user.id,
+        source: 'api',
+      })
+    );
 
     return deleted;
   }
