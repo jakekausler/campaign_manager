@@ -665,6 +665,7 @@ Complete feature documentation available in `docs/features/` and `docs/developme
 - **Scheduler Service** - Time-based operations and periodic events microservice → [docs/features/scheduler-service.md](docs/features/scheduler-service.md)
 - **Effect System** - World state mutation via JSON Patch operations → [docs/features/effect-system.md](docs/features/effect-system.md)
 - **Branching System** - Alternate timeline branches for "what-if" scenarios with fork, 3-way merge, conflict resolution, cherry-pick, and merge history → [docs/features/branching-system.md](docs/features/branching-system.md)
+- **Real-time Updates** - WebSocket/Redis integration for pushing state changes and cache invalidations to connected clients → [docs/features/realtime-updates.md](docs/features/realtime-updates.md)
 
 ---
 
