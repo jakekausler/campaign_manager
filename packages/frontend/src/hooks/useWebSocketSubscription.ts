@@ -108,6 +108,10 @@ export function useWebSocketSubscription<TEvent extends WebSocketEvent = WebSock
 
     const message = subscribeMessageRef.current;
 
+    // Set subscribed flag BEFORE emitting to prevent race condition
+    // where subscribe() is called twice before the first callback executes
+    isSubscribedRef.current = true;
+
     if (env.features.debug) {
       console.log(`[WebSocket] Subscribing to ${message.type}`, message);
     }
@@ -115,11 +119,12 @@ export function useWebSocketSubscription<TEvent extends WebSocketEvent = WebSock
     // Emit subscription message and wait for response
     socket.emit(message.type, message, (response: SubscriptionResponse) => {
       if (response.success) {
-        isSubscribedRef.current = true;
         if (env.features.debug) {
           console.log(`[WebSocket] Subscribed successfully to ${message.type}`);
         }
       } else {
+        // Reset flag on failure so subscription can be retried
+        isSubscribedRef.current = false;
         console.error(`[WebSocket] Subscription failed:`, response.error);
       }
     });
@@ -186,6 +191,7 @@ export function useWebSocketSubscription<TEvent extends WebSocketEvent = WebSock
     }
 
     // Only subscribe when connected (initial connection or reconnection)
+    // AND when we have a subscribe message (to avoid subscribing for event-only subscriptions)
     if (socket && enabled && subscribeMessageRef.current && !isSubscribedRef.current) {
       if (env.features.debug) {
         console.log(`[WebSocket] Subscribing after connection`);
