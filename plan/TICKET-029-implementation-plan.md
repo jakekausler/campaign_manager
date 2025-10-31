@@ -199,50 +199,56 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
 
 **Goal**: Define event types and create publishing infrastructure
 
+**Status**: ✅ COMPLETED (Commit: 9a59f4c)
+
 **Tasks**:
 
-- [ ] Create shared event type definitions in `@campaign/shared`
+- [x] Create shared event type definitions in `@campaign/shared`
   - `EntityUpdatedEvent` - for generic entity updates
   - `StateInvalidatedEvent` - for cache invalidation
   - `WorldTimeChangedEvent` - for world time updates
   - `SettlementUpdatedEvent` - for settlement changes
   - `StructureUpdatedEvent` - for structure changes
-- [ ] Add TypeScript types/interfaces for each event
+- [x] Add TypeScript types/interfaces for each event
   - Include event name, payload schema, and metadata
   - Use discriminated unions for type safety
-- [ ] Create WebSocket event publisher service
-  - `WebSocketPublisher` class
+- [x] Create WebSocket event publisher service
+  - `WebSocketPublisherService` class
   - Methods for each event type
   - Handle room targeting logic
   - Handle broadcast vs. targeted messages
-- [ ] Integrate publisher with Redis pub/sub
-  - Publish events to Redis channels
-  - Ensure events are received by all API instances
-- [ ] Add event publishing to relevant services
+- [x] Integrate publisher with Redis pub/sub
+  - Publish events to Redis channels via Socket.IO server
+  - Ensure events are received by all API instances via Redis adapter
+- [ ] Add event publishing to relevant services (**DEFERRED TO STAGE 4+**)
   - Campaign service → emit entity_updated on campaign changes
   - Settlement service → emit settlement_updated
   - Structure service → emit structure_updated
   - World time service → emit world_time_changed
   - Rules engine integration → emit state_invalidated
-- [ ] Write tests for event publishing
+- [x] Write tests for event publishing
   - Test each event type is published correctly
   - Test room targeting works
   - Test Redis pub/sub propagation
   - Mock Socket.IO to verify emission
+- [x] Run type-check and lint
+- [x] Code review
+- [x] Commit changes
 
 **Success Criteria**:
 
-- [ ] All event types are defined with TypeScript types
-- [ ] WebSocketPublisher service is created and injectable
-- [ ] Events are published to correct rooms
-- [ ] Events propagate across multiple API instances via Redis
-- [ ] Tests pass
+- [x] All event types are defined with TypeScript types
+- [x] WebSocketPublisherService created and injectable
+- [x] Events are published to correct rooms
+- [x] Events propagate across multiple API instances via Redis
+- [x] Tests pass (63/63 WebSocket tests passing)
 
 **Notes**:
 
 - Consider event versioning for future compatibility
 - Include timestamps and metadata in all events
 - Ensure event payloads don't expose sensitive data
+- Integration with domain services (Campaign, Settlement, etc.) deferred to later stages
 
 ---
 

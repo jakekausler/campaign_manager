@@ -2,10 +2,85 @@
 
 ## Status
 
-- [ ] Completed (Stage 2 of 8 - COMPLETE)
+- [ ] Completed (Stage 3 of 8 - COMPLETE)
 - **Commits**:
   - cdc825c - feat(api): implement WebSocket infrastructure with Redis adapter (Stage 1)
   - 699fcd6 - test(api): add comprehensive tests for WebSocket subscription system (Stage 2)
+  - 9a59f4c - feat(api,shared): add WebSocket event publisher with type-safe event system (Stage 3)
+
+## Stage 3 Implementation Notes
+
+### What Was Implemented
+
+**Files Created:**
+
+- `packages/shared/src/types/websocket-events.ts` - Comprehensive event type definitions
+- `packages/api/src/websocket/websocket-publisher.service.ts` - Event publisher service
+
+**Files Modified:**
+
+- `packages/shared/src/types/index.ts` - Export WebSocket event types
+- `packages/api/src/websocket/websocket.module.ts` - Register and export publisher service
+- `packages/api/src/websocket/websocket.gateway.ts` - Inject and initialize publisher service
+
+**Key Features:**
+
+1. **Event Type Definitions** (5 event types with discriminated unions):
+   - `EntityUpdatedEvent` - Generic entity updates (campaign, settlement, structure, etc.)
+   - `StateInvalidatedEvent` - Cache invalidation triggers for rules engine
+   - `WorldTimeChangedEvent` - World time progression events
+   - `SettlementUpdatedEvent` - Settlement-specific updates (create/update/delete)
+   - `StructureUpdatedEvent` - Structure-specific updates (create/update/delete)
+   - All events include timestamps, metadata (userId, source, correlationId), and type-safe payloads
+   - Helper functions for creating each event type
+   - Type guard for validating WebSocket events
+
+2. **WebSocket Publisher Service**:
+   - Injectable service for publishing events to Socket.IO rooms
+   - Automatic room targeting based on event type:
+     - Entity updates → campaign room + specific entity room (settlement/structure)
+     - State invalidation → campaign room
+     - World time changes → campaign room
+     - Settlement updates → campaign + settlement rooms
+     - Structure updates → campaign + settlement + structure rooms
+   - Type-safe event dispatch using discriminated unions
+   - Comprehensive error handling and logging
+   - Redis pub/sub integration via Socket.IO adapter (events automatically propagate to all API instances)
+
+3. **Integration with WebSocket Gateway**:
+   - Publisher service registered in WebSocketModule providers and exports
+   - Injected into WebSocketGatewayClass constructor
+   - Initialized with Socket.IO server instance in `afterInit()` lifecycle hook
+   - Ready for use by domain services (Campaign, Settlement, Structure, etc.)
+
+### Tests Status
+
+**✅ All tests implemented and passing (63/63 total WebSocket tests)**:
+
+- ✅ Publisher service tests (32 tests) - All event types, room targeting, error handling
+- ✅ Gateway tests from Stage 2 (31 tests) - Connection auth, subscriptions, unsubscriptions
+
+### Stage 3 Complete
+
+All tasks completed:
+
+- ✅ Comprehensive event type definitions with discriminated unions
+- ✅ WebSocketPublisherService with automatic room targeting
+- ✅ Integration with Socket.IO Redis adapter for multi-instance support
+- ✅ Comprehensive test suite (32 tests passing)
+- ✅ Type-check passing (no errors)
+- ✅ Lint passing (no new warnings)
+- ✅ Code review completed
+- ✅ Changes committed (9a59f4c)
+
+### Deferred to Later Stages
+
+- Integration with domain services (will be added in Stage 4+ as needed)
+- Frontend client implementation (Stage 4)
+- Frontend subscription hooks (Stage 5)
+- Cache invalidation integration (Stage 6)
+
+---
 
 ## Stage 2 Implementation Notes
 
