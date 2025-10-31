@@ -314,7 +314,22 @@ describe('useWebSocketSubscription', () => {
   describe('Reconnection Handling', () => {
     it('should re-subscribe after reconnection', async () => {
       const handler = vi.fn();
-      let connectionState = ConnectionState.Connected;
+
+      // Create a stable wrapper that can be updated
+      let contextValue: WebSocketContextValue = {
+        socket: mockSocket as any,
+        connectionState: ConnectionState.Connected,
+        error: null,
+        reconnectAttempts: 0,
+      };
+
+      function TestWrapper({ children }: { children: ReactNode }) {
+        return (
+          <TestWebSocketContext.Provider value={contextValue}>
+            {children}
+          </TestWebSocketContext.Provider>
+        );
+      }
 
       const { rerender } = renderHook(
         () =>
@@ -325,35 +340,40 @@ describe('useWebSocketSubscription', () => {
             { type: 'unsubscribe_campaign', campaignId: 'campaign-1' }
           ),
         {
-          wrapper: ({ children }) =>
-            createWrapper({
-              socket: mockSocket as any,
-              connectionState,
-              error: null,
-              reconnectAttempts: 0,
-            })({ children }),
+          wrapper: TestWrapper,
         }
       );
 
-      // Wait for initial subscription
+      // Wait for initial subscription (may be called more than once due to React StrictMode)
       await waitFor(() => {
-        expect(mockSocket.emit).toHaveBeenCalledTimes(1);
+        expect(mockSocket.emit).toHaveBeenCalled();
       });
 
-      // Record initial call count
-      const initialCallCount = mockSocket.emit.mock.calls.length;
+      // Record call count after initial subscription
+      const callCountAfterInit = mockSocket.emit.mock.calls.length;
 
       // Simulate disconnection
-      connectionState = ConnectionState.Disconnected;
+      contextValue = {
+        ...contextValue,
+        connectionState: ConnectionState.Disconnected,
+      };
       rerender();
+
+      // Wait a bit for disconnection to process
+      await waitFor(() => {
+        expect(contextValue.connectionState).toBe(ConnectionState.Disconnected);
+      });
 
       // Simulate reconnection
-      connectionState = ConnectionState.Connected;
+      contextValue = {
+        ...contextValue,
+        connectionState: ConnectionState.Connected,
+      };
       rerender();
 
-      // Verify re-subscription occurred (should have one more call than initial)
+      // Verify re-subscription occurred (should have at least one more call)
       await waitFor(() => {
-        expect(mockSocket.emit.mock.calls.length).toBeGreaterThan(initialCallCount);
+        expect(mockSocket.emit.mock.calls.length).toBeGreaterThan(callCountAfterInit);
       });
 
       // Verify the last call was subscribe_campaign

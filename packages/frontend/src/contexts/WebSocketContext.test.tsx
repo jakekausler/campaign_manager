@@ -11,6 +11,7 @@
 
 import { render, renderHook, waitFor, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { io } from 'socket.io-client';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import type { AuthSlice } from '@/stores/auth-slice';
@@ -22,21 +23,9 @@ import {
   ConnectionState,
 } from './WebSocketContext';
 
-// Mock socket.io-client
-const mockSocket = {
-  id: 'mock-socket-id',
-  connected: false,
-  on: vi.fn(),
-  off: vi.fn(),
-  emit: vi.fn(),
-  disconnect: vi.fn(),
-  removeAllListeners: vi.fn(),
-};
-
-const mockIo = vi.fn(() => mockSocket);
-
+// Mock socket.io-client - must not reference external variables due to hoisting
 vi.mock('socket.io-client', () => ({
-  io: mockIo,
+  io: vi.fn(),
 }));
 
 // Mock environment config
@@ -58,6 +47,20 @@ vi.mock('@/stores', () => ({
   useStore: (selector: (state: AuthSlice) => unknown) => mockUseStore(selector),
 }));
 
+// Create typed mock for socket.io
+const mockIo = vi.mocked(io);
+
+// Mock socket object that will be returned by mockIo
+const mockSocket = {
+  id: 'mock-socket-id',
+  connected: false,
+  on: vi.fn(),
+  off: vi.fn(),
+  emit: vi.fn(),
+  disconnect: vi.fn(),
+  removeAllListeners: vi.fn(),
+};
+
 describe('WebSocketContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,7 +70,9 @@ describe('WebSocketContext', () => {
     mockSocket.emit.mockClear();
     mockSocket.disconnect.mockClear();
     mockSocket.removeAllListeners.mockClear();
-    mockIo.mockClear();
+
+    // Set up mockIo to return mockSocket
+    mockIo.mockReturnValue(mockSocket as any);
   });
 
   afterEach(() => {
