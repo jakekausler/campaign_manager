@@ -203,22 +203,7 @@ export function MergeHistoryView({ branchId, onViewDetails, className }: MergeHi
 
   const mergeHistory = useMemo(() => data?.getMergeHistory ?? [], [data]);
 
-  // Empty state
-  if (!loading && mergeHistory.length === 0) {
-    return (
-      <div className={className}>
-        <Alert>
-          <GitPullRequest className="h-4 w-4" />
-          <AlertDescription>
-            No merge operations yet. This branch has not been merged from or into any other
-            branches.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  // Error state
+  // Error state - check first before empty state
   if (error) {
     return (
       <div className={className}>
@@ -240,6 +225,21 @@ export function MergeHistoryView({ branchId, onViewDetails, className }: MergeHi
     return (
       <div className={className}>
         <MergeHistoryLoadingSkeleton />
+      </div>
+    );
+  }
+
+  // Empty state - check after error state
+  if (mergeHistory.length === 0) {
+    return (
+      <div className={className}>
+        <Alert>
+          <GitPullRequest className="h-4 w-4" />
+          <AlertDescription>
+            No merge operations yet. This branch has not been merged from or into any other
+            branches.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }

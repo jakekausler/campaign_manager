@@ -644,7 +644,7 @@ describe('MergePreviewDialog', () => {
       expect(card).toBeInTheDocument();
 
       // Find the chevron button within the card - it's the first button in the entity header section
-      const chevronButton = within(card! as HTMLElement).getAllByRole('button')[0];
+      const chevronButton = within(card as unknown as HTMLElement).getAllByRole('button')[0];
       await user.click(chevronButton);
 
       // Conflicts label should be hidden after collapse

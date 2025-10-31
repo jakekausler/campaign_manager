@@ -255,9 +255,11 @@ describe('MergeHistoryView', () => {
 
       render(<MergeHistoryView {...defaultProps} />);
 
-      // Check that the date is rendered (format depends on locale)
+      // Check that the merge timestamp date is rendered with " at " to distinguish from world time
       const mergedDate = new Date(mockMergeEntry.mergedAt);
-      expect(screen.getByText(new RegExp(mergedDate.toLocaleDateString()))).toBeInTheDocument();
+      expect(
+        screen.getByText(new RegExp(`${mergedDate.toLocaleDateString()}.*at`))
+      ).toBeInTheDocument();
     });
 
     it('should display user who performed the merge', () => {
@@ -287,7 +289,9 @@ describe('MergeHistoryView', () => {
 
       render(<MergeHistoryView {...defaultProps} />);
 
-      expect(screen.getByText(/5.*entities merged/i)).toBeInTheDocument();
+      // Number and text are in separate elements, so check for each separately
+      expect(screen.getByText('5')).toBeInTheDocument();
+      expect(screen.getByText(/entities merged/i)).toBeInTheDocument();
     });
 
     it('should display singular "entity" for single entity', () => {
@@ -303,7 +307,9 @@ describe('MergeHistoryView', () => {
 
       render(<MergeHistoryView {...defaultProps} />);
 
-      expect(screen.getByText(/1.*entity merged/i)).toBeInTheDocument();
+      // Number and text are in separate elements, so check for each separately
+      expect(screen.getByText('1')).toBeInTheDocument();
+      expect(screen.getByText(/entity merged/i)).toBeInTheDocument();
     });
 
     it('should display world time', () => {
@@ -320,7 +326,9 @@ describe('MergeHistoryView', () => {
 
       const worldTimeDate = new Date(mockMergeEntry.worldTime);
       expect(screen.getByText(/world time:/i)).toBeInTheDocument();
-      expect(screen.getByText(new RegExp(worldTimeDate.toLocaleDateString()))).toBeInTheDocument();
+      // World time date appears separately - just check it exists (will appear twice like mergedAt)
+      const dateMatches = screen.getAllByText(new RegExp(worldTimeDate.toLocaleDateString()));
+      expect(dateMatches.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -383,7 +391,9 @@ describe('MergeHistoryView', () => {
 
       render(<MergeHistoryView {...defaultProps} />);
 
-      expect(screen.getByText(/2.*conflicts resolved/i)).toBeInTheDocument();
+      // Number and text are in separate elements, so check for each separately
+      expect(screen.getByText('2')).toBeInTheDocument();
+      expect(screen.getByText(/conflicts resolved/i)).toBeInTheDocument();
     });
 
     it('should not display conflicts resolved for clean merges', () => {
@@ -530,7 +540,8 @@ describe('MergeHistoryView', () => {
 
       render(<MergeHistoryView {...defaultProps} />);
 
-      expect(mergeHooks.useGetMergeHistory).toHaveBeenCalledWith(defaultProps.branchId, undefined);
+      // Hook is called with branchId; second parameter is optional and not explicitly passed
+      expect(mergeHooks.useGetMergeHistory).toHaveBeenCalledWith(defaultProps.branchId);
     });
   });
 });

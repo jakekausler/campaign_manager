@@ -122,6 +122,11 @@ function CherryPickConflictDialog({
       <DialogContent
         className="max-w-2xl max-h-[90vh] flex flex-col"
         data-testid="conflict-resolution-dialog"
+        onEscapeKeyDown={(e) => {
+          // Prevent Escape from closing the dialog (and thus the parent)
+          // User must explicitly click Cancel to close both dialogs
+          e.preventDefault();
+        }}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
