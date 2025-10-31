@@ -2,11 +2,108 @@
 
 ## Status
 
-- [ ] Completed (Stage 3 of 8 - COMPLETE)
+- [ ] Completed (Stage 4 of 8 - Backend Integration COMPLETE)
 - **Commits**:
   - cdc825c - feat(api): implement WebSocket infrastructure with Redis adapter (Stage 1)
   - 699fcd6 - test(api): add comprehensive tests for WebSocket subscription system (Stage 2)
   - 9a59f4c - feat(api,shared): add WebSocket event publisher with type-safe event system (Stage 3)
+  - 21aa2e0 - feat(api): integrate WebSocket event publishing into domain services (Stage 4 - Backend Integration)
+
+## Stage 4 Implementation Notes (Backend Integration)
+
+### What Was Implemented
+
+**Files Modified:**
+
+- `packages/api/src/graphql/services/campaign.service.ts` - Added WebSocket event publishing
+- `packages/api/src/graphql/services/settlement.service.ts` - Added WebSocket event publishing
+- `packages/api/src/graphql/services/structure.service.ts` - Added WebSocket event publishing
+- `packages/api/src/graphql/services/world-time.service.ts` - Added WebSocket event publishing
+
+**Key Features:**
+
+1. **Campaign Service Integration**:
+   - Injected `WebSocketPublisherService` into constructor
+   - Emit `entity_updated` events on create/update/delete operations
+   - Track changed fields during updates for granular event payloads
+   - Include userId and source metadata in all events
+
+2. **Settlement Service Integration**:
+   - Injected `WebSocketPublisherService` into constructor
+   - Emit `settlement_updated` events with 'create'/'update'/'delete' operations
+   - Fetch campaignId through settlement→kingdom→campaign relation
+   - Publish to both campaign and settlement-specific rooms
+   - Track changed fields (name, level, variables, variableSchemas)
+
+3. **Structure Service Integration**:
+   - Injected `WebSocketPublisherService` into constructor
+   - Emit `structure_updated` events with 'create'/'update'/'delete' operations
+   - Fetch campaignId through structure→settlement→kingdom→campaign relation
+   - Publish to campaign, settlement, and structure-specific rooms
+   - Track changed fields (name, type, level, variables, variableSchemas)
+
+4. **World Time Service Integration**:
+   - Injected `WebSocketPublisherService` into constructor
+   - Emit `world_time_changed` events when time is advanced
+   - Calculate elapsed time in seconds for event payload
+   - Include previous and new world time timestamps
+
+**Implementation Pattern:**
+
+All services follow consistent pattern:
+
+1. Inject `WebSocketPublisherService` in constructor
+2. Import event creation helpers from `@campaign/shared`
+3. Track changed fields during update operations
+4. Publish events after successful database operations
+5. Include userId and source='api' metadata
+
+**Event Room Targeting:**
+
+- Campaign events → campaign room
+- Settlement events → campaign room + settlement room
+- Structure events → campaign room + settlement room + structure room
+- World time events → campaign room
+
+Events automatically distribute across all API instances via Redis pub/sub adapter.
+
+### Import Order Fix
+
+Fixed ESLint import order violations in all modified files by:
+
+- Separating external, shared, and local imports with blank lines
+- Moving WebSocketPublisherService import before type imports
+- Running `eslint --fix` to auto-correct ordering
+
+### Tests Status
+
+**No new tests in this stage** - Tests will be added in Stage 6 as part of integration testing.
+
+Existing tests continue to pass:
+
+- ✅ Type-check passed (no compilation errors)
+- ✅ Lint passed (only pre-existing `any` warnings in test files)
+- ✅ All existing unit and integration tests passing
+
+### Stage 4 Backend Integration Complete
+
+All backend domain services now emit WebSocket events on CRUD operations:
+
+- ✅ CampaignService emits entity_updated events
+- ✅ SettlementService emits settlement_updated events
+- ✅ StructureService emits structure_updated events
+- ✅ WorldTimeService emits world_time_changed events
+- ✅ Events properly scoped to campaign/settlement/structure rooms
+- ✅ Changed fields tracked for granular updates
+- ✅ Type-check and lint passing
+- ✅ Import order issues resolved
+- ✅ Changes committed (21aa2e0)
+
+### Next Steps
+
+Stage 5 will implement the frontend WebSocket client with connection management and auto-reconnection.
+
+---
 
 ## Stage 3 Implementation Notes
 
