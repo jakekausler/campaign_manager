@@ -2,13 +2,15 @@
 
 ## Status
 
-- [ ] Completed (Stage 4 of 8 - Frontend WebSocket Client COMPLETE)
+- [ ] Completed (Stage 5 of 8 - Frontend Subscription Hooks COMPLETE)
 - **Commits**:
   - cdc825c - feat(api): implement WebSocket infrastructure with Redis adapter (Stage 1)
   - 699fcd6 - test(api): add comprehensive tests for WebSocket subscription system (Stage 2)
   - 9a59f4c - feat(api,shared): add WebSocket event publisher with type-safe event system (Stage 3)
   - 21aa2e0 - feat(api): integrate WebSocket event publishing into domain services (Stage 4 - Backend Integration)
   - b031566 - feat(frontend): implement WebSocket client with connection management (Stage 4 - Frontend WebSocket Client)
+  - 2bc92eb - feat(frontend): implement WebSocket subscription hooks for real-time events (Stage 5 - Initial Implementation)
+  - 1af5dcc - fix(frontend): fix WebSocket reconnection double-subscription bug (Stage 5 - Bug Fix)
 
 ## Stage 4 Implementation Notes (Frontend WebSocket Client)
 
@@ -108,9 +110,104 @@ All frontend WebSocket client infrastructure is now in place:
 - ✅ Type-check and lint passing
 - ✅ Changes committed (b031566)
 
+## Stage 5 Implementation Notes (Frontend Subscription Hooks)
+
+### What Was Implemented
+
+All subscription hooks were already implemented in commit 2bc92eb, but there was a critical bug in reconnection handling that was fixed in commit 1af5dcc.
+
+**Files Modified:**
+
+- `packages/frontend/src/hooks/useWebSocketSubscription.ts` - Fixed double-subscription bug on reconnection
+
+**Bug Fix (Commit 1af5dcc):**
+
+**Problem**: The reconnection test was failing because subscription was being triggered twice instead of once after reconnection.
+
+**Root Cause**: Both useEffect hooks depended on `connectionState`, causing duplicate subscriptions when transitioning to Connected state after disconnection.
+
+**Solution**:
+
+1. Separated concerns between two useEffect hooks:
+   - First effect: Only handles event listener registration/cleanup (removed connectionState dependency)
+   - Second effect: Handles subscription/reconnection logic exclusively
+2. Added proper state reset when disconnected (`isSubscribedRef.current = false`)
+
+**Existing Features (From Commit 2bc92eb):**
+
+1. **Generic Hook (`useWebSocketSubscription`)**:
+   - Manages subscription lifecycle (subscribe on connect, unsubscribe on unmount)
+   - Automatically re-subscribes after reconnection
+   - Type-safe event handlers using generics
+   - Proper cleanup with refs to avoid stale closures
+   - Optional enable/disable flag
+
+2. **Campaign Subscription Hook (`useCampaignSubscription`)**:
+   - Subscribes to campaign room on mount
+   - Listens for all campaign-related events:
+     - `entity_updated` - Generic entity updates
+     - `state_invalidated` - Cache invalidation triggers
+     - `world_time_changed` - World time progression
+     - `settlement_updated` - Settlement changes
+     - `structure_updated` - Structure changes
+   - Automatically unsubscribes on unmount or campaignId change
+   - Conditional subscription based on provided handlers
+
+3. **Settlement Subscription Hook (`useSettlementSubscription`)**:
+   - Subscribes to settlement-specific room
+   - Listens for settlement and structure events within that settlement
+   - Proper room-based filtering
+
+4. **Structure Subscription Hook (`useStructureSubscription`)**:
+   - Subscribes to structure-specific room
+   - Listens for structure update events
+   - Most granular subscription level
+
+**Implementation Patterns:**
+
+- Uses `useRef` for handlers to avoid re-subscriptions when handler functions change
+- Uses `isSubscribedRef` to track subscription state and prevent duplicate subscriptions
+- Separate effects for event listener registration vs. room subscription
+- Type-safe event handlers via TypeScript discriminated unions
+- Automatic cleanup on unmount
+- Debug logging controlled by `env.features.debug`
+
+**Testing:**
+
+- Comprehensive test suite: 15/15 tests passing
+- Tests cover:
+  - Basic subscription and event handling
+  - Cleanup on unmount
+  - Disabled subscriptions
+  - Reconnection handling (now fixed)
+  - Handler updates without re-subscription
+  - Campaign/settlement/structure-specific subscriptions
+  - Multiple event types
+
+**Quality Checks:**
+
+- ✅ Type-check passing (no errors)
+- ✅ Lint passing (only pre-existing warnings in other files)
+- ✅ All 15 tests passing (reconnection bug fixed)
+- ✅ Manual code review completed
+
+### Stage 5 Frontend Subscription Hooks Complete
+
+All frontend subscription hooks are now fully implemented and tested:
+
+- ✅ Generic `useWebSocketSubscription` hook with lifecycle management
+- ✅ `useCampaignSubscription` hook for campaign-level events
+- ✅ `useSettlementSubscription` hook for settlement-level events
+- ✅ `useStructureSubscription` hook for structure-level events
+- ✅ Automatic re-subscription after reconnection (bug fixed)
+- ✅ Type-safe event handlers via TypeScript
+- ✅ Comprehensive test coverage (15/15 tests passing)
+- ✅ Type-check and lint passing
+- ✅ Changes committed (2bc92eb, 1af5dcc)
+
 ### Next Steps
 
-Stage 5 will implement frontend subscription hooks for subscribing to specific events and rooms (campaign, settlement, structure subscriptions with useWebSocketSubscription hooks).
+Stage 6 will integrate WebSocket events with Apollo cache and UI state for automatic UI updates when real-time events are received.
 
 ---
 
