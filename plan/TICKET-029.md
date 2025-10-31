@@ -2,9 +2,10 @@
 
 ## Status
 
-- [ ] Completed (Stage 2 of 8 - implementation complete, tests pending)
+- [ ] Completed (Stage 2 of 8 - COMPLETE)
 - **Commits**:
   - cdc825c - feat(api): implement WebSocket infrastructure with Redis adapter (Stage 1)
+  - 699fcd6 - test(api): add comprehensive tests for WebSocket subscription system (Stage 2)
 
 ## Stage 2 Implementation Notes
 
@@ -49,21 +50,36 @@
 
 ### Tests Status
 
-**⚠️ Tests still need to be written** for:
+**✅ All tests implemented and passing (31/31 tests)**:
 
-- Connection authentication (valid/invalid/missing JWT tokens)
-- Campaign subscription authorization (authorized vs unauthorized users)
-- Settlement/structure subscription (basic functionality)
-- Unsubscription operations
-- Multiple simultaneous subscriptions
-- Automatic room cleanup on disconnect
+- ✅ Connection authentication (valid/invalid/missing JWT tokens) - 6 tests
+- ✅ Campaign subscription authorization (authorized vs unauthorized users) - 3 tests
+- ✅ Settlement/structure subscription (basic functionality) - 4 tests
+- ✅ Unsubscription operations - 6 tests
+- ✅ Multiple simultaneous subscriptions - 2 tests
+- ✅ Automatic room cleanup on disconnect - 2 tests
+- ✅ Gateway initialization - 3 tests
+- ✅ Client lifecycle - 2 tests
+- ✅ Broadcasting methods - 2 tests
+- ✅ Error handling - throughout
 
-### Next Steps
+### Security Improvements
 
-1. Write comprehensive test suite for authentication and authorization
-2. Run type-check and lint
-3. Code review
-4. Commit changes
+Applied from code review:
+
+1. Added validation in getRoomName() to prevent malformed room names from empty entityIds
+2. Improved error logging to prevent JWT token leakage in logs (only log error messages, not full error objects)
+3. Added explicit security warnings for settlement/structure subscriptions that bypass campaign authorization (will be addressed in Stage 3)
+
+### Stage 2 Complete
+
+All tasks completed:
+
+- ✅ Comprehensive test suite written and passing
+- ✅ Type-check passing
+- ✅ Lint passing (no new warnings)
+- ✅ Code review completed with critical issues addressed
+- ✅ Changes committed (699fcd6)
 
 ## Description
 
