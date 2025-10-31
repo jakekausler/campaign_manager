@@ -142,7 +142,7 @@ export function useWebSocketSubscription<TEvent extends WebSocketEvent = WebSock
   };
 
   /**
-   * Effect: Subscribe when socket connects and unsubscribe on cleanup
+   * Effect: Subscribe when socket is created and set up event listener
    */
   useEffect(() => {
     if (!socket || !enabled) {
@@ -160,11 +160,6 @@ export function useWebSocketSubscription<TEvent extends WebSocketEvent = WebSock
     // Socket.IO's on() method expects any arguments, so we cast to any
     socket.on(eventType, eventHandler as any);
 
-    // Subscribe to room if connected
-    if (connectionState === ConnectionState.Connected) {
-      subscribe();
-    }
-
     // Cleanup function
     return () => {
       if (env.features.debug) {
@@ -178,22 +173,22 @@ export function useWebSocketSubscription<TEvent extends WebSocketEvent = WebSock
       unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [socket, eventType, enabled, connectionState]);
+  }, [socket, eventType, enabled]);
 
   /**
-   * Effect: Re-subscribe when reconnecting after disconnection
+   * Effect: Subscribe/re-subscribe when connection state becomes Connected
    */
   useEffect(() => {
-    // If we were subscribed but lost connection, and now we're reconnected, re-subscribe
-    if (
-      socket &&
-      enabled &&
-      connectionState === ConnectionState.Connected &&
-      subscribeMessageRef.current &&
-      !isSubscribedRef.current
-    ) {
+    // Reset subscription status when disconnected
+    if (connectionState !== ConnectionState.Connected) {
+      isSubscribedRef.current = false;
+      return;
+    }
+
+    // Only subscribe when connected (initial connection or reconnection)
+    if (socket && enabled && subscribeMessageRef.current && !isSubscribedRef.current) {
       if (env.features.debug) {
-        console.log(`[WebSocket] Re-subscribing after reconnection`);
+        console.log(`[WebSocket] Subscribing after connection`);
       }
       subscribe();
     }
