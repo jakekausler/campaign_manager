@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] Completed (Stage 5 of 8 - Frontend Subscription Hooks COMPLETE with race condition fix)
+- [ ] Completed (Stage 6 of 8 - WebSocket Cache Synchronization COMPLETE)
 - **Commits**:
   - cdc825c - feat(api): implement WebSocket infrastructure with Redis adapter (Stage 1)
   - 699fcd6 - test(api): add comprehensive tests for WebSocket subscription system (Stage 2)
@@ -12,6 +12,7 @@
   - 2bc92eb - feat(frontend): implement WebSocket subscription hooks for real-time events (Stage 5 - Initial Implementation)
   - 1af5dcc - fix(frontend): fix WebSocket reconnection double-subscription bug (Stage 5 - Bug Fix #1)
   - f25030d - fix(frontend): fix WebSocket subscription race condition in reconnection (Stage 5 - Bug Fix #2)
+  - c5459b7 - feat(frontend): implement WebSocket cache synchronization for real-time updates (Stage 6)
 
 ## Stage 4 Implementation Notes (Frontend WebSocket Client)
 
@@ -221,7 +222,95 @@ All frontend subscription hooks are now fully implemented and tested:
 
 ### Next Steps
 
-Stage 6 will integrate WebSocket events with Apollo cache and UI state for automatic UI updates when real-time events are received.
+Stage 7 will add comprehensive error handling and resilience features.
+
+---
+
+## Stage 6 Implementation Notes (WebSocket Cache Synchronization)
+
+### What Was Implemented
+
+Implemented Apollo Client cache and Zustand state synchronization with WebSocket real-time events, completing the real-time update loop from backend → WebSocket → frontend cache → UI.
+
+**Files Created:**
+
+- `packages/frontend/src/hooks/useWebSocketCacheSync.ts` - Centralized cache sync hook (307 lines)
+- `packages/frontend/src/hooks/useWebSocketCacheSync.test.tsx` - Comprehensive test suite (16 tests)
+
+**Files Modified:**
+
+- `packages/frontend/src/hooks/index.ts` - Export new hook
+- `packages/frontend/src/App.tsx` - Mount hook in AppWithCacheSync component
+- `plan/TICKET-029-implementation-plan.md` - Mark Stage 4 tasks complete
+
+**Key Features:**
+
+1. **Centralized Cache Sync Hook (`useWebSocketCacheSync`)**:
+   - Subscribes to campaign WebSocket events via `useCampaignSubscription`
+   - Routes events to specialized handlers based on event type
+   - Updates Apollo cache and Zustand state automatically
+   - Mounted once at app level for global cache synchronization
+
+2. **Event Handler Strategies**:
+   - **entity_updated**: Evicts specific entity from cache by typename + ID using `cache.evict()`, forcing refetch on next query
+   - **state_invalidated**: Evicts computed fields based on scope (campaign-wide or entity-specific)
+   - **world_time_changed**: Dual strategy - updates Zustand store for immediate feedback + evicts time-dependent queries
+   - **settlement_updated/structure_updated**: Evicts entity + parent queries, handles delete/create/update operations
+
+3. **Apollo Cache Operations**:
+   - Uses `cache.evict()` + `cache.gc()` pattern for cache invalidation
+   - Simpler than `cache.modify()` and ensures consistency
+   - Evicts queries by field name for list queries (e.g., `settlementsByKingdom`)
+   - Evicts entities by cache ID for detail queries
+
+4. **Integration Patterns**:
+   - `useApolloClient` imported from `@apollo/client/react` (Apollo Client v4)
+   - CampaignId conversion: null → undefined for subscription hook compatibility
+   - Debug logging controlled by `env.features.debug`
+
+**Implementation Details:**
+
+The hook follows a clean separation of concerns:
+
+- Each event type has its own handler function (5 handlers total)
+- Handlers are memoized with `useCallback` for stability
+- Event subscription only active when enabled and campaignId is present
+- All cache operations are type-safe using Apollo's TypeScript types
+
+**Testing:**
+
+Comprehensive test suite with 16 tests covering:
+
+- Subscription lifecycle (enable/disable, campaignId changes)
+- Each event handler's cache operations
+- Error handling for unknown entity types
+- All event payload variations (create/update/delete, campaign/entity scope)
+
+**Quality Checks:**
+
+- ✅ TypeScript compilation passing (pnpm type-check)
+- ✅ ESLint passing (0 errors, only pre-existing warnings)
+- ✅ Import order auto-fixed by ESLint
+- ✅ All 16 tests passing
+- ✅ Pre-commit hooks passing (format check, lint)
+
+### Stage 6 WebSocket Cache Synchronization Complete
+
+Real-time update loop is now fully functional:
+
+1. Backend services emit WebSocket events on CRUD operations
+2. WebSocket Gateway publishes events to Redis pub/sub (multi-instance support)
+3. Frontend receives events via Socket.IO connection
+4. `useWebSocketCacheSync` hook updates Apollo cache and Zustand state
+5. UI components automatically re-render with fresh data
+
+- ✅ Centralized cache sync hook created and mounted
+- ✅ All 5 event types handled (entity_updated, state_invalidated, world_time_changed, settlement_updated, structure_updated)
+- ✅ Apollo cache eviction strategy implemented
+- ✅ Zustand store integration for world time
+- ✅ Comprehensive test coverage (16/16 tests passing)
+- ✅ Type-check and lint passing
+- ✅ Changes committed (c5459b7)
 
 ---
 
