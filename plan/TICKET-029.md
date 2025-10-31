@@ -2,7 +2,7 @@
 
 ## Status
 
-- [ ] Completed (Stage 5 of 8 - Frontend Subscription Hooks COMPLETE)
+- [ ] Completed (Stage 5 of 8 - Frontend Subscription Hooks COMPLETE with race condition fix)
 - **Commits**:
   - cdc825c - feat(api): implement WebSocket infrastructure with Redis adapter (Stage 1)
   - 699fcd6 - test(api): add comprehensive tests for WebSocket subscription system (Stage 2)
@@ -10,7 +10,8 @@
   - 21aa2e0 - feat(api): integrate WebSocket event publishing into domain services (Stage 4 - Backend Integration)
   - b031566 - feat(frontend): implement WebSocket client with connection management (Stage 4 - Frontend WebSocket Client)
   - 2bc92eb - feat(frontend): implement WebSocket subscription hooks for real-time events (Stage 5 - Initial Implementation)
-  - 1af5dcc - fix(frontend): fix WebSocket reconnection double-subscription bug (Stage 5 - Bug Fix)
+  - 1af5dcc - fix(frontend): fix WebSocket reconnection double-subscription bug (Stage 5 - Bug Fix #1)
+  - f25030d - fix(frontend): fix WebSocket subscription race condition in reconnection (Stage 5 - Bug Fix #2)
 
 ## Stage 4 Implementation Notes (Frontend WebSocket Client)
 
@@ -114,13 +115,13 @@ All frontend WebSocket client infrastructure is now in place:
 
 ### What Was Implemented
 
-All subscription hooks were already implemented in commit 2bc92eb, but there was a critical bug in reconnection handling that was fixed in commit 1af5dcc.
+All subscription hooks were already implemented in commit 2bc92eb, but there was a critical bug in reconnection handling that was fixed in commits 1af5dcc and f25030d.
 
 **Files Modified:**
 
-- `packages/frontend/src/hooks/useWebSocketSubscription.ts` - Fixed double-subscription bug on reconnection
+- `packages/frontend/src/hooks/useWebSocketSubscription.ts` - Fixed double-subscription bugs on reconnection
 
-**Bug Fix (Commit 1af5dcc):**
+**Bug Fix #1 (Commit 1af5dcc):**
 
 **Problem**: The reconnection test was failing because subscription was being triggered twice instead of once after reconnection.
 
@@ -132,6 +133,19 @@ All subscription hooks were already implemented in commit 2bc92eb, but there was
    - First effect: Only handles event listener registration/cleanup (removed connectionState dependency)
    - Second effect: Handles subscription/reconnection logic exclusively
 2. Added proper state reset when disconnected (`isSubscribedRef.current = false`)
+
+**Bug Fix #2 (Commit f25030d):**
+
+**Problem**: Race condition where multiple rapid calls to `subscribe()` could result in duplicate subscriptions.
+
+**Root Cause**: The `isSubscribedRef.current` flag was only set to `true` in the async callback after `socket.emit()` completed. This allowed multiple calls to `subscribe()` to pass the guard check before any callback executed.
+
+**Solution**:
+
+1. Move `isSubscribedRef.current = true` assignment BEFORE `socket.emit()` call
+2. Only reset flag to false in callback if subscription fails
+3. This ensures the guard check prevents duplicate subscriptions immediately
+4. Maintains proper cleanup and error handling
 
 **Existing Features (From Commit 2bc92eb):**
 
