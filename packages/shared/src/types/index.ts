@@ -14,3 +14,6 @@ export type EntityType = 'location' | 'encounter' | 'event' | 'character';
 
 // GeoJSON and spatial types
 export * from './geojson';
+
+// WebSocket event types
+export * from './websocket-events';

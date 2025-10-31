@@ -24,6 +24,7 @@ import { CampaignMembershipService } from '../auth/services/campaign-membership.
 
 import type { AuthenticatedSocketData, SubscriptionPayload, UnsubscriptionPayload } from './types';
 import { getRoomName, RoomType } from './types';
+import { WebSocketPublisherService } from './websocket-publisher.service';
 
 /**
  * WebSocket Gateway for real-time updates
@@ -54,7 +55,8 @@ export class WebSocketGatewayClass
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly campaignMembershipService: CampaignMembershipService
+    private readonly campaignMembershipService: CampaignMembershipService,
+    private readonly publisherService: WebSocketPublisherService
   ) {}
 
   /**
@@ -97,6 +99,10 @@ export class WebSocketGatewayClass
       server.adapter(createAdapter(pubClient, subClient));
 
       this.logger.log('Redis adapter attached to Socket.IO server');
+
+      // Initialize the publisher service with the server instance
+      this.publisherService.setServer(server);
+      this.logger.log('WebSocket publisher service initialized');
     } catch (error) {
       this.logger.error('Failed to initialize Redis adapter:', error);
       // Don't throw - allow server to start even if Redis is unavailable

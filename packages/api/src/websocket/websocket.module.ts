@@ -7,11 +7,12 @@ import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
 
+import { WebSocketPublisherService } from './websocket-publisher.service';
 import { WebSocketGatewayClass } from './websocket.gateway';
 
 @Module({
   imports: [AuthModule],
-  providers: [WebSocketGatewayClass],
-  exports: [WebSocketGatewayClass],
+  providers: [WebSocketGatewayClass, WebSocketPublisherService],
+  exports: [WebSocketGatewayClass, WebSocketPublisherService],
 })
 export class WebSocketModule {}

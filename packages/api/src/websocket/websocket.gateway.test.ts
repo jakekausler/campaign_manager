@@ -12,6 +12,7 @@ import { CampaignMembershipService } from '../auth/services/campaign-membership.
 
 import type { AuthenticatedSocketData } from './types';
 import { getRoomName, RoomType } from './types';
+import { WebSocketPublisherService } from './websocket-publisher.service';
 import { WebSocketGatewayClass } from './websocket.gateway';
 
 describe('WebSocketGatewayClass', () => {
@@ -29,6 +30,16 @@ describe('WebSocketGatewayClass', () => {
       canView: jest.fn(),
     };
 
+    const mockWebSocketPublisherService = {
+      setServer: jest.fn(),
+      publishEntityUpdated: jest.fn(),
+      publishStateInvalidated: jest.fn(),
+      publishWorldTimeChanged: jest.fn(),
+      publishSettlementUpdated: jest.fn(),
+      publishStructureUpdated: jest.fn(),
+      publishEvent: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WebSocketGatewayClass,
@@ -39,6 +50,10 @@ describe('WebSocketGatewayClass', () => {
         {
           provide: CampaignMembershipService,
           useValue: mockCampaignMembershipService,
+        },
+        {
+          provide: WebSocketPublisherService,
+          useValue: mockWebSocketPublisherService,
         },
       ],
     }).compile();
