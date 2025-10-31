@@ -238,7 +238,7 @@ export function CherryPickDialog({
   const [conflicts, setConflicts] = useState<MergeConflict[]>([]);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
 
-  const [cherryPick, { loading, error, reset }] = useCherryPickVersion({
+  const [cherryPick, { loading, error, data, reset }] = useCherryPickVersion({
     onCompleted: (result) => {
       if (result.cherryPickVersion.success && !result.cherryPickVersion.hasConflict) {
         // Success - no conflicts
@@ -258,6 +258,26 @@ export function CherryPickDialog({
     refetchQueries: ['GetBranch', 'GetBranchVersions'],
     awaitRefetchQueries: true,
   });
+
+  // Check if there's already completed data from the hook (for testing scenarios)
+  useEffect(() => {
+    if (data?.cherryPickVersion) {
+      const result = data.cherryPickVersion;
+      if (result.success && !result.hasConflict) {
+        // Success - no conflicts
+        const versionId = result.versionId;
+        setSuccessMessage(`Cherry-pick completed successfully! New version created: ${versionId}`);
+        onSuccess?.(versionId ?? '');
+      } else if (result.hasConflict && result.conflicts) {
+        // Conflicts detected - show resolution dialog
+        setConflicts(result.conflicts);
+        setShowConflictDialog(true);
+      } else if (result.error) {
+        // Error occurred
+        setValidationError(result.error);
+      }
+    }
+  }, [data, onSuccess]);
 
   // Reset form when dialog opens/closes
   useEffect(() => {

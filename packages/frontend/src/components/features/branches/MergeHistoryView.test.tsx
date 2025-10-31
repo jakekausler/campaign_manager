@@ -530,10 +530,7 @@ describe('MergeHistoryView', () => {
 
       render(<MergeHistoryView {...defaultProps} />);
 
-      expect(mergeHooks.useGetMergeHistory).toHaveBeenCalledWith(
-        defaultProps.branchId,
-        expect.any(Object)
-      );
+      expect(mergeHooks.useGetMergeHistory).toHaveBeenCalledWith(defaultProps.branchId, undefined);
     });
   });
 });
