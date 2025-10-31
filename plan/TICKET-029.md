@@ -2,8 +2,9 @@
 
 ## Status
 
-- [ ] Completed
+- [ ] Completed (Stage 1 of 8 complete)
 - **Commits**:
+  - cdc825c - feat(api): implement WebSocket infrastructure with Redis adapter (Stage 1)
 
 ## Description
 
