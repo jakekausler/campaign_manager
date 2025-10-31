@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { Campaign } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
+import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
 
 import { CampaignContextService } from './campaign-context.service';
 import { WorldTimeService } from './world-time.service';
@@ -45,6 +46,17 @@ describe('WorldTimeService', () => {
               update: jest.fn(),
             },
             $transaction: jest.fn(),
+          },
+        },
+        {
+          provide: WebSocketPublisherService,
+          useValue: {
+            publishEntityUpdated: jest.fn().mockResolvedValue(undefined),
+            publishSettlementUpdated: jest.fn().mockResolvedValue(undefined),
+            publishStructureUpdated: jest.fn().mockResolvedValue(undefined),
+            publishWorldTimeChanged: jest.fn().mockResolvedValue(undefined),
+            publishStateInvalidated: jest.fn().mockResolvedValue(undefined),
+            publishEvent: jest.fn().mockResolvedValue(undefined),
           },
         },
         {

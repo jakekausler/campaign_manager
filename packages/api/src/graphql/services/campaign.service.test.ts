@@ -6,6 +6,7 @@ import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../../database/prisma.service';
+import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
 
@@ -136,6 +137,17 @@ describe('CampaignService', () => {
           provide: 'REDIS_PUBSUB',
           useValue: {
             publish: jest.fn(),
+          },
+        },
+        {
+          provide: WebSocketPublisherService,
+          useValue: {
+            publishEntityUpdated: jest.fn().mockResolvedValue(undefined),
+            publishSettlementUpdated: jest.fn().mockResolvedValue(undefined),
+            publishStructureUpdated: jest.fn().mockResolvedValue(undefined),
+            publishWorldTimeChanged: jest.fn().mockResolvedValue(undefined),
+            publishStateInvalidated: jest.fn().mockResolvedValue(undefined),
+            publishEvent: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

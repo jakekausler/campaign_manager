@@ -25,6 +25,7 @@ import { OperatorRegistry } from '../../rules/operator-registry';
 import { SettlementOperatorsService } from '../../rules/operators/settlement-operators.service';
 import { StructureOperatorsService } from '../../rules/operators/structure-operators.service';
 import { RulesModule } from '../../rules/rules.module';
+import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
 
 import { AuditService } from './audit.service';
 import { CampaignContextService } from './campaign-context.service';
@@ -209,6 +210,15 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
       decompressVersion: jest.fn().mockResolvedValue({}),
     };
 
+    const mockWebSocketPublisher = {
+      publishEntityUpdated: jest.fn().mockResolvedValue(undefined),
+      publishSettlementUpdated: jest.fn().mockResolvedValue(undefined),
+      publishStructureUpdated: jest.fn().mockResolvedValue(undefined),
+      publishWorldTimeChanged: jest.fn().mockResolvedValue(undefined),
+      publishStateInvalidated: jest.fn().mockResolvedValue(undefined),
+      publishEvent: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       imports: [RulesModule],
       providers: [
@@ -218,6 +228,7 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
         { provide: RulesEngineClientService, useValue: mockRulesEngineClient },
         { provide: CampaignContextService, useValue: mockCampaignContext },
         { provide: VersionService, useValue: mockVersionService },
+        { provide: WebSocketPublisherService, useValue: mockWebSocketPublisher },
         AuditService,
         ConditionService,
         ConditionEvaluationService,

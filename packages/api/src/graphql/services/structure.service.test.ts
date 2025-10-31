@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
+import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
@@ -92,6 +93,17 @@ describe('StructureService', () => {
           provide: REDIS_PUBSUB,
           useValue: {
             publish: jest.fn(),
+          },
+        },
+        {
+          provide: WebSocketPublisherService,
+          useValue: {
+            publishEntityUpdated: jest.fn().mockResolvedValue(undefined),
+            publishSettlementUpdated: jest.fn().mockResolvedValue(undefined),
+            publishStructureUpdated: jest.fn().mockResolvedValue(undefined),
+            publishWorldTimeChanged: jest.fn().mockResolvedValue(undefined),
+            publishStateInvalidated: jest.fn().mockResolvedValue(undefined),
+            publishEvent: jest.fn().mockResolvedValue(undefined),
           },
         },
         {
