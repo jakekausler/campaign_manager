@@ -76,32 +76,61 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
 
 **Goal**: Implement room-based subscription logic with proper scoping
 
+**Status**: In Progress - Research Phase Complete
+
 **Tasks**:
 
-- [ ] Define subscription room naming conventions
+- [x] Define subscription room naming conventions
   - Campaign rooms: `campaign:{campaignId}`
   - Settlement rooms: `settlement:{settlementId}`
   - Structure rooms: `structure:{structureId}`
+  - Created `packages/api/src/websocket/types.ts` with:
+    - `RoomType` enum for type-safe room types
+    - `getRoomName()` and `parseRoomName()` utility functions
+    - TypeScript interfaces for subscription payloads
+    - `AuthenticatedSocketData` interface for authenticated user info
+- [x] Research existing authentication infrastructure
+  - Located `packages/api/src/auth/services/auth.service.ts` (JwtService available)
+  - Located `packages/api/src/auth/strategies/jwt.strategy.ts` (JWT validation pattern)
+  - Located `packages/api/src/auth/interfaces/jwt-payload.interface.ts` (JwtPayload structure)
+  - Identified that Socket.IO tokens should be extracted from `handshake.auth.token` or `handshake.query.token`
+- [x] Research existing authorization infrastructure
+  - Located `packages/api/src/auth/services/campaign-membership.service.ts`
+    - Has `canView(campaignId, userId)` method for read access checks
+    - Has `getUserRole(campaignId, userId)` for role-based checks
+  - Located `packages/api/src/auth/services/permissions.service.ts`
+    - Has `Permission` enum with granular permissions
+    - Has role-to-permission mappings (OWNER, GM, PLAYER, VIEWER)
+  - Confirmed Socket.IO handles automatic room cleanup on disconnect
 - [ ] Implement connection authentication
   - Extract user/session info from WebSocket handshake
-  - Validate JWT token from connection headers
+  - Validate JWT token from connection auth/query params
   - Reject unauthenticated connections
+  - Store authenticated user data in socket.data
+- [ ] Update WebSocket module dependencies
+  - Import AuthModule to get JwtService
+  - Import CampaignMembershipService for authorization
+  - Update WebSocketModule providers and imports
 - [ ] Create subscription handler methods
-  - `handleSubscribeToCampaign(campaignId)`
-  - `handleSubscribeToSettlement(settlementId)`
-  - `handleSubscribeToStructure(structureId)`
-  - `handleUnsubscribeFromCampaign(campaignId)`
-  - `handleUnsubscribeFromSettlement(settlementId)`
-  - `handleUnsubscribeFromStructure(structureId)`
+  - `@SubscribeMessage('subscribe_campaign')` → `handleSubscribeToCampaign(campaignId)`
+  - `@SubscribeMessage('subscribe_settlement')` → `handleSubscribeToSettlement(settlementId)`
+  - `@SubscribeMessage('subscribe_structure')` → `handleSubscribeToStructure(structureId)`
+  - `@SubscribeMessage('unsubscribe_campaign')` → `handleUnsubscribeFromCampaign(campaignId)`
+  - `@SubscribeMessage('unsubscribe_settlement')` → `handleUnsubscribeFromSettlement(settlementId)`
+  - `@SubscribeMessage('unsubscribe_structure')` → `handleUnsubscribeFromStructure(structureId)`
 - [ ] Add authorization checks for subscriptions
-  - Verify user has access to requested campaign/settlement/structure
-  - Use existing permission/auth services
+  - Verify user has access to requested campaign using `canView()`
+  - Verify user has access to settlement (via campaign ownership)
+  - Verify user has access to structure (via campaign ownership)
+  - Return error events for unauthorized attempts
 - [ ] Handle automatic cleanup on disconnect
-  - Remove client from all rooms on disconnect
-  - Clean up any client-specific state
+  - Socket.IO automatically removes clients from rooms on disconnect
+  - Log disconnection events for debugging
 - [ ] Write tests for subscription logic
   - Test successful subscription to valid rooms
-  - Test authorization failures
+  - Test authorization failures (no campaign access)
+  - Test invalid JWT token rejection
+  - Test missing JWT token rejection
   - Test automatic cleanup on disconnect
   - Test multiple simultaneous subscriptions
 
@@ -119,6 +148,43 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
 - Reuse existing AuthService/PermissionService for authorization
 - Consider rate limiting for subscription requests
 - Log subscription events for debugging
+
+**Implementation Details Discovered**:
+
+1. **JWT Validation Pattern**:
+   - Extract token from `socket.handshake.auth.token` or `socket.handshake.query.token`
+   - Use `JwtService.verify(token)` to validate and decode
+   - On success, store user info in `socket.data` as `AuthenticatedSocketData`
+   - On failure, disconnect socket with error message
+
+2. **Authorization Pattern**:
+   - Inject `CampaignMembershipService` into `WebSocketGatewayClass`
+   - For campaign subscriptions: `await campaignMembershipService.canView(campaignId, userId)`
+   - For settlement/structure: Need to look up parent campaign ID first, then check campaign access
+   - Return `{ error: 'Unauthorized' }` event response for failed authorization
+
+3. **Module Dependencies**:
+   - `WebSocketModule` needs to import `AuthModule` (for JwtService)
+   - `WebSocketModule` needs to import relevant services (CampaignMembershipService, etc.)
+   - May need to import `JwtModule` separately if not exported by AuthModule
+
+4. **Room Subscription Pattern**:
+   - Use `socket.join(getRoomName(RoomType.CAMPAIGN, campaignId))` for subscriptions
+   - Use `socket.leave(getRoomName(RoomType.CAMPAIGN, campaignId))` for unsubscriptions
+   - Return success/error response to client after subscription attempt
+
+5. **Testing Pattern**:
+   - Mock `JwtService.verify()` to return valid/invalid payloads
+   - Mock `CampaignMembershipService.canView()` to simulate authorization scenarios
+   - Mock `socket.join()` and `socket.leave()` to verify room operations
+   - Test both `handshake.auth.token` and `handshake.query.token` paths
+
+**Files to Modify**:
+
+- `packages/api/src/websocket/websocket.module.ts` (add imports/providers)
+- `packages/api/src/websocket/websocket.gateway.ts` (add auth + subscription handlers)
+- `packages/api/src/websocket/websocket.gateway.test.ts` (add new test suites)
+- `packages/api/src/websocket/types.ts` (may need additional interfaces)
 
 ---
 
