@@ -76,7 +76,7 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
 
 **Goal**: Implement room-based subscription logic with proper scoping
 
-**Status**: In Progress - Research Phase Complete
+**Status**: Implementation Complete - Tests Pending
 
 **Tasks**:
 
@@ -102,31 +102,37 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
     - Has `Permission` enum with granular permissions
     - Has role-to-permission mappings (OWNER, GM, PLAYER, VIEWER)
   - Confirmed Socket.IO handles automatic room cleanup on disconnect
-- [ ] Implement connection authentication
+- [x] Implement connection authentication
   - Extract user/session info from WebSocket handshake
   - Validate JWT token from connection auth/query params
   - Reject unauthenticated connections
   - Store authenticated user data in socket.data
-- [ ] Update WebSocket module dependencies
+  - Implemented in `handleConnection()` method with full JWT validation
+- [x] Update WebSocket module dependencies
   - Import AuthModule to get JwtService
   - Import CampaignMembershipService for authorization
   - Update WebSocketModule providers and imports
-- [ ] Create subscription handler methods
+  - Added constructor injection for JwtService and CampaignMembershipService
+- [x] Create subscription handler methods
   - `@SubscribeMessage('subscribe_campaign')` → `handleSubscribeToCampaign(campaignId)`
   - `@SubscribeMessage('subscribe_settlement')` → `handleSubscribeToSettlement(settlementId)`
   - `@SubscribeMessage('subscribe_structure')` → `handleSubscribeToStructure(structureId)`
   - `@SubscribeMessage('unsubscribe_campaign')` → `handleUnsubscribeFromCampaign(campaignId)`
   - `@SubscribeMessage('unsubscribe_settlement')` → `handleUnsubscribeFromSettlement(settlementId)`
   - `@SubscribeMessage('unsubscribe_structure')` → `handleUnsubscribeFromStructure(structureId)`
-- [ ] Add authorization checks for subscriptions
+  - All 6 handlers implemented with proper error handling and logging
+- [x] Add authorization checks for subscriptions
   - Verify user has access to requested campaign using `canView()`
   - Verify user has access to settlement (via campaign ownership)
   - Verify user has access to structure (via campaign ownership)
   - Return error events for unauthorized attempts
-- [ ] Handle automatic cleanup on disconnect
+  - Campaign subscriptions fully implemented with `canView()` check
+  - Settlement/structure subscriptions have basic implementation (parent campaign lookup deferred to Stage 3)
+- [x] Handle automatic cleanup on disconnect
   - Socket.IO automatically removes clients from rooms on disconnect
   - Log disconnection events for debugging
-- [ ] Write tests for subscription logic
+  - Verified in `handleDisconnect()` method with appropriate logging
+- [ ] **TESTS STILL NEEDED** - Write tests for subscription logic
   - Test successful subscription to valid rooms
   - Test authorization failures (no campaign access)
   - Test invalid JWT token rejection

@@ -2,9 +2,68 @@
 
 ## Status
 
-- [ ] Completed (Stage 1 of 8 complete)
+- [ ] Completed (Stage 2 of 8 - implementation complete, tests pending)
 - **Commits**:
   - cdc825c - feat(api): implement WebSocket infrastructure with Redis adapter (Stage 1)
+
+## Stage 2 Implementation Notes
+
+### What Was Implemented
+
+**Files Modified:**
+
+- `packages/api/src/websocket/websocket.module.ts` - Added AuthModule import
+- `packages/api/src/websocket/websocket.gateway.ts` - Added authentication and subscription handlers
+
+**Key Features:**
+
+1. **Connection Authentication**:
+   - JWT token extraction from `handshake.auth.token` or `handshake.query.token`
+   - Token verification using `JwtService.verify()`
+   - Authenticated user data stored in `socket.data` as `AuthenticatedSocketData`
+   - Unauthenticated connections are rejected and disconnected immediately
+   - Full error handling and logging for auth failures
+
+2. **Module Dependencies**:
+   - Imported `AuthModule` to provide `JwtService` and `CampaignMembershipService`
+   - Added constructor injection for both services into `WebSocketGatewayClass`
+
+3. **Subscription Handlers** (6 new `@SubscribeMessage` methods):
+   - `subscribe_campaign` - Validates user access via `CampaignMembershipService.canView()`
+   - `subscribe_settlement` - Basic implementation (parent campaign lookup deferred to Stage 3)
+   - `subscribe_structure` - Basic implementation (parent campaign lookup deferred to Stage 3)
+   - `unsubscribe_campaign`, `unsubscribe_settlement`, `unsubscribe_structure`
+   - All handlers return `{success: boolean, error?: string}` responses
+   - Comprehensive error handling and debug/info logging
+
+4. **Authorization**:
+   - Campaign subscriptions check `canView(campaignId, userId)` before allowing room join
+   - Unauthorized attempts return `{success: false, error: 'Unauthorized'}`
+   - Settlement/structure handlers documented for enhancement in Stage 3
+
+### Known Limitations
+
+- Settlement and structure subscriptions don't yet validate parent campaign access
+  - Will be enhanced in Stage 3 when entity relationships are available
+  - Currently allow subscription without campaign-level authorization check
+
+### Tests Status
+
+**⚠️ Tests still need to be written** for:
+
+- Connection authentication (valid/invalid/missing JWT tokens)
+- Campaign subscription authorization (authorized vs unauthorized users)
+- Settlement/structure subscription (basic functionality)
+- Unsubscription operations
+- Multiple simultaneous subscriptions
+- Automatic room cleanup on disconnect
+
+### Next Steps
+
+1. Write comprehensive test suite for authentication and authorization
+2. Run type-check and lint
+3. Code review
+4. Commit changes
 
 ## Description
 
