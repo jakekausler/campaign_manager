@@ -37,6 +37,9 @@ export type {
   WebSocketEventHandler,
 } from './useWebSocketSubscription';
 
+// WebSocket cache synchronization
+export { useWebSocketCacheSync } from './useWebSocketCacheSync';
+
 // Export custom hooks here as they are created
 // Example:
 // export { useAuth } from './useAuth';

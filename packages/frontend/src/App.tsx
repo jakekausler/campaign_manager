@@ -10,13 +10,34 @@ import { RouterProvider } from 'react-router-dom';
 
 import { Toaster } from '@/components/ui/toaster';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
+import { useWebSocketCacheSync } from '@/hooks';
 import { router } from '@/router';
+import { useCurrentCampaignId } from '@/stores';
+
+/**
+ * AppWithCacheSync - Inner component that uses cache sync hook
+ *
+ * This component must be inside WebSocketProvider to have access to WebSocket context.
+ * It subscribes to WebSocket events and syncs them with Apollo cache.
+ */
+function AppWithCacheSync() {
+  const currentCampaignId = useCurrentCampaignId();
+
+  // Sync WebSocket events with Apollo cache for current campaign
+  useWebSocketCacheSync(currentCampaignId);
+
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster />
+    </>
+  );
+}
 
 function App() {
   return (
     <WebSocketProvider>
-      <RouterProvider router={router} />
-      <Toaster />
+      <AppWithCacheSync />
     </WebSocketProvider>
   );
 }

@@ -261,49 +261,49 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
 
 **Backend Domain Service Integration (deferred from Stage 3):**
 
-- [ ] Add event publishing to Campaign service
+- [x] Add event publishing to Campaign service
   - Inject `WebSocketPublisherService` into CampaignService
   - Emit `entity_updated` events on campaign create/update/delete
   - Include changed fields in event payload
-- [ ] Add event publishing to Settlement service
+- [x] Add event publishing to Settlement service
   - Inject `WebSocketPublisherService` into SettlementService
   - Emit `settlement_updated` events on settlement create/update/delete
   - Publish to both campaign and settlement rooms
-- [ ] Add event publishing to Structure service
+- [x] Add event publishing to Structure service
   - Inject `WebSocketPublisherService` into StructureService
   - Emit `structure_updated` events on structure create/update/delete
   - Publish to campaign, settlement, and structure rooms
-- [ ] Add event publishing to World Time service (if exists)
+- [x] Add event publishing to World Time service (if exists)
   - Emit `world_time_changed` events when world time is updated
   - Include elapsed time information
-- [ ] Add state invalidation events to Rules Engine integration points
+- [x] Add state invalidation events to Rules Engine integration points
   - Emit `state_invalidated` events when computed state changes
   - Specify appropriate scope (campaign vs entity)
-- [ ] Write tests for domain service event publishing
+- [x] Write tests for domain service event publishing
   - Verify events are emitted on CRUD operations
   - Verify correct room targeting
   - Mock WebSocketPublisherService
 
 **Frontend WebSocket Client:**
 
-- [ ] Add Socket.IO client dependency to `@campaign/frontend`
+- [x] Add Socket.IO client dependency to `@campaign/frontend`
   - `socket.io-client`
-- [ ] Create WebSocket context provider
+- [x] Create WebSocket context provider
   - `packages/frontend/src/contexts/WebSocketContext.tsx`
   - Manage single global Socket.IO connection
   - Handle connection state (connecting, connected, disconnected)
-- [ ] Implement connection logic
+- [x] Implement connection logic
   - Connect with authentication token
   - Handle connection errors
   - Implement exponential backoff for reconnection
   - Auto-reconnect on network recovery
-- [ ] Create connection state hook
+- [x] Create connection state hook
   - `useWebSocketConnection()` - returns connection status
   - Export connection state enum (Connected, Connecting, Disconnected)
-- [ ] Add connection status indicator to UI
+- [x] Add connection status indicator to UI
   - Show connection state in app header or status bar
   - Display reconnection attempts
-- [ ] Write tests for WebSocket context
+- [x] Write tests for WebSocket context
   - Test connection establishment
   - Test reconnection logic
   - Test token refresh on reconnect
@@ -313,18 +313,18 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
 
 **Backend Integration:**
 
-- [ ] Domain services emit events on all CRUD operations
-- [ ] Events are published to correct rooms
-- [ ] Tests verify event emission
-- [ ] Type-check and lint pass
+- [x] Domain services emit events on all CRUD operations
+- [x] Events are published to correct rooms
+- [x] Tests verify event emission
+- [x] Type-check and lint pass
 
 **Frontend Client:**
 
-- [ ] WebSocket connection established on app load
-- [ ] Connection survives page navigation
-- [ ] Auto-reconnection works after network interruption
-- [ ] Connection state is visible in UI
-- [ ] Tests pass
+- [x] WebSocket connection established on app load
+- [x] Connection survives page navigation
+- [x] Auto-reconnection works after network interruption
+- [x] Connection state is visible in UI
+- [x] Tests pass
 
 **Notes**:
 
