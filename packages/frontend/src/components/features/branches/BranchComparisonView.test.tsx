@@ -40,7 +40,7 @@ vi.mock('@/services/api/hooks/version-comparison', async (importOriginal) => {
 // Mock react-diff-viewer-continued
 vi.mock('react-diff-viewer-continued', () => ({
   default: ({ oldValue, newValue, leftTitle, rightTitle }: any) => (
-    <div data-testid="diff-viewer">
+    <div>
       <div data-testid="left-title">{leftTitle}</div>
       <div data-testid="right-title">{rightTitle}</div>
       <div data-testid="old-value">{oldValue}</div>
@@ -246,14 +246,16 @@ describe('BranchComparisonView', () => {
       render(<BranchComparisonView />);
 
       const entityIdInput = screen.getByTestId('entity-id-input');
+      const timeInput = screen.getByTestId('comparison-time-input');
       await user.type(entityIdInput, 'settlement-123');
+      await user.type(timeInput, '2024-01-15T00:00:00Z');
 
       const compareButton = screen.getByTestId('compare-button');
       expect(compareButton).not.toBeDisabled();
     });
 
     it('should show loading state when querying data', async () => {
-      vi.mocked(hooks.useGetSettlementAsOf).mockReturnValue({
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockReturnValue({
         data: undefined,
         loading: true,
         error: undefined,
@@ -264,7 +266,9 @@ describe('BranchComparisonView', () => {
       render(<BranchComparisonView />);
 
       const entityIdInput = screen.getByTestId('entity-id-input');
+      const timeInput = screen.getByTestId('comparison-time-input');
       await user.type(entityIdInput, 'settlement-123');
+      await user.type(timeInput, '2024-01-15T00:00:00Z');
 
       const compareButton = screen.getByTestId('compare-button');
       await user.click(compareButton);
@@ -278,7 +282,7 @@ describe('BranchComparisonView', () => {
   describe('Comparison Results', () => {
     it('should display settlement comparison results', async () => {
       // Mock successful settlement queries
-      vi.mocked(hooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
         if (skip) {
           return {
             data: undefined,
@@ -300,7 +304,9 @@ describe('BranchComparisonView', () => {
 
       // Fill form
       const entityIdInput = screen.getByTestId('entity-id-input');
+      const timeInput = screen.getByTestId('comparison-time-input');
       await user.type(entityIdInput, 'settlement-1');
+      await user.type(timeInput, '2024-01-15T00:00:00Z');
 
       // Click compare
       const compareButton = screen.getByTestId('compare-button');
@@ -318,7 +324,7 @@ describe('BranchComparisonView', () => {
 
     it('should display structure comparison results', async () => {
       // Mock successful structure queries
-      vi.mocked(hooks.useGetStructureAsOf).mockImplementation(({ skip }: any) => {
+      vi.mocked(versionHooks.useGetStructureAsOf).mockImplementation(({ skip }: any) => {
         if (skip) {
           return {
             data: undefined,
@@ -340,7 +346,9 @@ describe('BranchComparisonView', () => {
 
       // Select structure entity type (would need to interact with select, simplified here)
       const entityIdInput = screen.getByTestId('entity-id-input');
+      const timeInput = screen.getByTestId('comparison-time-input');
       await user.type(entityIdInput, 'structure-1');
+      await user.type(timeInput, '2024-01-15T00:00:00Z');
 
       const compareButton = screen.getByTestId('compare-button');
       await user.click(compareButton);
@@ -353,7 +361,7 @@ describe('BranchComparisonView', () => {
 
     it('should show warning when no data found', async () => {
       // Mock queries returning no data
-      vi.mocked(hooks.useGetSettlementAsOf).mockReturnValue({
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockReturnValue({
         data: { settlementAsOf: null },
         loading: false,
         error: undefined,
@@ -364,7 +372,9 @@ describe('BranchComparisonView', () => {
       render(<BranchComparisonView />);
 
       const entityIdInput = screen.getByTestId('entity-id-input');
+      const timeInput = screen.getByTestId('comparison-time-input');
       await user.type(entityIdInput, 'nonexistent-id');
+      await user.type(timeInput, '2024-01-15T00:00:00Z');
 
       const compareButton = screen.getByTestId('compare-button');
       await user.click(compareButton);
@@ -375,7 +385,7 @@ describe('BranchComparisonView', () => {
     });
 
     it('should display error when query fails', async () => {
-      vi.mocked(hooks.useGetSettlementAsOf).mockReturnValue({
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockReturnValue({
         data: undefined,
         loading: false,
         error: new Error('Network error'),
@@ -386,7 +396,9 @@ describe('BranchComparisonView', () => {
       render(<BranchComparisonView />);
 
       const entityIdInput = screen.getByTestId('entity-id-input');
+      const timeInput = screen.getByTestId('comparison-time-input');
       await user.type(entityIdInput, 'settlement-1');
+      await user.type(timeInput, '2024-01-15T00:00:00Z');
 
       const compareButton = screen.getByTestId('compare-button');
       await user.click(compareButton);
@@ -400,7 +412,8 @@ describe('BranchComparisonView', () => {
 
   describe('Clear Functionality', () => {
     it('should show clear button after comparison', async () => {
-      vi.mocked(hooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
+      // Mock returns data for both source and target branches
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
         if (skip)
           return { data: undefined, loading: false, error: undefined, refetch: vi.fn() } as any;
         return {
@@ -415,7 +428,9 @@ describe('BranchComparisonView', () => {
       render(<BranchComparisonView />);
 
       const entityIdInput = screen.getByTestId('entity-id-input');
+      const timeInput = screen.getByTestId('comparison-time-input');
       await user.type(entityIdInput, 'settlement-1');
+      await user.type(timeInput, '2024-01-15T00:00:00Z');
 
       const compareButton = screen.getByTestId('compare-button');
       await user.click(compareButton);
@@ -426,7 +441,8 @@ describe('BranchComparisonView', () => {
     });
 
     it('should clear results and reset form when clear is clicked', async () => {
-      vi.mocked(hooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
+      // Mock returns data for both source and target branches
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
         if (skip)
           return { data: undefined, loading: false, error: undefined, refetch: vi.fn() } as any;
         return {
@@ -442,7 +458,9 @@ describe('BranchComparisonView', () => {
 
       // Perform comparison
       const entityIdInput = screen.getByTestId('entity-id-input');
+      const timeInput = screen.getByTestId('comparison-time-input');
       await user.type(entityIdInput, 'settlement-1');
+      await user.type(timeInput, '2024-01-15T00:00:00Z');
 
       const compareButton = screen.getByTestId('compare-button');
       await user.click(compareButton);
@@ -472,7 +490,8 @@ describe('BranchComparisonView', () => {
     });
 
     it('should not show help text when comparing', async () => {
-      vi.mocked(hooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
+      // Mock returns data for both source and target branches
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
         if (skip)
           return { data: undefined, loading: false, error: undefined, refetch: vi.fn() } as any;
         return {
@@ -487,7 +506,9 @@ describe('BranchComparisonView', () => {
       render(<BranchComparisonView />);
 
       const entityIdInput = screen.getByTestId('entity-id-input');
+      const timeInput = screen.getByTestId('comparison-time-input');
       await user.type(entityIdInput, 'settlement-1');
+      await user.type(timeInput, '2024-01-15T00:00:00Z');
 
       const compareButton = screen.getByTestId('compare-button');
       await user.click(compareButton);

@@ -356,8 +356,10 @@ describe('CherryPickDialog', () => {
 
       render(<CherryPickDialog {...defaultProps} />);
 
-      const closeButton = screen.getByRole('button', { name: /close/i });
-      expect(closeButton).toBeInTheDocument();
+      // Should have Close button in footer (not Cancel), but excluding the X button with aria-label
+      const buttons = screen.getAllByRole('button', { name: /^close$/i });
+      const footerCloseButton = buttons.find((btn) => !btn.querySelector('svg')); // Footer button has no SVG
+      expect(footerCloseButton).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /^Cherry-Pick$/ })).not.toBeInTheDocument();
     });
   });
@@ -464,18 +466,25 @@ describe('CherryPickDialog', () => {
       // Conflict dialog should be open
       expect(screen.getByTestId('conflict-resolution-dialog')).toBeInTheDocument();
 
-      // Click resolve button
-      const resolveButton = screen.getByRole('button', { name: /resolve/i });
+      // Click resolve button (text is "Apply Resolution")
+      const resolveButton = screen.getByRole('button', { name: /apply resolution/i });
       await user.click(resolveButton);
 
-      // Cherry-pick should be called again with resolutions
+      // Cherry-pick should be called again with resolutions (defaults to source value)
       await waitFor(() => {
         expect(mockCherryPick).toHaveBeenCalledWith({
           variables: {
             input: {
               sourceVersionId: 'version-123',
               targetBranchId: 'branch-target',
-              resolutions: [],
+              resolutions: [
+                {
+                  entityId: 'entity-456',
+                  entityType: 'settlement',
+                  path: 'population',
+                  resolvedValue: '1000', // Defaults to source value
+                },
+              ],
             },
           },
         });
@@ -534,9 +543,9 @@ describe('CherryPickDialog', () => {
         expect(screen.getByTestId('conflict-resolution-dialog')).toBeInTheDocument();
       });
 
-      // Click close button in conflict dialog
-      const closeButton = screen.getByRole('button', { name: /close/i });
-      await user.click(closeButton);
+      // Click cancel button in conflict dialog
+      const cancelButton = screen.getByRole('button', { name: /cancel/i });
+      await user.click(cancelButton);
 
       // Parent dialog should close
       expect(mockOnClose).toHaveBeenCalledTimes(1);
