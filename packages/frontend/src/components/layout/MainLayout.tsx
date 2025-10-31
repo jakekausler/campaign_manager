@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
+import { ConnectionIndicator } from '@/components';
 import { BranchSelector, type BranchSelectorHandle } from '@/components/features';
 import { Button } from '@/components/ui';
 import { useKeyboardShortcuts } from '@/hooks';
@@ -85,6 +86,9 @@ export function MainLayout() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Connection status indicator (only shown when authenticated) */}
+            {isAuthenticated && <ConnectionIndicator />}
+
             {/* Branch selector (shown when campaign is selected) */}
             {isAuthenticated && currentCampaignId && <BranchSelector ref={branchSelectorRef} />}
 
