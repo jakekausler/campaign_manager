@@ -2,12 +2,117 @@
 
 ## Status
 
-- [ ] Completed (Stage 4 of 8 - Backend Integration COMPLETE)
+- [ ] Completed (Stage 4 of 8 - Frontend WebSocket Client COMPLETE)
 - **Commits**:
   - cdc825c - feat(api): implement WebSocket infrastructure with Redis adapter (Stage 1)
   - 699fcd6 - test(api): add comprehensive tests for WebSocket subscription system (Stage 2)
   - 9a59f4c - feat(api,shared): add WebSocket event publisher with type-safe event system (Stage 3)
   - 21aa2e0 - feat(api): integrate WebSocket event publishing into domain services (Stage 4 - Backend Integration)
+  - b031566 - feat(frontend): implement WebSocket client with connection management (Stage 4 - Frontend WebSocket Client)
+
+## Stage 4 Implementation Notes (Frontend WebSocket Client)
+
+### What Was Implemented
+
+**Files Created:**
+
+- `packages/frontend/src/contexts/WebSocketContext.tsx` - WebSocket context provider with connection management
+- `packages/frontend/src/contexts/WebSocketContext.test.tsx` - Comprehensive test suite (31 tests)
+- `packages/frontend/src/components/ConnectionIndicator.tsx` - Visual connection status component
+
+**Files Modified:**
+
+- `packages/frontend/package.json` - Added socket.io-client dependency
+- `packages/frontend/src/App.tsx` - Wrapped app in WebSocketProvider
+- `packages/frontend/src/components/index.ts` - Export ConnectionIndicator
+- `packages/frontend/src/components/layout/MainLayout.tsx` - Added ConnectionIndicator to header
+
+**Key Features:**
+
+1. **WebSocket Context Provider**:
+   - Single global Socket.IO connection for entire application
+   - Automatic JWT authentication using token from auth store (via `auth.token` handshake parameter)
+   - Manual reconnection control with exponential backoff (1s → 32s max delay)
+   - Automatic token refresh detection and reconnection when token changes
+   - Connection state management (Connecting, Connected, Disconnected, Error)
+   - Proper cleanup on unmount (removes listeners, disconnects socket, clears timeouts)
+   - Uses refs to track intentional disconnects vs errors to prevent unnecessary reconnection
+
+2. **Connection Lifecycle**:
+   - Only connects when user is authenticated (`isAuthenticated && token`)
+   - Connection created automatically on authentication
+   - Reconnection scheduled on disconnect/error with exponential backoff
+   - Reconnect attempts tracked and displayed to user
+   - Supports both WebSocket and polling transports (WebSocket preferred)
+
+3. **Connection Status Indicator**:
+   - Color-coded status: green (connected), yellow (connecting), red (error), gray (disconnected)
+   - Auto-hides 3 seconds after successful connection to avoid UI clutter
+   - Shows reconnection attempt counter during errors/disconnection
+   - Only visible to authenticated users
+   - Positioned in MainLayout header next to branch selector
+
+4. **React Hooks**:
+   - `useWebSocket()` - Full access to socket instance, connection state, error, reconnect attempts
+   - `useWebSocketConnection()` - Convenience hook for connection state only
+   - Both hooks throw error if used outside WebSocketProvider
+
+**Implementation Patterns:**
+
+- Uses Socket.IO client with `reconnection: false` for manual control
+- Exponential backoff calculated: `baseDelay * 2^attempt` (capped at maxDelay)
+- Reconnection timeout stored in ref for proper cleanup
+- `intentionalDisconnect` ref prevents reconnection when unmounting
+- Token changes detected via useEffect watching auth store
+
+**Security:**
+
+- JWT token passed securely via Socket.IO `auth.token` handshake parameter
+- No token exposure in debug logs (only logs presence, not value)
+- Connection only created when authenticated
+- Token refresh triggers automatic reconnection with new token
+
+**Testing:**
+
+- Comprehensive test suite: 31 tests passing
+- Tests cover:
+  - Connection establishment with authentication
+  - Connection state transitions (connecting → connected → disconnected → error)
+  - Socket event handler registration and invocation
+  - Authentication requirement enforcement
+  - Cleanup on unmount
+  - Hook usage outside provider (throws error)
+  - ConnectionState enum values
+- Proper mocking of socket.io-client, env config, and auth store
+
+**Quality Checks:**
+
+- ✅ Type-check passing (no errors)
+- ✅ Lint passing (no new errors, pre-existing warnings in other files only)
+- ✅ All 31 tests passing
+- ✅ Manual code review completed (security, performance, error handling verified)
+- ✅ Import order auto-fixed by ESLint
+- ✅ Pre-commit hooks passing (format check, lint)
+
+### Stage 4 Frontend WebSocket Client Complete
+
+All frontend WebSocket client infrastructure is now in place:
+
+- ✅ Socket.IO client integrated with JWT authentication
+- ✅ WebSocketProvider managing single global connection
+- ✅ Exponential backoff reconnection strategy implemented
+- ✅ Automatic token refresh detection and reconnection
+- ✅ Connection status indicator in UI
+- ✅ React hooks for accessing WebSocket functionality
+- ✅ Comprehensive test coverage (31/31 tests passing)
+- ✅ Type-check and lint passing
+- ✅ Changes committed (b031566)
+
+### Next Steps
+
+Stage 5 will implement frontend subscription hooks for subscribing to specific events and rooms (campaign, settlement, structure subscriptions with useWebSocketSubscription hooks).
+
+---
 
 ## Stage 4 Implementation Notes (Backend Integration)
 
