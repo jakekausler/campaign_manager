@@ -220,12 +220,13 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
 - [x] Integrate publisher with Redis pub/sub
   - Publish events to Redis channels via Socket.IO server
   - Ensure events are received by all API instances via Redis adapter
-- [ ] Add event publishing to relevant services (**DEFERRED TO STAGE 4+**)
+- [ ] Add event publishing to relevant services (**DEFERRED - NOT COMPLETED IN STAGE 3**)
   - Campaign service → emit entity_updated on campaign changes
   - Settlement service → emit settlement_updated
   - Structure service → emit structure_updated
   - World time service → emit world_time_changed
   - Rules engine integration → emit state_invalidated
+  - **NOTE**: This task was intentionally deferred to Stage 4+ and is NOT part of Stage 3 completion
 - [x] Write tests for event publishing
   - Test each event type is published correctly
   - Test room targeting works
@@ -240,8 +241,8 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
 - [x] All event types are defined with TypeScript types
 - [x] WebSocketPublisherService created and injectable
 - [x] Events are published to correct rooms
-- [x] Events propagate across multiple API instances via Redis
-- [x] Tests pass (63/63 WebSocket tests passing)
+- [x] Events propagate across multiple API instances via Redis (via Socket.IO Redis adapter - architectural integration, not unit tested)
+- [x] Tests pass (63/63 WebSocket tests passing - unit tests for publisher service methods and room targeting)
 
 **Notes**:
 
@@ -252,11 +253,38 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
 
 ---
 
-### Stage 4: Frontend WebSocket Client Setup
+### Stage 4: Frontend WebSocket Client Setup + Backend Domain Integration
 
-**Goal**: Create React hooks and utilities for WebSocket connection
+**Goal**: Create React hooks and utilities for WebSocket connection, AND integrate event publishing into domain services (deferred from Stage 3)
 
 **Tasks**:
+
+**Backend Domain Service Integration (deferred from Stage 3):**
+
+- [ ] Add event publishing to Campaign service
+  - Inject `WebSocketPublisherService` into CampaignService
+  - Emit `entity_updated` events on campaign create/update/delete
+  - Include changed fields in event payload
+- [ ] Add event publishing to Settlement service
+  - Inject `WebSocketPublisherService` into SettlementService
+  - Emit `settlement_updated` events on settlement create/update/delete
+  - Publish to both campaign and settlement rooms
+- [ ] Add event publishing to Structure service
+  - Inject `WebSocketPublisherService` into StructureService
+  - Emit `structure_updated` events on structure create/update/delete
+  - Publish to campaign, settlement, and structure rooms
+- [ ] Add event publishing to World Time service (if exists)
+  - Emit `world_time_changed` events when world time is updated
+  - Include elapsed time information
+- [ ] Add state invalidation events to Rules Engine integration points
+  - Emit `state_invalidated` events when computed state changes
+  - Specify appropriate scope (campaign vs entity)
+- [ ] Write tests for domain service event publishing
+  - Verify events are emitted on CRUD operations
+  - Verify correct room targeting
+  - Mock WebSocketPublisherService
+
+**Frontend WebSocket Client:**
 
 - [ ] Add Socket.IO client dependency to `@campaign/frontend`
   - `socket.io-client`
@@ -282,6 +310,15 @@ Frontend Client → Socket.IO Client → API Gateway (WebSocket)
   - Mock Socket.IO client
 
 **Success Criteria**:
+
+**Backend Integration:**
+
+- [ ] Domain services emit events on all CRUD operations
+- [ ] Events are published to correct rooms
+- [ ] Tests verify event emission
+- [ ] Type-check and lint pass
+
+**Frontend Client:**
 
 - [ ] WebSocket connection established on app load
 - [ ] Connection survives page navigation
