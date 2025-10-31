@@ -23,6 +23,20 @@ export type {
 export { useKeyboardShortcuts } from './useKeyboardShortcuts';
 export type { KeyboardShortcut } from './useKeyboardShortcuts';
 
+// WebSocket subscription hooks
+export {
+  useCampaignSubscription,
+  useSettlementSubscription,
+  useStructureSubscription,
+  useWebSocketSubscription,
+} from './useWebSocketSubscription';
+export type {
+  CampaignEventHandlers,
+  SettlementEventHandlers,
+  StructureEventHandlers,
+  WebSocketEventHandler,
+} from './useWebSocketSubscription';
+
 // Export custom hooks here as they are created
 // Example:
 // export { useAuth } from './useAuth';
