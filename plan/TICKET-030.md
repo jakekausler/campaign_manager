@@ -6,6 +6,7 @@
 - **Commits**:
   - ea599f0 - Stage 1: Setup and Dependencies
   - 5cebb60 - Stage 2: JSONLogic Type Definitions and Helpers
+  - 7f782aa - Stage 3: Variable Picker with Autocomplete
 
 ## Implementation Notes
 
@@ -86,6 +87,77 @@
 - Code reviewed and approved by code-reviewer agent
 
 **Next**: Stage 3 will implement the Variable Picker with Autocomplete component.
+
+### Stage 3: Variable Picker with Autocomplete (Complete)
+
+**Completed**: Stage 3 implemented a fully-featured autocomplete input component for selecting variable paths.
+
+**What was implemented**:
+
+1. **VariablePickerInput.tsx** - Accessible autocomplete component with:
+   - Dropdown showing all available variables with real-time filtering
+   - Case-insensitive search by variable path
+   - Category grouping (Settlement, Structure, Common, etc.) with headers
+   - Type hints (string, number, boolean, enum) displayed as badges
+   - Optional descriptions for each variable
+   - Manual text entry for custom variable paths
+   - Click-outside to close dropdown behavior
+
+2. **Keyboard navigation:**
+   - Arrow Up/Down to navigate options
+   - Enter to select highlighted option
+   - Escape to close dropdown
+   - Tab to close and reset highlighted index
+   - Guards against empty result sets prevent NaN errors
+
+3. **Accessibility (WCAG compliant):**
+   - ARIA combobox pattern with all required attributes
+   - role="combobox", aria-autocomplete="list", aria-expanded
+   - aria-activedescendant tracking highlighted option
+   - aria-selected for current selection
+   - Focusable option elements (tabIndex={0}) with keyboard support
+
+4. **Performance optimizations:**
+   - useMemo for filtering, grouping, and flattening (prevents unnecessary recalculations)
+   - Path-to-index lookup Map for O(1) index lookups (avoids O(n²) complexity in render loop)
+   - Efficient re-rendering only when dependencies change
+   - React 18's useId() hook for collision-free unique IDs
+
+5. **VariablePickerInput.test.tsx** - Comprehensive test suite (27 tests):
+   - Rendering and basic UI (placeholder, current value, initial state)
+   - Dropdown interaction (focus, show/hide, click outside)
+   - Filtering (search text, case-insensitive, no results message)
+   - Selection (click, keyboard, state updates)
+   - Keyboard navigation (all arrow keys, Enter, Escape)
+   - Category grouping (headers, ordering)
+   - Type hints and descriptions display
+   - Edge cases (empty arrays, manual input, clearing input)
+   - Full accessibility compliance (ARIA attributes)
+
+6. **Type safety improvements in helpers.ts:**
+   - Added explanatory comments for TypeScript double assertions
+   - Clarified why computed property names require `as unknown as Type`
+
+**Key decisions**:
+
+- Controlled component with internal inputText state for filtering (separate from selected value)
+- Used React 18's useId() instead of Math.random() for modern, reliable ID generation
+- Implemented O(1) lookup Map to prevent O(n²) complexity when rendering options
+- Used useMemo extensively for performance (filtering, grouping, flattening)
+- Added defensive guards for keyboard navigation with empty results
+- Proper tabIndex={0} for option elements to meet WCAG accessibility standards
+- onKeyDown handler on options (Enter/Space) for keyboard activation
+
+**Testing**:
+
+- All 27 tests passing in VariablePickerInput.test.tsx
+- All 52 tests passing in rule-builder directory (includes previous stages)
+- TypeScript compilation passes with strict mode
+- ESLint passes with 0 errors (only pre-existing warnings in other files)
+- Code reviewed by code-reviewer agent, all critical issues addressed
+- Performance optimizations verified (no O(n²) complexity, proper memoization)
+
+**Next**: Stage 4 will implement the Operator Block Components (IfBlock, LogicalBlock, ComparisonBlock, etc.).
 
 ## Description
 

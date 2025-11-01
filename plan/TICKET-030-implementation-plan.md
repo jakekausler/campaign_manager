@@ -95,27 +95,27 @@ Create a visual rule builder interface that allows users to construct conditiona
 
 **Tasks**:
 
-- [ ] Create `VariablePickerInput.tsx` component
-- [ ] Implement variable context fetching:
+- [x] Create `VariablePickerInput.tsx` component
+- [x] Implement variable context fetching:
   - Query available variables for entity type
   - Include computed fields, custom variables, and system fields
-- [ ] Build autocomplete UI:
+- [x] Build autocomplete UI:
   - Dropdown with categorized variables (Settlement, Structure, Common)
   - Search/filter by variable name
   - Display variable type hints
-- [ ] Add keyboard navigation (arrow keys, enter, escape)
-- [ ] Implement variable path syntax (support nested paths like `settlement.level`)
-- [ ] Write tests for autocomplete behavior and filtering
+- [x] Add keyboard navigation (arrow keys, enter, escape)
+- [x] Implement variable path syntax (support nested paths like `settlement.level`)
+- [x] Write tests for autocomplete behavior and filtering
 
 **Success Criteria**:
 
-- Variable picker shows all available variables
-- Variables are correctly categorized by entity type
-- Search filtering works correctly
-- Keyboard navigation functions properly
-- Component integrates with existing Settlement/Structure queries
+- ✅ Variable picker shows all available variables
+- ✅ Variables are correctly categorized by entity type
+- ✅ Search filtering works correctly
+- ✅ Keyboard navigation functions properly
+- ✅ Component integrates with existing Settlement/Structure queries
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: 7f782aa)
 
 ---
 
