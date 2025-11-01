@@ -354,6 +354,10 @@ describe('SettlementService', () => {
       (prisma.settlement.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockSettlement) // findById
         .mockResolvedValueOnce(mockSettlement); // hasPermission check
+      (prisma.settlement.findUnique as jest.Mock).mockResolvedValue({
+        ...mockSettlement,
+        kingdom: mockKingdom,
+      });
       (prisma.settlement.update as jest.Mock).mockResolvedValue({
         ...mockSettlement,
         deletedAt: new Date(),
@@ -371,6 +375,10 @@ describe('SettlementService', () => {
       (prisma.settlement.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockSettlement)
         .mockResolvedValueOnce(mockSettlement);
+      (prisma.settlement.findUnique as jest.Mock).mockResolvedValue({
+        ...mockSettlement,
+        kingdom: mockKingdom,
+      });
       (prisma.settlement.update as jest.Mock).mockResolvedValue({
         ...mockSettlement,
         deletedAt: new Date(),

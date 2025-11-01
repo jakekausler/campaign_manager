@@ -228,7 +228,7 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
         { provide: RulesEngineClientService, useValue: mockRulesEngineClient },
         { provide: CampaignContextService, useValue: mockCampaignContext },
         { provide: VersionService, useValue: mockVersionService },
-        WebSocketPublisherService, // Provide the class itself
+        { provide: WebSocketPublisherService, useValue: mockWebSocketPublisher },
         AuditService,
         ConditionService,
         ConditionEvaluationService,
@@ -244,10 +244,7 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
         SettlementOperatorsService,
         StructureOperatorsService,
       ],
-    })
-      .overrideProvider(WebSocketPublisherService)
-      .useValue(mockWebSocketPublisher)
-      .compile();
+    }).compile();
 
     conditionService = module.get<ConditionService>(ConditionService);
     settlementService = module.get<SettlementService>(SettlementService);

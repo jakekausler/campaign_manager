@@ -29,10 +29,24 @@ describe('StructureService', () => {
     role: 'user',
   };
 
+  const mockCampaign = {
+    id: 'campaign-1',
+    worldId: 'world-1',
+    ownerId: 'user-1',
+  };
+
+  const mockKingdom = {
+    id: 'kingdom-1',
+    campaignId: 'campaign-1',
+    name: 'Gondor',
+    campaign: mockCampaign,
+  };
+
   const mockSettlement = {
     id: 'settlement-1',
     kingdomId: 'kingdom-1',
     name: 'Minas Tirith',
+    kingdom: mockKingdom,
   };
 
   const mockStructure = {
@@ -59,6 +73,7 @@ describe('StructureService', () => {
           useValue: {
             structure: {
               findFirst: jest.fn(),
+              findUnique: jest.fn(),
               findMany: jest.fn(),
               create: jest.fn(),
               update: jest.fn(),
@@ -347,6 +362,10 @@ describe('StructureService', () => {
       (prisma.structure.findFirst as jest.Mock)
         .mockResolvedValueOnce(mockStructure) // findById
         .mockResolvedValueOnce(mockStructure); // hasPermission check
+      (prisma.structure.findUnique as jest.Mock).mockResolvedValue({
+        ...mockStructure,
+        settlement: mockSettlement,
+      });
       (prisma.structure.update as jest.Mock).mockResolvedValue({
         ...mockStructure,
         deletedAt: new Date(),

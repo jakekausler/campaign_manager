@@ -360,7 +360,7 @@ export class StructureService {
     // Get structure with settlement and kingdom to access campaignId
     const structureWithRelations = await this.prisma.structure.findUnique({
       where: { id },
-      include: { settlement: { include: { kingdom: true } } },
+      include: { settlement: { include: { kingdom: { include: { campaign: true } } } } },
     });
 
     // Verify branchId belongs to this entity's campaign
@@ -535,7 +535,7 @@ export class StructureService {
     // Get structure with settlement and kingdom to access campaignId
     const structureWithRelations = await this.prisma.structure.findUnique({
       where: { id },
-      include: { settlement: { include: { kingdom: true } } },
+      include: { settlement: { include: { kingdom: { include: { campaign: true } } } } },
     });
 
     // Verify user has delete permissions

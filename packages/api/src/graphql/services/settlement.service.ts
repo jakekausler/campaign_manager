@@ -341,7 +341,7 @@ export class SettlementService {
     // Get settlement with kingdom to access campaignId
     const settlementWithKingdom = await this.prisma.settlement.findUnique({
       where: { id },
-      include: { kingdom: true },
+      include: { kingdom: { include: { campaign: true } } },
     });
 
     // Verify branchId belongs to this entity's campaign
@@ -501,7 +501,7 @@ export class SettlementService {
     // Get settlement with kingdom to access campaignId
     const settlementWithKingdom = await this.prisma.settlement.findUnique({
       where: { id },
-      include: { kingdom: true },
+      include: { kingdom: { include: { campaign: true } } },
     });
 
     // Verify user has delete permissions
