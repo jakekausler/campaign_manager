@@ -167,8 +167,7 @@ pnpm --filter @campaign/api test -- --coverage
 
 The project uses Husky hooks that run automatically:
 
-- **pre-commit**: Runs `lint-staged` to lint and format changed files
-- **pre-push**: Runs `type-check` and `test` on all packages
+- **pre-commit**: Runs formatting checks, linting, and `lint-staged` to auto-fix staged files
 
 ### Manual Quality Checks
 
