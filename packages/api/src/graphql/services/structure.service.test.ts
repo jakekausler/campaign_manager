@@ -117,6 +117,7 @@ describe('StructureService', () => {
           provide: DependencyGraphService,
           useValue: {
             invalidateCache: jest.fn(),
+            invalidateGraph: jest.fn(),
           },
         },
         {

@@ -137,6 +137,7 @@ describe('SettlementService', () => {
           provide: DependencyGraphService,
           useValue: {
             invalidateCache: jest.fn(),
+            invalidateGraph: jest.fn(),
           },
         },
         {
