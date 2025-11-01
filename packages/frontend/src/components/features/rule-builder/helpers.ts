@@ -85,7 +85,9 @@ export function createComparisonBlock(
   left: JSONLogicExpression,
   right: JSONLogicExpression
 ): ComparisonExpression {
-  return { [operator]: [left, right] } as ComparisonExpression;
+  // NOTE: Double assertion required because computed property names ({ [operator]: ... })
+  // don't satisfy TypeScript's discriminated union inference for ComparisonExpression
+  return { [operator]: [left, right] } as unknown as ComparisonExpression;
 }
 
 /**
@@ -96,7 +98,9 @@ export function createArithmeticBlock(
   operator: '+' | '-' | '*' | '/' | '%',
   operands: JSONLogicExpression[]
 ): ArithmeticExpression {
-  return { [operator]: operands } as ArithmeticExpression;
+  // NOTE: Double assertion required because computed property names ({ [operator]: ... })
+  // don't satisfy TypeScript's discriminated union inference for ArithmeticExpression
+  return { [operator]: operands } as unknown as ArithmeticExpression;
 }
 
 /**
@@ -332,9 +336,10 @@ function serializeBlock(block: Block): JSONLogicExpression {
     if (children.length !== 2) {
       throw new Error(`${block.operator} operator requires exactly 2 children`);
     }
+    // NOTE: Double assertion required (same reason as createComparisonBlock)
     return {
       [block.operator]: [serializeBlock(children[0]), serializeBlock(children[1])],
-    } as ComparisonExpression;
+    } as unknown as ComparisonExpression;
   }
 
   // Handle arithmetic operators
@@ -346,9 +351,10 @@ function serializeBlock(block: Block): JSONLogicExpression {
     block.operator === '%'
   ) {
     const children = block.children || [];
+    // NOTE: Double assertion required (same reason as createArithmeticBlock)
     return {
       [block.operator]: children.map(serializeBlock),
-    } as ArithmeticExpression;
+    } as unknown as ArithmeticExpression;
   }
 
   throw new Error(`Unknown block operator: ${block.operator}`);
