@@ -7,6 +7,7 @@
   - ea599f0 - Stage 1: Setup and Dependencies
   - 5cebb60 - Stage 2: JSONLogic Type Definitions and Helpers
   - 7f782aa - Stage 3: Variable Picker with Autocomplete
+  - 3b7219e - Stage 4: Operator Block Components
 
 ## Implementation Notes
 
@@ -158,6 +159,83 @@
 - Performance optimizations verified (no O(n²) complexity, proper memoization)
 
 **Next**: Stage 4 will implement the Operator Block Components (IfBlock, LogicalBlock, ComparisonBlock, etc.).
+
+### Stage 4: Operator Block Components (Complete)
+
+**Completed**: Stage 4 implemented all visual block components for JSONLogic operators.
+
+**What was implemented**:
+
+1. **OperatorBlock.tsx** - Base component for all operator blocks:
+   - Consistent wrapper with type-specific styling (purple for logical, blue for comparison, green for arithmetic, yellow for conditional, indigo for variables, gray for literals)
+   - Collapse/expand functionality with state management
+   - Validation states with error messages and ARIA support
+   - Delete actions and custom action slots
+   - Proper accessibility with roles, labels, and keyboard support
+
+2. **IfBlock.tsx** - If-then-else conditional component:
+   - Three-part structure: condition, then value, else value
+   - Nested block rendering with placeholder BlockRenderer
+   - Validation ensuring all three parts are present
+   - Visual separation between parts with labeled sections
+
+3. **LogicalBlock.tsx** - Logical operators (AND/OR/NOT):
+   - Multiple children support for AND/OR operations
+   - Single child enforcement for NOT operator with validation
+   - Visual operator separators between children
+   - Icons for each operator (∧, ∨, ¬)
+
+4. **ComparisonBlock.tsx** - Comparison operators:
+   - All eight comparison operators supported (==, !=, ===, !==, >, >=, <, <=)
+   - Side-by-side layout for left and right operands
+   - Placeholder states for missing operands
+   - Validation for incomplete comparisons
+
+5. **ArithmeticBlock.tsx** - Arithmetic operators:
+   - All five math operators (+, -, \*, /, %)
+   - Supports 2+ operands with validation
+   - Labeled operators (add, subtract, multiply, divide, modulo)
+   - Visual separators between operands
+
+6. **LiteralBlock.tsx** - Constant value component:
+   - Type-specific inputs for string, number, boolean, null
+   - Boolean values rendered as select dropdown
+   - Null values shown as disabled input
+   - Non-collapsible for simple display
+
+7. **VariableBlock.tsx** - Variable reference component:
+   - Read-only display of variable paths
+   - Monospace badge for technical variable paths
+   - Non-collapsible compact UI
+   - Icon indicator (🔢)
+
+**Key features**:
+
+- Composition pattern: All blocks use OperatorBlock wrapper for consistency
+- Type safety: Full TypeScript support with proper union types and interfaces
+- Accessibility: ARIA labels, roles (region instead of article), aria-describedby for errors
+- Validation: Built-in validation with clear error messages displayed inline
+- Placeholder rendering: Helpful guidance when block data is incomplete
+- Comprehensive testing: 200+ tests covering all components, operators, validation states, accessibility
+
+**Technical decisions**:
+
+- Used existing UI components (Button, Badge, Input) for consistency
+- Placeholder BlockRenderer for nested block rendering (will be replaced in Stage 5)
+- Changed from `<article>` to `<div role="region">` for better ARIA compliance
+- Used `data-invalid` attribute for invalid state tracking in tests
+- Added `aria-describedby` linking to error messages
+- All tests updated to use `getByRole('region')` instead of `getByRole('article')`
+
+**Testing**:
+
+- All 200+ tests passing for block components
+- TypeScript compilation passes with strict mode
+- ESLint passes with 0 errors in rule-builder files
+- Code reviewed and approved by code-reviewer agent
+- Accessibility compliance verified (ARIA attributes, keyboard navigation)
+
+**Next**: Stage 5 will implement drag-and-drop block reordering with @dnd-kit.
 
 ## Description
 

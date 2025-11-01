@@ -125,28 +125,28 @@ Create a visual rule builder interface that allows users to construct conditiona
 
 **Tasks**:
 
-- [ ] Create `OperatorBlock.tsx` base component
-- [ ] Implement specific operator blocks:
+- [x] Create `OperatorBlock.tsx` base component
+- [x] Implement specific operator blocks:
   - `IfBlock.tsx` (if-then-else structure)
   - `LogicalBlock.tsx` (and/or with multiple children)
   - `ComparisonBlock.tsx` (==, !=, >, <, >=, <=)
   - `ArithmeticBlock.tsx` (+, -, \*, /, %)
   - `LiteralBlock.tsx` (constant values)
   - `VariableBlock.tsx` (variable references using var operator)
-- [ ] Style blocks with distinctive colors/icons per operator type
-- [ ] Add block validation (highlight invalid configurations)
-- [ ] Implement block collapse/expand for nested structures
-- [ ] Write tests for each block type
+- [x] Style blocks with distinctive colors/icons per operator type
+- [x] Add block validation (highlight invalid configurations)
+- [x] Implement block collapse/expand for nested structures
+- [x] Write tests for each block type
 
 **Success Criteria**:
 
-- All operator blocks render correctly
-- Blocks display appropriate UI based on operator type
-- Visual distinction between different operator categories
-- Validation shows errors for incomplete blocks
-- Tests verify correct JSONLogic generation
+- ✅ All operator blocks render correctly
+- ✅ Blocks display appropriate UI based on operator type
+- ✅ Visual distinction between different operator categories
+- ✅ Validation shows errors for incomplete blocks
+- ✅ Tests verify correct JSONLogic generation
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: 3b7219e)
 
 ---
 
