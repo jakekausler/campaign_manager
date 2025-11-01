@@ -63,27 +63,29 @@ Create a visual rule builder interface that allows users to construct conditiona
 
 **Tasks**:
 
-- [ ] Define TypeScript interfaces for JSONLogic operators (`if`, `and`, `or`, `==`, `!=`, `>`, `<`, etc.)
-- [ ] Create type guards to distinguish between operator types
-- [ ] Implement helpers for building JSONLogic AST:
+- [x] Define TypeScript interfaces for JSONLogic operators (`if`, `and`, `or`, `==`, `!=`, `>`, `<`, etc.)
+- [x] Create type guards to distinguish between operator types
+- [x] Implement helpers for building JSONLogic AST:
   - `createIfBlock(condition, thenValue, elseValue)`
   - `createAndBlock(conditions[])`
   - `createOrBlock(conditions[])`
   - `createComparisonBlock(operator, left, right)`
   - `createVarReference(variablePath)`
-- [ ] Create helpers for parsing JSONLogic to visual blocks:
+  - `createArithmeticBlock(operator, operands[])`
+  - `createLiteralBlock(value)`
+- [x] Create helpers for parsing JSONLogic to visual blocks:
   - `parseExpression(expression): Block[]`
   - `serializeBlocks(blocks): JSONLogicExpression`
-- [ ] Write comprehensive tests for all helpers
+- [x] Write comprehensive tests for all helpers
 
 **Success Criteria**:
 
-- All type definitions compile without errors
-- Helper functions correctly build JSONLogic expressions
-- Parse and serialize functions are bidirectional (roundtrip works)
-- 100% test coverage for utilities
+- ✅ All type definitions compile without errors
+- ✅ Helper functions correctly build JSONLogic expressions
+- ✅ Parse and serialize functions are bidirectional (roundtrip works)
+- ✅ Comprehensive test coverage for utilities (40 tests)
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: 5cebb60)
 
 ---
 

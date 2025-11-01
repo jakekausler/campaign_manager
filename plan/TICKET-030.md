@@ -5,6 +5,7 @@
 - [ ] Completed
 - **Commits**:
   - ea599f0 - Stage 1: Setup and Dependencies
+  - 5cebb60 - Stage 2: JSONLogic Type Definitions and Helpers
 
 ## Implementation Notes
 
@@ -34,7 +35,57 @@
 - ESLint passing with no new errors
 - Code reviewed and approved by code-reviewer agent
 
-**Next**: Stage 2 will implement JSONLogic type definitions and helper functions.
+### Stage 2: JSONLogic Type Definitions and Helpers (Complete)
+
+**Completed**: Stage 2 implemented the complete type system and utilities for working with JSONLogic expressions.
+
+**What was implemented**:
+
+1. **types.ts** - Complete TypeScript type definitions:
+   - Interfaces for all JSONLogic operators (var, and, or, not, if, comparisons, arithmetic)
+   - Union types for operator categories (LogicalExpression, ComparisonExpression, ArithmeticExpression)
+   - Block interface for visual editor representation
+   - LiteralValue type for primitive values
+
+2. **typeGuards.ts** - Runtime type checking functions:
+   - Individual operator guards (isAndExpression, isEqualExpression, etc.)
+   - Category guards (isLogicalExpression, isComparisonExpression, isArithmeticExpression)
+   - Literal detection (isLiteral)
+   - Enables safe type narrowing in parsing logic
+
+3. **helpers.ts** - JSONLogic AST builders and converters:
+   - Builder functions: createVarReference, createAndBlock, createOrBlock, createComparisonBlock, createArithmeticBlock, createIfBlock, createLiteralBlock
+   - parseExpression: Converts JSONLogic to visual Block structures
+   - serializeBlocks: Converts visual Blocks back to JSONLogic
+   - Bidirectional conversion maintains JSONLogic compatibility
+   - Unique ID generation for visual editor blocks
+
+4. **helpers.test.ts** - Comprehensive test suite:
+   - 40 tests covering all operators and edge cases
+   - Tests for all builder functions
+   - Parser tests for simple and nested expressions
+   - Serializer tests for all block types
+   - Roundtrip tests ensuring bidirectional conversion works correctly
+
+**Key decisions**:
+
+- Type-safe foundation prevents runtime errors
+- Separation of types, guards, and helpers in separate files for clarity
+- Builder pattern makes expression construction programmatic and testable
+- Bidirectional conversion enables seamless switching between visual and JSON modes
+- Comprehensive type guards enable safe type narrowing during parsing
+- Strong typing catches errors at compile time rather than runtime
+
+**Testing**:
+
+- All 52 tests passing (40 new tests in helpers.test.ts)
+- TypeScript compilation passes with strict mode
+- ESLint passes with no new errors (only pre-existing warnings in other files)
+- Test coverage includes edge cases and complex nested expressions
+- Roundtrip tests verify parse→serialize→parse maintains data integrity
+- Code reviewed and approved by code-reviewer agent
+
+**Next**: Stage 3 will implement the Variable Picker with Autocomplete component.
 
 ## Description
 
