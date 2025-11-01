@@ -4,6 +4,37 @@
 
 - [ ] Completed
 - **Commits**:
+  - ea599f0 - Stage 1: Setup and Dependencies
+
+## Implementation Notes
+
+### Stage 1: Setup and Dependencies (Complete)
+
+**Completed**: Stage 1 established the foundation for the visual rule builder.
+
+**What was implemented**:
+
+- Added @dnd-kit dependencies (core, sortable, utilities) to frontend package.json
+- Created placeholder components: RuleBuilder, BlockEditor, JSONEditor
+- Each component has proper TypeScript interfaces defining the props API
+- Comprehensive test coverage (30 tests total)
+- All components use modern React patterns (no React import, inline prop types)
+
+**Key decisions**:
+
+- Used @dnd-kit over react-dnd: More modern, better TypeScript support, actively maintained
+- Separated visual (BlockEditor) from JSON (JSONEditor) editing: Allows independent development
+- Props defined upfront with underscore prefix for unused params: Establishes API contract for future stages
+- Latest stable versions: @dnd-kit/core@^6.3.1, @dnd-kit/sortable@^10.0.0, @dnd-kit/utilities@^3.2.2
+
+**Testing**:
+
+- All 30 tests passing
+- TypeScript compilation passing
+- ESLint passing with no new errors
+- Code reviewed and approved by code-reviewer agent
+
+**Next**: Stage 2 will implement JSONLogic type definitions and helper functions.
 
 ## Description
 
