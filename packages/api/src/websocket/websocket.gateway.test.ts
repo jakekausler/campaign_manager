@@ -63,8 +63,13 @@ describe('WebSocketGatewayClass', () => {
     campaignMembershipService = module.get(CampaignMembershipService);
   });
 
-  afterEach(() => {
-    // Clean up any connections
+  afterEach(async () => {
+    // Close Redis connections if they were created
+    if (gateway) {
+      await gateway.closeRedisConnections();
+    }
+
+    // Clean up mocks
     jest.clearAllMocks();
   });
 

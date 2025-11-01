@@ -16,7 +16,7 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { createClient } from 'redis';
+import { createClient, type RedisClientType } from 'redis';
 import { Server, Socket } from 'socket.io';
 
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
@@ -53,6 +53,10 @@ export class WebSocketGatewayClass
   private readonly logger = new Logger(WebSocketGatewayClass.name);
   private readonly connectedClients = new Map<string, Socket>();
 
+  // Redis clients for Socket.IO adapter (stored for cleanup)
+  private pubClient?: RedisClientType;
+  private subClient?: RedisClientType;
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly campaignMembershipService: CampaignMembershipService,
@@ -71,7 +75,7 @@ export class WebSocketGatewayClass
 
     try {
       // Create Redis clients for pub/sub
-      const pubClient = createClient({
+      this.pubClient = createClient({
         socket: {
           host: process.env.REDIS_HOST || 'localhost',
           port: parseInt(process.env.REDIS_PORT || '6379', 10),
@@ -79,24 +83,24 @@ export class WebSocketGatewayClass
         password: process.env.REDIS_PASSWORD || undefined,
       });
 
-      const subClient = pubClient.duplicate();
+      this.subClient = this.pubClient.duplicate();
 
       // Add error handlers
-      pubClient.on('error', (err) => {
+      this.pubClient.on('error', (err) => {
         this.logger.error('Redis Pub Client Error:', err);
       });
 
-      subClient.on('error', (err) => {
+      this.subClient.on('error', (err) => {
         this.logger.error('Redis Sub Client Error:', err);
       });
 
       // Connect clients
-      await Promise.all([pubClient.connect(), subClient.connect()]);
+      await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
 
       this.logger.log('Redis clients connected for Socket.IO adapter');
 
       // Attach Redis adapter to Socket.IO server
-      server.adapter(createAdapter(pubClient, subClient));
+      server.adapter(createAdapter(this.pubClient, this.subClient));
 
       this.logger.log('Redis adapter attached to Socket.IO server');
 
@@ -174,6 +178,41 @@ export class WebSocketGatewayClass
    */
   getConnectedClientCount(): number {
     return this.connectedClients.size;
+  }
+
+  /**
+   * Close Redis connections
+   * Called during test cleanup or graceful shutdown
+   */
+  async closeRedisConnections(): Promise<void> {
+    const closePromises: Promise<void>[] = [];
+
+    if (this.pubClient?.isOpen) {
+      this.logger.log('Closing Redis pub client');
+      closePromises.push(
+        this.pubClient
+          .quit()
+          .then(() => {})
+          .catch((err) => {
+            this.logger.error('Error closing Redis pub client:', err);
+          })
+      );
+    }
+
+    if (this.subClient?.isOpen) {
+      this.logger.log('Closing Redis sub client');
+      closePromises.push(
+        this.subClient
+          .quit()
+          .then(() => {})
+          .catch((err) => {
+            this.logger.error('Error closing Redis sub client:', err);
+          })
+      );
+    }
+
+    await Promise.all(closePromises);
+    this.logger.log('Redis connections closed');
   }
 
   /**
