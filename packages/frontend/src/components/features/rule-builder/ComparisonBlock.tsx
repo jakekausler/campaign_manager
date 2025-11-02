@@ -1,29 +1,24 @@
+import { NestedBlockRenderer } from './NestedBlockRenderer';
 import { OperatorBlock } from './OperatorBlock';
 import type { Block } from './types';
 
 export interface ComparisonBlockProps {
-  /** The comparison operator */
-  operator: '==' | '!=' | '===' | '!==' | '>' | '>=' | '<' | '<=';
-  /** The left operand */
-  left: Block | undefined;
-  /** The right operand */
-  right: Block | undefined;
-  /** Callback when operands change */
-  onChange: (left: Block | undefined, right: Block | undefined) => void;
+  /** The complete block */
+  block: Block;
+  /** Callback when the block structure changes */
+  onUpdate: (updated: Block) => void;
   /** Callback when delete button is clicked */
   onDelete?: () => void;
+  /** Entity type for context (optional, for blocks that need it) */
+  entityType?: string;
 }
 
 /**
  * Comparison operator block component (==, !=, >, <, etc.)
  */
-export function ComparisonBlock({
-  operator,
-  left,
-  right,
-  onChange,
-  onDelete,
-}: ComparisonBlockProps) {
+export function ComparisonBlock({ block, onUpdate, onDelete, entityType }: ComparisonBlockProps) {
+  const operator = block.operator as '==' | '!=' | '===' | '!==' | '>' | '>=' | '<' | '<=';
+  const [left, right] = block.children || [];
   const isInvalid = !left || !right;
 
   let errorMessage = '';
@@ -32,6 +27,23 @@ export function ComparisonBlock({
   } else if (!right) {
     errorMessage = 'Right operand is required';
   }
+
+  const handleChildUpdate = (index: number, updated: Block) => {
+    const newChildren = [...(block.children || [])];
+    newChildren[index] = updated;
+    onUpdate({ ...block, children: newChildren });
+  };
+
+  const handleChildDelete = (index: number) => {
+    const newChildren = [...(block.children || [])];
+    newChildren[index] = {
+      id: Math.random().toString(36).substring(2, 11),
+      type: 'literal',
+      operator: 'literal',
+      value: null,
+    };
+    onUpdate({ ...block, children: newChildren });
+  };
 
   return (
     <OperatorBlock
@@ -45,7 +57,12 @@ export function ComparisonBlock({
         {/* Left operand */}
         <div className="flex-1">
           {left ? (
-            <BlockRenderer block={left} onChange={(updated) => onChange(updated, right)} />
+            <NestedBlockRenderer
+              block={left}
+              onUpdate={(updated) => handleChildUpdate(0, updated)}
+              onDelete={() => handleChildDelete(0)}
+              entityType={entityType}
+            />
           ) : (
             <div className="text-sm text-gray-500 italic p-2 bg-gray-100 rounded">
               Add left operand...
@@ -59,7 +76,12 @@ export function ComparisonBlock({
         {/* Right operand */}
         <div className="flex-1">
           {right ? (
-            <BlockRenderer block={right} onChange={(updated) => onChange(left, updated)} />
+            <NestedBlockRenderer
+              block={right}
+              onUpdate={(updated) => handleChildUpdate(1, updated)}
+              onDelete={() => handleChildDelete(1)}
+              entityType={entityType}
+            />
           ) : (
             <div className="text-sm text-gray-500 italic p-2 bg-gray-100 rounded">
               Add right operand...
@@ -68,37 +90,5 @@ export function ComparisonBlock({
         </div>
       </div>
     </OperatorBlock>
-  );
-}
-
-/**
- * Helper component to render a block recursively
- * This is a placeholder that will be replaced with the actual BlockRenderer in Stage 5
- */
-function BlockRenderer({ block, onChange }: { block: Block; onChange: (block: Block) => void }) {
-  // For now, just render a simple representation
-  // This will be replaced with proper block rendering in later stages
-  return (
-    <div className="text-sm p-2 bg-white border border-gray-200 rounded">
-      <span className="font-mono text-xs text-gray-600">{block.operator}</span>
-      {block.value !== undefined && (
-        <span className="ml-2 text-gray-800">{String(block.value)}</span>
-      )}
-      {block.children && block.children.length > 0 && (
-        <div className="ml-4 mt-2 space-y-1">
-          {block.children.map((child) => (
-            <BlockRenderer
-              key={child.id}
-              block={child}
-              onChange={(updated) => {
-                // Update the child in the parent's children array
-                const newChildren = block.children?.map((c) => (c.id === updated.id ? updated : c));
-                onChange({ ...block, children: newChildren });
-              }}
-            />
-          ))}
-        </div>
-      )}
-    </div>
   );
 }

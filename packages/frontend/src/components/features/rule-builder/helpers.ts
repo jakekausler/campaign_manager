@@ -38,9 +38,14 @@ import type {
 } from './types';
 
 /**
- * Generate a unique ID for blocks
+ * Generate a unique ID for blocks using crypto.randomUUID()
+ * Falls back to Math.random() in non-secure contexts (e.g., tests)
  */
-function generateId(): string {
+export function generateId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for test environments or older browsers
   return Math.random().toString(36).substring(2, 11);
 }
 

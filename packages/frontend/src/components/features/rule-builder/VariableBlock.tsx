@@ -1,12 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 
 import { OperatorBlock } from './OperatorBlock';
+import type { Block } from './types';
 
 export interface VariableBlockProps {
-  /** The variable path (e.g., "settlement.level") */
-  variablePath: string;
-  /** Callback when variable path changes */
-  onChange: (variablePath: string) => void;
+  /** The complete block */
+  block: Block;
+  /** Callback when the block structure changes */
+  onUpdate: (updated: Block) => void;
   /** Callback when delete button is clicked */
   onDelete?: () => void;
 }
@@ -15,7 +16,9 @@ export interface VariableBlockProps {
  * Variable reference block component
  * Displays a reference to a variable in the context
  */
-export function VariableBlock({ variablePath, onDelete }: VariableBlockProps) {
+export function VariableBlock({ block, onDelete }: VariableBlockProps) {
+  const variablePath = block.value as string;
+
   return (
     <OperatorBlock
       operator="var"

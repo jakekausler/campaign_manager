@@ -1,28 +1,25 @@
+import { NestedBlockRenderer } from './NestedBlockRenderer';
 import { OperatorBlock } from './OperatorBlock';
+import { generateId } from './helpers';
 import type { Block } from './types';
 
 export interface IfBlockProps {
-  /** The condition block */
-  condition: Block | undefined;
-  /** The then value block */
-  thenValue: Block | undefined;
-  /** The else value block */
-  elseValue: Block | undefined;
+  /** The complete if block */
+  block: Block;
   /** Callback when the block structure changes */
-  onChange: (
-    condition: Block | undefined,
-    thenValue: Block | undefined,
-    elseValue: Block | undefined
-  ) => void;
+  onUpdate: (updated: Block) => void;
   /** Callback when delete button is clicked */
   onDelete?: () => void;
+  /** Entity type for context */
+  entityType?: string;
 }
 
 /**
  * If-then-else conditional block component
  * Structure: if (condition) then (thenValue) else (elseValue)
  */
-export function IfBlock({ condition, thenValue, elseValue, onChange, onDelete }: IfBlockProps) {
+export function IfBlock({ block, onUpdate, onDelete, entityType }: IfBlockProps) {
+  const [condition, thenValue, elseValue] = block.children || [];
   const isInvalid = !condition || !thenValue || !elseValue;
 
   let errorMessage = '';
@@ -33,6 +30,12 @@ export function IfBlock({ condition, thenValue, elseValue, onChange, onDelete }:
   } else if (!elseValue) {
     errorMessage = 'Else value is required';
   }
+
+  const handleChildUpdate = (index: number, updated: Block) => {
+    const newChildren = [...(block.children || [])];
+    newChildren[index] = updated;
+    onUpdate({ ...block, children: newChildren });
+  };
 
   return (
     <OperatorBlock
@@ -50,9 +53,20 @@ export function IfBlock({ condition, thenValue, elseValue, onChange, onDelete }:
           <div className="text-sm font-semibold text-gray-700 mb-1">Condition:</div>
           <div className="pl-2 border-l-2 border-gray-300">
             {condition ? (
-              <BlockRenderer
+              <NestedBlockRenderer
                 block={condition}
-                onChange={(updated) => onChange(updated, thenValue, elseValue)}
+                onUpdate={(updated) => handleChildUpdate(0, updated)}
+                onDelete={() => {
+                  const newChildren = [...(block.children || [])];
+                  newChildren[0] = {
+                    id: generateId(),
+                    type: 'literal',
+                    operator: 'literal',
+                    value: true,
+                  };
+                  onUpdate({ ...block, children: newChildren });
+                }}
+                entityType={entityType}
               />
             ) : (
               <div className="text-sm text-gray-500 italic p-2 bg-gray-100 rounded">
@@ -67,9 +81,20 @@ export function IfBlock({ condition, thenValue, elseValue, onChange, onDelete }:
           <div className="text-sm font-semibold text-gray-700 mb-1">Then:</div>
           <div className="pl-2 border-l-2 border-gray-300">
             {thenValue ? (
-              <BlockRenderer
+              <NestedBlockRenderer
                 block={thenValue}
-                onChange={(updated) => onChange(condition, updated, elseValue)}
+                onUpdate={(updated) => handleChildUpdate(1, updated)}
+                onDelete={() => {
+                  const newChildren = [...(block.children || [])];
+                  newChildren[1] = {
+                    id: generateId(),
+                    type: 'literal',
+                    operator: 'literal',
+                    value: null,
+                  };
+                  onUpdate({ ...block, children: newChildren });
+                }}
+                entityType={entityType}
               />
             ) : (
               <div className="text-sm text-gray-500 italic p-2 bg-gray-100 rounded">
@@ -84,9 +109,20 @@ export function IfBlock({ condition, thenValue, elseValue, onChange, onDelete }:
           <div className="text-sm font-semibold text-gray-700 mb-1">Else:</div>
           <div className="pl-2 border-l-2 border-gray-300">
             {elseValue ? (
-              <BlockRenderer
+              <NestedBlockRenderer
                 block={elseValue}
-                onChange={(updated) => onChange(condition, thenValue, updated)}
+                onUpdate={(updated) => handleChildUpdate(2, updated)}
+                onDelete={() => {
+                  const newChildren = [...(block.children || [])];
+                  newChildren[2] = {
+                    id: generateId(),
+                    type: 'literal',
+                    operator: 'literal',
+                    value: null,
+                  };
+                  onUpdate({ ...block, children: newChildren });
+                }}
+                entityType={entityType}
               />
             ) : (
               <div className="text-sm text-gray-500 italic p-2 bg-gray-100 rounded">
@@ -97,37 +133,5 @@ export function IfBlock({ condition, thenValue, elseValue, onChange, onDelete }:
         </div>
       </div>
     </OperatorBlock>
-  );
-}
-
-/**
- * Helper component to render a block recursively
- * This is a placeholder that will be replaced with the actual BlockRenderer in Stage 5
- */
-function BlockRenderer({ block, onChange }: { block: Block; onChange: (block: Block) => void }) {
-  // For now, just render a simple representation
-  // This will be replaced with proper block rendering in later stages
-  return (
-    <div className="text-sm p-2 bg-white border border-gray-200 rounded">
-      <span className="font-mono text-xs text-gray-600">{block.operator}</span>
-      {block.value !== undefined && (
-        <span className="ml-2 text-gray-800">{String(block.value)}</span>
-      )}
-      {block.children && block.children.length > 0 && (
-        <div className="ml-4 mt-2 space-y-1">
-          {block.children.map((child) => (
-            <BlockRenderer
-              key={child.id}
-              block={child}
-              onChange={(updated) => {
-                // Update the child in the parent's children array
-                const newChildren = block.children?.map((c) => (c.id === updated.id ? updated : c));
-                onChange({ ...block, children: newChildren });
-              }}
-            />
-          ))}
-        </div>
-      )}
-    </div>
   );
 }

@@ -1,13 +1,13 @@
 import { Input } from '@/components/ui/input';
 
 import { OperatorBlock } from './OperatorBlock';
-import type { LiteralValue } from './types';
+import type { Block, LiteralValue } from './types';
 
 export interface LiteralBlockProps {
-  /** The literal value */
-  value: LiteralValue;
-  /** Callback when value changes */
-  onChange: (value: LiteralValue) => void;
+  /** The complete block */
+  block: Block;
+  /** Callback when the block structure changes */
+  onUpdate: (updated: Block) => void;
   /** Callback when delete button is clicked */
   onDelete?: () => void;
 }
@@ -15,7 +15,9 @@ export interface LiteralBlockProps {
 /**
  * Literal value block component (string, number, boolean, null)
  */
-export function LiteralBlock({ value, onChange, onDelete }: LiteralBlockProps) {
+export function LiteralBlock({ block, onUpdate, onDelete }: LiteralBlockProps) {
+  const value = block.value as LiteralValue;
+
   const getValueType = (): 'string' | 'number' | 'boolean' | 'null' => {
     if (value === null) return 'null';
     return typeof value as 'string' | 'number' | 'boolean';
@@ -24,20 +26,27 @@ export function LiteralBlock({ value, onChange, onDelete }: LiteralBlockProps) {
   const handleInputChange = (newValue: string) => {
     const valueType = getValueType();
 
+    let updatedValue: LiteralValue;
     switch (valueType) {
       case 'number':
-        onChange(parseFloat(newValue) || 0);
+        updatedValue = parseFloat(newValue) || 0;
         break;
       case 'boolean':
-        onChange(newValue === 'true');
+        updatedValue = newValue === 'true';
         break;
       case 'null':
-        onChange(null);
+        updatedValue = null;
         break;
       case 'string':
       default:
-        onChange(newValue);
+        updatedValue = newValue;
     }
+
+    onUpdate({ ...block, value: updatedValue });
+  };
+
+  const handleBooleanChange = (newValue: boolean) => {
+    onUpdate({ ...block, value: newValue });
   };
 
   return (
@@ -56,7 +65,7 @@ export function LiteralBlock({ value, onChange, onDelete }: LiteralBlockProps) {
             <select
               className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
               value={String(value)}
-              onChange={(e) => onChange(e.target.value === 'true')}
+              onChange={(e) => handleBooleanChange(e.target.value === 'true')}
             >
               <option value="true">true</option>
               <option value="false">false</option>

@@ -35,7 +35,7 @@ describe('OperatorBlock', () => {
         </OperatorBlock>
       );
 
-      const logicalBlock = screen.getByText('and').closest('div');
+      const logicalBlock = screen.getByRole('region', { name: /and operator block/i });
       expect(logicalBlock).toHaveClass('border-purple-500');
 
       rerender(
@@ -44,7 +44,7 @@ describe('OperatorBlock', () => {
         </OperatorBlock>
       );
 
-      const comparisonBlock = screen.getByText('==').closest('div');
+      const comparisonBlock = screen.getByRole('region', { name: /== operator block/i });
       expect(comparisonBlock).toHaveClass('border-blue-500');
     });
 
@@ -79,13 +79,13 @@ describe('OperatorBlock', () => {
       );
 
       const collapseButton = screen.getByRole('button', { name: /collapse/i });
-      expect(screen.getByText('Child content')).toBeVisible();
+      expect(screen.getByText('Child content')).toBeInTheDocument();
 
       await user.click(collapseButton);
-      expect(screen.queryByText('Child content')).not.toBeVisible();
+      expect(screen.queryByText('Child content')).not.toBeInTheDocument();
 
       await user.click(collapseButton);
-      expect(screen.getByText('Child content')).toBeVisible();
+      expect(screen.getByText('Child content')).toBeInTheDocument();
     });
 
     it('should not show collapse button when collapsible is false', () => {
@@ -105,7 +105,7 @@ describe('OperatorBlock', () => {
         </OperatorBlock>
       );
 
-      expect(screen.queryByText('Child content')).not.toBeVisible();
+      expect(screen.queryByText('Child content')).not.toBeInTheDocument();
     });
   });
 
@@ -117,7 +117,7 @@ describe('OperatorBlock', () => {
         </OperatorBlock>
       );
 
-      const block = screen.getByText('and').closest('div');
+      const block = screen.getByRole('region', { name: /and operator block/i });
       expect(block).toHaveClass('border-red-500');
     });
 
@@ -188,7 +188,7 @@ describe('OperatorBlock', () => {
         </OperatorBlock>
       );
 
-      const block = screen.getByRole('region');
+      const block = screen.getByRole('region', { name: /and operator block/i });
       expect(block).toHaveAttribute('aria-label', 'and operator block');
     });
 
@@ -199,8 +199,8 @@ describe('OperatorBlock', () => {
         </OperatorBlock>
       );
 
-      const block = screen.getByRole('region');
-      expect(block).toHaveAttribute('data-invalid', true);
+      const block = screen.getByRole('region', { name: /and operator block/i });
+      expect(block).toHaveAttribute('data-invalid', 'true');
     });
 
     it('should have aria-expanded attribute when collapsible', () => {
@@ -233,7 +233,7 @@ describe('OperatorBlock', () => {
           </OperatorBlock>
         );
 
-        const block = screen.getByText('test').closest('div');
+        const block = screen.getByRole('region', { name: /test operator block/i });
         expect(block).toHaveClass(expectedClass);
       });
     });

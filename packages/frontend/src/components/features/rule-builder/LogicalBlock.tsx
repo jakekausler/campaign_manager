@@ -1,21 +1,24 @@
+import { NestedBlockRenderer } from './NestedBlockRenderer';
 import { OperatorBlock } from './OperatorBlock';
 import type { Block } from './types';
 
 export interface LogicalBlockProps {
-  /** The logical operator (and, or, !) */
-  operator: 'and' | 'or' | '!';
-  /** The child condition blocks */
-  children: Block[];
-  /** Callback when children change */
-  onChange: (children: Block[]) => void;
+  /** The complete block */
+  block: Block;
+  /** Callback when the block structure changes */
+  onUpdate: (updated: Block) => void;
   /** Callback when delete button is clicked */
   onDelete?: () => void;
+  /** Entity type for context (optional, for blocks that need it) */
+  entityType?: string;
 }
 
 /**
  * Logical operator block component (AND, OR, NOT)
  */
-export function LogicalBlock({ operator, children, onChange, onDelete }: LogicalBlockProps) {
+export function LogicalBlock({ block, onUpdate, onDelete, entityType }: LogicalBlockProps) {
+  const operator = block.operator as 'and' | 'or' | '!';
+  const children = block.children || [];
   const getLabel = () => {
     switch (operator) {
       case 'and':
@@ -54,6 +57,17 @@ export function LogicalBlock({ operator, children, onChange, onDelete }: Logical
     errorMessage = 'Logical operator requires at least one child';
   }
 
+  const handleChildUpdate = (index: number, updated: Block) => {
+    const newChildren = [...children];
+    newChildren[index] = updated;
+    onUpdate({ ...block, children: newChildren });
+  };
+
+  const handleChildDelete = (index: number) => {
+    const newChildren = children.filter((_, i) => i !== index);
+    onUpdate({ ...block, children: newChildren });
+  };
+
   return (
     <OperatorBlock
       operator={operator}
@@ -77,49 +91,16 @@ export function LogicalBlock({ operator, children, onChange, onDelete }: Logical
                   {getLabel()}
                 </div>
               )}
-              <BlockRenderer
+              <NestedBlockRenderer
                 block={child}
-                onChange={(updated) => {
-                  const newChildren = children.map((c) => (c.id === updated.id ? updated : c));
-                  onChange(newChildren);
-                }}
+                onUpdate={(updated) => handleChildUpdate(index, updated)}
+                onDelete={() => handleChildDelete(index)}
+                entityType={entityType}
               />
             </div>
           ))
         )}
       </div>
     </OperatorBlock>
-  );
-}
-
-/**
- * Helper component to render a block recursively
- * This is a placeholder that will be replaced with the actual BlockRenderer in Stage 5
- */
-function BlockRenderer({ block, onChange }: { block: Block; onChange: (block: Block) => void }) {
-  // For now, just render a simple representation
-  // This will be replaced with proper block rendering in later stages
-  return (
-    <div className="text-sm p-2 bg-white border border-gray-200 rounded">
-      <span className="font-mono text-xs text-gray-600">{block.operator}</span>
-      {block.value !== undefined && (
-        <span className="ml-2 text-gray-800">{String(block.value)}</span>
-      )}
-      {block.children && block.children.length > 0 && (
-        <div className="ml-4 mt-2 space-y-1">
-          {block.children.map((child) => (
-            <BlockRenderer
-              key={child.id}
-              block={child}
-              onChange={(updated) => {
-                // Update the child in the parent's children array
-                const newChildren = block.children?.map((c) => (c.id === updated.id ? updated : c));
-                onChange({ ...block, children: newChildren });
-              }}
-            />
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
