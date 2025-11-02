@@ -10,6 +10,7 @@
   - 3b7219e - Stage 4: Operator Block Components
   - e150ea4 - Stage 5: Drag-and-Drop Block Reordering
   - 68f0766 - Stage 6: Value Input with Type Validation
+  - 7e9976b - Stage 7: Visual/JSON Mode Toggle
 
 ## Implementation Notes
 
@@ -403,6 +404,75 @@
 - Performance optimized with useId() instead of random IDs
 
 **Next**: Stage 7 will implement Visual/JSON Mode Toggle for the RuleBuilder component.
+
+### Stage 7: Visual/JSON Mode Toggle (Complete)
+
+**Completed**: Stage 7 implemented comprehensive mode switching between visual block editor and raw JSON editing.
+
+**What was implemented**:
+
+1. **RuleBuilder.tsx** - Main container with mode toggle:
+   - Tab-style toggle buttons for Visual/JSON modes
+   - State management for view mode and expression
+   - Bidirectional synchronization with child editors (BlockEditor/JSONEditor)
+   - useEffect to sync state when initialExpression prop changes (handles async-loaded data)
+   - useCallback for performance-optimized event handlers
+
+2. **JSONEditor.tsx** - Raw JSON editing with validation:
+   - Textarea with auto-formatting (2-space indentation via JSON.stringify)
+   - Real-time validation on blur (not on every keystroke for better UX)
+   - Clear error messages with ARIA support (aria-invalid, aria-describedby, role="alert")
+   - Local edit tracking (isLocalEdit flag) to prevent infinite loops
+   - Prevents overwriting user input during typing
+   - Proper handling of empty input
+   - useId() hook for unique error IDs
+
+3. **Testing** - Comprehensive test suites:
+   - RuleBuilder: 17 tests for mode toggle, state management, prop syncing
+   - JSONEditor: 17 tests for editing, validation, error handling, accessibility
+   - Fixed test library issues: used user.paste() instead of user.type() for JSON strings
+   - Type assertions added to test expressions for TypeScript strict compliance
+
+**Key features**:
+
+- **Seamless mode switching**: Expression state preserved when toggling between visual and JSON
+- **JSON validation**: Real-time validation with detailed error messages on blur
+- **Type safety**: Updated from generic `object` to `JSONLogicExpression` throughout
+- **Accessibility**: Full ARIA support with aria-invalid, aria-describedby, unique error IDs
+- **Performance**: useCallback, useEffect, useMemo for optimal re-rendering
+- **Error UX**: Errors clear immediately when user starts typing after validation error
+- **No XSS vulnerabilities**: Using controlled textarea with React
+
+**Bug fixes from code review**:
+
+1. **State synchronization bug**: Added useEffect in RuleBuilder to sync state when initialExpression prop changes (handles async data loading)
+2. **Infinite loop prevention**: Added isLocalEdit flag in JSONEditor to prevent feedback loop that would overwrite user input
+3. **User experience**: Clear errors immediately when typing starts after validation error
+
+**Type safety improvements**:
+
+- Changed RuleBuilderProps from `object` to `JSONLogicExpression`
+- Changed JSONEditorProps from `object` to `JSONLogicExpression`
+- Added type assertions with `as JSONLogicExpression` after JSON.parse
+- Updated test expressions with proper tuple types for equality operator
+- No use of `any` type in production code
+
+**Testing strategy**:
+
+- Used user.paste() for JSON strings in tests (avoids `{}` parsing issues in testing library)
+- Comprehensive coverage of mode toggling, validation, error states
+- Accessibility compliance verified with ARIA attribute tests
+- TypeScript strict mode compliance enforced throughout
+
+**Technical decisions**:
+
+- Validation on blur rather than onChange: Better UX, allows incomplete JSON during typing
+- isLocalEdit flag pattern: Industry-standard approach to prevent prop/state feedback loops
+- useId() for error IDs: Modern React 18 pattern for collision-free IDs
+- Controlled component pattern: Standard React pattern for form inputs
+- useEffect for prop syncing: Handles async data loading scenarios
+
+**Next**: Stage 8 will implement Live Preview and Rule Testing with the evaluateFieldCondition mutation.
 
 ## Description
 
