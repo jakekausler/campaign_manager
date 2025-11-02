@@ -7,6 +7,7 @@
 
 import { memo, useState, useCallback, useMemo } from 'react';
 
+import { JsonHighlighter } from '@/components/shared/JsonHighlighter';
 import type { VersionDiff } from '@/services/api/hooks/versions';
 
 export interface DiffViewerProps {
@@ -32,9 +33,9 @@ interface Change {
 }
 
 /**
- * Format a value for display
+ * Format a value for display (returns string or JSX element)
  */
-function formatValue(value: unknown): string {
+function formatValue(value: unknown): string | React.ReactNode {
   if (value === null) {
     return 'null';
   }
@@ -48,8 +49,8 @@ function formatValue(value: unknown): string {
     return value ? 'Yes' : 'No';
   }
   if (typeof value === 'object') {
-    // Custom replacer to format booleans as Yes/No in JSON
-    return JSON.stringify(
+    // Use syntax-highlighted JSON for objects
+    const jsonString = JSON.stringify(
       value,
       (_key, val) => {
         if (typeof val === 'boolean') {
@@ -59,6 +60,7 @@ function formatValue(value: unknown): string {
       },
       2
     );
+    return <JsonHighlighter json={jsonString} className="inline-block" />;
   }
   return String(value);
 }
@@ -229,14 +231,14 @@ export const DiffViewer = memo(function DiffViewer({ diff, className = '' }: Dif
                 <div className="font-medium text-gray-900 mb-1">{key}</div>
                 {type === 'modified' ? (
                   <div className="text-sm">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-red-700 font-mono">
+                    <div className="flex items-start space-x-2">
+                      <div className="text-red-700 font-mono">
                         {formatValue((value as { old: unknown; new: unknown }).old)}
-                      </span>
-                      <span className="text-gray-500">→</span>
-                      <span className="text-green-700 font-mono">
+                      </div>
+                      <span className="text-gray-500 mt-1">→</span>
+                      <div className="text-green-700 font-mono">
                         {formatValue((value as { old: unknown; new: unknown }).new)}
-                      </span>
+                      </div>
                     </div>
                   </div>
                 ) : (
