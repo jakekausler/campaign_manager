@@ -4,6 +4,7 @@
 
 - [ ] Completed
 - **Commits**:
+  - b1f4384 - Stage 2: Frontend GraphQL Hooks
 
 ## Description
 
