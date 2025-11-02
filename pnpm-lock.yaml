@@ -285,6 +285,9 @@ importers:
       graphql-ws:
         specifier: ^6.0.6
         version: 6.0.6(graphql@16.11.0)(ws@8.18.0)
+      json-logic-js:
+        specifier: ^2.0.5
+        version: 2.0.5
       lucide-react:
         specifier: ^0.546.0
         version: 0.546.0(react@18.3.1)
@@ -358,6 +361,9 @@ importers:
       '@types/geojson':
         specifier: ^7946.0.16
         version: 7946.0.16
+      '@types/json-logic-js':
+        specifier: ^2.0.8
+        version: 2.0.8
       '@types/maplibre-gl':
         specifier: ^1.14.0
         version: 1.14.0
