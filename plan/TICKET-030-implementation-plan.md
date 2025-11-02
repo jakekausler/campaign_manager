@@ -156,25 +156,25 @@ Create a visual rule builder interface that allows users to construct conditiona
 
 **Tasks**:
 
-- [ ] Set up `@dnd-kit` context providers in `BlockEditor.tsx`
-- [ ] Make blocks draggable with drag handles
-- [ ] Implement drop zones for reordering
-- [ ] Add visual feedback during drag (ghost/overlay)
-- [ ] Handle nested block dragging (drag into/out of containers)
-- [ ] Implement block deletion (drag to trash or delete button)
-- [ ] Add "Add Block" palette/menu with available operators
-- [ ] Write tests for drag-and-drop interactions (using @testing-library/user-event)
+- [x] Set up `@dnd-kit` context providers in `BlockEditor.tsx`
+- [x] Make blocks draggable with drag handles
+- [x] Implement drop zones for reordering
+- [x] Add visual feedback during drag (ghost/overlay)
+- [x] Handle nested block dragging (drag into/out of containers)
+- [x] Implement block deletion (drag to trash or delete button)
+- [x] Add "Add Block" palette/menu with available operators
+- [x] Write tests for drag-and-drop interactions (using @testing-library/user-event)
 
 **Success Criteria**:
 
-- Blocks can be reordered by dragging
-- Visual feedback shows valid drop locations
-- Nested blocks can be moved in/out of parent containers
-- Blocks can be deleted
-- New blocks can be added from palette
-- Drag interactions work on touch devices
+- ✅ Blocks can be reordered by dragging
+- ✅ Visual feedback shows valid drop locations
+- ✅ Nested blocks can be moved in/out of parent containers
+- ✅ Blocks can be deleted
+- ✅ New blocks can be added from palette
+- ✅ Drag interactions work on touch devices (via PointerSensor)
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: e150ea4)
 
 ---
 

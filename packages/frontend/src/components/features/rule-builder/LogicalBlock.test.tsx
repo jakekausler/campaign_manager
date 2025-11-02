@@ -180,7 +180,9 @@ describe('LogicalBlock', () => {
 
       // Get the top-level and block and find its delete button
       const andBlock = screen.getByRole('region', { name: /and operator block/i });
-      const deleteButton = andBlock.querySelector('button[aria-label="Delete block"]');
+      const deleteButton = andBlock.querySelector(
+        'button[aria-label="Delete block"]'
+      ) as HTMLElement | null;
       await deleteButton?.click();
 
       expect(mockOnDelete).toHaveBeenCalledTimes(1);

@@ -8,6 +8,7 @@
   - 5cebb60 - Stage 2: JSONLogic Type Definitions and Helpers
   - 7f782aa - Stage 3: Variable Picker with Autocomplete
   - 3b7219e - Stage 4: Operator Block Components
+  - e150ea4 - Stage 5: Drag-and-Drop Block Reordering
 
 ## Implementation Notes
 
@@ -236,6 +237,91 @@
 - Accessibility compliance verified (ARIA attributes, keyboard navigation)
 
 **Next**: Stage 5 will implement drag-and-drop block reordering with @dnd-kit.
+
+### Stage 5: Drag-and-Drop Block Reordering (Complete)
+
+**Completed**: Stage 5 implemented comprehensive drag-and-drop functionality for the visual rule builder.
+
+**What was implemented**:
+
+1. **BlockEditor.tsx** - Fully integrated drag-and-drop container:
+   - DndContext with PointerSensor (8px activation distance) and KeyboardSensor for accessibility
+   - SortableContext with verticalListSortingStrategy for reorderable lists
+   - Bi-directional JSONLogic ↔ Block conversion (parseExpression/serializeBlocks)
+   - Recursive block update/delete handlers for nested structures
+   - Block palette toggle with "Add Block" button
+   - Empty state for when no blocks exist
+   - Automatic serialization to JSONLogic on any block change
+
+2. **BlockRenderer.tsx** - Draggable block wrapper (16 tests):
+   - useSortable hook integration for top-level block dragging
+   - Routes to appropriate operator component based on block.type
+   - Visual drag feedback (opacity: 0.5 during drag)
+   - Supports disabling drag for nested blocks
+   - Passes onUpdate/onDelete callbacks to child components
+
+3. **NestedBlockRenderer.tsx** - Non-draggable nested block renderer (15 tests):
+   - Same routing logic as BlockRenderer but without drag functionality
+   - Used inside operator blocks (e.g., IF condition/then/else, AND/OR children)
+   - Prevents nested drag-and-drop conflicts
+
+4. **BlockPalette.tsx** - Block creation palette (23 tests):
+   - 5 categories: Conditional (IF), Logical (AND/OR/NOT), Comparison (8 operators), Arithmetic (5 operators), Values (Variable/Literal)
+   - 25+ operator types total with icons and descriptions
+   - Creates properly structured Block objects with default children where needed
+   - Integrates with generateId() for unique block IDs
+   - Accessible keyboard navigation
+
+5. **Refactored all operator blocks to unified Block-based API**:
+   - All components now accept `block: Block` prop (complete structure)
+   - All use `onUpdate(updatedBlock: Block)` callback for changes
+   - All support `onDelete?: () => void` callback
+   - All accept `entityType?: string` for context
+   - **IfBlock.tsx** - Refactored to use block.children array (condition, then, else)
+   - **LogicalBlock.tsx** - Updated for block-based structure with AND/OR/NOT validation
+   - **ComparisonBlock.tsx** - Refactored to work with block.children for left/right operands
+   - **ArithmeticBlock.tsx** - Updated for block-based multi-operand structure
+   - **VariableBlock.tsx** - Extracts variable path from block.value
+   - **LiteralBlock.tsx** - Extracts literal value from block.value
+
+6. **Security improvements**:
+   - Replaced Math.random() with crypto.randomUUID() for secure ID generation
+   - Fallback to Math.random() in test environments (crypto not available)
+   - Exported generateId() helper in helpers.ts for reuse
+   - XSS prevention: Unknown operators display generic message instead of raw values
+
+**Key features**:
+
+- **Drag-and-drop**: Smooth reordering with visual feedback and 8px drag threshold
+- **Accessibility**: Keyboard dragging support via KeyboardSensor
+- **Block palette**: Comprehensive operator selection with 25+ block types
+- **Immutable updates**: Recursive update/delete functions maintain immutability
+- **Type safety**: Full TypeScript support with Block interface
+- **Performance**: useMemo for initial parsing, useCallback for all handlers
+- **Test coverage**: 78 new tests across 4 files (BlockEditor, BlockRenderer, NestedBlockRenderer, BlockPalette)
+
+**Testing**:
+
+- All 262 tests passing (78 new tests for Stage 5 components)
+- BlockEditor: 24 tests (palette UI, add/update/delete, drag-and-drop)
+- BlockRenderer: 16 tests (operator routing, drag attributes, visual feedback)
+- NestedBlockRenderer: 15 tests (nested rendering without drag)
+- BlockPalette: 23 tests (all categories, block creation, keyboard navigation)
+- All existing operator block tests updated for new API (6 files refactored)
+- TypeScript compilation passes with strict mode
+- ESLint passes with 0 errors
+- Code reviewed and approved
+
+**Technical decisions**:
+
+- PointerSensor over MouseSensor/TouchSensor: Works on all devices with single configuration
+- 8px activation distance: Prevents accidental drags while allowing click actions
+- closestCenter collision detection: Simple and effective for vertical lists
+- Recursive update/delete: Handles deeply nested block structures (e.g., IF inside AND inside another IF)
+- Separate BlockRenderer/NestedBlockRenderer: Avoids drag-and-drop conflicts in nested structures
+- generateId() with crypto.randomUUID(): Cryptographically secure, prevents collisions
+
+**Next**: Stage 6 will implement Value Input with Type Validation (though LiteralBlock already provides basic literal editing).
 
 ## Description
 

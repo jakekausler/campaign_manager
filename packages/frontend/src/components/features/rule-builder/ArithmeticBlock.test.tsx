@@ -131,7 +131,9 @@ describe('ArithmeticBlock', () => {
 
       // Get the top-level + block and find its delete button
       const arithmeticBlock = screen.getByRole('region', { name: /\+ operator block/i });
-      const deleteButton = arithmeticBlock.querySelector('button[aria-label="Delete block"]');
+      const deleteButton = arithmeticBlock.querySelector(
+        'button[aria-label="Delete block"]'
+      ) as HTMLElement | null;
       await deleteButton?.click();
 
       expect(mockOnDelete).toHaveBeenCalledTimes(1);

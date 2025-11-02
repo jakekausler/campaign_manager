@@ -190,7 +190,9 @@ describe('ComparisonBlock', () => {
 
       // Get the top-level == block and find its delete button
       const comparisonBlock = screen.getByRole('region', { name: /== operator block/i });
-      const deleteButton = comparisonBlock.querySelector('button[aria-label="Delete block"]');
+      const deleteButton = comparisonBlock.querySelector(
+        'button[aria-label="Delete block"]'
+      ) as HTMLElement | null;
       await deleteButton?.click();
 
       expect(mockOnDelete).toHaveBeenCalledTimes(1);

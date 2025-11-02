@@ -191,7 +191,9 @@ describe('IfBlock', () => {
 
       // Get the top-level if block and find its delete button
       const ifBlock = screen.getByRole('region', { name: /if operator block/i });
-      const deleteButton = ifBlock.querySelector('button[aria-label="Delete block"]');
+      const deleteButton = ifBlock.querySelector(
+        'button[aria-label="Delete block"]'
+      ) as HTMLElement | null;
       await deleteButton?.click();
 
       expect(mockOnDelete).toHaveBeenCalledTimes(1);
