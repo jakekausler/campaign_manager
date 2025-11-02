@@ -9,6 +9,7 @@
   - 7f782aa - Stage 3: Variable Picker with Autocomplete
   - 3b7219e - Stage 4: Operator Block Components
   - e150ea4 - Stage 5: Drag-and-Drop Block Reordering
+  - 68f0766 - Stage 6: Value Input with Type Validation
 
 ## Implementation Notes
 
@@ -322,6 +323,86 @@
 - generateId() with crypto.randomUUID(): Cryptographically secure, prevents collisions
 
 **Next**: Stage 6 will implement Value Input with Type Validation (though LiteralBlock already provides basic literal editing).
+
+### Stage 6: Value Input with Type Validation (Complete)
+
+**Completed**: Stage 6 implemented a comprehensive type-aware value input component.
+
+**What was implemented**:
+
+1. **ValueInput.tsx** - Type-aware value input component (289 lines):
+   - Mode toggle buttons (Literal vs Variable) with visual state indicators
+   - Type-specific input rendering based on expectedType prop
+   - Local state management for controlled inputs (arrayText, numberText, localValue)
+   - Real-time validation with inline error messages
+   - Integration with VariablePickerInput for variable mode
+   - Proper ARIA attributes for accessibility
+
+2. **Type-specific inputs**:
+   - **String**: Standard text input with full Unicode support
+   - **Number**: Numeric input with parseFloat, supports decimals and negatives
+   - **Boolean**: Select dropdown with true/false options
+   - **Array**: Text input with comma-separated parsing and whitespace trimming
+   - **Null**: Disabled input displaying "null"
+
+3. **Mode switching**:
+   - Literal mode: Direct value entry with type-appropriate input controls
+   - Variable mode: Integrates VariablePickerInput for selecting variable references ({var: path})
+   - Seamless switching with type-appropriate default values (e.g., 0 for numbers, '' for strings)
+   - State reset when switching modes
+
+4. **Validation system**:
+   - NaN detection for number inputs with useEffect on mount
+   - Real-time validation during input changes
+   - Inline error messages with ARIA live regions (aria-live="polite")
+   - Proper aria-invalid and aria-describedby linking inputs to errors
+   - Unique error IDs generated with React 18's useId() hook
+
+5. **State management**:
+   - Local state (localValue) synchronizes with parent via onChange callback
+   - Separate arrayText state preserves comma-separated input during typing
+   - Separate numberText state allows intermediate inputs like "-" or "3."
+   - useEffect validates initial values (especially NaN for numbers)
+   - Controlled input pattern maintains React best practices
+
+6. **ValueInput.test.tsx** - Comprehensive test suite (34 tests):
+   - Rendering tests (3): Default mode, mode toggle buttons, variable picker visibility
+   - Mode switching tests (3): Literal→Variable, Variable→Literal, type preservation
+   - String input tests (3): Rendering, updates, no validation errors for valid strings
+   - Number input tests (5): Rendering, updates, validation, decimals, negatives
+   - Boolean input tests (3): Dropdown rendering, current value, updates
+   - Array input tests (4): Textarea rendering, parsing, trimming, empty arrays
+   - Null input tests (2): Disabled input, no editing allowed
+   - Variable mode tests (2): Path display, onChange on path changes
+   - Validation tests (3): No errors for valid values, ARIA live regions, aria-describedby
+   - Edge case tests (3): Undefined values, complex expressions, unknown types
+   - Accessibility tests (3): Button labels, focus management, ARIA attributes
+
+7. **Type system update**:
+   - Extended `LiteralValue` type in types.ts to include `string[]` for array support
+   - Maintains backward compatibility with existing code
+
+**Key decisions**:
+
+- **Local state with controlled inputs**: Addresses test environment limitations where parent doesn't update props
+- **Separate text state for arrays/numbers**: Preserves user typing experience (e.g., "-" for negative, "one, two" for arrays)
+- **Boolean as select dropdown**: More explicit than checkbox, consistent with LiteralBlock
+- **Validation on mount with useEffect**: Ensures initial NaN values show errors immediately
+- **Integration with VariablePickerInput**: Reuses existing component instead of duplicating autocomplete logic
+- **Type system update**: Extended LiteralValue to include string[] for array support
+
+**Testing**:
+
+- All 34 tests passing in ValueInput.test.tsx
+- TypeScript Tester subagent fixed controlled input state management issues
+- TypeScript Fixer subagent updated LiteralValue type definition
+- TypeScript compilation passes with strict mode
+- ESLint passes with 0 errors (only 2 minor `any` warnings in test file, acceptable for tests)
+- Code reviewed and approved by code-reviewer agent
+- No security vulnerabilities, proper XSS prevention
+- Performance optimized with useId() instead of random IDs
+
+**Next**: Stage 7 will implement Visual/JSON Mode Toggle for the RuleBuilder component.
 
 ## Description
 

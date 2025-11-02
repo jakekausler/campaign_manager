@@ -184,27 +184,27 @@ Create a visual rule builder interface that allows users to construct conditiona
 
 **Tasks**:
 
-- [ ] Create `ValueInput.tsx` component
-- [ ] Implement type-specific inputs:
+- [x] Create `ValueInput.tsx` component
+- [x] Implement type-specific inputs:
   - String input (text field)
   - Number input (numeric field with validation)
-  - Boolean input (checkbox/toggle)
-  - Array input (comma-separated or multi-value)
-  - Null/undefined option
-- [ ] Add input validation based on expected type
-- [ ] Display validation errors inline
-- [ ] Support both literal values and variable references
-- [ ] Write tests for all input types and validation
+  - Boolean input (select dropdown)
+  - Array input (comma-separated with auto-parsing)
+  - Null option (disabled input)
+- [x] Add input validation based on expected type
+- [x] Display validation errors inline
+- [x] Support both literal values and variable references
+- [x] Write tests for all input types and validation
 
 **Success Criteria**:
 
-- Correct input type shown based on context
-- Validation prevents invalid values
-- Error messages are clear and helpful
-- Both literal and variable inputs work
-- Tests cover all input types
+- ✅ Correct input type shown based on context
+- ✅ Validation prevents invalid values (NaN detection for numbers)
+- ✅ Error messages are clear and helpful (ARIA live regions)
+- ✅ Both literal and variable inputs work (mode toggle)
+- ✅ Tests cover all input types (34 comprehensive tests)
 
-**Status**: Not Started
+**Status**: ✅ Complete (Commit: 68f0766)
 
 ---
 
