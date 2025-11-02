@@ -2,9 +2,11 @@
 
 ## Status
 
-- [ ] Completed
+- [ ] Completed (Stages 1-4 of 10 complete)
 - **Commits**:
   - b1f4384 - Stage 2: Frontend GraphQL Hooks
+  - 70cf597 - Stage 3: Version List Component
+  - 760a327 - Stage 4: DiffViewer Component
 
 ## Description
 
