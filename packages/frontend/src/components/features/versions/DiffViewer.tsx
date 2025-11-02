@@ -48,7 +48,17 @@ function formatValue(value: unknown): string {
     return value ? 'Yes' : 'No';
   }
   if (typeof value === 'object') {
-    return JSON.stringify(value, null, 2);
+    // Custom replacer to format booleans as Yes/No in JSON
+    return JSON.stringify(
+      value,
+      (_key, val) => {
+        if (typeof val === 'boolean') {
+          return val ? 'Yes' : 'No';
+        }
+        return val;
+      },
+      2
+    );
   }
   return String(value);
 }

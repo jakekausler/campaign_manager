@@ -654,4 +654,485 @@ describe('DiffViewer', () => {
       expect(screen.getByTestId('diff-section-added')).toHaveTextContent(/level1/);
     });
   });
+
+  describe('Entity-Specific Payload Handling (TICKET-031 Stage 5)', () => {
+    describe('Settlement Payload Diffs', () => {
+      it('should handle Settlement level changes with formatted display', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            level: { old: 2, new: 3 },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/level/i)).toBeInTheDocument();
+
+        // Should display "Level 2 → Level 3" format
+        expect(within(modifiedSection).getByText('2')).toBeInTheDocument();
+        expect(within(modifiedSection).getByText('3')).toBeInTheDocument();
+      });
+
+      it('should handle Settlement variables (nested object) changes', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: { prosperity: 50, morale: 60 },
+              new: { prosperity: 75, morale: 80, has_walls: true },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+
+        // Should show nested variable changes (prosperity, morale changes; has_walls added)
+        expect(modifiedSection).toHaveTextContent(/prosperity/i);
+        expect(modifiedSection).toHaveTextContent(/morale/i);
+        expect(modifiedSection).toHaveTextContent(/has_walls/i);
+      });
+
+      it('should handle Settlement structures array changes', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            structures: {
+              old: ['structure-1', 'structure-2'],
+              new: ['structure-1', 'structure-2', 'structure-3'],
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/structures/i)).toBeInTheDocument();
+
+        // Should display array changes showing added structure-3
+        expect(modifiedSection).toHaveTextContent(/structure-1/i);
+        expect(modifiedSection).toHaveTextContent(/structure-2/i);
+        expect(modifiedSection).toHaveTextContent(/structure-3/i);
+      });
+
+      it('should handle Settlement variable addition (variable added to variables object)', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: { prosperity: 50 },
+              new: { prosperity: 50, morale: 80 },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+
+        // Should show that morale was added
+        expect(modifiedSection).toHaveTextContent(/morale/i);
+      });
+
+      it('should handle Settlement variable removal (variable removed from variables object)', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: { prosperity: 50, morale: 80 },
+              new: { prosperity: 50 },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+
+        // Should show that morale was removed
+        expect(modifiedSection).toHaveTextContent(/morale/i);
+      });
+
+      it('should handle null values in Settlement variables gracefully', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: { prosperity: 50, morale: null },
+              new: { prosperity: 75, morale: 80 },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+
+        // Should display "null" for null values
+        expect(modifiedSection).toHaveTextContent(/null/i);
+      });
+
+      it('should handle complex Settlement diff with multiple change types', () => {
+        const diff: VersionDiff = {
+          added: { isArchived: false },
+          modified: {
+            level: { old: 2, new: 3 },
+            variables: {
+              old: { prosperity: 50 },
+              new: { prosperity: 75, has_walls: true },
+            },
+          },
+          removed: { oldField: 'value' },
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        // All sections should be present
+        expect(screen.getByTestId('diff-section-added')).toBeInTheDocument();
+        expect(screen.getByTestId('diff-section-modified')).toBeInTheDocument();
+        expect(screen.getByTestId('diff-section-removed')).toBeInTheDocument();
+
+        // Check specific Settlement fields
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/level/i)).toBeInTheDocument();
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+      });
+    });
+
+    describe('Structure Payload Diffs', () => {
+      it('should handle Structure type changes', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            type: { old: 'Military', new: 'Economic' },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/type/i)).toBeInTheDocument();
+
+        // Should display "Military → Economic"
+        expect(within(modifiedSection).getByText('Military')).toBeInTheDocument();
+        expect(within(modifiedSection).getByText('Economic')).toBeInTheDocument();
+      });
+
+      it('should handle Structure level changes', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            level: { old: 1, new: 2 },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/level/i)).toBeInTheDocument();
+
+        // Should display "Level 1 → Level 2" or "1 → 2"
+        expect(within(modifiedSection).getByText('1')).toBeInTheDocument();
+        expect(within(modifiedSection).getByText('2')).toBeInTheDocument();
+      });
+
+      it('should handle Structure variables (nested object) changes', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: { garrison_size: 50, is_upgraded: false },
+              new: { garrison_size: 100, is_upgraded: true, training_speed: 1.5 },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+
+        // Should show nested variable changes
+        expect(modifiedSection).toHaveTextContent(/garrison_size/i);
+        expect(modifiedSection).toHaveTextContent(/is_upgraded/i);
+        expect(modifiedSection).toHaveTextContent(/training_speed/i);
+      });
+
+      it('should handle Structure boolean variables with Yes/No display', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: { is_upgraded: false },
+              new: { is_upgraded: true },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+
+        // Boolean values should be formatted as Yes/No
+        expect(modifiedSection).toHaveTextContent(/is_upgraded/i);
+        expect(modifiedSection).toHaveTextContent(/no|yes/i);
+      });
+
+      it('should handle Structure position changes (positionX, positionY)', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            positionX: { old: 100, new: 150 },
+            positionY: { old: 200, new: 250 },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/positionX/i)).toBeInTheDocument();
+        expect(within(modifiedSection).getByText(/positionY/i)).toBeInTheDocument();
+
+        // Should display numeric values
+        expect(within(modifiedSection).getByText('100')).toBeInTheDocument();
+        expect(within(modifiedSection).getByText('150')).toBeInTheDocument();
+        expect(within(modifiedSection).getByText('200')).toBeInTheDocument();
+        expect(within(modifiedSection).getByText('250')).toBeInTheDocument();
+      });
+
+      it('should handle Structure orientation changes', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            orientation: { old: 0, new: 90 },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/orientation/i)).toBeInTheDocument();
+
+        // Should display angle values
+        expect(within(modifiedSection).getByText('0')).toBeInTheDocument();
+        expect(within(modifiedSection).getByText('90')).toBeInTheDocument();
+      });
+
+      it('should handle complex Structure diff with multiple change types', () => {
+        const diff: VersionDiff = {
+          added: { newFeature: 'value' },
+          modified: {
+            type: { old: 'Military', new: 'Economic' },
+            level: { old: 1, new: 2 },
+            variables: {
+              old: { garrison_size: 50 },
+              new: { garrison_size: 100, is_upgraded: true },
+            },
+          },
+          removed: { deprecatedField: 'old' },
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        // All sections should be present
+        expect(screen.getByTestId('diff-section-added')).toBeInTheDocument();
+        expect(screen.getByTestId('diff-section-modified')).toBeInTheDocument();
+        expect(screen.getByTestId('diff-section-removed')).toBeInTheDocument();
+
+        // Check specific Structure fields
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/type/i)).toBeInTheDocument();
+        expect(within(modifiedSection).getByText(/level/i)).toBeInTheDocument();
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+      });
+    });
+
+    describe('Field Name Formatting', () => {
+      it('should display snake_case field names as-is for variables', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: { garrison_size: 50 },
+              new: { garrison_size: 100 },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        // Field names should be displayed as-is (we can add Title Case in future if needed)
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+        expect(modifiedSection).toHaveTextContent(/garrison_size/i);
+      });
+
+      it('should handle camelCase field names', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            isArchived: { old: false, new: true },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        // CamelCase should be displayed as-is
+        expect(within(modifiedSection).getByText(/isArchived/i)).toBeInTheDocument();
+      });
+    });
+
+    describe('Nested Variable Diff Display', () => {
+      it('should handle nested variable addition within variables object', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: {},
+              new: { prosperity: 75 },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+        expect(modifiedSection).toHaveTextContent(/prosperity/i);
+      });
+
+      it('should handle empty variables object', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: { some_field: 'value' },
+              new: {},
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+        // Empty object should display as {} or "empty"
+        expect(modifiedSection).toHaveTextContent(/{|}|empty/i);
+      });
+
+      it('should handle multiple nested variable changes', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: {
+                prosperity: 50,
+                morale: 60,
+                has_walls: false,
+                population: 1000,
+              },
+              new: {
+                prosperity: 75,
+                morale: 80,
+                has_walls: true,
+                population: 5000,
+              },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+
+        // All variable names should be present in the JSON display
+        expect(modifiedSection).toHaveTextContent(/prosperity/i);
+        expect(modifiedSection).toHaveTextContent(/morale/i);
+        expect(modifiedSection).toHaveTextContent(/has_walls/i);
+        expect(modifiedSection).toHaveTextContent(/population/i);
+      });
+    });
+
+    describe('Undefined and Null Handling in Entity Payloads', () => {
+      it('should handle undefined variables field gracefully', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: undefined,
+              new: { prosperity: 75 },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+        expect(modifiedSection).toHaveTextContent(/undefined/i);
+      });
+
+      it('should handle null variables field gracefully', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            variables: {
+              old: null,
+              new: { prosperity: 75 },
+            },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/variables/i)).toBeInTheDocument();
+        expect(modifiedSection).toHaveTextContent(/null/i);
+      });
+
+      it('should handle null structure level', () => {
+        const diff: VersionDiff = {
+          added: {},
+          modified: {
+            level: { old: null, new: 1 },
+          },
+          removed: {},
+        };
+
+        render(<DiffViewer diff={diff} />);
+
+        const modifiedSection = screen.getByTestId('diff-section-modified');
+        expect(within(modifiedSection).getByText(/level/i)).toBeInTheDocument();
+        expect(modifiedSection).toHaveTextContent(/null/i);
+        expect(within(modifiedSection).getByText('1')).toBeInTheDocument();
+      });
+    });
+  });
 });
