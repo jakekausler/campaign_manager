@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { RuleBuilderDialog } from '@/components/features/rule-builder/RuleBuilderDialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useConditionsForEntity } from '@/services/api/hooks/conditions';
@@ -78,6 +79,28 @@ export function ConditionsTab({ entityType, entityId }: ConditionsTabProps): JSX
   const { conditions, loading, error, refetch } = useConditionsForEntity(entityType, entityId);
   const [selectedCondition, setSelectedCondition] = useState<FieldCondition | null>(null);
 
+  // Rule builder dialog state
+  const [isRuleBuilderOpen, setIsRuleBuilderOpen] = useState(false);
+  const [conditionToEdit, setConditionToEdit] = useState<FieldCondition | null>(null);
+
+  // Handle opening rule builder for new rule
+  const handleNewRule = () => {
+    setConditionToEdit(null);
+    setIsRuleBuilderOpen(true);
+  };
+
+  // Handle opening rule builder for editing
+  const handleEditRule = (condition: FieldCondition) => {
+    setConditionToEdit(condition);
+    setIsRuleBuilderOpen(true);
+  };
+
+  // Handle closing rule builder
+  const handleCloseRuleBuilder = () => {
+    setIsRuleBuilderOpen(false);
+    setConditionToEdit(null);
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -107,13 +130,34 @@ export function ConditionsTab({ entityType, entityId }: ConditionsTabProps): JSX
   // Empty state
   if (conditions.length === 0) {
     return (
-      <div className="space-y-4 p-4">
-        <Card className="bg-slate-50 p-8">
-          <p className="text-center text-sm text-slate-500">
-            No conditions available for this {entityType.toLowerCase()}
-          </p>
-        </Card>
-      </div>
+      <>
+        <div className="space-y-4 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-700">Field Conditions (0)</h3>
+            <Button onClick={handleNewRule} size="sm" variant="default">
+              New Rule
+            </Button>
+          </div>
+          <Card className="bg-slate-50 p-8">
+            <p className="text-center text-sm text-slate-500">
+              No conditions available for this {entityType.toLowerCase()}
+            </p>
+            <p className="mt-2 text-center text-xs text-slate-400">
+              Click &quot;New Rule&quot; to create your first condition
+            </p>
+          </Card>
+        </div>
+
+        {/* Rule Builder Dialog */}
+        <RuleBuilderDialog
+          isOpen={isRuleBuilderOpen}
+          onClose={handleCloseRuleBuilder}
+          entityType={entityType}
+          entityId={entityId}
+          existingCondition={conditionToEdit}
+          onSaveSuccess={refetch}
+        />
+      </>
     );
   }
 
@@ -127,6 +171,9 @@ export function ConditionsTab({ entityType, entityId }: ConditionsTabProps): JSX
           <h3 className="text-sm font-semibold text-slate-700">
             Field Conditions ({conditions.length})
           </h3>
+          <Button onClick={handleNewRule} size="sm" variant="default">
+            New Rule
+          </Button>
         </div>
 
         {sortedConditions.map((condition) => (
@@ -174,8 +221,16 @@ export function ConditionsTab({ entityType, entityId }: ConditionsTabProps): JSX
               </pre>
             </div>
 
-            {/* Explain button */}
-            <div className="flex justify-end">
+            {/* Action buttons */}
+            <div className="flex justify-end gap-2">
+              <Button
+                onClick={() => handleEditRule(condition)}
+                variant="outline"
+                size="sm"
+                title="Edit this rule"
+              >
+                Edit
+              </Button>
               <Button
                 onClick={() => setSelectedCondition(condition)}
                 variant="outline"
@@ -204,6 +259,16 @@ export function ConditionsTab({ entityType, entityId }: ConditionsTabProps): JSX
           onClose={() => setSelectedCondition(null)}
         />
       )}
+
+      {/* Rule Builder Dialog */}
+      <RuleBuilderDialog
+        isOpen={isRuleBuilderOpen}
+        onClose={handleCloseRuleBuilder}
+        entityType={entityType}
+        entityId={entityId}
+        existingCondition={conditionToEdit}
+        onSaveSuccess={refetch}
+      />
     </>
   );
 }

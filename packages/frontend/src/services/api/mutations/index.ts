@@ -78,3 +78,19 @@ export type {
   EncounterResolutionResult,
   EffectExecutionSummary as EncounterEffectExecutionSummary,
 } from './encounters';
+
+// Condition mutations
+export {
+  CREATE_FIELD_CONDITION,
+  UPDATE_FIELD_CONDITION,
+  DELETE_FIELD_CONDITION,
+  useCreateFieldCondition,
+  useUpdateFieldCondition,
+  useDeleteFieldCondition,
+} from './conditions';
+
+export type {
+  CreateFieldConditionInput,
+  UpdateFieldConditionInput,
+  FieldCondition,
+} from './conditions';
