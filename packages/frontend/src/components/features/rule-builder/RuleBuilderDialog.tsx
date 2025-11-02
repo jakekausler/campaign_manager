@@ -96,7 +96,8 @@ export function RuleBuilderDialog({
         setFieldName(existingCondition.field);
         setDescription(existingCondition.description || '');
         setPriority(existingCondition.priority);
-        setExpression(existingCondition.expression as JSONLogicExpression);
+        // The expression from the backend is Record<string, unknown>, but it conforms to JSONLogicExpression
+        setExpression(existingCondition.expression as unknown as JSONLogicExpression);
       } else {
         // Create mode: reset form
         setFieldName('');
@@ -143,19 +144,23 @@ export function RuleBuilderDialog({
     try {
       if (isEditMode && existingCondition) {
         // Update existing condition
+        // Backend expects Record<string, unknown>, but JSONLogicExpression can include primitives
+        // Cast through unknown to satisfy TypeScript
         await updateCondition(existingCondition.id, {
-          expression: expression as Record<string, unknown>,
+          expression: expression as unknown as Record<string, unknown>,
           description: description.trim() || null,
           priority,
         });
         // TODO: Show success toast: "Rule updated successfully"
       } else {
         // Create new condition
+        // Backend expects Record<string, unknown>, but JSONLogicExpression can include primitives
+        // Cast through unknown to satisfy TypeScript
         await createCondition({
           entityType,
           entityId,
           field: fieldName.trim(),
-          expression: expression as Record<string, unknown>,
+          expression: expression as unknown as Record<string, unknown>,
           description: description.trim() || null,
           priority,
         });

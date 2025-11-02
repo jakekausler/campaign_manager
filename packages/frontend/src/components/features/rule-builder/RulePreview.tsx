@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 import type { JSONLogicExpression } from './types';
 
-interface RulePreviewProps {
+export interface RulePreviewProps {
   expression: JSONLogicExpression;
   testContext: Record<string, unknown>;
   onContextChange: (context: Record<string, unknown>) => void;
@@ -35,7 +35,6 @@ export function RulePreview({ expression, testContext, onContextChange }: RulePr
   const [isLocalEdit, setIsLocalEdit] = useState(false);
 
   const errorId = useId();
-  const resultStatusId = useId();
   const debounceTimerRef = useRef<number | null>(null);
 
   // Sync testContext prop to contextText (formatted JSON)
@@ -171,11 +170,7 @@ export function RulePreview({ expression, testContext, onContextChange }: RulePr
 
       {/* Auto-evaluate toggle */}
       <div className="flex items-center space-x-2">
-        <Checkbox
-          id="auto-evaluate"
-          checked={autoEvaluate}
-          onCheckedChange={(checked) => setAutoEvaluate(checked as boolean)}
-        />
+        <Checkbox id="auto-evaluate" checked={autoEvaluate} onCheckedChange={setAutoEvaluate} />
         <label
           htmlFor="auto-evaluate"
           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
@@ -194,7 +189,6 @@ export function RulePreview({ expression, testContext, onContextChange }: RulePr
         <div
           role="status"
           aria-live="polite"
-          id={resultStatusId}
           className="rounded-md border border-gray-200 bg-gray-50 p-4"
         >
           <h4 className="mb-2 text-sm font-semibold">Result:</h4>

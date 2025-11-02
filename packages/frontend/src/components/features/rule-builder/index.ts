@@ -8,6 +8,12 @@
 export { RuleBuilder } from './RuleBuilder';
 export type { RuleBuilderProps } from './RuleBuilder';
 
+export { RuleBuilderDialog } from './RuleBuilderDialog';
+export type { RuleBuilderDialogProps } from './RuleBuilderDialog';
+
+export { RulePreview } from './RulePreview';
+export type { RulePreviewProps } from './RulePreview';
+
 export { BlockEditor } from './BlockEditor';
 export type { BlockEditorProps } from './BlockEditor';
 
