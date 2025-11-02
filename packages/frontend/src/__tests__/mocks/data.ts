@@ -900,3 +900,90 @@ export const mockAudits = [
     timestamp: '2024-08-10T10:00:00.000Z',
   },
 ];
+
+/**
+ * Mock version data for version history testing
+ */
+export const mockVersions = [
+  // Settlement-1: Three versions showing progression
+  {
+    id: 'version-1',
+    entityType: 'settlement',
+    entityId: 'settlement-1',
+    branchId: 'branch-1',
+    validFrom: '2024-06-15T14:00:00.000Z',
+    validTo: null, // Current version
+    payload: { name: 'Ironhold', level: 3 },
+    version: 3,
+    comment: 'Upgraded to level 3',
+    createdBy: 'user-1',
+    createdAt: '2024-06-15T14:00:00.000Z',
+  },
+  {
+    id: 'version-2',
+    entityType: 'settlement',
+    entityId: 'settlement-1',
+    branchId: 'branch-1',
+    validFrom: '2024-06-10T10:00:00.000Z',
+    validTo: '2024-06-15T14:00:00.000Z',
+    payload: { name: 'Ironhold', level: 2 },
+    version: 2,
+    comment: 'Upgraded to level 2',
+    createdBy: 'user-2',
+    createdAt: '2024-06-10T10:00:00.000Z',
+  },
+  {
+    id: 'version-3',
+    entityType: 'settlement',
+    entityId: 'settlement-1',
+    branchId: 'branch-1',
+    validFrom: '2024-06-01T08:00:00.000Z',
+    validTo: '2024-06-10T10:00:00.000Z',
+    payload: { name: 'Ironhold', level: 1 },
+    version: 1,
+    comment: 'Initial creation',
+    createdBy: 'user-1',
+    createdAt: '2024-06-01T08:00:00.000Z',
+  },
+  // Settlement-single-version: Only one version
+  {
+    id: 'version-4',
+    entityType: 'settlement',
+    entityId: 'settlement-single-version',
+    branchId: 'branch-1',
+    validFrom: '2024-06-01T08:00:00.000Z',
+    validTo: null,
+    payload: { name: 'Newtown', level: 1 },
+    version: 1,
+    comment: 'Initial creation',
+    createdBy: 'user-1',
+    createdAt: '2024-06-01T08:00:00.000Z',
+  },
+  // Settlement-no-comments: Versions without comments
+  {
+    id: 'version-5',
+    entityType: 'settlement',
+    entityId: 'settlement-no-comments',
+    branchId: 'branch-1',
+    validFrom: '2024-06-10T10:00:00.000Z',
+    validTo: null,
+    payload: { name: 'Silent Town', level: 2 },
+    version: 2,
+    comment: null,
+    createdBy: 'user-1',
+    createdAt: '2024-06-10T10:00:00.000Z',
+  },
+  {
+    id: 'version-6',
+    entityType: 'settlement',
+    entityId: 'settlement-no-comments',
+    branchId: 'branch-1',
+    validFrom: '2024-06-01T08:00:00.000Z',
+    validTo: '2024-06-10T10:00:00.000Z',
+    payload: { name: 'Silent Town', level: 1 },
+    version: 1,
+    comment: null,
+    createdBy: 'user-1',
+    createdAt: '2024-06-01T08:00:00.000Z',
+  },
+];

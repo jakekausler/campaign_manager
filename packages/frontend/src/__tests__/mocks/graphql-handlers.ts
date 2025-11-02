@@ -16,6 +16,7 @@ import {
   mockConditions,
   mockEffects,
   mockAudits,
+  mockVersions,
 } from './data';
 
 export const graphqlHandlers = [
@@ -720,6 +721,48 @@ export const graphqlHandlers = [
           post: mockEffectSummary,
         },
       },
+    });
+  }),
+
+  // Version History Queries
+  graphql.query('EntityVersions', ({ variables }) => {
+    const { entityType, entityId, branchId } = variables as {
+      entityType: string;
+      entityId: string;
+      branchId: string;
+    };
+
+    // Simulate server error for "invalid-*" IDs
+    if (entityId.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Internal server error' }],
+      });
+    }
+
+    // Return empty array for entities with "-empty" suffix
+    if (entityId.endsWith('-empty')) {
+      return HttpResponse.json({
+        data: { entityVersions: [] },
+      });
+    }
+
+    // Simulate loading state for "loading-*" IDs
+    // In MSW, we can't actually delay responses, so we'll just return loading indicator
+    // The test will handle the loading state expectation differently
+    if (entityId.startsWith('loading-')) {
+      // Return a delayed response by not returning anything immediately
+      return new Promise(() => {
+        // Never resolves - simulates infinite loading
+      });
+    }
+
+    // Filter versions by entityType and entityId
+    const versions = mockVersions.filter(
+      (v) => v.entityType === entityType && v.entityId === entityId && v.branchId === branchId
+    );
+
+    return HttpResponse.json({
+      data: { entityVersions: versions },
     });
   }),
 ];
