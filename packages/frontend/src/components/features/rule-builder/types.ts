@@ -178,9 +178,9 @@ export type ArithmeticExpression =
   | ModuloExpression;
 
 /**
- * Literal value (string, number, boolean, null)
+ * Literal value (string, number, boolean, null, or array of strings)
  */
-export type LiteralValue = string | number | boolean | null;
+export type LiteralValue = string | number | boolean | null | string[];
 
 /**
  * Complete JSONLogic expression type
