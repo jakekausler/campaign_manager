@@ -10,6 +10,8 @@ import { memo, useState, useCallback, useMemo } from 'react';
 
 import { useEntityVersions } from '@/services/api/hooks/versions';
 
+import { RestoreConfirmationDialog } from './RestoreConfirmationDialog';
+
 interface VersionListProps {
   /**
    * Entity type (e.g., "settlement", "structure")
@@ -74,6 +76,7 @@ export const VersionList = memo(function VersionList({
   className = '',
 }: VersionListProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
 
   // Fetch version history using hook from Stage 2
   const { versions, loading, error, refetch } = useEntityVersions(entityType, entityId, branchId);
@@ -124,6 +127,34 @@ export const VersionList = memo(function VersionList({
       (a, b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime()
     );
   }, [versions]);
+
+  // Find current version (validTo === null)
+  const currentVersion = useMemo(() => {
+    return sortedVersions.find((v) => v.validTo === null);
+  }, [sortedVersions]);
+
+  // Determine if restore button should be shown
+  // Show when: exactly 1 version selected AND it's not the current version
+  const canRestore = useMemo(() => {
+    if (selectedIds.length !== 1) return false;
+    const selectedId = selectedIds[0];
+    if (!currentVersion) return false;
+    return selectedId !== currentVersion.id;
+  }, [selectedIds, currentVersion]);
+
+  // Handle restore button click
+  const handleRestoreClick = useCallback(() => {
+    setShowRestoreDialog(true);
+  }, []);
+
+  // Handle successful restore
+  const handleRestoreSuccess = useCallback(() => {
+    // Refetch version list to show new version
+    refetch();
+    // Clear selection
+    setSelectedIds([]);
+    onSelectionChange?.([]);
+  }, [refetch, onSelectionChange]);
 
   // Loading state
   if (loading) {
@@ -235,56 +266,87 @@ export const VersionList = memo(function VersionList({
 
   // Version list
   return (
-    <div
-      className={`space-y-2 ${className}`}
-      data-testid="version-list"
-      role="list"
-      aria-label="Version history"
-    >
-      {sortedVersions.map((version) => {
-        const isSelected = selectedIds.includes(version.id);
-        const isCurrent = version.validTo === null;
+    <>
+      <div className="space-y-2">
+        {/* Restore button - shown when single non-current version selected */}
+        {canRestore && (
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={handleRestoreClick}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              data-testid="restore-button"
+              aria-label="Restore selected version"
+            >
+              Restore This Version
+            </button>
+          </div>
+        )}
 
-        return (
-          <div
-            key={version.id}
-            className={`
-              p-4 border rounded-lg cursor-pointer transition-colors
-              ${isSelected ? 'bg-blue-50 border-blue-500 selected' : 'bg-white border-gray-200 hover:border-gray-300'}
-              focus:outline-none focus:ring-2 focus:ring-blue-500
-            `}
-            data-testid={`version-item-${version.id}`}
-            role="option"
-            tabIndex={0}
-            onClick={() => handleVersionClick(version.id)}
-            onKeyDown={(e) => handleKeyDown(e, version.id)}
-            aria-selected={isSelected}
-            aria-label={`Version from ${formatTimestamp(version.validFrom)}${isCurrent ? ' (current)' : ''}`}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                {/* Comment */}
-                <p className="font-medium text-gray-900">{version.comment || 'No comment'}</p>
+        {/* Version list */}
+        <div
+          className={`space-y-2 ${className}`}
+          data-testid="version-list"
+          role="list"
+          aria-label="Version history"
+        >
+          {sortedVersions.map((version) => {
+            const isSelected = selectedIds.includes(version.id);
+            const isCurrent = version.validTo === null;
 
-                {/* Metadata */}
-                <div className="mt-1 flex items-center space-x-4 text-sm text-gray-600">
-                  <span data-testid={`version-timestamp-${version.id}`}>
-                    {formatTimestamp(version.validFrom)}
-                  </span>
-                  <span>by {version.createdBy}</span>
+            return (
+              <div
+                key={version.id}
+                className={`
+                  p-4 border rounded-lg cursor-pointer transition-colors
+                  ${isSelected ? 'bg-blue-50 border-blue-500 selected' : 'bg-white border-gray-200 hover:border-gray-300'}
+                  focus:outline-none focus:ring-2 focus:ring-blue-500
+                `}
+                data-testid={`version-item-${version.id}`}
+                role="option"
+                tabIndex={0}
+                onClick={() => handleVersionClick(version.id)}
+                onKeyDown={(e) => handleKeyDown(e, version.id)}
+                aria-selected={isSelected}
+                aria-label={`Version from ${formatTimestamp(version.validFrom)}${isCurrent ? ' (current)' : ''}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    {/* Comment */}
+                    <p className="font-medium text-gray-900">{version.comment || 'No comment'}</p>
+
+                    {/* Metadata */}
+                    <div className="mt-1 flex items-center space-x-4 text-sm text-gray-600">
+                      <span data-testid={`version-timestamp-${version.id}`}>
+                        {formatTimestamp(version.validFrom)}
+                      </span>
+                      <span>by {version.createdBy}</span>
+                    </div>
+                  </div>
+
+                  {/* Current badge */}
+                  {isCurrent && (
+                    <span className="px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded">
+                      CURRENT
+                    </span>
+                  )}
                 </div>
               </div>
+            );
+          })}
+        </div>
+      </div>
 
-              {/* Current badge */}
-              {isCurrent && (
-                <span className="px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded">
-                  CURRENT
-                </span>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+      {/* Restore Confirmation Dialog */}
+      {canRestore && currentVersion && (
+        <RestoreConfirmationDialog
+          open={showRestoreDialog}
+          onClose={() => setShowRestoreDialog(false)}
+          onRestore={handleRestoreSuccess}
+          currentVersionId={currentVersion.id}
+          restoreToVersionId={selectedIds[0]}
+          branchId={branchId}
+        />
+      )}
+    </>
   );
 });

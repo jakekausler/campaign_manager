@@ -26,6 +26,13 @@ vi.mock('@/services/api/hooks/versions', () => ({
   useEntityVersions: vi.fn(),
 }));
 
+// Mock the RestoreConfirmationDialog component
+vi.mock('./RestoreConfirmationDialog', () => ({
+  RestoreConfirmationDialog: () => (
+    <div data-testid="restore-confirmation-dialog">Restore Dialog</div>
+  ),
+}));
+
 // Type-cast for mocked hook
 const mockUseEntityVersions = useEntityVersions as ReturnType<typeof vi.fn>;
 
@@ -95,9 +102,7 @@ const mockRefetch = vi.fn();
 describe('VersionList', () => {
   // Set up default mock implementation before each test
   beforeEach(() => {
-    mockUseEntityVersions.mockImplementation((variables) => {
-      const entityId = variables?.entityId || '';
-
+    mockUseEntityVersions.mockImplementation((_entityType, entityId, _branchId) => {
       // Loading state for "loading-settlement"
       if (entityId === 'loading-settlement' || entityId === 'loading-structure') {
         return {
@@ -552,6 +557,117 @@ describe('VersionList', () => {
       // Should be selectable with Enter or Space
       await user.keyboard('{Enter}');
       expect(onSelectionChange).toHaveBeenCalledWith(['version-1']);
+    });
+  });
+
+  describe('Restore Functionality', () => {
+    it('should show restore button when single non-current version is selected', async () => {
+      const user = userEvent.setup();
+
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      // Restore button should not be visible initially
+      expect(screen.queryByTestId('restore-button')).not.toBeInTheDocument();
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select a non-current version (version-2 or version-3, not version-1 which is current)
+      await user.click(versionItems[1]); // Select version-2
+
+      // Restore button should now be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('restore-button')).toBeInTheDocument();
+      });
+    });
+
+    it('should not show restore button when current version is selected', async () => {
+      const user = userEvent.setup();
+
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select current version (version-1 with validTo: null)
+      await user.click(versionItems[0]);
+
+      // Restore button should NOT be visible
+      expect(screen.queryByTestId('restore-button')).not.toBeInTheDocument();
+    });
+
+    it('should not show restore button when no version is selected', async () => {
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      // Restore button should not be visible
+      expect(screen.queryByTestId('restore-button')).not.toBeInTheDocument();
+    });
+
+    it('should not show restore button when multiple versions are selected', async () => {
+      const user = userEvent.setup();
+
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select two versions
+      await user.click(versionItems[1]);
+      await user.click(versionItems[2]);
+
+      // Restore button should NOT be visible
+      expect(screen.queryByTestId('restore-button')).not.toBeInTheDocument();
+    });
+
+    it('should hide restore button after deselecting the version', async () => {
+      const user = userEvent.setup();
+
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select a non-current version
+      await user.click(versionItems[1]);
+
+      // Restore button should be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('restore-button')).toBeInTheDocument();
+      });
+
+      // Deselect the version
+      await user.click(versionItems[1]);
+
+      // Restore button should be hidden
+      await waitFor(() => {
+        expect(screen.queryByTestId('restore-button')).not.toBeInTheDocument();
+      });
     });
   });
 
