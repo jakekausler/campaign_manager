@@ -150,6 +150,29 @@ export const VersionList = memo(function VersionList({
     return selectedIds.length === 2;
   }, [selectedIds]);
 
+  // Helper function to safely extract version metadata
+  const getVersionMetadata = useCallback(
+    (versionId: string): VersionMetadata => {
+      const version = sortedVersions.find((v) => v.id === versionId);
+      if (!version) {
+        console.error(`Version ${versionId} not found in sorted versions`);
+        return {
+          id: versionId,
+          validFrom: new Date().toISOString(),
+          comment: 'Version not found',
+          createdBy: 'unknown',
+        };
+      }
+      return {
+        id: version.id,
+        validFrom: version.validFrom,
+        comment: version.comment,
+        createdBy: version.createdBy,
+      };
+    },
+    [sortedVersions]
+  );
+
   // Handle restore button click
   const handleRestoreClick = useCallback(() => {
     setShowRestoreDialog(true);
@@ -385,28 +408,14 @@ export const VersionList = memo(function VersionList({
       )}
 
       {/* Comparison Dialog */}
-      {canCompare && selectedIds.length === 2 && (
+      {canCompare && (
         <ComparisonDialog
           open={showComparisonDialog}
           onClose={handleComparisonClose}
           versionAId={selectedIds[0]}
           versionBId={selectedIds[1]}
-          versionAMetadata={
-            (sortedVersions.find((v) => v.id === selectedIds[0]) as VersionMetadata) || {
-              id: selectedIds[0],
-              validFrom: '',
-              comment: null,
-              createdBy: '',
-            }
-          }
-          versionBMetadata={
-            (sortedVersions.find((v) => v.id === selectedIds[1]) as VersionMetadata) || {
-              id: selectedIds[1],
-              validFrom: '',
-              comment: null,
-              createdBy: '',
-            }
-          }
+          versionAMetadata={getVersionMetadata(selectedIds[0])}
+          versionBMetadata={getVersionMetadata(selectedIds[1])}
         />
       )}
     </>

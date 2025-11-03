@@ -94,8 +94,9 @@ export const ComparisonDialog = memo(function ComparisonDialog({
   versionBMetadata,
 }: ComparisonDialogProps) {
   // Fetch diff using hook from Stage 2
-  const [compareVersions, { data, loading, error }] = useCompareVersions();
-  const diff = data?.versionDiff;
+  const [compareVersions, { data: diffData, loading: diffLoading, error: diffError }] =
+    useCompareVersions();
+  const diff = diffData?.versionDiff ?? null;
 
   // Fetch diff when dialog opens or version IDs change
   useEffect(() => {
@@ -153,7 +154,7 @@ export const ComparisonDialog = memo(function ComparisonDialog({
 
         {/* Diff content */}
         <div className="flex-1 overflow-y-auto py-4">
-          {loading && (
+          {diffLoading && (
             <div
               className="flex flex-col items-center justify-center p-8"
               data-testid="comparison-loading"
@@ -169,7 +170,7 @@ export const ComparisonDialog = memo(function ComparisonDialog({
             </div>
           )}
 
-          {error && (
+          {diffError && (
             <div
               className="flex flex-col items-center justify-center p-8"
               data-testid="comparison-error"
@@ -213,7 +214,7 @@ export const ComparisonDialog = memo(function ComparisonDialog({
             </div>
           )}
 
-          {!loading && !error && diff && <DiffViewer diff={diff} />}
+          {!diffLoading && !diffError && diff && <DiffViewer diff={diff} />}
         </div>
 
         <DialogFooter>
