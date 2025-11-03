@@ -1,35 +1,114 @@
 /**
  * VersionsTab Component
- * Displays audit history for an entity with timeline view
+ * Displays audit history or version history for an entity with view toggle
  */
+
+import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui';
 import { Card } from '@/components/ui/card';
 import { useEntityAuditHistory, type AuditEntry } from '@/services/api/hooks';
+import { useCurrentBranchId } from '@/stores';
+
+import { VersionList } from '../versions/VersionList';
 
 export interface VersionsTabProps {
   entityType: string;
   entityId: string;
 }
 
+type ViewMode = 'audit' | 'versions';
+
 /**
- * VersionsTab - Displays audit history timeline for an entity
+ * VersionsTab - Displays audit history or version history for an entity
  *
- * Shows a chronological list of changes made to the entity including:
- * - Operation type (CREATE, UPDATE, DELETE, ARCHIVE, RESTORE)
- * - Timestamp of change
- * - User who made the change
- * - Summary of what changed
+ * Features two view modes:
+ * - Audit History: Timeline of all operations (CREATE, UPDATE, DELETE, etc.)
+ * - Version History: Full version control with comparison and restore
+ *
+ * Keyboard shortcuts:
+ * - Ctrl+H: Toggle between audit and version history views
  *
  * @param props - Component props
  * @param props.entityType - Type of entity (e.g., "settlement", "structure")
  * @param props.entityId - ID of the entity
  */
 export function VersionsTab({ entityType, entityId }: VersionsTabProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>('audit');
+  const branchId = useCurrentBranchId();
+
   // Capitalize entity type for GraphQL query (Settlement, Structure)
   const capitalizedEntityType =
     entityType.charAt(0).toUpperCase() + entityType.slice(1).toLowerCase();
 
+  // Keyboard shortcut: Ctrl+H to toggle views
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.key === 'h') {
+        event.preventDefault();
+        setViewMode((prev) => (prev === 'audit' ? 'versions' : 'audit'));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleToggleView = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+  }, []);
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* View Toggle */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+        <Button
+          onClick={() => handleToggleView('audit')}
+          size="sm"
+          variant={viewMode === 'audit' ? 'default' : 'outline'}
+          className={viewMode === 'audit' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+        >
+          Audit History
+        </Button>
+        <Button
+          onClick={() => handleToggleView('versions')}
+          size="sm"
+          variant={viewMode === 'versions' ? 'default' : 'outline'}
+          className={viewMode === 'versions' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+        >
+          Version History
+        </Button>
+        <span className="text-xs text-slate-500 ml-auto">Ctrl+H to toggle</span>
+      </div>
+
+      {/* Render appropriate view */}
+      {viewMode === 'audit' ? (
+        <AuditHistoryView
+          capitalizedEntityType={capitalizedEntityType}
+          entityType={entityType}
+          entityId={entityId}
+        />
+      ) : (
+        <VersionHistoryView
+          capitalizedEntityType={capitalizedEntityType}
+          entityId={entityId}
+          branchId={branchId}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * AuditHistoryView - Displays audit trail timeline
+ */
+interface AuditHistoryViewProps {
+  capitalizedEntityType: string;
+  entityType: string;
+  entityId: string;
+}
+
+function AuditHistoryView({ capitalizedEntityType, entityType, entityId }: AuditHistoryViewProps) {
   const { audits, loading, error, refetch } = useEntityAuditHistory(
     capitalizedEntityType,
     entityId,
@@ -41,7 +120,7 @@ export function VersionsTab({ entityType, entityId }: VersionsTabProps) {
 
   if (loading) {
     return (
-      <div className="p-4">
+      <div>
         <p className="text-sm text-slate-500">Loading audit history...</p>
       </div>
     );
@@ -49,35 +128,29 @@ export function VersionsTab({ entityType, entityId }: VersionsTabProps) {
 
   if (error) {
     return (
-      <div className="p-4">
-        <Card className="p-4 bg-red-50 border-red-200">
-          <p className="text-sm text-red-700 mb-2">Failed to load audit history</p>
-          <p className="text-xs text-red-600 mb-3">{error.message}</p>
-          <Button onClick={() => refetch()} size="sm" variant="outline">
-            Retry
-          </Button>
-        </Card>
-      </div>
+      <Card className="p-4 bg-red-50 border-red-200">
+        <p className="text-sm text-red-700 mb-2">Failed to load audit history</p>
+        <p className="text-xs text-red-600 mb-3">{error.message}</p>
+        <Button onClick={() => refetch()} size="sm" variant="outline">
+          Retry
+        </Button>
+      </Card>
     );
   }
 
   if (audits.length === 0) {
     return (
-      <div className="p-4">
-        <Card className="p-8 text-center">
-          <p className="text-sm text-slate-500">
-            No audit history available for this {entityType}.
-          </p>
-          <p className="text-xs text-slate-400 mt-1">
-            Changes will appear here once this entity is modified.
-          </p>
-        </Card>
-      </div>
+      <Card className="p-8 text-center">
+        <p className="text-sm text-slate-500">No audit history available for this {entityType}.</p>
+        <p className="text-xs text-slate-400 mt-1">
+          Changes will appear here once this entity is modified.
+        </p>
+      </Card>
     );
   }
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="space-y-3">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-slate-700">Audit History</h3>
         <span className="text-xs text-slate-500">{audits.length} entries</span>
@@ -88,6 +161,32 @@ export function VersionsTab({ entityType, entityId }: VersionsTabProps) {
       ))}
     </div>
   );
+}
+
+/**
+ * VersionHistoryView - Displays version control interface
+ */
+interface VersionHistoryViewProps {
+  capitalizedEntityType: string;
+  entityId: string;
+  branchId: string | null;
+}
+
+function VersionHistoryView({
+  capitalizedEntityType,
+  entityId,
+  branchId,
+}: VersionHistoryViewProps) {
+  if (!branchId) {
+    return (
+      <Card className="p-8 text-center bg-yellow-50 border-yellow-200">
+        <p className="text-sm text-yellow-800 mb-1">No branch selected</p>
+        <p className="text-xs text-yellow-600">Please select a branch to view version history.</p>
+      </Card>
+    );
+  }
+
+  return <VersionList entityType={capitalizedEntityType} entityId={entityId} branchId={branchId} />;
 }
 
 interface AuditEntryCardProps {

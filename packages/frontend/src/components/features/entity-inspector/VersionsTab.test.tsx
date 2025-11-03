@@ -1,10 +1,15 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 
 import { VersionsTab } from './VersionsTab';
+
+// Mock the useCurrentBranchId hook
+vi.mock('@/stores', () => ({
+  useCurrentBranchId: vi.fn(() => 'main'),
+}));
 
 describe('VersionsTab', () => {
   describe('Loading State', () => {
@@ -414,6 +419,36 @@ describe('VersionsTab', () => {
       expect(successCounts).toHaveLength(3);
       // ON_RESOLVE: 1 failed = 1 total
       expect(failureCounts).toHaveLength(1);
+    });
+  });
+
+  describe('View Toggle Integration', () => {
+    it('should display view toggle buttons', async () => {
+      renderWithApollo(<VersionsTab entityType="settlement" entityId="settlement-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /audit history/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /version history/i })).toBeInTheDocument();
+      });
+    });
+
+    it('should default to audit history view', async () => {
+      renderWithApollo(<VersionsTab entityType="settlement" entityId="settlement-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Audit History')).toBeInTheDocument();
+      });
+
+      // Audit history content should be visible
+      expect(screen.getByText('CREATE')).toBeInTheDocument();
+    });
+
+    it('should show keyboard shortcut hint', async () => {
+      renderWithApollo(<VersionsTab entityType="settlement" entityId="settlement-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/ctrl\+h to toggle/i)).toBeInTheDocument();
+      });
     });
   });
 });
