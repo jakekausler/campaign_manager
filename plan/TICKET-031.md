@@ -2,11 +2,15 @@
 
 ## Status
 
-- [ ] Completed (Stages 1-4 of 10 complete)
+- [ ] Completed (Stages 1-8 of 10 complete)
 - **Commits**:
   - b1f4384 - Stage 2: Frontend GraphQL Hooks
   - 70cf597 - Stage 3: Version List Component
   - 760a327 - Stage 4: DiffViewer Component
+  - f4cc23f - Stage 5: Entity-Specific Payload Tests & Boolean Formatting
+  - 942bcdd - Stage 6: JSON Syntax Highlighting
+  - 244744b - Stage 7: Version Restore Functionality
+  - 6250e8e - Stage 8: Version Comparison Dialog
 
 ## Description
 
