@@ -10,6 +10,7 @@ import { memo, useState, useCallback, useMemo } from 'react';
 
 import { useEntityVersions } from '@/services/api/hooks/versions';
 
+import { ComparisonDialog, type VersionMetadata } from './ComparisonDialog';
 import { RestoreConfirmationDialog } from './RestoreConfirmationDialog';
 
 interface VersionListProps {
@@ -77,6 +78,7 @@ export const VersionList = memo(function VersionList({
 }: VersionListProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [showComparisonDialog, setShowComparisonDialog] = useState(false);
 
   // Fetch version history using hook from Stage 2
   const { versions, loading, error, refetch } = useEntityVersions(entityType, entityId, branchId);
@@ -142,6 +144,12 @@ export const VersionList = memo(function VersionList({
     return selectedId !== currentVersion.id;
   }, [selectedIds, currentVersion]);
 
+  // Determine if compare button should be shown
+  // Show when: exactly 2 versions selected
+  const canCompare = useMemo(() => {
+    return selectedIds.length === 2;
+  }, [selectedIds]);
+
   // Handle restore button click
   const handleRestoreClick = useCallback(() => {
     setShowRestoreDialog(true);
@@ -155,6 +163,19 @@ export const VersionList = memo(function VersionList({
     setSelectedIds([]);
     onSelectionChange?.([]);
   }, [refetch, onSelectionChange]);
+
+  // Handle compare button click
+  const handleCompareClick = useCallback(() => {
+    setShowComparisonDialog(true);
+  }, []);
+
+  // Handle comparison dialog close
+  const handleComparisonClose = useCallback(() => {
+    setShowComparisonDialog(false);
+    // Clear selection after closing comparison
+    setSelectedIds([]);
+    onSelectionChange?.([]);
+  }, [onSelectionChange]);
 
   // Loading state
   if (loading) {
@@ -268,17 +289,32 @@ export const VersionList = memo(function VersionList({
   return (
     <>
       <div className="space-y-2">
-        {/* Restore button - shown when single non-current version selected */}
-        {canRestore && (
-          <div className="flex justify-end mb-2">
-            <button
-              onClick={handleRestoreClick}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              data-testid="restore-button"
-              aria-label="Restore selected version"
-            >
-              Restore This Version
-            </button>
+        {/* Action buttons - shown based on selection */}
+        {(canRestore || canCompare) && (
+          <div className="flex justify-end gap-2 mb-2">
+            {/* Compare button - shown when exactly two versions selected */}
+            {canCompare && (
+              <button
+                onClick={handleCompareClick}
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                data-testid="compare-button"
+                aria-label="Compare selected versions"
+              >
+                Compare Versions
+              </button>
+            )}
+
+            {/* Restore button - shown when single non-current version selected */}
+            {canRestore && (
+              <button
+                onClick={handleRestoreClick}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                data-testid="restore-button"
+                aria-label="Restore selected version"
+              >
+                Restore This Version
+              </button>
+            )}
           </div>
         )}
 
@@ -345,6 +381,32 @@ export const VersionList = memo(function VersionList({
           currentVersionId={currentVersion.id}
           restoreToVersionId={selectedIds[0]}
           branchId={branchId}
+        />
+      )}
+
+      {/* Comparison Dialog */}
+      {canCompare && selectedIds.length === 2 && (
+        <ComparisonDialog
+          open={showComparisonDialog}
+          onClose={handleComparisonClose}
+          versionAId={selectedIds[0]}
+          versionBId={selectedIds[1]}
+          versionAMetadata={
+            (sortedVersions.find((v) => v.id === selectedIds[0]) as VersionMetadata) || {
+              id: selectedIds[0],
+              validFrom: '',
+              comment: null,
+              createdBy: '',
+            }
+          }
+          versionBMetadata={
+            (sortedVersions.find((v) => v.id === selectedIds[1]) as VersionMetadata) || {
+              id: selectedIds[1],
+              validFrom: '',
+              comment: null,
+              createdBy: '',
+            }
+          }
         />
       )}
     </>

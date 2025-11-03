@@ -33,6 +33,31 @@ vi.mock('./RestoreConfirmationDialog', () => ({
   ),
 }));
 
+// Mock the ComparisonDialog component
+vi.mock('./ComparisonDialog', () => ({
+  ComparisonDialog: ({
+    open,
+    onClose,
+    versionAId,
+    versionBId,
+  }: {
+    open: boolean;
+    onClose: () => void;
+    versionAId: string;
+    versionBId: string;
+  }) =>
+    open ? (
+      <div
+        data-testid="comparison-dialog"
+        data-version-a-id={versionAId}
+        data-version-b-id={versionBId}
+      >
+        <div>Comparison Dialog</div>
+        <button onClick={onClose}>Close</button>
+      </div>
+    ) : null,
+}));
+
 // Type-cast for mocked hook
 const mockUseEntityVersions = useEntityVersions as ReturnType<typeof vi.fn>;
 
@@ -707,6 +732,223 @@ describe('VersionList', () => {
 
       // Single version should have CURRENT badge
       expect(screen.getByText('CURRENT')).toBeInTheDocument();
+    });
+  });
+
+  describe('Version Comparison', () => {
+    it('should show compare button when exactly two versions are selected', async () => {
+      const user = userEvent.setup();
+
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      // Compare button should not be visible initially
+      expect(screen.queryByTestId('compare-button')).not.toBeInTheDocument();
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select first version
+      await user.click(versionItems[0]);
+
+      // Compare button should not be visible with only one version selected
+      expect(screen.queryByTestId('compare-button')).not.toBeInTheDocument();
+
+      // Select second version
+      await user.click(versionItems[1]);
+
+      // Compare button should now be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('compare-button')).toBeInTheDocument();
+      });
+    });
+
+    it('should not show compare button when only one version is selected', async () => {
+      const user = userEvent.setup();
+
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select one version
+      await user.click(versionItems[0]);
+
+      // Compare button should NOT be visible
+      expect(screen.queryByTestId('compare-button')).not.toBeInTheDocument();
+    });
+
+    it('should not show compare button when three or more versions are selected', async () => {
+      const user = userEvent.setup();
+
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select three versions
+      await user.click(versionItems[0]);
+      await user.click(versionItems[1]);
+      await user.click(versionItems[2]);
+
+      // Compare button should NOT be visible
+      expect(screen.queryByTestId('compare-button')).not.toBeInTheDocument();
+    });
+
+    it('should hide compare button after deselecting one of two selected versions', async () => {
+      const user = userEvent.setup();
+
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select two versions
+      await user.click(versionItems[0]);
+      await user.click(versionItems[1]);
+
+      // Compare button should be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('compare-button')).toBeInTheDocument();
+      });
+
+      // Deselect one version
+      await user.click(versionItems[1]);
+
+      // Compare button should be hidden
+      await waitFor(() => {
+        expect(screen.queryByTestId('compare-button')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should open comparison dialog when compare button is clicked', async () => {
+      const user = userEvent.setup();
+
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select two versions
+      await user.click(versionItems[0]);
+      await user.click(versionItems[1]);
+
+      // Wait for compare button
+      await waitFor(() => {
+        expect(screen.getByTestId('compare-button')).toBeInTheDocument();
+      });
+
+      const compareButton = screen.getByTestId('compare-button');
+      await user.click(compareButton);
+
+      // Comparison dialog should be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('comparison-dialog')).toBeInTheDocument();
+      });
+    });
+
+    it('should pass correct version IDs to comparison dialog', async () => {
+      const user = userEvent.setup();
+
+      renderWithApollo(
+        <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select two versions
+      await user.click(versionItems[0]); // version-1
+      await user.click(versionItems[1]); // version-2
+
+      // Wait for compare button
+      await waitFor(() => {
+        expect(screen.getByTestId('compare-button')).toBeInTheDocument();
+      });
+
+      const compareButton = screen.getByTestId('compare-button');
+      await user.click(compareButton);
+
+      // Comparison dialog should receive correct IDs
+      await waitFor(() => {
+        const dialog = screen.getByTestId('comparison-dialog');
+        expect(dialog).toHaveAttribute('data-version-a-id', 'version-1');
+        expect(dialog).toHaveAttribute('data-version-b-id', 'version-2');
+      });
+    });
+
+    it('should clear selection when comparison dialog is closed', async () => {
+      const user = userEvent.setup();
+      const onSelectionChange = vi.fn();
+
+      renderWithApollo(
+        <VersionList
+          entityType="settlement"
+          entityId="settlement-1"
+          branchId="branch-1"
+          onSelectionChange={onSelectionChange}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('version-list')).toBeInTheDocument();
+      });
+
+      const versionItems = screen.getAllByTestId(/version-item/);
+
+      // Select two versions
+      await user.click(versionItems[0]);
+      await user.click(versionItems[1]);
+
+      // Wait for compare button and click
+      await waitFor(() => {
+        expect(screen.getByTestId('compare-button')).toBeInTheDocument();
+      });
+      await user.click(screen.getByTestId('compare-button'));
+
+      // Dialog should be open
+      await waitFor(() => {
+        expect(screen.getByTestId('comparison-dialog')).toBeInTheDocument();
+      });
+
+      // Close the dialog (find close button within dialog)
+      const closeButton = screen.getByRole('button', { name: /close/i });
+      await user.click(closeButton);
+
+      // Selection should be cleared
+      await waitFor(() => {
+        expect(onSelectionChange).toHaveBeenCalledWith([]);
+      });
+
+      // Compare button should be hidden
+      expect(screen.queryByTestId('compare-button')).not.toBeInTheDocument();
     });
   });
 });
