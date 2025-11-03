@@ -11,6 +11,8 @@
   - 942bcdd - Stage 6: JSON Syntax Highlighting
   - 244744b - Stage 7: Version Restore Functionality
   - 6250e8e - Stage 8: Version Comparison Dialog
+  - e46b752 - Stage 8 Documentation Update
+  - 073b6c8 - Stage 8 Post-Commit Refactoring
 
 ## Description
 
