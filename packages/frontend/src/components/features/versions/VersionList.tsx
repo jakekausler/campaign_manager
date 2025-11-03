@@ -8,6 +8,14 @@
 import { formatDistanceToNow, format } from 'date-fns';
 import { memo, useState, useCallback, useMemo } from 'react';
 
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useEntityVersions } from '@/services/api/hooks/versions';
 
 import { ComparisonDialog, type VersionMetadata } from './ComparisonDialog';
@@ -80,6 +88,12 @@ export const VersionList = memo(function VersionList({
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [showComparisonDialog, setShowComparisonDialog] = useState(false);
 
+  // Filter state - Stage 9
+  const [commentSearch, setCommentSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [selectedUser, setSelectedUser] = useState('all');
+
   // Fetch version history using hook from Stage 2
   const { versions, loading, error, refetch } = useEntityVersions(entityType, entityId, branchId);
 
@@ -130,7 +144,61 @@ export const VersionList = memo(function VersionList({
     );
   }, [versions]);
 
+  // Compute unique users from versions (Stage 9)
+  const uniqueUsers = useMemo(() => {
+    const users = new Set<string>();
+    sortedVersions.forEach((v) => users.add(v.createdBy));
+    return Array.from(users).sort();
+  }, [sortedVersions]);
+
+  // Apply all filters with AND logic (Stage 9)
+  const filteredVersions = useMemo(() => {
+    let filtered = sortedVersions;
+
+    // Filter by comment search (case-insensitive)
+    if (commentSearch.trim()) {
+      const searchLower = commentSearch.toLowerCase();
+      filtered = filtered.filter((v) => (v.comment || '').toLowerCase().includes(searchLower));
+    }
+
+    // Filter by from date
+    if (fromDate) {
+      const fromDateMs = new Date(fromDate).getTime();
+      filtered = filtered.filter((v) => new Date(v.validFrom).getTime() >= fromDateMs);
+    }
+
+    // Filter by to date
+    if (toDate) {
+      const toDateMs = new Date(toDate).getTime();
+      filtered = filtered.filter((v) => new Date(v.validFrom).getTime() <= toDateMs);
+    }
+
+    // Filter by user
+    if (selectedUser !== 'all') {
+      filtered = filtered.filter((v) => v.createdBy === selectedUser);
+    }
+
+    return filtered;
+  }, [sortedVersions, commentSearch, fromDate, toDate, selectedUser]);
+
+  // Check if any filters are active (Stage 9)
+  const hasActiveFilters = useMemo(() => {
+    return (
+      commentSearch.trim() !== '' || fromDate !== '' || toDate !== '' || selectedUser !== 'all'
+    );
+  }, [commentSearch, fromDate, toDate, selectedUser]);
+
+  // Clear all filters (Stage 9)
+  const handleClearFilters = useCallback(() => {
+    setCommentSearch('');
+    setFromDate('');
+    setToDate('');
+    setSelectedUser('all');
+  }, []);
+
   // Find current version (validTo === null)
+  // Note: Always use sortedVersions (not filteredVersions) for currentVersion
+  // to ensure we can always identify the current version
   const currentVersion = useMemo(() => {
     return sortedVersions.find((v) => v.validTo === null);
   }, [sortedVersions]);
@@ -166,7 +234,7 @@ export const VersionList = memo(function VersionList({
       return {
         id: version.id,
         validFrom: version.validFrom,
-        comment: version.comment,
+        comment: version.comment ?? null,
         createdBy: version.createdBy,
       };
     },
@@ -308,10 +376,235 @@ export const VersionList = memo(function VersionList({
     );
   }
 
+  // No results state when filtered (Stage 9)
+  if (filteredVersions.length === 0 && hasActiveFilters) {
+    return (
+      <div className={className}>
+        {/* Filter UI */}
+        <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          {/* Comment search input */}
+          <div>
+            <Input
+              type="text"
+              placeholder="Search comments..."
+              value={commentSearch}
+              onChange={(e) => setCommentSearch(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          {/* Date range and user filter */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* From date */}
+            <div>
+              <label
+                htmlFor="from-date-input"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                From Date
+              </label>
+              <Input
+                id="from-date-input"
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* To date */}
+            <div>
+              <label
+                htmlFor="to-date-input"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                To Date
+              </label>
+              <Input
+                id="to-date-input"
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* User filter dropdown */}
+            <div>
+              <label htmlFor="user-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                Filter by User
+              </label>
+              <Select value={selectedUser} onValueChange={setSelectedUser}>
+                <SelectTrigger id="user-filter" className="w-full" aria-label="Filter by user">
+                  <SelectValue placeholder="All Users" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Users</SelectItem>
+                  {uniqueUsers.map((user) => (
+                    <SelectItem key={user} value={user}>
+                      {user}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Clear filters button */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleClearFilters}
+              className="px-3 py-1.5 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+              data-testid="clear-filters-button"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+
+        {/* No results message */}
+        <div
+          className="flex flex-col items-center justify-center p-8"
+          data-testid="no-results-message"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="max-w-md p-6 bg-white rounded-lg shadow-lg border border-gray-200">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div
+                className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center"
+                aria-hidden="true"
+              >
+                <svg
+                  className="w-6 h-6 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+
+              <h3 className="text-lg font-semibold text-gray-900">No Matching Versions</h3>
+              <p className="text-sm text-gray-600">
+                No versions match your current filter criteria.
+              </p>
+
+              <button
+                onClick={handleClearFilters}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                data-testid="clear-filters-from-empty"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Version list
   return (
     <>
       <div className="space-y-2">
+        {/* Filter UI (Stage 9) */}
+        <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          {/* Comment search input */}
+          <div>
+            <Input
+              type="text"
+              placeholder="Search comments..."
+              value={commentSearch}
+              onChange={(e) => setCommentSearch(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          {/* Date range and user filter */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* From date */}
+            <div>
+              <label
+                htmlFor="from-date-input"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                From Date
+              </label>
+              <Input
+                id="from-date-input"
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* To date */}
+            <div>
+              <label
+                htmlFor="to-date-input"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                To Date
+              </label>
+              <Input
+                id="to-date-input"
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* User filter dropdown */}
+            <div>
+              <label htmlFor="user-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                Filter by User
+              </label>
+              <Select value={selectedUser} onValueChange={setSelectedUser}>
+                <SelectTrigger id="user-filter" className="w-full" aria-label="Filter by user">
+                  <SelectValue placeholder="All Users" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Users</SelectItem>
+                  {uniqueUsers.map((user) => (
+                    <SelectItem key={user} value={user}>
+                      {user}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Filter count indicator and clear button */}
+          <div className="flex items-center justify-between">
+            {/* Filter count */}
+            {hasActiveFilters && (
+              <p className="text-sm text-gray-600" data-testid="filter-count">
+                Showing {filteredVersions.length} of {sortedVersions.length} versions
+              </p>
+            )}
+
+            {/* Clear filters button */}
+            {hasActiveFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="px-3 py-1.5 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+                data-testid="clear-filters-button"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Action buttons - shown based on selection */}
         {(canRestore || canCompare) && (
           <div className="flex justify-end gap-2 mb-2">
@@ -348,7 +641,7 @@ export const VersionList = memo(function VersionList({
           role="list"
           aria-label="Version history"
         >
-          {sortedVersions.map((version) => {
+          {filteredVersions.map((version) => {
             const isSelected = selectedIds.includes(version.id);
             const isCurrent = version.validTo === null;
 

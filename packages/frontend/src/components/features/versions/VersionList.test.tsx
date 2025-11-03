@@ -951,4 +951,429 @@ describe('VersionList', () => {
       expect(screen.queryByTestId('compare-button')).not.toBeInTheDocument();
     });
   });
+
+  // ===========================================================================
+  // FILTERING TESTS - Stage 9
+  // ===========================================================================
+
+  describe('Version Filtering (Stage 9)', () => {
+    beforeEach(() => {
+      // Use default mock versions for filtering tests
+      mockUseEntityVersions.mockReturnValue({
+        versions: mockVersions,
+        loading: false,
+        error: undefined,
+        refetch: mockRefetch,
+      });
+    });
+
+    // Comment Search Filtering Tests
+    describe('Comment Search Filter', () => {
+      it('should display comment search input', () => {
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const searchInput = screen.getByPlaceholderText(/search comments/i);
+        expect(searchInput).toBeInTheDocument();
+      });
+
+      it('should filter versions by comment text (case-insensitive)', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        // All versions should be visible initially
+        expect(screen.getByText('Upgraded to level 3')).toBeInTheDocument();
+        expect(screen.getByText('Upgraded to level 2')).toBeInTheDocument();
+        expect(screen.getByText('Initial creation')).toBeInTheDocument();
+
+        // Type search query
+        const searchInput = screen.getByPlaceholderText(/search comments/i);
+        await user.type(searchInput, 'level 3');
+
+        // Only version with "level 3" should be visible
+        await waitFor(() => {
+          expect(screen.getByText('Upgraded to level 3')).toBeInTheDocument();
+          expect(screen.queryByText('Upgraded to level 2')).not.toBeInTheDocument();
+          expect(screen.queryByText('Initial creation')).not.toBeInTheDocument();
+        });
+      });
+
+      it('should be case-insensitive when filtering', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const searchInput = screen.getByPlaceholderText(/search comments/i);
+        await user.type(searchInput, 'UPGRADED');
+
+        // Both versions with "upgraded" should be visible (case-insensitive)
+        await waitFor(() => {
+          expect(screen.getByText('Upgraded to level 3')).toBeInTheDocument();
+          expect(screen.getByText('Upgraded to level 2')).toBeInTheDocument();
+          expect(screen.queryByText('Initial creation')).not.toBeInTheDocument();
+        });
+      });
+
+      it('should show all versions when search is cleared', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const searchInput = screen.getByPlaceholderText(/search comments/i);
+
+        // Filter versions
+        await user.type(searchInput, 'level 3');
+        await waitFor(() => {
+          expect(screen.queryByText('Initial creation')).not.toBeInTheDocument();
+        });
+
+        // Clear search
+        await user.clear(searchInput);
+
+        // All versions should be visible again
+        await waitFor(() => {
+          expect(screen.getByText('Upgraded to level 3')).toBeInTheDocument();
+          expect(screen.getByText('Upgraded to level 2')).toBeInTheDocument();
+          expect(screen.getByText('Initial creation')).toBeInTheDocument();
+        });
+      });
+    });
+
+    // Date Range Filtering Tests
+    describe('Date Range Filter', () => {
+      it('should display date range inputs', () => {
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const fromDateInput = screen.getByLabelText(/from date/i);
+        const toDateInput = screen.getByLabelText(/to date/i);
+
+        expect(fromDateInput).toBeInTheDocument();
+        expect(toDateInput).toBeInTheDocument();
+      });
+
+      it('should filter versions by from date', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const fromDateInput = screen.getByLabelText(/from date/i);
+
+        // Set from date to 2024-06-08 (should filter out version-3)
+        await user.type(fromDateInput, '2024-06-08');
+
+        await waitFor(() => {
+          expect(screen.getByText('Upgraded to level 3')).toBeInTheDocument();
+          expect(screen.getByText('Upgraded to level 2')).toBeInTheDocument();
+          expect(screen.queryByText('Initial creation')).not.toBeInTheDocument();
+        });
+      });
+
+      it('should filter versions by to date', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const toDateInput = screen.getByLabelText(/to date/i);
+
+        // Set to date to 2024-06-05 (should only show version-3)
+        await user.type(toDateInput, '2024-06-05');
+
+        await waitFor(() => {
+          expect(screen.getByText('Initial creation')).toBeInTheDocument();
+          expect(screen.queryByText('Upgraded to level 3')).not.toBeInTheDocument();
+          expect(screen.queryByText('Upgraded to level 2')).not.toBeInTheDocument();
+        });
+      });
+
+      it('should filter versions by date range', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const fromDateInput = screen.getByLabelText(/from date/i);
+        const toDateInput = screen.getByLabelText(/to date/i);
+
+        // Set range to 2024-06-08 to 2024-06-12 (should only show version-2)
+        await user.type(fromDateInput, '2024-06-08');
+        await user.type(toDateInput, '2024-06-12');
+
+        await waitFor(() => {
+          expect(screen.getByText('Upgraded to level 2')).toBeInTheDocument();
+          expect(screen.queryByText('Upgraded to level 3')).not.toBeInTheDocument();
+          expect(screen.queryByText('Initial creation')).not.toBeInTheDocument();
+        });
+      });
+    });
+
+    // User Filter Dropdown Tests
+    describe('User Filter Dropdown', () => {
+      it('should display user filter dropdown', () => {
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const userFilterTrigger = screen.getByRole('combobox', { name: /filter by user/i });
+        expect(userFilterTrigger).toBeInTheDocument();
+      });
+
+      it('should show all unique users in dropdown', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const userFilterTrigger = screen.getByRole('combobox', { name: /filter by user/i });
+        await user.click(userFilterTrigger);
+
+        // Should show options for user-1 and user-2 (and "All Users")
+        await waitFor(() => {
+          expect(screen.getByRole('option', { name: 'All Users' })).toBeInTheDocument();
+          expect(screen.getByRole('option', { name: 'user-1' })).toBeInTheDocument();
+          expect(screen.getByRole('option', { name: 'user-2' })).toBeInTheDocument();
+        });
+      });
+
+      it('should filter versions by selected user', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const userFilterTrigger = screen.getByRole('combobox', { name: /filter by user/i });
+        await user.click(userFilterTrigger);
+
+        // Select user-2
+        const user2Option = screen.getByText('user-2');
+        await user.click(user2Option);
+
+        // Only version created by user-2 should be visible
+        await waitFor(() => {
+          expect(screen.getByText('Upgraded to level 2')).toBeInTheDocument();
+          expect(screen.queryByText('Upgraded to level 3')).not.toBeInTheDocument();
+          expect(screen.queryByText('Initial creation')).not.toBeInTheDocument();
+        });
+      });
+
+      it('should show all versions when "All Users" is selected', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        const userFilterTrigger = screen.getByRole('combobox', { name: /filter by user/i });
+
+        // First filter by user-2
+        await user.click(userFilterTrigger);
+        const user2Option = screen.getByText('user-2');
+        await user.click(user2Option);
+
+        await waitFor(() => {
+          expect(screen.queryByText('Initial creation')).not.toBeInTheDocument();
+        });
+
+        // Then select "All Users"
+        await user.click(userFilterTrigger);
+        const allUsersOption = screen.getByText('All Users');
+        await user.click(allUsersOption);
+
+        // All versions should be visible again
+        await waitFor(() => {
+          expect(screen.getByText('Upgraded to level 3')).toBeInTheDocument();
+          expect(screen.getByText('Upgraded to level 2')).toBeInTheDocument();
+          expect(screen.getByText('Initial creation')).toBeInTheDocument();
+        });
+      });
+    });
+
+    // Combined Filters Tests
+    describe('Combined Filters', () => {
+      it('should apply multiple filters with AND logic', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        // Apply comment search filter
+        const searchInput = screen.getByPlaceholderText(/search comments/i);
+        await user.type(searchInput, 'upgraded');
+
+        // Apply user filter
+        const userFilterTrigger = screen.getByRole('combobox', { name: /filter by user/i });
+        await user.click(userFilterTrigger);
+        const user1Option = screen.getByText('user-1');
+        await user.click(user1Option);
+
+        // Only version-1 should be visible (has "upgraded" and created by user-1)
+        await waitFor(() => {
+          expect(screen.getByText('Upgraded to level 3')).toBeInTheDocument();
+          expect(screen.queryByText('Upgraded to level 2')).not.toBeInTheDocument();
+          expect(screen.queryByText('Initial creation')).not.toBeInTheDocument();
+        });
+      });
+    });
+
+    // Filter Count Indicator Tests
+    describe('Filter Count Indicator', () => {
+      it('should display filter count when filters are active', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        // Apply filter
+        const searchInput = screen.getByPlaceholderText(/search comments/i);
+        await user.type(searchInput, 'level 3');
+
+        // Should show "Showing X of Y versions"
+        await waitFor(() => {
+          expect(screen.getByText(/showing 1 of 3 versions/i)).toBeInTheDocument();
+        });
+      });
+
+      it('should not display filter count when no filters are active', () => {
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        // Should not show filter count
+        expect(screen.queryByText(/showing .* of .* versions/i)).not.toBeInTheDocument();
+      });
+    });
+
+    // Clear Filters Button Tests
+    describe('Clear Filters Button', () => {
+      it('should display clear filters button when filters are active', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        // Apply filter
+        const searchInput = screen.getByPlaceholderText(/search comments/i);
+        await user.type(searchInput, 'level 3');
+
+        // Clear filters button should be visible
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument();
+        });
+      });
+
+      it('should hide clear filters button when no filters are active', () => {
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        // Clear filters button should not be visible
+        expect(screen.queryByRole('button', { name: /clear filters/i })).not.toBeInTheDocument();
+      });
+
+      it('should clear all filters when clicked', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        // Apply multiple filters
+        const searchInput = screen.getByPlaceholderText(/search comments/i);
+        await user.type(searchInput, 'level 3');
+
+        const fromDateInput = screen.getByLabelText(/from date/i);
+        await user.type(fromDateInput, '2024-06-01');
+
+        // Verify filters are active
+        await waitFor(() => {
+          expect(screen.getByText(/showing .* of .* versions/i)).toBeInTheDocument();
+        });
+
+        // Click clear filters
+        const clearButton = screen.getByRole('button', { name: /clear filters/i });
+        await user.click(clearButton);
+
+        // All versions should be visible again
+        await waitFor(() => {
+          expect(screen.getByText('Upgraded to level 3')).toBeInTheDocument();
+          expect(screen.getByText('Upgraded to level 2')).toBeInTheDocument();
+          expect(screen.getByText('Initial creation')).toBeInTheDocument();
+        });
+
+        // Filter count and clear button should be hidden
+        expect(screen.queryByText(/showing .* of .* versions/i)).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /clear filters/i })).not.toBeInTheDocument();
+
+        // Input fields should be cleared
+        expect(searchInput).toHaveValue('');
+        expect(fromDateInput).toHaveValue('');
+      });
+    });
+
+    // No Results State Tests
+    describe('No Results State', () => {
+      it('should display no results message when all versions are filtered out', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        // Apply filter that matches no versions
+        const searchInput = screen.getByPlaceholderText(/search comments/i);
+        await user.type(searchInput, 'nonexistent search term');
+
+        // Should show no results message
+        await waitFor(() => {
+          expect(
+            screen.getByText(/no versions match your current filter criteria/i)
+          ).toBeInTheDocument();
+        });
+
+        // Versions should not be visible
+        expect(screen.queryByText('Upgraded to level 3')).not.toBeInTheDocument();
+        expect(screen.queryByText('Upgraded to level 2')).not.toBeInTheDocument();
+        expect(screen.queryByText('Initial creation')).not.toBeInTheDocument();
+      });
+
+      it('should show clear filters button in no results state', async () => {
+        const user = userEvent.setup();
+
+        renderWithApollo(
+          <VersionList entityType="settlement" entityId="settlement-1" branchId="branch-1" />
+        );
+
+        // Apply filter that matches no versions
+        const searchInput = screen.getByPlaceholderText(/search comments/i);
+        await user.type(searchInput, 'nonexistent search term');
+
+        // Should show no results message and clear filters button
+        await waitFor(() => {
+          expect(
+            screen.getByText(/no versions match your current filter criteria/i)
+          ).toBeInTheDocument();
+          expect(screen.getByTestId('clear-filters-from-empty')).toBeInTheDocument();
+        });
+      });
+    });
+  });
 });

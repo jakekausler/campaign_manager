@@ -13,6 +13,26 @@ import { afterAll, afterEach, beforeAll } from 'vitest';
 
 import { server } from './mocks/server';
 
+// Polyfill for Radix UI components that use pointer capture
+// jsdom doesn't implement hasPointerCapture/setPointerCapture
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = function () {
+    return false;
+  };
+}
+
+if (!Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = function () {
+    // noop
+  };
+}
+
+if (!Element.prototype.releasePointerCapture) {
+  Element.prototype.releasePointerCapture = function () {
+    // noop
+  };
+}
+
 // Start MSW server before all tests
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
