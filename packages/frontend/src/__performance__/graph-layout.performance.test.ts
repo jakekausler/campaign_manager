@@ -6,7 +6,7 @@ import {
   generateDisconnectedGraph,
 } from '@/__tests__/helpers/graph-generator';
 
-import { transformGraphToFlow } from '../graph-layout';
+import { transformGraphToFlow } from '../utils/graph-layout';
 
 /**
  * Performance tests for graph layout algorithm.
@@ -111,7 +111,7 @@ describe('Graph Layout Performance', () => {
     const result = transformGraphToFlow(graph);
 
     // Check that all nodes have positions
-    result.nodes.forEach((node) => {
+    result.nodes.forEach((node: { position: { x: number; y: number } }) => {
       expect(node.position).toBeDefined();
       expect(typeof node.position.x).toBe('number');
       expect(typeof node.position.y).toBe('number');
@@ -120,7 +120,7 @@ describe('Graph Layout Performance', () => {
     });
 
     // Check for minimal overlap (nodes should be at least 100px apart)
-    const positions = result.nodes.map((n) => n.position);
+    const positions = result.nodes.map((n: { position: { x: number; y: number } }) => n.position);
     for (let i = 0; i < positions.length; i++) {
       for (let j = i + 1; j < positions.length; j++) {
         const dx = positions[i].x - positions[j].x;
@@ -143,9 +143,9 @@ describe('Graph Layout Performance', () => {
     const result = transformGraphToFlow(graph);
 
     // All edges should reference valid node IDs
-    const nodeIds = new Set(result.nodes.map((n) => n.id));
+    const nodeIds = new Set(result.nodes.map((n: { id: string }) => n.id));
 
-    result.edges.forEach((edge) => {
+    result.edges.forEach((edge: { source: string; target: string }) => {
       expect(nodeIds.has(edge.source)).toBe(true);
       expect(nodeIds.has(edge.target)).toBe(true);
     });

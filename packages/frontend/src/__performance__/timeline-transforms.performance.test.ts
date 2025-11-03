@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { transformToTimelineItems } from './timeline-transforms';
+import { transformToTimelineItems } from '../utils/timeline-transforms';
 
 /**
  * Performance tests for timeline transformation utilities
@@ -208,7 +208,9 @@ describe('Timeline Transformation Performance', () => {
     expect(duration).toBeLessThan(2500); // <2.5 seconds
 
     // Verify some items are marked as overdue (red color)
-    const overdueItems = result.filter((item) => item.style?.includes('#ef4444'));
+    const overdueItems = result.filter((item: { style?: string }) =>
+      item.style?.includes('#ef4444')
+    );
     expect(overdueItems.length).toBeGreaterThan(0);
 
     console.log(

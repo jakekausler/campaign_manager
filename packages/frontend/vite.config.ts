@@ -57,6 +57,15 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: './src/__tests__/setup.ts',
+    // Exclude performance tests from default test runs
+    // Performance tests are run separately via `pnpm test:performance`
+    // This prevents memory spikes from large dataset generation during regular testing
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/__performance__/**',
+      '**/*.performance.test.{ts,tsx}',
+    ],
     // Run tests in fork processes to prevent memory accumulation
     // Each fork will be recycled after a certain number of tests
     pool: 'forks',
@@ -95,6 +104,8 @@ export default defineConfig({
         '**/*.config.*',
         '**/mockData/',
         'dist/',
+        // Exclude performance tests from coverage
+        '**/__performance__/**',
       ],
     },
   },

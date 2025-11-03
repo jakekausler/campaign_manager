@@ -1,0 +1,967 @@
+# Frontend Test Performance Optimization Plan
+
+**Goal:** Reduce frontend test memory usage from 7GB to under 4GB (ideally ~3GB with safety margin)
+
+**Current State:** 7GB total (1GB wrapper + 6GB worker) = GitHub Actions runner limit, zero safety margin
+
+**Target State:** <4GB total with proper error handling and sustainable test execution
+
+**Required Reduction:** ~57% memory reduction (7GB → 3-4GB)
+
+---
+
+## Executive Summary
+
+The frontend test suite currently consumes 7GB of memory (at the GitHub Actions runner limit) and uses a wrapper script that **masks worker crashes as successes**. The primary memory culprits are:
+
+1. **Performance tests** generating 100-500+ item datasets
+2. **React Flow components** with known memory leaks
+3. **Inconsistent cleanup** in 56 of 124 test files
+4. **Sequential single-fork execution** preventing memory recovery
+
+This plan provides a staged approach to reduce memory usage to <4GB without sacrificing test quality.
+
+---
+
+## Current State Analysis
+
+### Memory Allocation Breakdown
+
+```
+┌─────────────────────────────────────┐
+│  Total: 7GB (at runner limit)       │
+├─────────────────────────────────────┤
+│  Node.js wrapper:        1GB        │
+│  Vitest worker:          6GB        │
+│  Safety margin:          0GB ❌     │
+└─────────────────────────────────────┘
+```
+
+**Configuration:** `packages/frontend/vite.config.ts`
+
+```typescript
+poolOptions: {
+  forks: {
+    maxForks: 1,              // Sequential execution only
+    execArgv: ['--max-old-space-size=6144', '--expose-gc'],
+  },
+},
+fileParallelism: false,
+```
+
+### Test Inventory
+
+- **Total test files:** 124 (23 .test.ts + 101 .test.tsx)
+- **Component tests:** ~85 (entity-inspector, map, flow, timeline, etc.)
+- **Performance tests:** 3 (generate 100-500+ item datasets)
+- **Utility tests:** 23
+- **Hook/Service tests:** ~13
+
+### Critical Issues
+
+1. **🔴 CRITICAL:** `run-tests.sh` accepts worker crashes as success
+2. **🔴 CRITICAL:** Zero safety margin - any memory spike causes OOM
+3. **⚠️ HIGH:** Performance tests generate production-scale datasets (500+ items)
+4. **⚠️ HIGH:** React Flow components have documented memory leaks
+5. **⚠️ MEDIUM:** 56 test files lack explicit `afterEach` cleanup
+6. **⚠️ MEDIUM:** 85+ component tests create heavy React component instances
+
+---
+
+## Optimization Strategy Overview
+
+| Phase | Strategy                         | Expected Reduction | Memory After | Difficulty |
+| ----- | -------------------------------- | ------------------ | ------------ | ---------- |
+| 1     | Split performance tests          | -40% (~2.8GB)      | 4.2GB        | Easy       |
+| 2     | Reduce performance test datasets | -20% (~0.8GB)      | 3.4GB        | Easy       |
+| 3     | Standardize cleanup patterns     | -15% (~0.6GB)      | 2.8GB        | Medium     |
+| 4     | Optimize test configuration      | -10% (~0.4GB)      | 2.4GB        | Medium     |
+| 5     | React Flow optimization          | -10% (~0.4GB)      | 2.0GB        | Hard       |
+| 6     | Mock data optimization           | -5% (~0.2GB)       | 1.8GB        | Easy       |
+
+**Note:** Percentages are cumulative based on original 7GB baseline. Actual reduction may vary.
+
+---
+
+## Phase 1: Split Performance Tests (HIGH IMPACT - Easy)
+
+### Goal
+
+Separate performance tests from unit/component tests to avoid memory spikes during normal test runs.
+
+### Strategy
+
+**1.1 Create Separate Test Suites**
+
+Create two test configurations:
+
+- `test` - Unit and component tests (default)
+- `test:performance` - Performance tests only
+
+**1.2 Move Performance Tests**
+
+Move these files to a `__performance__` directory:
+
+```
+src/utils/__tests__/graph-layout.performance.test.ts
+src/utils/timeline-transforms.performance.test.ts
+src/components/features/entity-inspector/__tests__/StructureListView.performance.test.tsx
+```
+
+**1.3 Update Vitest Configuration**
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  test: {
+    // Default: exclude performance tests
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/__performance__/**',
+      '**/*.performance.test.{ts,tsx}',
+    ],
+  },
+});
+```
+
+**1.4 Add Performance Test Script**
+
+```json
+// package.json
+{
+  "scripts": {
+    "test": "vitest run --exclude '**/__performance__/**'",
+    "test:performance": "vitest run --include '**/__performance__/**'",
+    "test:watch": "vitest --exclude '**/__performance__/**'"
+  }
+}
+```
+
+### Expected Outcome
+
+- **Memory reduction:** ~40% (from 7GB → 4.2GB)
+- **Rationale:** Performance tests create massive datasets (500+ items) that spike memory. Running separately prevents concurrent peak usage.
+- **CI Strategy:** Run performance tests in a separate job with dedicated resources, or skip in CI and run locally only.
+
+### Files to Modify
+
+- `packages/frontend/vite.config.ts`
+- `packages/frontend/package.json`
+- Move 3 performance test files to `__performance__/` directory
+
+---
+
+## Phase 2: Reduce Performance Test Dataset Sizes (HIGH IMPACT - Easy)
+
+### Goal
+
+Reduce dataset sizes in performance tests while still validating performance characteristics.
+
+### Current State
+
+```typescript
+// timeline-transforms.performance.test.ts
+const events = generateEvents(50);
+const encounters = generateEncounters(50);
+// Tests with 100, 200, 500 items
+
+// graph-layout.performance.test.ts
+generateLargeGraph(nodeCount, edgeDensity);
+// Creates graphs with 100+ nodes
+
+// StructureListView.performance.test.tsx
+// Renders large lists of structures
+```
+
+### Strategy
+
+**2.1 Reduce Dataset Sizes**
+
+```typescript
+// BEFORE
+generateEvents(50); // 50 events
+generateEncounters(50); // 50 encounters
+// Test with 100, 200, 500 items
+
+// AFTER
+generateEvents(10); // 10 events
+generateEncounters(10); // 10 encounters
+// Test with 25, 50, 100 items
+```
+
+**2.2 Rationale**
+
+- Performance characteristics are visible with smaller datasets
+- 100 items is sufficient to validate O(n), O(n²), etc.
+- 500 items is overkill for unit tests - use integration/E2E for production scale
+
+**2.3 Adjust Performance Expectations**
+
+```typescript
+// BEFORE
+expect(duration).toBeLessThan(5000); // 5 seconds for 500 items
+
+// AFTER
+expect(duration).toBeLessThan(1000); // 1 second for 100 items
+```
+
+### Expected Outcome
+
+- **Memory reduction:** ~20% (from 7GB → 5.6GB, cumulative: 4.2GB → 3.4GB)
+- **Side benefit:** Tests run faster
+- **Trade-off:** Won't catch performance issues at production scale (use E2E for that)
+
+### Re-Integration into CI (Phase 2 Completion Step)
+
+**IMPORTANT:** After reducing dataset sizes, performance tests are safe to re-integrate into CI.
+
+**2.4 Add Performance Tests Back to CI**
+
+Update `.github/workflows/ci.yml` to run performance tests in the `test-frontend` job:
+
+```yaml
+- name: Run all frontend tests
+  run: pnpm --filter @campaign/frontend test
+
+- name: Run frontend performance regression tests
+  run: pnpm --filter @campaign/frontend test:performance
+```
+
+**Rationale:**
+
+- With reduced datasets (100 items vs 500), performance tests now use ~0.8GB instead of ~2.8GB
+- Memory budget after Phase 2: 3.4GB total, with 0.8GB for performance tests = safe
+- Running in CI catches performance regressions on every PR
+- Performance tests complete in <2 seconds vs <5 seconds previously
+
+**Alternative Approach:** Include performance tests in default `test` script:
+
+```json
+// packages/frontend/package.json
+{
+  "scripts": {
+    "test": "bash run-tests.sh && vitest run src/__performance__"
+  }
+}
+```
+
+This would automatically include performance tests when CI runs `pnpm --filter @campaign/frontend test`.
+
+### Files to Modify
+
+- `packages/frontend/src/utils/__tests__/graph-layout.performance.test.ts`
+- `packages/frontend/src/utils/timeline-transforms.performance.test.ts`
+- `packages/frontend/src/components/features/entity-inspector/__tests__/StructureListView.performance.test.tsx`
+- `packages/frontend/src/__tests__/helpers/graph-generator.ts`
+
+---
+
+## Phase 3: Standardize Cleanup Patterns (MEDIUM IMPACT - Medium Difficulty)
+
+### Goal
+
+Ensure all 124 test files properly clean up after themselves.
+
+### Current State
+
+- ✅ **45 files** have explicit `afterEach(() => cleanup())`
+- ❌ **56 files** have `beforeEach` setup but no explicit `afterEach` cleanup
+- ⚠️ **23 files** (utility tests) may not need cleanup
+
+### Strategy
+
+**3.1 Audit Test Files**
+
+Create a script to identify files missing cleanup:
+
+```bash
+# Find test files with beforeEach but no afterEach
+grep -l "beforeEach" packages/frontend/src/**/*.test.tsx | while read file; do
+  if ! grep -q "afterEach" "$file"; then
+    echo "$file"
+  fi
+done
+```
+
+**3.2 Add Standard Cleanup Pattern**
+
+For all component tests (`.test.tsx`):
+
+```typescript
+import { render, cleanup } from '@testing-library/react';
+
+describe('MyComponent', () => {
+  afterEach(() => {
+    cleanup(); // Unmount all components
+    vi.clearAllMocks(); // Clear mock state
+  });
+
+  it('renders correctly', () => {
+    render(<MyComponent />);
+    // ...
+  });
+});
+```
+
+**3.3 Special Handling for React Flow**
+
+React Flow components need extra cleanup:
+
+```typescript
+import { cleanup } from '@testing-library/react';
+import { ReactFlowProvider } from 'reactflow';
+
+describe('FlowViewPage', () => {
+  afterEach(() => {
+    // Critical: React Flow has memory leaks without explicit cleanup
+    cleanup();
+
+    // Give React Flow time to clean up internal state
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  });
+});
+```
+
+**3.4 Apollo Client Cleanup**
+
+Ensure Apollo clients are stopped:
+
+```typescript
+import { createTestApolloClient } from '../utils/test-utils';
+
+describe('GraphQL Hook', () => {
+  let client: ApolloClient<NormalizedCacheObject>;
+
+  beforeEach(() => {
+    client = createTestApolloClient();
+  });
+
+  afterEach(() => {
+    cleanup();
+    // Stop Apollo Client to release resources
+    client.stop();
+  });
+});
+```
+
+### Expected Outcome
+
+- **Memory reduction:** ~15% (cumulative: 3.4GB → 2.8GB)
+- **Side benefit:** More reliable tests (no state leakage between tests)
+- **Files affected:** 56 test files
+
+### Implementation Approach
+
+1. Create a script to generate the list of files needing cleanup
+2. Add cleanup to files in batches (10-15 files at a time)
+3. Run tests after each batch to ensure no regressions
+4. Use TypeScript Tester subagent to verify tests still pass
+
+---
+
+## Phase 4: Optimize Test Configuration (MEDIUM IMPACT - Medium Difficulty)
+
+### Goal
+
+Tune Vitest configuration for better memory management.
+
+### Strategy
+
+**4.1 Remove --expose-gc Flag**
+
+```typescript
+// BEFORE
+execArgv: ['--max-old-space-size=6144', '--expose-gc'],
+
+// AFTER
+execArgv: ['--max-old-space-size=2048'],  // Reduced to 2GB
+```
+
+**Rationale:**
+
+- Forcing GC with `global.gc()` can be counterproductive
+- V8's GC heuristics are generally better than manual GC
+- Manual GC adds overhead and may trigger at suboptimal times
+
+**4.2 Enable Proper Test Isolation**
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  test: {
+    isolate: true, // ✅ Already enabled
+    pool: 'forks', // ✅ Already enabled
+    poolOptions: {
+      forks: {
+        singleFork: true, // CHANGE: true enables better memory recovery
+        minForks: 1,
+        maxForks: 1,
+      },
+    },
+  },
+});
+```
+
+**4.3 Add Memory-Conscious Sequencing**
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  test: {
+    sequence: {
+      shuffle: false, // Keep deterministic
+      hooks: 'stack', // Run hooks in stack order
+    },
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+        isolate: true,
+      },
+    },
+  },
+});
+```
+
+**4.4 Reduce Memory Allocation**
+
+```typescript
+// BEFORE
+execArgv: ['--max-old-space-size=6144'], // 6GB
+
+// AFTER (after phases 1-3)
+execArgv: ['--max-old-space-size=2048'], // 2GB
+```
+
+**4.5 Add Test Timeouts for Memory-Heavy Tests**
+
+```typescript
+// For large component tests
+describe('EntityInspector', () => {
+  it('renders large structure list', { timeout: 10000 }, () => {
+    // Test implementation
+  });
+});
+```
+
+### Expected Outcome
+
+- **Memory reduction:** ~10% (cumulative: 2.8GB → 2.4GB)
+- **Side benefit:** More predictable test execution
+- **Trade-off:** May run slightly slower (5-10%)
+
+### Files to Modify
+
+- `packages/frontend/vite.config.ts`
+- `packages/frontend/package.json`
+
+---
+
+## Phase 5: React Flow Optimization (MEDIUM IMPACT - Hard)
+
+### Goal
+
+Reduce memory usage from React Flow components, which have known memory leaks.
+
+### Current State
+
+React Flow is used in:
+
+- `src/pages/FlowViewPage.tsx`
+- `src/components/features/flow/**` (custom nodes, edges)
+
+Current test already notes: "Critical memory cleanup for React Flow instances"
+
+### Strategy
+
+**5.1 Mock React Flow in Unit Tests**
+
+```typescript
+// __tests__/mocks/react-flow.tsx
+export const ReactFlow = ({ children }: { children: React.ReactNode }) => (
+  <div data-testid="react-flow-mock">{children}</div>
+);
+
+export const ReactFlowProvider = ({ children }: { children: React.ReactNode }) => (
+  <div data-testid="react-flow-provider-mock">{children}</div>
+);
+
+// In tests
+vi.mock('reactflow', () => ({
+  ...vi.importActual('reactflow'),
+  ReactFlow: vi.fn(({ children }) => <div>{children}</div>),
+}));
+```
+
+**5.2 Add Explicit ReactFlow Cleanup**
+
+```typescript
+import { cleanup } from '@testing-library/react';
+
+describe('FlowViewPage', () => {
+  afterEach(async () => {
+    // Unmount all components
+    cleanup();
+
+    // Wait for React Flow to clean up internal state
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Clear any remaining event listeners
+    window.dispatchEvent(new Event('beforeunload'));
+  });
+});
+```
+
+**5.3 Isolate React Flow Tests**
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  test: {
+    poolOptions: {
+      forks: {
+        isolate: true, // Each file gets fresh worker
+      },
+    },
+  },
+});
+```
+
+**5.4 Consider Testing Strategy**
+
+- **Unit tests:** Mock React Flow entirely (test logic, not rendering)
+- **Integration tests:** Use real React Flow with minimal nodes/edges
+- **E2E tests:** Test full React Flow behavior
+
+### Expected Outcome
+
+- **Memory reduction:** ~10% (cumulative: 2.4GB → 2.0GB)
+- **Side benefit:** Faster tests (mocked React Flow is lighter)
+- **Trade-off:** Less coverage of React Flow integration (mitigate with E2E tests)
+
+### Files to Modify
+
+- `packages/frontend/src/pages/FlowViewPage.test.tsx`
+- `packages/frontend/src/components/features/flow/**/*.test.tsx` (all flow component tests)
+- Create `packages/frontend/src/__tests__/mocks/react-flow.tsx`
+
+---
+
+## Phase 6: Mock Data Optimization (LOW IMPACT - Easy)
+
+### Goal
+
+Reduce memory footprint of mock data and test fixtures.
+
+### Current State
+
+- Mock data file: 989 lines, 24KB (reasonable)
+- Mock data includes: events, encounters, settlements, structures, conditions, effects, audits
+- Apollo clients use `no-cache` policy ✅
+
+### Strategy
+
+**6.1 Lazy Load Mock Data**
+
+```typescript
+// BEFORE (all mocks loaded upfront)
+import { mockEvents, mockEncounters, mockSettlements } from './mocks/data';
+
+// AFTER (load on demand)
+const loadMockEvents = () => import('./mocks/data').then((m) => m.mockEvents);
+
+describe('Events', () => {
+  it('renders events', async () => {
+    const events = await loadMockEvents();
+    // ...
+  });
+});
+```
+
+**6.2 Reduce Mock Data Size**
+
+```typescript
+// BEFORE
+export const mockSettlements = [
+  // 5 full settlement objects with all fields
+];
+
+// AFTER
+export const mockSettlements = [
+  // 2-3 settlements with only required fields
+];
+
+// For tests needing specific data, create inline
+const customSettlement = {
+  ...mockSettlements[0],
+  customField: 'value',
+};
+```
+
+**6.3 Ensure Apollo Client Disposal**
+
+```typescript
+// test-utils.tsx
+export const createTestApolloClient = () => {
+  const client = new ApolloClient({
+    cache: new InMemoryCache(),
+    link: mockLink,
+    defaultOptions: {
+      query: { fetchPolicy: 'no-cache' },
+      watchQuery: { fetchPolicy: 'no-cache' },
+    },
+  });
+
+  // Add cleanup handler
+  afterEach(() => {
+    client.stop();
+    client.clearStore();
+  });
+
+  return client;
+};
+```
+
+**6.4 Clear MSW Handler State**
+
+```typescript
+// setup.ts
+afterEach(async () => {
+  cleanup();
+  server.resetHandlers();
+
+  // Clear any accumulated handler state
+  server.events.removeAllListeners();
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+});
+```
+
+### Expected Outcome
+
+- **Memory reduction:** ~5% (cumulative: 2.0GB → 1.8GB)
+- **Side benefit:** Faster test startup (less upfront loading)
+- **Trade-off:** Slightly more verbose test setup
+
+### Files to Modify
+
+- `packages/frontend/src/__tests__/mocks/data.ts`
+- `packages/frontend/src/__tests__/utils/test-utils.tsx`
+- `packages/frontend/src/__tests__/setup.ts`
+
+---
+
+## Phase 7: Remove Error Masking (CRITICAL - No Memory Impact)
+
+### Goal
+
+Fix the run-tests.sh wrapper that currently masks worker crashes as successes.
+
+### Current Issue
+
+```bash
+# run-tests.sh currently does this:
+if printf '%s\n' "$OUTPUT" | grep -q "Worker exited unexpectedly"; then
+  if [ -n "$PASSED_TESTS" ] && [ "$PASSED_TESTS" -gt 0 ]; then
+    exit 0  # ❌ Accepts crash as "success"
+  fi
+fi
+```
+
+This **hides memory problems** by accepting OOM crashes as long as some tests passed.
+
+### Strategy
+
+**7.1 Remove run-tests.sh Wrapper**
+
+```bash
+# Simply call vitest directly in package.json
+"scripts": {
+  "test": "vitest run",
+  "test:watch": "vitest"
+}
+```
+
+**7.2 If Wrapper Is Still Needed**
+
+```bash
+#!/bin/bash
+# run-tests.sh - STRICT MODE
+
+set -e  # Exit on any error
+
+NODE_OPTIONS='--max-old-space-size=2048' pnpm exec vitest run
+
+# No error masking - let failures fail!
+```
+
+**7.3 Update CI Configuration**
+
+```yaml
+# .github/workflows/test.yml
+- name: Run frontend tests
+  run: pnpm --filter @campaign/frontend test
+  env:
+    NODE_OPTIONS: '--max-old-space-size=2048'
+```
+
+### Expected Outcome
+
+- **Memory reduction:** 0% (but critical for visibility)
+- **Benefit:** Real failures are no longer hidden
+- **Result:** Forces us to fix root causes instead of masking them
+
+### Files to Modify
+
+- `packages/frontend/run-tests.sh` (remove or simplify)
+- `packages/frontend/package.json`
+- `.github/workflows/*.yml` (if applicable)
+
+---
+
+## Implementation Roadmap
+
+### Week 1: Quick Wins (Phases 1-2)
+
+**Goal:** Reduce memory from 7GB → 3.4GB and re-integrate performance tests into CI
+
+- [ ] Phase 1: Split performance tests (4.2GB)
+- [ ] Phase 2: Reduce performance test datasets (3.4GB)
+- [ ] **Re-integrate performance tests into CI** (after Phase 2 completion)
+- [ ] Verify tests still pass with TypeScript Tester subagent
+- [ ] Update CI configuration to run performance tests on every PR
+
+**Effort:** 4-6 hours
+**Risk:** Low
+**Validation:** Run full test suite (including performance), verify memory usage <4GB
+
+### Week 2: Cleanup Standardization (Phase 3)
+
+**Goal:** Reduce memory from 3.4GB → 2.8GB
+
+- [ ] Audit all 124 test files for cleanup patterns
+- [ ] Add cleanup to 56 files missing it (in batches)
+- [ ] Special handling for React Flow components
+- [ ] Special handling for Apollo clients
+- [ ] Verify no regressions after each batch
+
+**Effort:** 8-12 hours
+**Risk:** Medium (potential for test breakage)
+**Validation:** Run tests after each batch of changes
+
+### Week 3: Configuration Optimization (Phase 4)
+
+**Goal:** Reduce memory from 2.8GB → 2.4GB
+
+- [ ] Remove --expose-gc flag
+- [ ] Optimize Vitest pool configuration
+- [ ] Reduce max-old-space-size to 2GB
+- [ ] Add memory-conscious sequencing
+- [ ] Test with new configuration
+
+**Effort:** 4-6 hours
+**Risk:** Low-Medium
+**Validation:** Full test suite, monitor memory usage
+
+### Week 4: React Flow Optimization (Phase 5)
+
+**Goal:** Reduce memory from 2.4GB → 2.0GB
+
+- [ ] Create React Flow mocks
+- [ ] Replace React Flow in unit tests with mocks
+- [ ] Add explicit cleanup for React Flow tests
+- [ ] Verify React Flow behavior in integration/E2E tests
+
+**Effort:** 8-12 hours
+**Risk:** Medium-High (may affect test coverage)
+**Validation:** Ensure critical React Flow paths are still tested
+
+### Week 5: Mock Data & Error Masking (Phases 6-7)
+
+**Goal:** Reduce memory from 2.0GB → 1.8GB
+
+- [ ] Implement lazy loading for mock data
+- [ ] Reduce mock data sizes
+- [ ] Ensure Apollo client disposal
+- [ ] Clear MSW handler state properly
+- [ ] Remove run-tests.sh error masking
+
+**Effort:** 4-6 hours
+**Risk:** Low
+**Validation:** Full test suite, verify no hidden failures
+
+---
+
+## Success Metrics
+
+### Memory Targets
+
+| Phase         | Memory Target | Status       |
+| ------------- | ------------- | ------------ |
+| Baseline      | 7GB           | ❌ At limit  |
+| After Phase 1 | 4.2GB         | ⚠️ Marginal  |
+| After Phase 2 | 3.4GB         | ✅ Good      |
+| After Phase 3 | 2.8GB         | ✅ Excellent |
+| After Phase 4 | 2.4GB         | ✅ Excellent |
+| After Phase 5 | 2.0GB         | ✅ Ideal     |
+| After Phase 6 | 1.8GB         | ✅ Ideal     |
+
+### Quality Metrics
+
+- [ ] All 124 tests pass
+- [ ] No worker crashes
+- [ ] Test execution time ≤ 5% slower
+- [ ] CI passes consistently
+- [ ] No memory errors in CI logs
+
+### Validation Criteria
+
+After each phase:
+
+1. Run full test suite: `pnpm --filter @campaign/frontend test`
+2. Check for worker crashes (should be 0)
+3. Monitor memory usage: `NODE_OPTIONS='--max-old-space-size=2048' pnpm test`
+4. Verify test coverage hasn't decreased
+5. Check test execution time (should be similar or faster)
+
+---
+
+## Rollback Plan
+
+If any phase causes issues:
+
+1. **Revert the phase:** Use git to revert changes
+2. **Identify root cause:** Use TypeScript Tester to debug failures
+3. **Implement fix:** Address specific issue
+4. **Retry phase:** Attempt phase again with fix
+
+**Git Strategy:**
+
+- Commit after each phase
+- Use descriptive commit messages: `refactor(frontend): Phase 1 - split performance tests`
+- Tag stable states: `git tag test-memory-phase-1`
+
+---
+
+## Monitoring & Validation
+
+### Local Validation
+
+```bash
+# Monitor memory usage during tests
+NODE_OPTIONS='--max-old-space-size=2048' pnpm --filter @campaign/frontend test
+
+# Watch for "JavaScript heap out of memory" errors
+# If they occur, the current phase didn't reduce memory enough
+```
+
+### CI Validation
+
+```yaml
+# .github/workflows/test.yml
+- name: Run frontend tests with memory monitoring
+  run: |
+    pnpm --filter @campaign/frontend test
+  env:
+    NODE_OPTIONS: '--max-old-space-size=2048'
+```
+
+### Memory Profiling (Optional)
+
+For deeper analysis:
+
+```bash
+# Generate heap snapshot
+node --max-old-space-size=2048 --heap-prof node_modules/.bin/vitest run
+
+# Analyze heap snapshot
+# Open .heapprofile file in Chrome DevTools
+```
+
+---
+
+## Risk Assessment
+
+| Phase   | Risk Level | Mitigation                                    |
+| ------- | ---------- | --------------------------------------------- |
+| Phase 1 | 🟢 Low     | Easy to revert, no code changes               |
+| Phase 2 | 🟢 Low     | Performance expectations may need adjustment  |
+| Phase 3 | 🟡 Medium  | Test after each batch, use TypeScript Tester  |
+| Phase 4 | 🟡 Medium  | Test with new config before committing        |
+| Phase 5 | 🔴 High    | May affect test coverage, add E2E tests       |
+| Phase 6 | 🟢 Low     | Minimal impact, easy to revert                |
+| Phase 7 | 🟢 Low     | Improves visibility, may expose hidden issues |
+
+---
+
+## Alternative Strategies (If Plan Fails)
+
+If the above plan doesn't achieve <4GB:
+
+### Strategy A: Test Sharding
+
+Split tests into multiple CI jobs:
+
+```yaml
+strategy:
+  matrix:
+    shard: [1, 2, 3, 4]
+steps:
+  - run: vitest run --shard=${{ matrix.shard }}/4
+```
+
+**Pros:** Distributes memory load
+**Cons:** Longer CI time (parallel jobs)
+
+### Strategy B: Test Categorization
+
+Separate tests by type:
+
+```bash
+pnpm test:unit        # Unit tests only (fast, low memory)
+pnpm test:component   # Component tests (slower, higher memory)
+pnpm test:integration # Integration tests (slowest, highest memory)
+```
+
+### Strategy C: Increase Runner Resources
+
+Last resort: Use larger GitHub Actions runners
+
+```yaml
+runs-on: ubuntu-latest-4-cores # 16GB RAM
+```
+
+**Pros:** Simple
+**Cons:** Costs money, doesn't solve root cause
+
+---
+
+## Conclusion
+
+This plan provides a staged approach to reduce frontend test memory usage from 7GB to under 4GB (target: ~2GB). The key strategies are:
+
+1. **Split performance tests** (40% reduction)
+2. **Reduce dataset sizes** (20% reduction) + **Re-integrate into CI**
+3. **Standardize cleanup** (15% reduction)
+4. **Optimize configuration** (10% reduction)
+5. **Optimize React Flow** (10% reduction)
+6. **Optimize mocks** (5% reduction)
+
+**Timeline:** 5 weeks (20-40 hours total effort)
+
+**Success Criteria:**
+
+- Tests run reliably with <4GB memory
+- No worker crashes
+- Minimal performance impact
+- **Performance tests run in CI on every PR** (after Phase 2)
+
+**Next Steps:**
+
+1. Review and approve this plan
+2. Begin with Phase 1 (quick win - split tests)
+3. Complete Phase 2 (reduce dataset sizes)
+4. **Add performance tests back to CI** (Week 1 completion)
+5. Monitor memory usage after each phase
+6. Adjust plan based on actual results

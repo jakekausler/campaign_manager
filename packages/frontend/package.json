@@ -14,6 +14,7 @@
     "lint": "eslint src --ext .ts,.tsx",
     "start": "vite preview",
     "test": "bash run-tests.sh",
+    "test:performance": "vitest run src/__performance__",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },

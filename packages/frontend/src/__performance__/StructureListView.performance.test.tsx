@@ -17,7 +17,7 @@ vi.mock('@/services/api/mutations/structures', () => ({
 
 import { useStructuresForMap } from '@/services/api/hooks/structures';
 
-import { StructureListView } from '../StructureListView';
+import { StructureListView } from '../components/features/entity-inspector/StructureListView';
 
 const mockedUseStructuresForMap = vi.mocked(useStructuresForMap);
 
