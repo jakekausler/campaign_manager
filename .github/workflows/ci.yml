@@ -146,6 +146,9 @@ jobs:
       - name: Run all frontend tests
         run: pnpm --filter @campaign/frontend test
 
+      - name: Run frontend performance regression tests
+        run: pnpm --filter @campaign/frontend test:performance
+
   performance:
     name: Performance Regression Tests
     runs-on: ubuntu-latest

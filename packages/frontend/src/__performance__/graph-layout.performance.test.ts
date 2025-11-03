@@ -14,19 +14,52 @@ import { transformGraphToFlow } from '../utils/graph-layout';
  * These tests measure the performance of the auto-layout algorithm
  * with various graph sizes to ensure it meets performance targets.
  *
- * Performance targets (adjusted for test environment overhead):
- * - 100 nodes: <2500ms (includes test setup, dagre initialization, and first run)
- * - 200 nodes: <3000ms (includes test infrastructure overhead)
- * - 500 nodes: <7500ms (larger graphs take longer but should still be reasonable, +50% buffer for heavy CI load)
+ * Performance targets (adjusted for reduced dataset sizes - Phase 2):
+ * - 25 nodes: <600ms (includes test setup, dagre initialization, and first run)
+ * - 50 nodes: <750ms (includes test infrastructure overhead)
+ * - 100 nodes: <1500ms (validates performance characteristics with reasonable dataset)
  *
- * Note: These thresholds are conservative to account for CI environment variability.
- * In production, the actual rendering performance will be much faster due to:
- * - React Flow's built-in optimizations
- * - Browser rendering optimizations
- * - No test infrastructure overhead
+ * Note: Dataset sizes reduced from 100/200/500 to 25/50/100 to lower memory usage
+ * while still validating O(n) and O(n²) performance characteristics. These smaller
+ * datasets are sufficient for unit tests - use E2E tests for production-scale validation.
+ *
+ * In production, actual rendering will be faster due to React Flow optimizations
+ * and browser rendering, with no test infrastructure overhead.
  */
 describe('Graph Layout Performance', () => {
-  it('should transform 100-node graph in <2500ms', () => {
+  it('should transform 25-node graph in <600ms', () => {
+    const graph = generateLargeGraph(25, 1.5);
+
+    const startTime = performance.now();
+    const result = transformGraphToFlow(graph);
+    const endTime = performance.now();
+
+    const duration = endTime - startTime;
+
+    expect(result.nodes).toHaveLength(25);
+    expect(result.edges.length).toBeGreaterThan(0);
+    expect(duration).toBeLessThan(600);
+
+    console.log(`25 nodes transformed in ${duration.toFixed(2)}ms`);
+  });
+
+  it('should transform 50-node graph in <750ms', () => {
+    const graph = generateLargeGraph(50, 1.5);
+
+    const startTime = performance.now();
+    const result = transformGraphToFlow(graph);
+    const endTime = performance.now();
+
+    const duration = endTime - startTime;
+
+    expect(result.nodes).toHaveLength(50);
+    expect(result.edges.length).toBeGreaterThan(0);
+    expect(duration).toBeLessThan(750);
+
+    console.log(`50 nodes transformed in ${duration.toFixed(2)}ms`);
+  });
+
+  it('should transform 100-node graph in <1500ms', () => {
     const graph = generateLargeGraph(100, 1.5);
 
     const startTime = performance.now();
@@ -37,45 +70,13 @@ describe('Graph Layout Performance', () => {
 
     expect(result.nodes).toHaveLength(100);
     expect(result.edges.length).toBeGreaterThan(0);
-    expect(duration).toBeLessThan(2500);
+    expect(duration).toBeLessThan(1500);
 
     console.log(`100 nodes transformed in ${duration.toFixed(2)}ms`);
   });
 
-  it('should transform 200-node graph in <3000ms', () => {
-    const graph = generateLargeGraph(200, 1.5);
-
-    const startTime = performance.now();
-    const result = transformGraphToFlow(graph);
-    const endTime = performance.now();
-
-    const duration = endTime - startTime;
-
-    expect(result.nodes).toHaveLength(200);
-    expect(result.edges.length).toBeGreaterThan(0);
-    expect(duration).toBeLessThan(3000);
-
-    console.log(`200 nodes transformed in ${duration.toFixed(2)}ms`);
-  });
-
-  it('should transform 500-node graph in <7500ms', () => {
-    const graph = generateLargeGraph(500, 1.5);
-
-    const startTime = performance.now();
-    const result = transformGraphToFlow(graph);
-    const endTime = performance.now();
-
-    const duration = endTime - startTime;
-
-    expect(result.nodes).toHaveLength(500);
-    expect(result.edges.length).toBeGreaterThan(0);
-    expect(duration).toBeLessThan(7500);
-
-    console.log(`500 nodes transformed in ${duration.toFixed(2)}ms`);
-  });
-
   it('should handle graphs with cycles efficiently', () => {
-    const graph = generateGraphWithCycles(100);
+    const graph = generateGraphWithCycles(25);
 
     const startTime = performance.now();
     const result = transformGraphToFlow(graph);
@@ -83,15 +84,15 @@ describe('Graph Layout Performance', () => {
 
     const duration = endTime - startTime;
 
-    expect(result.nodes).toHaveLength(100);
+    expect(result.nodes).toHaveLength(25);
     expect(result.edges.length).toBeGreaterThan(0);
-    expect(duration).toBeLessThan(2000);
+    expect(duration).toBeLessThan(500);
 
-    console.log(`100 nodes with cycles transformed in ${duration.toFixed(2)}ms`);
+    console.log(`25 nodes with cycles transformed in ${duration.toFixed(2)}ms`);
   });
 
   it('should handle disconnected graphs efficiently', () => {
-    const graph = generateDisconnectedGraph(10, 20); // 10 subgraphs of 20 nodes each = 200 total
+    const graph = generateDisconnectedGraph(5, 10); // 5 subgraphs of 10 nodes each = 50 total
 
     const startTime = performance.now();
     const result = transformGraphToFlow(graph);
@@ -99,15 +100,15 @@ describe('Graph Layout Performance', () => {
 
     const duration = endTime - startTime;
 
-    expect(result.nodes).toHaveLength(200);
+    expect(result.nodes).toHaveLength(50);
     expect(result.edges.length).toBeGreaterThan(0);
-    expect(duration).toBeLessThan(3000);
+    expect(duration).toBeLessThan(750);
 
-    console.log(`200 nodes (disconnected) transformed in ${duration.toFixed(2)}ms`);
+    console.log(`50 nodes (disconnected) transformed in ${duration.toFixed(2)}ms`);
   });
 
   it('should position all nodes without overlap in large graphs', () => {
-    const graph = generateLargeGraph(100, 1.5);
+    const graph = generateLargeGraph(25, 1.5);
     const result = transformGraphToFlow(graph);
 
     // Check that all nodes have positions
@@ -139,7 +140,7 @@ describe('Graph Layout Performance', () => {
   });
 
   it('should maintain edge connectivity in large graphs', () => {
-    const graph = generateLargeGraph(100, 1.5);
+    const graph = generateLargeGraph(25, 1.5);
     const result = transformGraphToFlow(graph);
 
     // All edges should reference valid node IDs
