@@ -390,10 +390,13 @@ The `pnpm run build` command handles this automatically.
 
 **CRITICAL RULE FOR BASE AGENT**: The base agent must NEVER run tests, debug test failures, fix TypeScript errors, or fix linting errors directly. Always delegate these tasks to the appropriate specialized subagent.
 
+**CONTEXT MANAGEMENT RULE**: When you need to research code, understand implementations, or gather information from the codebase, ALWAYS delegate to generic subagents (Explore or general-purpose) to save context. Research tasks include: exploring code patterns, finding implementations, understanding how features work, searching for symbols/files, or gathering contextual information.
+
 ### Available Subagents (Summary)
 
 | Subagent          | Purpose                             | When to Use                             |
 | ----------------- | ----------------------------------- | --------------------------------------- |
+| Explore           | Research codebase and gather info   | Code exploration, pattern discovery     |
 | TypeScript Tester | Run and debug existing tests        | Test failures, need to run tests        |
 | TypeScript Fixer  | Fix TypeScript/ESLint errors        | Type errors, lint errors, import issues |
 | Code Reviewer     | **MANDATORY** before commits        | Every commit with code changes          |
@@ -443,23 +446,25 @@ Use Task tool with code-reviewer subagent:
 ### Starting a New Ticket
 
 1. Read the ticket from `plan/TICKET-XXX.md`
-2. Create an implementation plan using TodoWrite
-3. If TDD is appropriate, write tests directly
-4. Implement the feature incrementally
-5. Delegate quality checks to subagents:
+2. **If research is needed** → Use Explore subagent to understand relevant code patterns and implementations
+3. Create an implementation plan using TodoWrite
+4. If TDD is appropriate, write tests directly
+5. Implement the feature incrementally
+   - **For code exploration during implementation** → Use Explore subagent to research patterns, find similar code, or understand existing implementations
+6. Delegate quality checks to subagents:
    - Use TypeScript Fixer for type-check and lint
    - Use TypeScript Tester for running existing tests and debugging failures
-6. If errors occur:
+7. If errors occur:
    - TypeScript/ESLint errors → TypeScript Fixer subagent
    - Test failures → TypeScript Tester subagent (to run and debug only)
-7. **Stage changes** with `git add`
-8. **MANDATORY: Use Code Reviewer subagent** to review staged changes before commit
-9. Address any critical issues flagged by Code Reviewer
-10. Commit changes with detailed conventional commit message (only after Code Reviewer approval)
-11. **MANDATORY: Use Project Manager subagent** to verify ticket completion
-12. Address any missing items flagged by Project Manager
-13. Update the ticket file with implementation notes and commit hash (only after Project Manager approval)
-14. Update `plan/EPIC.md` to mark ticket as complete
+8. **Stage changes** with `git add`
+9. **MANDATORY: Use Code Reviewer subagent** to review staged changes before commit
+10. Address any critical issues flagged by Code Reviewer
+11. Commit changes with detailed conventional commit message (only after Code Reviewer approval)
+12. **MANDATORY: Use Project Manager subagent** to verify ticket completion
+13. Address any missing items flagged by Project Manager
+14. Update the ticket file with implementation notes and commit hash (only after Project Manager approval)
+15. Update `plan/EPIC.md` to mark ticket as complete
 
 ### Adding a New Feature (TDD Approach)
 
@@ -693,6 +698,7 @@ pnpm run build                        # Build all packages
 
 ### Error Handling Rules
 
+- **Need to research code** → Use Explore subagent (NEVER search/read directly for research)
 - **TypeScript errors** → Use TypeScript Fixer subagent
 - **ESLint errors** → Use TypeScript Fixer subagent
 - **Test failures** → Use TypeScript Tester subagent to run and debug (NEVER run directly)
@@ -710,16 +716,17 @@ pnpm run build                        # Build all packages
 
 1. **NEVER change directories - ALWAYS run all commands from the project root**
 2. **ALWAYS use TDD when implementing new features**
-3. **NEVER fix TypeScript/ESLint errors directly - use the TypeScript Fixer subagent**
-4. **NEVER run or debug tests directly - use the TypeScript Tester subagent**
-5. **Write new tests directly - TypeScript Tester only runs/debugs**
-6. **MANDATORY: ALWAYS use Code Reviewer subagent before committing code**
-7. **MANDATORY: ALWAYS use Project Manager subagent before closing tickets**
-8. **Delegate to specialized subagents**: TypeScript Tester for running/debugging tests, TypeScript Fixer for types/linting, Code Reviewer before commits, Project Manager before ticket closure
-9. **Use conventional commit format with detailed messages explaining WHY**
-10. **Update ticket files and EPIC.md when completing work (only after Project Manager approval)**
-11. **Use TodoWrite to track complex tasks**
-12. **Read existing code patterns before implementing new features**
+3. **NEVER research code directly - ALWAYS use Explore subagent to save context**
+4. **NEVER fix TypeScript/ESLint errors directly - use the TypeScript Fixer subagent**
+5. **NEVER run or debug tests directly - use the TypeScript Tester subagent**
+6. **Write new tests directly - TypeScript Tester only runs/debugs**
+7. **MANDATORY: ALWAYS use Code Reviewer subagent before committing code**
+8. **MANDATORY: ALWAYS use Project Manager subagent before closing tickets**
+9. **Delegate to specialized subagents**: Explore for research, TypeScript Tester for running/debugging tests, TypeScript Fixer for types/linting, Code Reviewer before commits, Project Manager before ticket closure
+10. **Use conventional commit format with detailed messages explaining WHY**
+11. **Update ticket files and EPIC.md when completing work (only after Project Manager approval)**
+12. **Use TodoWrite to track complex tasks**
+13. **Delegate code pattern research to Explore subagent instead of reading directly**
 
 ---
 
@@ -745,6 +752,10 @@ Are you about to mark a ticket as complete?
 ├─ YES → **MANDATORY:** Use Project Manager subagent FIRST
 │        Only close ticket after approval
 │
+Do you need to research/explore code?
+├─ YES → Use Explore subagent to save context
+│        (code patterns, implementations, architecture understanding)
+│
 Is it a test failure or need to run tests?
 ├─ YES → Use TypeScript Tester subagent to RUN and DEBUG
 │
@@ -767,7 +778,8 @@ Is it a runtime logic error or bug?
 ├─ YES → Debug directly, write test to prevent regression
 │
 Is it a feature implementation task?
-├─ YES → Write tests and implementation directly,
+├─ YES → Use Explore subagent first for research,
+│        then write tests and implementation directly,
 │        use TypeScript Tester to run tests,
 │        use TypeScript Fixer for type/lint verification,
 │        use Code Reviewer before commit,

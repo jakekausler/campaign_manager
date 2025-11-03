@@ -36,7 +36,22 @@ Ensure that you follow best practices for coding, including
 - Adding comments where necessary
 - Writing tests to cover new functionality
 
-If the stage involves multiple steps or components, break down the work into manageable parts and tackle them one at a time using generic subagents if a task is complex.
+**IMPORTANT - Context Management**:
+When you need to research or gather information, ALWAYS delegate to subagents to save context:
+
+- **Code Research**: Use the Explore subagent (subagent_type="Explore") to understand code patterns, find implementations, or explore the codebase structure
+- **Complex Tasks**: Use generic subagents (subagent_type="general-purpose") for multi-step tasks or complex operations
+- **Information Lookup**: Use subagents to search documentation, find examples, or gather context
+
+Research tasks include:
+
+- Understanding how existing features work
+- Finding similar implementations or patterns
+- Exploring the codebase structure
+- Gathering context about specific areas of code
+- Searching for specific symbols, files, or patterns
+
+If the stage involves multiple steps or components, break down the work into manageable parts and tackle them one at a time using subagents as appropriate.
 
 Use version control effectively, committing changes frequently with clear messages and including the ticket number in the commits.
 
