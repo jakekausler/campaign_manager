@@ -94,10 +94,15 @@ describe('RedisService', () => {
       const constructorCalls = RedisMock.mock.calls;
       expect(constructorCalls.length).toBeGreaterThan(0);
 
+      // Type for Redis configuration
+      interface RedisConfig {
+        retryStrategy: (times: number) => number | null;
+      }
+
       // @ts-expect-error - TypeScript doesn't know the mock was called with a config object
-      const redisConfig: any = constructorCalls[0][0];
+      const redisConfig = constructorCalls[0][0] as RedisConfig;
       expect(redisConfig).toBeDefined();
-      const retryStrategy = redisConfig.retryStrategy as (times: number) => number | null;
+      const retryStrategy = redisConfig.retryStrategy;
       expect(retryStrategy).toBeDefined();
 
       // Now destroy the service
@@ -422,11 +427,16 @@ describe('RedisService', () => {
     it('should retry connection with exponential backoff up to 10 attempts', async () => {
       await redisService.onModuleInit();
 
+      // Type for Redis configuration
+      interface RedisConfig {
+        retryStrategy: (times: number) => number | null;
+      }
+
       const RedisMock = jest.mocked(IoRedis);
       // @ts-expect-error - TypeScript doesn't know the mock was called with a config object
-      const redisConfig: any = RedisMock.mock.calls[0][0];
+      const redisConfig = RedisMock.mock.calls[0][0] as RedisConfig;
       expect(redisConfig).toBeDefined();
-      const retryStrategy = redisConfig.retryStrategy as (times: number) => number | null;
+      const retryStrategy = redisConfig.retryStrategy;
       expect(retryStrategy).toBeDefined();
 
       // Test retry delays (exponential backoff, max delay 10 seconds)
@@ -442,11 +452,16 @@ describe('RedisService', () => {
     it('should stop retrying after max attempts', async () => {
       await redisService.onModuleInit();
 
+      // Type for Redis configuration
+      interface RedisConfig {
+        retryStrategy: (times: number) => number | null;
+      }
+
       const RedisMock = jest.mocked(IoRedis);
       // @ts-expect-error - TypeScript doesn't know the mock was called with a config object
-      const redisConfig: any = RedisMock.mock.calls[0][0];
+      const redisConfig = RedisMock.mock.calls[0][0] as RedisConfig;
       expect(redisConfig).toBeDefined();
-      const retryStrategy = redisConfig.retryStrategy as (times: number) => number | null;
+      const retryStrategy = redisConfig.retryStrategy;
       expect(retryStrategy).toBeDefined();
 
       // Should return null after max attempts

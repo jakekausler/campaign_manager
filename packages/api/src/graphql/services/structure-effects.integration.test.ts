@@ -334,8 +334,8 @@ describe('Structure Effects Integration', () => {
       expect(result.success).toBe(true);
       expect(result.patchedEntity?.variables?.integrity).toBe(45);
       expect(result.patchedEntity?.variables?.operational).toBe(false);
-      expect((result.patchedEntity?.variables as any)?.productionRate).toBe(0);
-      expect((result.patchedEntity?.variables as any)?.needsRepair).toBe(true);
+      expect((result.patchedEntity?.variables as Record<string, unknown>)?.productionRate).toBe(0);
+      expect((result.patchedEntity?.variables as Record<string, unknown>)?.needsRepair).toBe(true);
     });
 
     it('should apply repair effect with integrity restoration', () => {
@@ -373,8 +373,12 @@ describe('Structure Effects Integration', () => {
       expect(result.success).toBe(true);
       expect(result.patchedEntity?.variables?.integrity).toBe(95);
       expect(result.patchedEntity?.variables?.operational).toBe(true);
-      expect((result.patchedEntity?.variables as any)?.needsRepair).toBeUndefined();
-      expect((result.patchedEntity?.variables as any)?.lastRepairDate).toBe('2025-10-28');
+      expect(
+        (result.patchedEntity?.variables as Record<string, unknown>)?.needsRepair
+      ).toBeUndefined();
+      expect((result.patchedEntity?.variables as Record<string, unknown>)?.lastRepairDate).toBe(
+        '2025-10-28'
+      );
     });
   });
 
@@ -466,7 +470,7 @@ describe('Structure Effects Integration', () => {
       expect(result.patchedEntity?.name).toBe('The Golden Goblet');
       expect(result.patchedEntity?.level).toBe(3);
       expect(result.patchedEntity?.type).toBe('inn');
-      expect((result.patchedEntity?.variables as any)?.rooms).toBe(10);
+      expect((result.patchedEntity?.variables as Record<string, unknown>)?.rooms).toBe(10);
     });
   });
 });

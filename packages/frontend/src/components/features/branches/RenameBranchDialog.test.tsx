@@ -68,9 +68,9 @@ describe('RenameBranchDialog', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useCampaignStore as any).mockReturnValue({
+    vi.mocked(useCampaignStore).mockReturnValue({
       campaign: { id: 'campaign-1', name: 'Test Campaign' },
-    });
+    } as ReturnType<typeof useCampaignStore>);
   });
 
   it('should render when open with branch data', () => {

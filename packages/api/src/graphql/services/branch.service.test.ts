@@ -86,7 +86,7 @@ describe('BranchService', () => {
 
   beforeEach(async () => {
     // Create mock prisma service with proper typing
-    const mockPrismaService: any = {
+    const mockPrismaService = {
       campaign: {
         findFirst: jest.fn(),
       },
@@ -109,8 +109,8 @@ describe('BranchService', () => {
     };
 
     // Configure transaction to pass through the callback
-    mockPrismaService.$transaction.mockImplementation((callback: any) =>
-      callback(mockPrismaService)
+    mockPrismaService.$transaction.mockImplementation(
+      (callback: (tx: unknown) => Promise<unknown>) => callback(mockPrismaService)
     );
 
     // Create mock audit service
@@ -1479,7 +1479,9 @@ describe('BranchService', () => {
         (prisma.branch.findFirst as jest.Mock).mockResolvedValueOnce(mockBranch); // findById in fork
         (prisma.campaign.findFirst as jest.Mock).mockResolvedValueOnce(campaignWithMembership); // checkCampaignAccess
         (campaignMembershipService.canEdit as jest.Mock).mockResolvedValue(true);
-        (prisma.$transaction as jest.Mock).mockImplementation((callback: any) => callback(prisma));
+        (prisma.$transaction as jest.Mock).mockImplementation(
+          (callback: (tx: unknown) => Promise<unknown>) => callback(prisma)
+        );
         (prisma.branch.create as jest.Mock).mockResolvedValue(mockChildBranch);
         (versionService.resolveVersion as jest.Mock).mockResolvedValue(null);
 

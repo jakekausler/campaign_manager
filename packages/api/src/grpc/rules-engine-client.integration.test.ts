@@ -256,7 +256,7 @@ describeIf('RulesEngineClientService Integration Tests', () => {
       const shortTimeoutService = module.get<RulesEngineClientService>(RulesEngineClientService);
 
       // Override timeout (TypeScript workaround - access private property)
-      (shortTimeoutService as any).timeout = 1; // 1ms timeout
+      (shortTimeoutService as unknown as { timeout: number }).timeout = 1; // 1ms timeout
 
       await expect(
         shortTimeoutService.evaluateCondition({
@@ -293,7 +293,7 @@ describeIf('RulesEngineClientService Integration Tests', () => {
       const testService = module.get<RulesEngineClientService>(RulesEngineClientService);
 
       // Override failure threshold (TypeScript workaround)
-      (testService as any).failureThreshold = 2;
+      (testService as unknown as { failureThreshold: number }).failureThreshold = 2;
 
       // Force failures by disconnecting
       await testService.onModuleDestroy();

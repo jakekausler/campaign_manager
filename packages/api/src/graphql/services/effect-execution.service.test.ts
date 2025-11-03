@@ -95,20 +95,22 @@ describe('EffectExecutionService', () => {
     };
 
     // Configure $transaction mock to execute callback with mock transaction client
-    (mockPrisma.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
-      if (typeof callback === 'function') {
-        // Create a mock transaction prisma client that delegates to the main mock
-        const txPrisma = {
-          effect: mockPrisma.effect,
-          encounter: mockPrisma.encounter,
-          event: mockPrisma.event,
-          effectExecution: mockPrisma.effectExecution,
-        };
-        return callback(txPrisma);
+    (mockPrisma.$transaction as jest.Mock).mockImplementation(
+      async (callback: (tx: unknown) => Promise<unknown>) => {
+        if (typeof callback === 'function') {
+          // Create a mock transaction prisma client that delegates to the main mock
+          const txPrisma = {
+            effect: mockPrisma.effect,
+            encounter: mockPrisma.encounter,
+            event: mockPrisma.event,
+            effectExecution: mockPrisma.effectExecution,
+          };
+          return callback(txPrisma);
+        }
+        // Fallback for array form (not used in current implementation)
+        return Promise.all(callback);
       }
-      // Fallback for array form (not used in current implementation)
-      return Promise.all(callback);
-    });
+    );
 
     const mockEffectPatchService = {
       validatePatch: jest.fn(),

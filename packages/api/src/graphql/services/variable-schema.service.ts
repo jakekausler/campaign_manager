@@ -18,6 +18,20 @@ import type { VariableSchema, EntityType } from '../types/variable-schema.types'
 
 import { AuditService } from './audit.service';
 
+/**
+ * Minimal interface representing the common fields across all entity types
+ * that support variable schemas (Party, Kingdom, Settlement, Structure).
+ * Used for type-safe access to entity properties.
+ */
+interface EntityWithVariables {
+  id: string;
+  variables: Prisma.JsonValue;
+  variableSchemas: Prisma.JsonValue;
+  campaignId?: string; // Optional - some entities access via relations
+  kingdomId?: string; // Only Settlement
+  settlementId?: string; // Only Structure
+}
+
 @Injectable()
 export class VariableSchemaService {
   constructor(
@@ -298,7 +312,7 @@ export class VariableSchemaService {
     entityType: EntityType,
     entityId: string,
     user: AuthenticatedUser
-  ): Promise<any> {
+  ): Promise<EntityWithVariables | null> {
     const where = {
       id: entityId,
       deletedAt: null,
@@ -403,7 +417,7 @@ export class VariableSchemaService {
     entityType: EntityType,
     entityId: string,
     user: AuthenticatedUser
-  ): Promise<any> {
+  ): Promise<EntityWithVariables | null> {
     const entity = await this.getEntity(entityType, entityId, user);
 
     if (!entity) {
@@ -416,6 +430,9 @@ export class VariableSchemaService {
     switch (entityType) {
       case 'party':
       case 'kingdom':
+        if (!entity.campaignId) {
+          throw new NotFoundException(`Campaign ID not found for ${entityType} ${entityId}`);
+        }
         campaignId = entity.campaignId;
         break;
 

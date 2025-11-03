@@ -16,7 +16,7 @@ describe('HealthService', () => {
     mockQueue = {
       client: {
         ping: jest.fn().mockResolvedValue('PONG'),
-      } as any,
+      } as unknown as Queue['client'],
       getActiveCount: jest.fn().mockResolvedValue(2),
       getWaitingCount: jest.fn().mockResolvedValue(5),
       getDelayedCount: jest.fn().mockResolvedValue(1),

@@ -7,6 +7,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service';
+import type { Expression } from '../../rules/types/expression.types';
 import {
   DependencyNode,
   DependencyEdge,
@@ -129,7 +130,7 @@ export class DependencyGraphBuilderService {
         graph.addNode(conditionNode);
 
         // Extract variable reads from condition expression
-        const reads = this.dependencyExtractor.extractReads(condition.expression as any);
+        const reads = this.dependencyExtractor.extractReads(condition.expression as Expression);
         this.logger.debug(
           `Condition ${condition.id} reads variables: ${Array.from(reads).join(', ')}`
         );
@@ -312,7 +313,7 @@ export class DependencyGraphBuilderService {
       graph.addNode(conditionNode);
 
       // Extract new reads and add edges
-      const reads = this.dependencyExtractor.extractReads(condition.expression as any);
+      const reads = this.dependencyExtractor.extractReads(condition.expression as Expression);
 
       for (const varName of reads) {
         const varNode = this.findVariableNodeByKey(graph, varName);

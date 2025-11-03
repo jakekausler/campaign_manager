@@ -1,7 +1,13 @@
 import { forwardRef, memo, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { DataSet } from 'vis-data';
 import { Timeline as VisTimeline } from 'vis-timeline/standalone';
-import type { TimelineItem, TimelineGroup, TimelineOptions } from 'vis-timeline/types';
+import type {
+  DataItemCollectionType,
+  DataGroupCollectionType,
+  TimelineItem,
+  TimelineGroup,
+  TimelineOptions,
+} from 'vis-timeline/types';
 import 'vis-timeline/styles/vis-timeline-graph2d.css';
 import './Timeline.css';
 
@@ -186,11 +192,14 @@ const TimelineComponent = forwardRef<TimelineHandle, TimelineProps>(function Tim
     groupsDataSetRef.current = groups ? new DataSet(groups) : new DataSet([]);
 
     // Create timeline instance
-    // Note: Type casting required due to vis-timeline/vis-data type incompatibility
+    // Note: Type casting to 'unknown' required due to vis-timeline/vis-data type incompatibility.
+    // DataSet<TimelineItem> and DataSet<TimelineGroup> are structurally compatible with
+    // the expected DataInterface types, but TypeScript cannot verify this due to
+    // generic type variance issues between vis-timeline and vis-data packages.
     timelineRef.current = new VisTimeline(
       containerRef.current,
-      itemsDataSetRef.current as any,
-      groupsDataSetRef.current as any,
+      itemsDataSetRef.current as unknown as DataItemCollectionType,
+      groupsDataSetRef.current as unknown as DataGroupCollectionType,
       mergedOptions
     );
 

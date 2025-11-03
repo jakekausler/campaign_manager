@@ -7,6 +7,8 @@ import { Logger } from '@nestjs/common';
 import { type Prisma, type PrismaClient } from '@prisma/client';
 import { type DeepMockProxy, mockDeep } from 'jest-mock-extended';
 
+import { DependencyGraph } from '../utils/dependency-graph';
+
 import { CacheService } from './cache.service';
 import { DependencyGraphService } from './dependency-graph.service';
 import { EvaluationEngineService } from './evaluation-engine.service';
@@ -945,10 +947,12 @@ describe('EvaluationEngineService', () => {
         .mockResolvedValueOnce(mockCondition2); // Second batch
 
       // Mock graph service (needed for evaluateConditions)
-      graphService.getGraph.mockResolvedValue({
+      // Partial mock of DependencyGraph with only the methods we need
+      const mockGraph: Partial<DependencyGraph> = {
         detectCycles: () => ({ hasCycles: false, cycleCount: 0, cycles: [] }),
-        topologicalSort: () => ({ order: [], isPartial: false }),
-      } as any);
+        topologicalSort: () => ({ success: true, order: [], remainingNodes: [] }),
+      };
+      graphService.getGraph.mockResolvedValue(mockGraph as DependencyGraph);
 
       // Act - Two batch evaluations
       await service.evaluateConditions(conditionIds, context, 'campaign-123', 'main', false);

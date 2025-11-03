@@ -11,6 +11,15 @@ import { QueueService } from '../queue/queue.service';
 
 import { MaintenanceEventType, StructureSchedulingService } from './structure-scheduling.service';
 
+// Test fixture types for private method testing
+interface MaintenanceCalculation {
+  campaignId: string;
+  structureId: string;
+  eventType: MaintenanceEventType;
+  nextExecutionTime: Date;
+  parameters: Record<string, unknown>;
+}
+
 describe('StructureSchedulingService', () => {
   let service: StructureSchedulingService;
   let apiClientService: jest.Mocked<ApiClientService>;
@@ -257,7 +266,9 @@ describe('StructureSchedulingService', () => {
         variables: {},
       };
 
-      const calculations = (service as any).calculateMaintenanceEvents(structure);
+      const calculations = (
+        service as unknown as Record<string, (s: StructureSummary) => MaintenanceCalculation[]>
+      )['calculateMaintenanceEvents'](structure);
 
       expect(calculations).toHaveLength(2);
       expect(calculations[0].eventType).toBe(MaintenanceEventType.MAINTENANCE_DUE);
@@ -276,7 +287,9 @@ describe('StructureSchedulingService', () => {
         },
       };
 
-      const calculations = (service as any).calculateMaintenanceEvents(structure);
+      const calculations = (
+        service as unknown as Record<string, (s: StructureSummary) => MaintenanceCalculation[]>
+      )['calculateMaintenanceEvents'](structure);
 
       expect(calculations.length).toBeGreaterThanOrEqual(1);
       expect(calculations[0].eventType).toBe(MaintenanceEventType.CONSTRUCTION_COMPLETE);
@@ -295,11 +308,13 @@ describe('StructureSchedulingService', () => {
         },
       };
 
-      const calculations = (service as any).calculateMaintenanceEvents(structure);
+      const calculations = (
+        service as unknown as Record<string, (s: StructureSummary) => MaintenanceCalculation[]>
+      )['calculateMaintenanceEvents'](structure);
 
       // Should only have upgrade event if not operational
       const maintenanceEvents = calculations.filter(
-        (c: any) => c.eventType === MaintenanceEventType.MAINTENANCE_DUE
+        (c) => c.eventType === MaintenanceEventType.MAINTENANCE_DUE
       );
       expect(maintenanceEvents).toHaveLength(0);
     });
@@ -317,10 +332,12 @@ describe('StructureSchedulingService', () => {
         },
       };
 
-      const calculations = (service as any).calculateMaintenanceEvents(structure);
+      const calculations = (
+        service as unknown as Record<string, (s: StructureSummary) => MaintenanceCalculation[]>
+      )['calculateMaintenanceEvents'](structure);
 
       const upgradeEvents = calculations.filter(
-        (c: any) => c.eventType === MaintenanceEventType.UPGRADE_AVAILABLE
+        (c) => c.eventType === MaintenanceEventType.UPGRADE_AVAILABLE
       );
       expect(upgradeEvents).toHaveLength(0);
     });
@@ -337,11 +354,13 @@ describe('StructureSchedulingService', () => {
         },
       };
 
-      const calculations = (service as any).calculateMaintenanceEvents(structure);
+      const calculations = (
+        service as unknown as Record<string, (s: StructureSummary) => MaintenanceCalculation[]>
+      )['calculateMaintenanceEvents'](structure);
 
       const maintenanceEvent = calculations.find(
-        (c: any) => c.eventType === MaintenanceEventType.MAINTENANCE_DUE
-      );
+        (c) => c.eventType === MaintenanceEventType.MAINTENANCE_DUE
+      )!;
 
       // Check that interval is approximately correct (within 1 minute tolerance)
       const interval = (maintenanceEvent.nextExecutionTime.getTime() - Date.now()) / (60 * 1000);
@@ -359,14 +378,16 @@ describe('StructureSchedulingService', () => {
         variables: {},
       };
 
-      const calculations = (service as any).calculateMaintenanceEvents(structure);
+      const calculations = (
+        service as unknown as Record<string, (s: StructureSummary) => MaintenanceCalculation[]>
+      )['calculateMaintenanceEvents'](structure);
 
       const maintenanceEvent = calculations.find(
-        (c: any) => c.eventType === MaintenanceEventType.MAINTENANCE_DUE
-      );
+        (c) => c.eventType === MaintenanceEventType.MAINTENANCE_DUE
+      )!;
       const upgradeEvent = calculations.find(
-        (c: any) => c.eventType === MaintenanceEventType.UPGRADE_AVAILABLE
-      );
+        (c) => c.eventType === MaintenanceEventType.UPGRADE_AVAILABLE
+      )!;
 
       expect(maintenanceEvent.parameters.health).toBe(100);
       expect(upgradeEvent.parameters.currentLevel).toBe(1);
@@ -390,11 +411,13 @@ describe('StructureSchedulingService', () => {
         },
       };
 
-      const calculations = (service as any).calculateMaintenanceEvents(structure);
+      const calculations = (
+        service as unknown as Record<string, (s: StructureSummary) => MaintenanceCalculation[]>
+      )['calculateMaintenanceEvents'](structure);
 
       const upgradeEvent = calculations.find(
-        (c: any) => c.eventType === MaintenanceEventType.UPGRADE_AVAILABLE
-      );
+        (c) => c.eventType === MaintenanceEventType.UPGRADE_AVAILABLE
+      )!;
 
       expect(upgradeEvent.parameters.requiredResourcesForUpgrade).toEqual({
         gold: 1000,
@@ -417,17 +440,17 @@ describe('StructureSchedulingService', () => {
         },
       };
 
-      const calculations = (service as any).calculateMaintenanceEvents(structure);
+      const calculations = (
+        service as unknown as Record<string, (s: StructureSummary) => MaintenanceCalculation[]>
+      )['calculateMaintenanceEvents'](structure);
 
       // Should have all three event types
       expect(calculations).toHaveLength(3);
-      expect(calculations.map((c: any) => c.eventType)).toContain(
+      expect(calculations.map((c) => c.eventType)).toContain(
         MaintenanceEventType.CONSTRUCTION_COMPLETE
       );
-      expect(calculations.map((c: any) => c.eventType)).toContain(
-        MaintenanceEventType.MAINTENANCE_DUE
-      );
-      expect(calculations.map((c: any) => c.eventType)).toContain(
+      expect(calculations.map((c) => c.eventType)).toContain(MaintenanceEventType.MAINTENANCE_DUE);
+      expect(calculations.map((c) => c.eventType)).toContain(
         MaintenanceEventType.UPGRADE_AVAILABLE
       );
     });
@@ -444,10 +467,12 @@ describe('StructureSchedulingService', () => {
         },
       };
 
-      const calculations = (service as any).calculateMaintenanceEvents(structure);
+      const calculations = (
+        service as unknown as Record<string, (s: StructureSummary) => MaintenanceCalculation[]>
+      )['calculateMaintenanceEvents'](structure);
 
       const constructionEvents = calculations.filter(
-        (c: any) => c.eventType === MaintenanceEventType.CONSTRUCTION_COMPLETE
+        (c) => c.eventType === MaintenanceEventType.CONSTRUCTION_COMPLETE
       );
       expect(constructionEvents).toHaveLength(0);
     });
@@ -456,7 +481,7 @@ describe('StructureSchedulingService', () => {
   describe('queueMaintenanceJob', () => {
     it('should queue job with correct delay', async () => {
       const futureTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-      const calculation = {
+      const calculation: MaintenanceCalculation = {
         campaignId: 'campaign-1',
         structureId: 'structure-1',
         eventType: MaintenanceEventType.MAINTENANCE_DUE,
@@ -464,7 +489,9 @@ describe('StructureSchedulingService', () => {
         parameters: { health: 80 },
       };
 
-      await (service as any).queueMaintenanceJob(calculation);
+      await (service as unknown as Record<string, (c: MaintenanceCalculation) => Promise<void>>)[
+        'queueMaintenanceJob'
+      ](calculation);
 
       expect(queueService.addJob).toHaveBeenCalledTimes(1);
       const callArgs = queueService.addJob.mock.calls[0];
@@ -481,7 +508,7 @@ describe('StructureSchedulingService', () => {
 
     it('should queue overdue job with zero delay', async () => {
       const pastTime = new Date(Date.now() - 10 * 60 * 1000); // 10 minutes ago
-      const calculation = {
+      const calculation: MaintenanceCalculation = {
         campaignId: 'campaign-1',
         structureId: 'structure-1',
         eventType: MaintenanceEventType.CONSTRUCTION_COMPLETE,
@@ -489,7 +516,9 @@ describe('StructureSchedulingService', () => {
         parameters: {},
       };
 
-      await (service as any).queueMaintenanceJob(calculation);
+      await (service as unknown as Record<string, (c: MaintenanceCalculation) => Promise<void>>)[
+        'queueMaintenanceJob'
+      ](calculation);
 
       expect(queueService.addJob).toHaveBeenCalledTimes(1);
       const callArgs = queueService.addJob.mock.calls[0];
@@ -499,7 +528,7 @@ describe('StructureSchedulingService', () => {
     it('should handle queue errors', async () => {
       queueService.addJob.mockRejectedValue(new Error('Queue full'));
 
-      const calculation = {
+      const calculation: MaintenanceCalculation = {
         campaignId: 'campaign-1',
         structureId: 'structure-1',
         eventType: MaintenanceEventType.UPGRADE_AVAILABLE,
@@ -507,7 +536,11 @@ describe('StructureSchedulingService', () => {
         parameters: {},
       };
 
-      await expect((service as any).queueMaintenanceJob(calculation)).rejects.toThrow('Queue full');
+      await expect(
+        (service as unknown as Record<string, (c: MaintenanceCalculation) => Promise<void>>)[
+          'queueMaintenanceJob'
+        ](calculation)
+      ).rejects.toThrow('Queue full');
     });
   });
 });

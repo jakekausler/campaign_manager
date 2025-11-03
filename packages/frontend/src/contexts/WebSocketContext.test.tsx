@@ -50,8 +50,19 @@ vi.mock('@/stores', () => ({
 // Create typed mock for socket.io
 const mockIo = vi.mocked(io);
 
+// Type for mock socket that matches Socket.IO interface subset
+type MockSocketType = {
+  id: string;
+  connected: boolean;
+  on: ReturnType<typeof vi.fn>;
+  off: ReturnType<typeof vi.fn>;
+  emit: ReturnType<typeof vi.fn>;
+  disconnect: ReturnType<typeof vi.fn>;
+  removeAllListeners: ReturnType<typeof vi.fn>;
+};
+
 // Mock socket object that will be returned by mockIo
-const mockSocket = {
+const mockSocket: MockSocketType = {
   id: 'mock-socket-id',
   connected: false,
   on: vi.fn(),
@@ -71,8 +82,8 @@ describe('WebSocketContext', () => {
     mockSocket.disconnect.mockClear();
     mockSocket.removeAllListeners.mockClear();
 
-    // Set up mockIo to return mockSocket
-    mockIo.mockReturnValue(mockSocket as any);
+    // Set up mockIo to return mockSocket (cast needed due to incomplete Socket type)
+    mockIo.mockReturnValue(mockSocket as ReturnType<typeof io>);
   });
 
   afterEach(() => {

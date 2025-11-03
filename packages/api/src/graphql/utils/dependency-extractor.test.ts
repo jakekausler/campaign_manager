@@ -93,7 +93,7 @@ describe('DependencyExtractor', () => {
 
     it('should handle undefined expression', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const reads = extractor.extractReads(undefined as any);
+      const reads = extractor.extractReads(undefined);
 
       expect(reads).toEqual(new Set());
     });

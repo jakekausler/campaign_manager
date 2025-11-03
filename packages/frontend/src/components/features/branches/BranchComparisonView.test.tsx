@@ -9,6 +9,18 @@ import * as stores from '@/stores';
 
 import { BranchComparisonView } from './BranchComparisonView';
 
+// Type definitions for test mocks
+interface MockQueryResult<T> {
+  data: T | undefined;
+  loading: boolean;
+  error: Error | undefined;
+  refetch: () => void;
+}
+
+interface MockHookSkipParam {
+  skip?: boolean;
+}
+
 // Mock the campaign store
 vi.mock('@/stores', async (importOriginal) => {
   const actual = (await importOriginal()) as typeof stores;
@@ -38,8 +50,15 @@ vi.mock('@/services/api/hooks/version-comparison', async (importOriginal) => {
 });
 
 // Mock react-diff-viewer-continued
+interface DiffViewerProps {
+  oldValue: string;
+  newValue: string;
+  leftTitle: string;
+  rightTitle: string;
+}
+
 vi.mock('react-diff-viewer-continued', () => ({
-  default: ({ oldValue, newValue, leftTitle, rightTitle }: any) => (
+  default: ({ oldValue, newValue, leftTitle, rightTitle }: DiffViewerProps) => (
     <div>
       <div data-testid="left-title">{leftTitle}</div>
       <div data-testid="right-title">{rightTitle}</div>
@@ -139,7 +158,7 @@ describe('BranchComparisonView', () => {
       hierarchy: [],
       flatBranches: mockBranches,
       refetch: vi.fn(),
-    } as any);
+    } as ReturnType<typeof hooks.useGetBranchHierarchy>);
 
     // Mock entity query hooks with default skipped state
     vi.mocked(versionHooks.useGetSettlementAsOf).mockReturnValue({
@@ -147,14 +166,14 @@ describe('BranchComparisonView', () => {
       loading: false,
       error: undefined,
       refetch: vi.fn(),
-    } as any);
+    } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>);
 
     vi.mocked(versionHooks.useGetStructureAsOf).mockReturnValue({
       data: undefined,
       loading: false,
       error: undefined,
       refetch: vi.fn(),
-    } as any);
+    } as MockQueryResult<{ structureAsOf: hooks.StructureVersion | null }>);
   });
 
   describe('Rendering and Visibility', () => {
@@ -260,7 +279,7 @@ describe('BranchComparisonView', () => {
         loading: true,
         error: undefined,
         refetch: vi.fn(),
-      } as any);
+      } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>);
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);
@@ -282,22 +301,24 @@ describe('BranchComparisonView', () => {
   describe('Comparison Results', () => {
     it('should display settlement comparison results', async () => {
       // Mock successful settlement queries
-      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
-        if (skip) {
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(
+        ({ skip }: MockHookSkipParam) => {
+          if (skip) {
+            return {
+              data: undefined,
+              loading: false,
+              error: undefined,
+              refetch: vi.fn(),
+            } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+          }
           return {
-            data: undefined,
+            data: { settlementAsOf: mockSettlement },
             loading: false,
             error: undefined,
             refetch: vi.fn(),
-          } as any;
+          } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
         }
-        return {
-          data: { settlementAsOf: mockSettlement },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn(),
-        } as any;
-      });
+      );
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);
@@ -324,22 +345,24 @@ describe('BranchComparisonView', () => {
 
     it('should display structure comparison results', async () => {
       // Mock successful structure queries
-      vi.mocked(versionHooks.useGetStructureAsOf).mockImplementation(({ skip }: any) => {
-        if (skip) {
+      vi.mocked(versionHooks.useGetStructureAsOf).mockImplementation(
+        ({ skip }: MockHookSkipParam) => {
+          if (skip) {
+            return {
+              data: undefined,
+              loading: false,
+              error: undefined,
+              refetch: vi.fn(),
+            } as MockQueryResult<{ structureAsOf: hooks.StructureVersion | null }>;
+          }
           return {
-            data: undefined,
+            data: { structureAsOf: mockStructure },
             loading: false,
             error: undefined,
             refetch: vi.fn(),
-          } as any;
+          } as MockQueryResult<{ structureAsOf: hooks.StructureVersion | null }>;
         }
-        return {
-          data: { structureAsOf: mockStructure },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn(),
-        } as any;
-      });
+      );
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);
@@ -366,7 +389,7 @@ describe('BranchComparisonView', () => {
         loading: false,
         error: undefined,
         refetch: vi.fn(),
-      } as any);
+      } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>);
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);
@@ -390,7 +413,7 @@ describe('BranchComparisonView', () => {
         loading: false,
         error: new Error('Network error'),
         refetch: vi.fn(),
-      } as any);
+      } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>);
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);
@@ -413,16 +436,24 @@ describe('BranchComparisonView', () => {
   describe('Clear Functionality', () => {
     it('should show clear button after comparison', async () => {
       // Mock returns data for both source and target branches
-      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
-        if (skip)
-          return { data: undefined, loading: false, error: undefined, refetch: vi.fn() } as any;
-        return {
-          data: { settlementAsOf: mockSettlement },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn(),
-        } as any;
-      });
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(
+        ({ skip }: MockHookSkipParam) => {
+          if (skip) {
+            return {
+              data: undefined,
+              loading: false,
+              error: undefined,
+              refetch: vi.fn(),
+            } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+          }
+          return {
+            data: { settlementAsOf: mockSettlement },
+            loading: false,
+            error: undefined,
+            refetch: vi.fn(),
+          } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+        }
+      );
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);
@@ -442,16 +473,24 @@ describe('BranchComparisonView', () => {
 
     it('should clear results and reset form when clear is clicked', async () => {
       // Mock returns data for both source and target branches
-      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
-        if (skip)
-          return { data: undefined, loading: false, error: undefined, refetch: vi.fn() } as any;
-        return {
-          data: { settlementAsOf: mockSettlement },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn(),
-        } as any;
-      });
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(
+        ({ skip }: MockHookSkipParam) => {
+          if (skip) {
+            return {
+              data: undefined,
+              loading: false,
+              error: undefined,
+              refetch: vi.fn(),
+            } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+          }
+          return {
+            data: { settlementAsOf: mockSettlement },
+            loading: false,
+            error: undefined,
+            refetch: vi.fn(),
+          } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+        }
+      );
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);
@@ -491,16 +530,24 @@ describe('BranchComparisonView', () => {
 
     it('should not show help text when comparing', async () => {
       // Mock returns data for both source and target branches
-      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(({ skip }: any) => {
-        if (skip)
-          return { data: undefined, loading: false, error: undefined, refetch: vi.fn() } as any;
-        return {
-          data: { settlementAsOf: mockSettlement },
-          loading: false,
-          error: undefined,
-          refetch: vi.fn(),
-        } as any;
-      });
+      vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(
+        ({ skip }: MockHookSkipParam) => {
+          if (skip) {
+            return {
+              data: undefined,
+              loading: false,
+              error: undefined,
+              refetch: vi.fn(),
+            } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+          }
+          return {
+            data: { settlementAsOf: mockSettlement },
+            loading: false,
+            error: undefined,
+            refetch: vi.fn(),
+          } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+        }
+      );
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);

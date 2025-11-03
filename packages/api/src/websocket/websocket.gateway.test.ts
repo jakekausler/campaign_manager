@@ -308,7 +308,7 @@ describe('WebSocketGatewayClass', () => {
     });
 
     it('should handle disconnect of non-existent client gracefully', () => {
-      const mockClient = { id: 'non-existent-client' } as any;
+      const mockClient = { id: 'non-existent-client' } as { id: string };
 
       // Should not throw
       expect(() => gateway.handleDisconnect(mockClient)).not.toThrow();

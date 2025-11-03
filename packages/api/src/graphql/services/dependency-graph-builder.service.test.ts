@@ -4,11 +4,67 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import { DependencyNodeType, DependencyEdgeType } from '../types/dependency-graph.type';
 
 import { DependencyGraphBuilderService } from './dependency-graph-builder.service';
+
+// Type definitions for mock data matching Prisma schema
+type MockStateVariable = {
+  id: string;
+  scope: string;
+  scopeId: string | null;
+  key: string;
+  value: Prisma.JsonValue;
+  type: string;
+  formula: Prisma.JsonValue;
+  description: string | null;
+  isActive: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+  createdBy: string;
+  updatedBy: string | null;
+};
+
+type MockFieldCondition = {
+  id: string;
+  entityType: string;
+  entityId: string | null;
+  field: string;
+  expression: Prisma.JsonValue;
+  description: string | null;
+  isActive: boolean;
+  priority: number;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+  createdBy: string;
+  updatedBy: string | null;
+};
+
+type MockEffect = {
+  id: string;
+  name: string;
+  description: string | null;
+  effectType: string;
+  payload: Prisma.JsonValue;
+  entityType: string;
+  entityId: string;
+  timing: string;
+  priority: number;
+  isActive: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+  encounter: { campaignId: string } | null;
+  event: { campaignId: string } | null;
+};
 
 describe('DependencyGraphBuilderService', () => {
   let service: DependencyGraphBuilderService;
@@ -80,7 +136,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should add variable nodes for all active state variables', async () => {
-      const variables = [
+      const variables: MockStateVariable[] = [
         {
           id: 'var-1',
           scope: 'kingdom',
@@ -118,7 +174,7 @@ describe('DependencyGraphBuilderService', () => {
       ];
 
       prisma.fieldCondition.findMany.mockResolvedValue([]);
-      prisma.stateVariable.findMany.mockResolvedValue(variables as any);
+      prisma.stateVariable.findMany.mockResolvedValue(variables);
       prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
@@ -140,7 +196,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should add condition nodes for all active field conditions', async () => {
-      const conditions = [
+      const conditions: MockFieldCondition[] = [
         {
           id: 'cond-1',
           entityType: 'Settlement',
@@ -159,7 +215,7 @@ describe('DependencyGraphBuilderService', () => {
         },
       ];
 
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -176,7 +232,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should create READS edges from conditions to variables', async () => {
-      const variables = [
+      const variables: MockStateVariable[] = [
         {
           id: 'var-1',
           scope: 'settlement',
@@ -213,7 +269,7 @@ describe('DependencyGraphBuilderService', () => {
         },
       ];
 
-      const conditions = [
+      const conditions: MockFieldCondition[] = [
         {
           id: 'cond-1',
           entityType: 'Settlement',
@@ -234,8 +290,8 @@ describe('DependencyGraphBuilderService', () => {
         },
       ];
 
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
-      prisma.stateVariable.findMany.mockResolvedValue(variables as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
+      prisma.stateVariable.findMany.mockResolvedValue(variables);
       prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
@@ -250,7 +306,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should handle conditions referencing non-existent variables gracefully', async () => {
-      const conditions = [
+      const conditions: MockFieldCondition[] = [
         {
           id: 'cond-1',
           entityType: 'Settlement',
@@ -269,7 +325,7 @@ describe('DependencyGraphBuilderService', () => {
         },
       ];
 
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]); // No variables
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -280,7 +336,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should filter out inactive and deleted variables', async () => {
-      const variables = [
+      const variables: MockStateVariable[] = [
         {
           id: 'var-1',
           scope: 'kingdom',
@@ -301,7 +357,7 @@ describe('DependencyGraphBuilderService', () => {
       ];
 
       prisma.fieldCondition.findMany.mockResolvedValue([]);
-      prisma.stateVariable.findMany.mockResolvedValue(variables as any);
+      prisma.stateVariable.findMany.mockResolvedValue(variables);
       prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
@@ -310,7 +366,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should filter out inactive and deleted conditions', async () => {
-      const conditions = [
+      const conditions: MockFieldCondition[] = [
         {
           id: 'cond-1',
           entityType: 'Settlement',
@@ -329,7 +385,7 @@ describe('DependencyGraphBuilderService', () => {
         },
       ];
 
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -339,7 +395,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should add effect nodes for all active patch-type effects', async () => {
-      const effects = [
+      const effects: MockEffect[] = [
         {
           id: 'effect-1',
           name: 'Add treasury gold',
@@ -387,7 +443,7 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
-      prisma.effect.findMany.mockResolvedValue(effects as any);
+      prisma.effect.findMany.mockResolvedValue(effects);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -411,7 +467,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should create WRITES edges from effects to variables', async () => {
-      const variables = [
+      const variables: MockStateVariable[] = [
         {
           id: 'var-1',
           scope: 'kingdom',
@@ -448,7 +504,7 @@ describe('DependencyGraphBuilderService', () => {
         },
       ];
 
-      const effects = [
+      const effects: MockEffect[] = [
         {
           id: 'effect-1',
           name: 'Modify kingdom',
@@ -475,8 +531,8 @@ describe('DependencyGraphBuilderService', () => {
       ];
 
       prisma.fieldCondition.findMany.mockResolvedValue([]);
-      prisma.stateVariable.findMany.mockResolvedValue(variables as any);
-      prisma.effect.findMany.mockResolvedValue(effects as any);
+      prisma.stateVariable.findMany.mockResolvedValue(variables);
+      prisma.effect.findMany.mockResolvedValue(effects);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -490,7 +546,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should filter out non-patch effect types', async () => {
-      const effects = [
+      const effects: MockEffect[] = [
         {
           id: 'effect-1',
           name: 'Trigger event',
@@ -515,7 +571,7 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
-      prisma.effect.findMany.mockResolvedValue(effects as any);
+      prisma.effect.findMany.mockResolvedValue(effects);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -524,7 +580,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should filter out effects from other campaigns', async () => {
-      const effects = [
+      const effects: MockEffect[] = [
         {
           id: 'effect-1',
           name: 'Add treasury gold',
@@ -569,7 +625,7 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
-      prisma.effect.findMany.mockResolvedValue(effects as any);
+      prisma.effect.findMany.mockResolvedValue(effects);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -579,7 +635,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should handle effects referencing non-existent variables gracefully', async () => {
-      const effects = [
+      const effects: MockEffect[] = [
         {
           id: 'effect-1',
           name: 'Add treasury gold',
@@ -604,7 +660,7 @@ describe('DependencyGraphBuilderService', () => {
 
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]); // No variables
-      prisma.effect.findMany.mockResolvedValue(effects as any);
+      prisma.effect.findMany.mockResolvedValue(effects);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -623,7 +679,7 @@ describe('DependencyGraphBuilderService', () => {
 
   describe('updateGraphForCondition', () => {
     it('should add new condition node and edges to existing graph', async () => {
-      const condition = {
+      const condition: MockFieldCondition = {
         id: 'cond-new',
         entityType: 'Settlement',
         entityId: 'settlement-1',
@@ -640,11 +696,11 @@ describe('DependencyGraphBuilderService', () => {
         updatedBy: null,
       };
 
-      prisma.fieldCondition.findUnique.mockResolvedValue(condition as any);
+      prisma.fieldCondition.findUnique.mockResolvedValue(condition);
 
       // Build initial graph with just a variable
       prisma.fieldCondition.findMany.mockResolvedValue([]);
-      prisma.stateVariable.findMany.mockResolvedValue([
+      const variables: MockStateVariable[] = [
         {
           id: 'var-1',
           scope: 'settlement',
@@ -662,7 +718,8 @@ describe('DependencyGraphBuilderService', () => {
           createdBy: 'user-1',
           updatedBy: null,
         },
-      ] as any);
+      ];
+      prisma.stateVariable.findMany.mockResolvedValue(variables);
       prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
@@ -676,7 +733,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should update existing condition node when expression changes', async () => {
-      const initialCondition = {
+      const initialCondition: MockFieldCondition = {
         id: 'cond-1',
         entityType: 'Settlement',
         entityId: 'settlement-1',
@@ -693,7 +750,7 @@ describe('DependencyGraphBuilderService', () => {
         updatedBy: null,
       };
 
-      const updatedCondition = {
+      const updatedCondition: MockFieldCondition = {
         ...initialCondition,
         expression: {
           and: [{ '>': [{ var: 'population' }, 5000] }, { '>': [{ var: 'merchant_count' }, 10] }],
@@ -702,8 +759,8 @@ describe('DependencyGraphBuilderService', () => {
       };
 
       // Build initial graph
-      prisma.fieldCondition.findMany.mockResolvedValue([initialCondition as any]);
-      prisma.stateVariable.findMany.mockResolvedValue([
+      prisma.fieldCondition.findMany.mockResolvedValue([initialCondition]);
+      const variables: MockStateVariable[] = [
         {
           id: 'var-1',
           scope: 'settlement',
@@ -738,14 +795,15 @@ describe('DependencyGraphBuilderService', () => {
           createdBy: 'user-1',
           updatedBy: null,
         },
-      ] as any);
+      ];
+      prisma.stateVariable.findMany.mockResolvedValue(variables);
       prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getEdgeCount()).toBe(1); // Initially reads only 'population'
 
       // Update condition
-      prisma.fieldCondition.findUnique.mockResolvedValue(updatedCondition as any);
+      prisma.fieldCondition.findUnique.mockResolvedValue(updatedCondition);
       await service.updateGraphForCondition(graph, 'cond-1');
 
       expect(graph.getNodeCount()).toBe(3); // 2 variables + 1 condition
@@ -753,7 +811,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should remove condition node when condition is deleted', async () => {
-      const condition = {
+      const condition: MockFieldCondition = {
         id: 'cond-1',
         entityType: 'Settlement',
         entityId: 'settlement-1',
@@ -771,7 +829,7 @@ describe('DependencyGraphBuilderService', () => {
       };
 
       // Build initial graph
-      prisma.fieldCondition.findMany.mockResolvedValue([condition as any]);
+      prisma.fieldCondition.findMany.mockResolvedValue([condition]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -787,7 +845,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should remove condition node when condition becomes inactive', async () => {
-      const condition = {
+      const condition: MockFieldCondition = {
         id: 'cond-1',
         entityType: 'Settlement',
         entityId: 'settlement-1',
@@ -805,7 +863,7 @@ describe('DependencyGraphBuilderService', () => {
       };
 
       // Build initial graph
-      prisma.fieldCondition.findMany.mockResolvedValue([condition as any]);
+      prisma.fieldCondition.findMany.mockResolvedValue([condition]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -813,10 +871,11 @@ describe('DependencyGraphBuilderService', () => {
       expect(graph.getNodeCount()).toBe(1);
 
       // Deactivate condition
-      prisma.fieldCondition.findUnique.mockResolvedValue({
+      const inactiveCondition: MockFieldCondition = {
         ...condition,
         isActive: false,
-      } as any);
+      };
+      prisma.fieldCondition.findUnique.mockResolvedValue(inactiveCondition);
       await service.updateGraphForCondition(graph, 'cond-1');
 
       expect(graph.getNodeCount()).toBe(0);
@@ -825,7 +884,7 @@ describe('DependencyGraphBuilderService', () => {
 
   describe('updateGraphForVariable', () => {
     it('should add new variable node to existing graph', async () => {
-      const variable = {
+      const variable: MockStateVariable = {
         id: 'var-new',
         scope: 'kingdom',
         scopeId: 'kingdom-1',
@@ -843,7 +902,7 @@ describe('DependencyGraphBuilderService', () => {
         updatedBy: null,
       };
 
-      prisma.stateVariable.findUnique.mockResolvedValue(variable as any);
+      prisma.stateVariable.findUnique.mockResolvedValue(variable);
 
       // Build empty graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
@@ -863,7 +922,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should update existing variable node metadata', async () => {
-      const initialVariable = {
+      const initialVariable: MockStateVariable = {
         id: 'var-1',
         scope: 'kingdom',
         scopeId: 'kingdom-1',
@@ -881,7 +940,7 @@ describe('DependencyGraphBuilderService', () => {
         updatedBy: null,
       };
 
-      const updatedVariable = {
+      const updatedVariable: MockStateVariable = {
         ...initialVariable,
         description: 'New description',
         value: 2000,
@@ -890,14 +949,14 @@ describe('DependencyGraphBuilderService', () => {
 
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
-      prisma.stateVariable.findMany.mockResolvedValue([initialVariable as any]);
+      prisma.stateVariable.findMany.mockResolvedValue([initialVariable]);
       prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
 
       // Update variable
-      prisma.stateVariable.findUnique.mockResolvedValue(updatedVariable as any);
+      prisma.stateVariable.findUnique.mockResolvedValue(updatedVariable);
       await service.updateGraphForVariable(graph, 'var-1');
 
       expect(graph.getNodeCount()).toBe(1); // Still 1 node
@@ -906,7 +965,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should remove variable node when variable is deleted', async () => {
-      const variable = {
+      const variable: MockStateVariable = {
         id: 'var-1',
         scope: 'kingdom',
         scopeId: 'kingdom-1',
@@ -926,7 +985,7 @@ describe('DependencyGraphBuilderService', () => {
 
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
-      prisma.stateVariable.findMany.mockResolvedValue([variable as any]);
+      prisma.stateVariable.findMany.mockResolvedValue([variable]);
       prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
@@ -940,7 +999,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should remove variable node when variable becomes inactive', async () => {
-      const variable = {
+      const variable: MockStateVariable = {
         id: 'var-1',
         scope: 'kingdom',
         scopeId: 'kingdom-1',
@@ -960,17 +1019,18 @@ describe('DependencyGraphBuilderService', () => {
 
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
-      prisma.stateVariable.findMany.mockResolvedValue([variable as any]);
+      prisma.stateVariable.findMany.mockResolvedValue([variable]);
       prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
 
       // Deactivate variable
-      prisma.stateVariable.findUnique.mockResolvedValue({
+      const inactiveVariable: MockStateVariable = {
         ...variable,
         isActive: false,
-      } as any);
+      };
+      prisma.stateVariable.findUnique.mockResolvedValue(inactiveVariable);
       await service.updateGraphForVariable(graph, 'var-1');
 
       expect(graph.getNodeCount()).toBe(0);
@@ -979,7 +1039,7 @@ describe('DependencyGraphBuilderService', () => {
 
   describe('updateGraphForEffect', () => {
     it('should update effect node when effect changes', async () => {
-      const effect = {
+      const effect: MockEffect = {
         id: 'effect-1',
         name: 'Original effect',
         description: 'Original description',
@@ -1003,20 +1063,20 @@ describe('DependencyGraphBuilderService', () => {
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
-      prisma.effect.findMany.mockResolvedValue([effect as any]);
+      prisma.effect.findMany.mockResolvedValue([effect]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
 
       // Update effect with new payload
-      const updatedEffect = {
+      const updatedEffect: MockEffect = {
         ...effect,
         name: 'Updated effect',
         payload: [{ op: 'replace', path: '/resources', value: {} }],
         version: 2,
       };
 
-      prisma.effect.findUnique.mockResolvedValue(updatedEffect as any);
+      prisma.effect.findUnique.mockResolvedValue(updatedEffect);
       await service.updateGraphForEffect(graph, 'effect-1');
 
       const node = graph.getNode('EFFECT:effect-1');
@@ -1025,7 +1085,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should update effect edges when payload changes', async () => {
-      const variable1 = {
+      const variable1: MockStateVariable = {
         id: 'var-1',
         scope: 'kingdom',
         scopeId: 'kingdom-1',
@@ -1043,7 +1103,7 @@ describe('DependencyGraphBuilderService', () => {
         updatedBy: null,
       };
 
-      const variable2 = {
+      const variable2: MockStateVariable = {
         id: 'var-2',
         scope: 'kingdom',
         scopeId: 'kingdom-1',
@@ -1061,7 +1121,7 @@ describe('DependencyGraphBuilderService', () => {
         updatedBy: null,
       };
 
-      const effect = {
+      const effect: MockEffect = {
         id: 'effect-1',
         name: 'Test effect',
         description: null,
@@ -1084,20 +1144,20 @@ describe('DependencyGraphBuilderService', () => {
 
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
-      prisma.stateVariable.findMany.mockResolvedValue([variable1, variable2] as any);
-      prisma.effect.findMany.mockResolvedValue([effect as any]);
+      prisma.stateVariable.findMany.mockResolvedValue([variable1, variable2]);
+      prisma.effect.findMany.mockResolvedValue([effect]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getEdgeCount()).toBe(1); // effect writes treasury
 
       // Update effect to write different variable
-      const updatedEffect = {
+      const updatedEffect: MockEffect = {
         ...effect,
         payload: [{ op: 'replace', path: '/resources', value: {} }],
         version: 2,
       };
 
-      prisma.effect.findUnique.mockResolvedValue(updatedEffect as any);
+      prisma.effect.findUnique.mockResolvedValue(updatedEffect);
       await service.updateGraphForEffect(graph, 'effect-1');
 
       // Should still have 1 edge, but to different variable
@@ -1108,7 +1168,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should remove effect node when effect is deleted', async () => {
-      const effect = {
+      const effect: MockEffect = {
         id: 'effect-1',
         name: 'Test effect',
         description: null,
@@ -1132,7 +1192,7 @@ describe('DependencyGraphBuilderService', () => {
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
-      prisma.effect.findMany.mockResolvedValue([effect as any]);
+      prisma.effect.findMany.mockResolvedValue([effect]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
@@ -1145,7 +1205,7 @@ describe('DependencyGraphBuilderService', () => {
     });
 
     it('should remove effect node when effect becomes inactive', async () => {
-      const effect = {
+      const effect: MockEffect = {
         id: 'effect-1',
         name: 'Test effect',
         description: null,
@@ -1169,23 +1229,24 @@ describe('DependencyGraphBuilderService', () => {
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
-      prisma.effect.findMany.mockResolvedValue([effect as any]);
+      prisma.effect.findMany.mockResolvedValue([effect]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
 
       // Deactivate effect
-      prisma.effect.findUnique.mockResolvedValue({
+      const inactiveEffect: MockEffect = {
         ...effect,
         isActive: false,
-      } as any);
+      };
+      prisma.effect.findUnique.mockResolvedValue(inactiveEffect);
       await service.updateGraphForEffect(graph, 'effect-1');
 
       expect(graph.getNodeCount()).toBe(0);
     });
 
     it('should remove effect node when effect changes to non-patch type', async () => {
-      const effect = {
+      const effect: MockEffect = {
         id: 'effect-1',
         name: 'Test effect',
         description: null,
@@ -1209,17 +1270,18 @@ describe('DependencyGraphBuilderService', () => {
       // Build initial graph
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
-      prisma.effect.findMany.mockResolvedValue([effect as any]);
+      prisma.effect.findMany.mockResolvedValue([effect]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
 
       // Change effect type
-      prisma.effect.findUnique.mockResolvedValue({
+      const nonPatchEffect: MockEffect = {
         ...effect,
         effectType: 'trigger_event',
         payload: { eventId: 'event-2' },
-      } as any);
+      };
+      prisma.effect.findUnique.mockResolvedValue(nonPatchEffect);
       await service.updateGraphForEffect(graph, 'effect-1');
 
       expect(graph.getNodeCount()).toBe(0);
@@ -1228,7 +1290,7 @@ describe('DependencyGraphBuilderService', () => {
 
   describe('removeFromGraph', () => {
     it('should remove node and all connected edges', async () => {
-      const variables = [
+      const variables: MockStateVariable[] = [
         {
           id: 'var-1',
           scope: 'settlement',
@@ -1248,7 +1310,7 @@ describe('DependencyGraphBuilderService', () => {
         },
       ];
 
-      const conditions = [
+      const conditions: MockFieldCondition[] = [
         {
           id: 'cond-1',
           entityType: 'Settlement',
@@ -1267,8 +1329,8 @@ describe('DependencyGraphBuilderService', () => {
         },
       ];
 
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
-      prisma.stateVariable.findMany.mockResolvedValue(variables as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
+      prisma.stateVariable.findMany.mockResolvedValue(variables);
       prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');

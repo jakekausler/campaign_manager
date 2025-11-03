@@ -21,6 +21,7 @@ import {
 import type {
   Effect,
   EffectExecution,
+  EffectTiming,
   Encounter,
   Event,
   Settlement,
@@ -267,7 +268,7 @@ export class EffectExecutionService {
       where: {
         entityType,
         entityId,
-        timing: timing as any, // Type cast needed for Prisma enum
+        timing: timing as EffectTiming,
         isActive: true,
         deletedAt: null,
       },
@@ -426,25 +427,25 @@ export class EffectExecutionService {
       case 'ENCOUNTER':
         await tx.encounter.update({
           where: { id: entityId },
-          data: patchedEntity as any,
+          data: patchedEntity as Prisma.EncounterUpdateInput,
         });
         break;
       case 'EVENT':
         await tx.event.update({
           where: { id: entityId },
-          data: patchedEntity as any,
+          data: patchedEntity as Prisma.EventUpdateInput,
         });
         break;
       case 'SETTLEMENT':
         await tx.settlement.update({
           where: { id: entityId },
-          data: patchedEntity as any,
+          data: patchedEntity as Prisma.SettlementUpdateInput,
         });
         break;
       case 'STRUCTURE':
         await tx.structure.update({
           where: { id: entityId },
-          data: patchedEntity as any,
+          data: patchedEntity as Prisma.StructureUpdateInput,
         });
         break;
       default:

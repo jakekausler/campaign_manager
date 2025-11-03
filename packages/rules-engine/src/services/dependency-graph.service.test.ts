@@ -5,6 +5,7 @@
 
 import { Logger } from '@nestjs/common';
 
+import { DependencyNodeType, DependencyEdgeType } from '../types/dependency-graph.types';
 import { DependencyGraph } from '../utils/dependency-graph';
 
 import { DependencyGraphBuilderService } from './dependency-graph-builder.service';
@@ -18,12 +19,14 @@ describe('DependencyGraphService', () => {
   let mockBuilder: jest.Mocked<DependencyGraphBuilderService>;
 
   beforeEach(() => {
-    // Create mock builder
+    // Create mock builder with all required methods
     mockBuilder = {
       buildGraphForCampaign: jest.fn(),
       updateGraphForCondition: jest.fn(),
       updateGraphForVariable: jest.fn(),
-    } as any;
+      removeFromGraph: jest.fn(),
+      onModuleDestroy: jest.fn(),
+    } as unknown as jest.Mocked<DependencyGraphBuilderService>;
 
     // Create service with mocked dependencies
     service = new DependencyGraphService(mockBuilder);
@@ -124,12 +127,12 @@ describe('DependencyGraphService', () => {
       const mockGraph = new DependencyGraph();
 
       // Add nodes and edges
-      mockGraph.addNode({ id: 'CONDITION:1', type: 'CONDITION' as any, entityId: '1' });
-      mockGraph.addNode({ id: 'VARIABLE:x', type: 'VARIABLE' as any, entityId: 'x' });
+      mockGraph.addNode({ id: 'CONDITION:1', type: DependencyNodeType.CONDITION, entityId: '1' });
+      mockGraph.addNode({ id: 'VARIABLE:x', type: DependencyNodeType.VARIABLE, entityId: 'x' });
       mockGraph.addEdge({
         fromId: 'CONDITION:1',
         toId: 'VARIABLE:x',
-        type: 'READS' as any,
+        type: DependencyEdgeType.READS,
       });
 
       mockBuilder.buildGraphForCampaign.mockResolvedValue(mockGraph);
@@ -145,12 +148,12 @@ describe('DependencyGraphService', () => {
       const mockGraph = new DependencyGraph();
 
       // Add nodes and edges
-      mockGraph.addNode({ id: 'CONDITION:1', type: 'CONDITION' as any, entityId: '1' });
-      mockGraph.addNode({ id: 'VARIABLE:x', type: 'VARIABLE' as any, entityId: 'x' });
+      mockGraph.addNode({ id: 'CONDITION:1', type: DependencyNodeType.CONDITION, entityId: '1' });
+      mockGraph.addNode({ id: 'VARIABLE:x', type: DependencyNodeType.VARIABLE, entityId: 'x' });
       mockGraph.addEdge({
         fromId: 'CONDITION:1',
         toId: 'VARIABLE:x',
-        type: 'READS' as any,
+        type: DependencyEdgeType.READS,
       });
 
       mockBuilder.buildGraphForCampaign.mockResolvedValue(mockGraph);
@@ -166,9 +169,9 @@ describe('DependencyGraphService', () => {
       const mockGraph = new DependencyGraph();
 
       // Add acyclic graph
-      mockGraph.addNode({ id: 'A', type: 'CONDITION' as any, entityId: 'a' });
-      mockGraph.addNode({ id: 'B', type: 'VARIABLE' as any, entityId: 'b' });
-      mockGraph.addEdge({ fromId: 'A', toId: 'B', type: 'READS' as any });
+      mockGraph.addNode({ id: 'A', type: DependencyNodeType.CONDITION, entityId: 'a' });
+      mockGraph.addNode({ id: 'B', type: DependencyNodeType.VARIABLE, entityId: 'b' });
+      mockGraph.addEdge({ fromId: 'A', toId: 'B', type: DependencyEdgeType.READS });
 
       mockBuilder.buildGraphForCampaign.mockResolvedValue(mockGraph);
 
@@ -184,12 +187,12 @@ describe('DependencyGraphService', () => {
       const mockGraph = new DependencyGraph();
 
       // Add nodes
-      mockGraph.addNode({ id: 'CONDITION:1', type: 'CONDITION' as any, entityId: '1' });
-      mockGraph.addNode({ id: 'VARIABLE:x', type: 'VARIABLE' as any, entityId: 'x' });
+      mockGraph.addNode({ id: 'CONDITION:1', type: DependencyNodeType.CONDITION, entityId: '1' });
+      mockGraph.addNode({ id: 'VARIABLE:x', type: DependencyNodeType.VARIABLE, entityId: 'x' });
       mockGraph.addEdge({
         fromId: 'CONDITION:1',
         toId: 'VARIABLE:x',
-        type: 'READS' as any,
+        type: DependencyEdgeType.READS,
       });
 
       mockBuilder.buildGraphForCampaign.mockResolvedValue(mockGraph);

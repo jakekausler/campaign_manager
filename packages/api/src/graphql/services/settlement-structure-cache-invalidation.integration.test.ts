@@ -4,6 +4,7 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import type { Settlement, Structure, Branch, Kingdom, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
@@ -19,6 +20,21 @@ import { DependencyGraphService } from './dependency-graph.service';
 import { SettlementService } from './settlement.service';
 import { StructureService } from './structure.service';
 import { VersionService } from './version.service';
+
+// Type definitions for test mocks
+type SettlementWithKingdom = Settlement & {
+  kingdom: Pick<Kingdom, 'id' | 'campaignId'>;
+};
+
+type StructureWithRelations = Structure & {
+  settlement: {
+    id: string;
+    kingdomId: string;
+    kingdom: Pick<Kingdom, 'id' | 'campaignId'>;
+  };
+};
+
+type MockBranch = Pick<Branch, 'id' | 'campaignId' | 'name' | 'deletedAt'>;
 
 describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
   let settlementService: SettlementService;
@@ -137,29 +153,28 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       const settlementId = 'settlement-789';
       const branchId = 'main';
 
-      const existingSettlement = {
+      const existingSettlement: Settlement = {
         id: settlementId,
         name: 'Riverside',
         level: 3,
         kingdomId,
         locationId: 'location-123',
-        variables: { population: 5000 },
-        variableSchemas: {},
+        variables: { population: 5000 } as Prisma.JsonValue,
+        variableSchemas: [] as Prisma.JsonValue,
         version: 0,
-        createdBy: mockUser.id,
-        updatedBy: null,
         deletedAt: null,
+        archivedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const updatedSettlement = {
+      const updatedSettlement: Settlement = {
         ...existingSettlement,
         level: 4,
         version: 1,
       };
 
-      const settlementWithKingdom = {
+      const settlementWithKingdom: SettlementWithKingdom = {
         ...existingSettlement,
         kingdom: {
           id: kingdomId,
@@ -168,13 +183,9 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       };
 
       // Mock settlement lookup
-      jest
-        .spyOn(prismaService.settlement, 'findFirst')
-        .mockResolvedValue(existingSettlement as any);
-      jest
-        .spyOn(prismaService.settlement, 'findUnique')
-        .mockResolvedValue(settlementWithKingdom as any);
-      jest.spyOn(prismaService.settlement, 'update').mockResolvedValue(updatedSettlement as any);
+      jest.spyOn(prismaService.settlement, 'findFirst').mockResolvedValue(existingSettlement);
+      jest.spyOn(prismaService.settlement, 'findUnique').mockResolvedValue(settlementWithKingdom);
+      jest.spyOn(prismaService.settlement, 'update').mockResolvedValue(updatedSettlement);
 
       // Mock branch lookup
       jest.spyOn(prismaService.branch, 'findFirst').mockResolvedValue({
@@ -182,7 +193,7 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
-      } as any);
+      } satisfies MockBranch);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -207,29 +218,28 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       const settlementId = 'settlement-789';
       const branchId = 'main';
 
-      const existingSettlement = {
+      const existingSettlement: Settlement = {
         id: settlementId,
         name: 'Riverside',
         level: 3,
         kingdomId,
         locationId: 'location-123',
-        variables: { population: 5000 },
-        variableSchemas: {},
+        variables: { population: 5000 } as Prisma.JsonValue,
+        variableSchemas: [] as Prisma.JsonValue,
         version: 0,
-        createdBy: mockUser.id,
-        updatedBy: null,
         deletedAt: null,
+        archivedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const updatedSettlement = {
+      const updatedSettlement: Settlement = {
         ...existingSettlement,
-        variables: { population: 6000 },
+        variables: { population: 6000 } as Prisma.JsonValue,
         version: 1,
       };
 
-      const settlementWithKingdom = {
+      const settlementWithKingdom: SettlementWithKingdom = {
         ...existingSettlement,
         kingdom: {
           id: kingdomId,
@@ -238,13 +248,9 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       };
 
       // Mock settlement lookup
-      jest
-        .spyOn(prismaService.settlement, 'findFirst')
-        .mockResolvedValue(existingSettlement as any);
-      jest
-        .spyOn(prismaService.settlement, 'findUnique')
-        .mockResolvedValue(settlementWithKingdom as any);
-      jest.spyOn(prismaService.settlement, 'update').mockResolvedValue(updatedSettlement as any);
+      jest.spyOn(prismaService.settlement, 'findFirst').mockResolvedValue(existingSettlement);
+      jest.spyOn(prismaService.settlement, 'findUnique').mockResolvedValue(settlementWithKingdom);
+      jest.spyOn(prismaService.settlement, 'update').mockResolvedValue(updatedSettlement);
 
       // Mock branch lookup
       jest.spyOn(prismaService.branch, 'findFirst').mockResolvedValue({
@@ -252,7 +258,7 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
-      } as any);
+      } satisfies MockBranch);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -276,29 +282,28 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       const kingdomId = 'kingdom-456';
       const settlementId = 'settlement-789';
 
-      const existingSettlement = {
+      const existingSettlement: Settlement = {
         id: settlementId,
         name: 'Riverside',
         level: 3,
         kingdomId,
         locationId: 'location-123',
-        variables: {},
-        variableSchemas: {},
+        variables: {} as Prisma.JsonValue,
+        variableSchemas: [] as Prisma.JsonValue,
         version: 0,
-        createdBy: mockUser.id,
-        updatedBy: null,
         deletedAt: null,
+        archivedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const updatedSettlement = {
+      const updatedSettlement: Settlement = {
         ...existingSettlement,
         level: 5,
         version: 1,
       };
 
-      const settlementWithKingdom = {
+      const settlementWithKingdom: SettlementWithKingdom = {
         ...existingSettlement,
         kingdom: {
           id: kingdomId,
@@ -307,13 +312,9 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       };
 
       // Mock settlement lookup
-      jest
-        .spyOn(prismaService.settlement, 'findFirst')
-        .mockResolvedValue(existingSettlement as any);
-      jest
-        .spyOn(prismaService.settlement, 'findUnique')
-        .mockResolvedValue(settlementWithKingdom as any);
-      jest.spyOn(prismaService.settlement, 'update').mockResolvedValue(updatedSettlement as any);
+      jest.spyOn(prismaService.settlement, 'findFirst').mockResolvedValue(existingSettlement);
+      jest.spyOn(prismaService.settlement, 'findUnique').mockResolvedValue(settlementWithKingdom);
+      jest.spyOn(prismaService.settlement, 'update').mockResolvedValue(updatedSettlement);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -335,29 +336,28 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       const structureId = 'structure-abc';
       const branchId = 'main';
 
-      const existingStructure = {
+      const existingStructure: Structure = {
         id: structureId,
         name: 'Temple of Light',
         type: 'temple',
         level: 2,
         settlementId,
-        variables: { integrity: 100 },
-        variableSchemas: {},
+        variables: { integrity: 100 } as Prisma.JsonValue,
+        variableSchemas: [] as Prisma.JsonValue,
         version: 0,
-        createdBy: mockUser.id,
-        updatedBy: null,
         deletedAt: null,
+        archivedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const updatedStructure = {
+      const updatedStructure: Structure = {
         ...existingStructure,
         level: 3,
         version: 1,
       };
 
-      const structureWithRelations = {
+      const structureWithRelations: StructureWithRelations = {
         ...existingStructure,
         settlement: {
           id: settlementId,
@@ -370,11 +370,9 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       };
 
       // Mock structure lookup
-      jest.spyOn(prismaService.structure, 'findFirst').mockResolvedValue(existingStructure as any);
-      jest
-        .spyOn(prismaService.structure, 'findUnique')
-        .mockResolvedValue(structureWithRelations as any);
-      jest.spyOn(prismaService.structure, 'update').mockResolvedValue(updatedStructure as any);
+      jest.spyOn(prismaService.structure, 'findFirst').mockResolvedValue(existingStructure);
+      jest.spyOn(prismaService.structure, 'findUnique').mockResolvedValue(structureWithRelations);
+      jest.spyOn(prismaService.structure, 'update').mockResolvedValue(updatedStructure);
 
       // Mock branch lookup
       jest.spyOn(prismaService.branch, 'findFirst').mockResolvedValue({
@@ -382,7 +380,7 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
-      } as any);
+      } satisfies MockBranch);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -408,29 +406,28 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       const structureId = 'structure-abc';
       const branchId = 'main';
 
-      const existingStructure = {
+      const existingStructure: Structure = {
         id: structureId,
         name: 'Temple of Light',
         type: 'temple',
         level: 2,
         settlementId,
-        variables: { integrity: 100, operational: true },
-        variableSchemas: {},
+        variables: { integrity: 100, operational: true } as Prisma.JsonValue,
+        variableSchemas: [] as Prisma.JsonValue,
         version: 0,
-        createdBy: mockUser.id,
-        updatedBy: null,
         deletedAt: null,
+        archivedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const updatedStructure = {
+      const updatedStructure: Structure = {
         ...existingStructure,
-        variables: { integrity: 80, operational: false },
+        variables: { integrity: 80, operational: false } as Prisma.JsonValue,
         version: 1,
       };
 
-      const structureWithRelations = {
+      const structureWithRelations: StructureWithRelations = {
         ...existingStructure,
         settlement: {
           id: settlementId,
@@ -443,11 +440,9 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       };
 
       // Mock structure lookup
-      jest.spyOn(prismaService.structure, 'findFirst').mockResolvedValue(existingStructure as any);
-      jest
-        .spyOn(prismaService.structure, 'findUnique')
-        .mockResolvedValue(structureWithRelations as any);
-      jest.spyOn(prismaService.structure, 'update').mockResolvedValue(updatedStructure as any);
+      jest.spyOn(prismaService.structure, 'findFirst').mockResolvedValue(existingStructure);
+      jest.spyOn(prismaService.structure, 'findUnique').mockResolvedValue(structureWithRelations);
+      jest.spyOn(prismaService.structure, 'update').mockResolvedValue(updatedStructure);
 
       // Mock branch lookup
       jest.spyOn(prismaService.branch, 'findFirst').mockResolvedValue({
@@ -455,7 +450,7 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
-      } as any);
+      } satisfies MockBranch);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -480,29 +475,28 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       const settlementId = 'settlement-789';
       const structureId = 'structure-abc';
 
-      const existingStructure = {
+      const existingStructure: Structure = {
         id: structureId,
         name: 'Temple of Light',
         type: 'temple',
         level: 2,
         settlementId,
-        variables: {},
-        variableSchemas: {},
+        variables: {} as Prisma.JsonValue,
+        variableSchemas: [] as Prisma.JsonValue,
         version: 0,
-        createdBy: mockUser.id,
-        updatedBy: null,
         deletedAt: null,
+        archivedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const updatedStructure = {
+      const updatedStructure: Structure = {
         ...existingStructure,
         level: 4,
         version: 1,
       };
 
-      const structureWithRelations = {
+      const structureWithRelations: StructureWithRelations = {
         ...existingStructure,
         settlement: {
           id: settlementId,
@@ -515,11 +509,9 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       };
 
       // Mock structure lookup
-      jest.spyOn(prismaService.structure, 'findFirst').mockResolvedValue(existingStructure as any);
-      jest
-        .spyOn(prismaService.structure, 'findUnique')
-        .mockResolvedValue(structureWithRelations as any);
-      jest.spyOn(prismaService.structure, 'update').mockResolvedValue(updatedStructure as any);
+      jest.spyOn(prismaService.structure, 'findFirst').mockResolvedValue(existingStructure);
+      jest.spyOn(prismaService.structure, 'findUnique').mockResolvedValue(structureWithRelations);
+      jest.spyOn(prismaService.structure, 'update').mockResolvedValue(updatedStructure);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -539,29 +531,28 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       const structureId = 'structure-abc';
       const branchId = 'main';
 
-      const existingStructure = {
+      const existingStructure: Structure = {
         id: structureId,
         name: 'Old Barracks',
         type: 'barracks',
         level: 2,
         settlementId,
-        variables: {},
-        variableSchemas: {},
+        variables: {} as Prisma.JsonValue,
+        variableSchemas: [] as Prisma.JsonValue,
         version: 0,
-        createdBy: mockUser.id,
-        updatedBy: null,
         deletedAt: null,
+        archivedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const updatedStructure = {
+      const updatedStructure: Structure = {
         ...existingStructure,
         type: 'fortress',
         version: 1,
       };
 
-      const structureWithRelations = {
+      const structureWithRelations: StructureWithRelations = {
         ...existingStructure,
         settlement: {
           id: settlementId,
@@ -574,11 +565,9 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       };
 
       // Mock structure lookup
-      jest.spyOn(prismaService.structure, 'findFirst').mockResolvedValue(existingStructure as any);
-      jest
-        .spyOn(prismaService.structure, 'findUnique')
-        .mockResolvedValue(structureWithRelations as any);
-      jest.spyOn(prismaService.structure, 'update').mockResolvedValue(updatedStructure as any);
+      jest.spyOn(prismaService.structure, 'findFirst').mockResolvedValue(existingStructure);
+      jest.spyOn(prismaService.structure, 'findUnique').mockResolvedValue(structureWithRelations);
+      jest.spyOn(prismaService.structure, 'update').mockResolvedValue(updatedStructure);
 
       // Mock branch lookup
       jest.spyOn(prismaService.branch, 'findFirst').mockResolvedValue({
@@ -586,7 +575,7 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
-      } as any);
+      } satisfies MockBranch);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -613,29 +602,28 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       const settlementId = 'settlement-789';
       const branchId = 'main';
 
-      const existingSettlement = {
+      const existingSettlement: Settlement = {
         id: settlementId,
         name: 'Riverside',
         level: 3,
         kingdomId,
         locationId: 'location-123',
-        variables: {},
-        variableSchemas: {},
+        variables: {} as Prisma.JsonValue,
+        variableSchemas: [] as Prisma.JsonValue,
         version: 0,
-        createdBy: mockUser.id,
-        updatedBy: null,
         deletedAt: null,
+        archivedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const updatedSettlement = {
+      const updatedSettlement: Settlement = {
         ...existingSettlement,
         level: 4,
         version: 1,
       };
 
-      const settlementWithKingdom = {
+      const settlementWithKingdom: SettlementWithKingdom = {
         ...existingSettlement,
         kingdom: {
           id: kingdomId,
@@ -644,13 +632,9 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       };
 
       // Mock settlement lookup
-      jest
-        .spyOn(prismaService.settlement, 'findFirst')
-        .mockResolvedValue(existingSettlement as any);
-      jest
-        .spyOn(prismaService.settlement, 'findUnique')
-        .mockResolvedValue(settlementWithKingdom as any);
-      jest.spyOn(prismaService.settlement, 'update').mockResolvedValue(updatedSettlement as any);
+      jest.spyOn(prismaService.settlement, 'findFirst').mockResolvedValue(existingSettlement);
+      jest.spyOn(prismaService.settlement, 'findUnique').mockResolvedValue(settlementWithKingdom);
+      jest.spyOn(prismaService.settlement, 'update').mockResolvedValue(updatedSettlement);
 
       // Mock branch lookup
       jest.spyOn(prismaService.branch, 'findFirst').mockResolvedValue({
@@ -658,7 +642,7 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
-      } as any);
+      } satisfies MockBranch);
 
       // Make invalidateGraph throw an error
       jest.spyOn(dependencyGraphService, 'invalidateGraph').mockImplementation(() => {
@@ -679,29 +663,28 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       const structureId = 'structure-abc';
       const branchId = 'main';
 
-      const existingStructure = {
+      const existingStructure: Structure = {
         id: structureId,
         name: 'Temple of Light',
         type: 'temple',
         level: 2,
         settlementId,
-        variables: {},
-        variableSchemas: {},
+        variables: {} as Prisma.JsonValue,
+        variableSchemas: [] as Prisma.JsonValue,
         version: 0,
-        createdBy: mockUser.id,
-        updatedBy: null,
         deletedAt: null,
+        archivedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      const updatedStructure = {
+      const updatedStructure: Structure = {
         ...existingStructure,
         level: 3,
         version: 1,
       };
 
-      const structureWithRelations = {
+      const structureWithRelations: StructureWithRelations = {
         ...existingStructure,
         settlement: {
           id: settlementId,
@@ -714,11 +697,9 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
       };
 
       // Mock structure lookup
-      jest.spyOn(prismaService.structure, 'findFirst').mockResolvedValue(existingStructure as any);
-      jest
-        .spyOn(prismaService.structure, 'findUnique')
-        .mockResolvedValue(structureWithRelations as any);
-      jest.spyOn(prismaService.structure, 'update').mockResolvedValue(updatedStructure as any);
+      jest.spyOn(prismaService.structure, 'findFirst').mockResolvedValue(existingStructure);
+      jest.spyOn(prismaService.structure, 'findUnique').mockResolvedValue(structureWithRelations);
+      jest.spyOn(prismaService.structure, 'update').mockResolvedValue(updatedStructure);
 
       // Mock branch lookup
       jest.spyOn(prismaService.branch, 'findFirst').mockResolvedValue({
@@ -726,7 +707,7 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
-      } as any);
+      } satisfies MockBranch);
 
       // Make invalidateGraph throw an error
       jest.spyOn(dependencyGraphService, 'invalidateGraph').mockImplementation(() => {

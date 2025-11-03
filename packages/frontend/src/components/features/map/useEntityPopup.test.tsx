@@ -5,12 +5,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PopupData } from './types';
 import { useEntityPopup } from './useEntityPopup';
 
+// Type for mock Popup instance
+interface MockPopupInstance {
+  setLngLat: ReturnType<typeof vi.fn>;
+  setDOMContent: ReturnType<typeof vi.fn>;
+  addTo: ReturnType<typeof vi.fn>;
+  remove: ReturnType<typeof vi.fn>;
+  on: ReturnType<typeof vi.fn>;
+  off: ReturnType<typeof vi.fn>;
+}
+
 // Mock maplibre-gl
 vi.mock('maplibre-gl', () => {
   return {
     Map: vi.fn(),
     NavigationControl: vi.fn(),
-    Popup: vi.fn(function (this: any) {
+    Popup: vi.fn(function (this: MockPopupInstance) {
       // Create a fresh mock popup instance for each call
       this.setLngLat = vi.fn().mockReturnThis();
       this.setDOMContent = vi.fn().mockReturnThis();

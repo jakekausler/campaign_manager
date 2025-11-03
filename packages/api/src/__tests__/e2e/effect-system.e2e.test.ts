@@ -13,6 +13,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Campaign, Encounter, Event, Effect, EffectExecution } from '@prisma/client';
+import type { Operation } from 'fast-json-patch';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../../graphql/context/graphql-context';
@@ -27,6 +28,47 @@ import { EncounterService } from '../../graphql/services/encounter.service';
 import { EventService } from '../../graphql/services/event.service';
 import { VersionService } from '../../graphql/services/version.service';
 import { WorldTimeService } from '../../graphql/services/world-time.service';
+
+/**
+ * Type definitions for test fixtures
+ */
+
+// Extended types with relations for test mocks
+type EncounterWithCampaign = Encounter & { campaign: Campaign };
+type EventWithCampaign = Event & { campaign: Campaign };
+
+// Prisma query where clauses
+interface EffectWhereClause {
+  timing?: string;
+  entityType?: string;
+  entityId?: string;
+  isActive?: boolean;
+}
+
+interface EffectFindManyArgs {
+  where: EffectWhereClause;
+  orderBy?: unknown;
+}
+
+// Effect execution create arguments
+interface EffectExecutionCreateArgs {
+  data: {
+    effectId: string;
+    entityType: string;
+    entityId: string;
+    executedAt: Date;
+    executedBy: string;
+    context: Record<string, unknown>;
+    result: {
+      success: boolean;
+      affectedFields?: string[];
+    };
+    error: string | null;
+  };
+}
+
+// Transaction callback type
+type TransactionCallback<T> = (prisma: PrismaService) => Promise<T>;
 
 describe('Effect System E2E Tests', () => {
   let module: TestingModule;
@@ -198,12 +240,12 @@ describe('Effect System E2E Tests', () => {
   describe('Complete Encounter Resolution with Multi-Effect Chain', () => {
     it('should execute effects in correct order (PRE → RESOLUTION → ON_RESOLVE → POST)', async () => {
       // Setup: Create encounter with 3 effects (one per timing phase)
-      const effectPre: Effect = {
+      const effectPre = {
         id: 'effect-pre',
         name: 'Pre-combat preparation',
         description: 'Increase defense before combat',
         effectType: 'patch',
-        payload: [{ op: 'replace', path: '/variables/defense', value: 100 }] as any,
+        payload: [{ op: 'replace', path: '/variables/defense', value: 100 }] as Operation[],
         entityType: 'ENCOUNTER',
         entityId: 'encounter-1',
         timing: 'PRE',
@@ -213,9 +255,9 @@ describe('Effect System E2E Tests', () => {
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
         deletedAt: null,
-      };
+      } as unknown as Effect;
 
-      const effectOnResolve: Effect = {
+      const effectOnResolve = {
         id: 'effect-on-resolve',
         name: 'Combat resolution',
         description: 'Apply combat results',
@@ -223,7 +265,7 @@ describe('Effect System E2E Tests', () => {
         payload: [
           { op: 'replace', path: '/variables/casualties', value: 5 },
           { op: 'replace', path: '/variables/gold', value: 1500 },
-        ] as any,
+        ] as Operation[],
         entityType: 'ENCOUNTER',
         entityId: 'encounter-1',
         timing: 'ON_RESOLVE',
@@ -233,14 +275,14 @@ describe('Effect System E2E Tests', () => {
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
         deletedAt: null,
-      };
+      } as unknown as Effect;
 
-      const effectPost: Effect = {
+      const effectPost = {
         id: 'effect-post',
         name: 'Post-combat cleanup',
         description: 'Remove temporary buffs',
         effectType: 'patch',
-        payload: [{ op: 'remove', path: '/variables/defense' }] as any,
+        payload: [{ op: 'remove', path: '/variables/defense' }] as Operation[],
         entityType: 'ENCOUNTER',
         entityId: 'encounter-1',
         timing: 'POST',
@@ -250,24 +292,24 @@ describe('Effect System E2E Tests', () => {
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
         deletedAt: null,
-      };
+      } as unknown as Effect;
 
       // Mock campaign access
-      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign as any);
+      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign);
 
       // Mock encounter lookup
       jest
         .spyOn(prismaService.encounter, 'findFirst')
-        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as EncounterWithCampaign);
 
       jest
         .spyOn(prismaService.encounter, 'findUnique')
-        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as EncounterWithCampaign);
 
       // Mock effect queries for each phase
       (prismaService.effect.findMany as jest.Mock) = jest
         .fn()
-        .mockImplementation(({ where }: any) => {
+        .mockImplementation(({ where }: EffectFindManyArgs) => {
           if (where.timing === 'PRE') return Promise.resolve([effectPre]);
           if (where.timing === 'ON_RESOLVE') return Promise.resolve([effectOnResolve]);
           if (where.timing === 'POST') return Promise.resolve([effectPost]);
@@ -281,12 +323,12 @@ describe('Effect System E2E Tests', () => {
         resolvedAt: new Date(),
         version: 2,
       };
-      jest.spyOn(prismaService.encounter, 'update').mockResolvedValue(resolvedEncounter as any);
+      jest.spyOn(prismaService.encounter, 'update').mockResolvedValue(resolvedEncounter);
 
       // Mock effect execution records
       (prismaService.effectExecution.create as jest.Mock) = jest
         .fn()
-        .mockImplementation((args: any) => {
+        .mockImplementation((args: EffectExecutionCreateArgs) => {
           return Promise.resolve({
             id: `execution-${args.data.effectId}`,
             effectId: args.data.effectId,
@@ -301,9 +343,11 @@ describe('Effect System E2E Tests', () => {
         });
 
       // Mock transaction - pass prismaService as transaction client
-      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
-        return await callback(prismaService);
-      });
+      (prismaService.$transaction as jest.Mock).mockImplementation(
+        async <T>(callback: TransactionCallback<T>) => {
+          return await callback(prismaService);
+        }
+      );
 
       // Execute: Resolve encounter
       const result = await encounterService.resolve('encounter-1', mockAuthUser);
@@ -333,13 +377,13 @@ describe('Effect System E2E Tests', () => {
 
     it('should handle priority ordering within each timing phase', async () => {
       // Setup: Create 3 effects in ON_RESOLVE phase with different priorities
-      const effects: Effect[] = [
+      const effects = [
         {
           id: 'effect-high',
           name: 'High priority',
           description: null,
           effectType: 'patch',
-          payload: [{ op: 'replace', path: '/variables/step', value: 3 }] as any,
+          payload: [{ op: 'replace', path: '/variables/step', value: 3 }] as Operation[],
           entityType: 'ENCOUNTER',
           entityId: 'encounter-1',
           timing: 'ON_RESOLVE',
@@ -355,7 +399,7 @@ describe('Effect System E2E Tests', () => {
           name: 'Low priority',
           description: null,
           effectType: 'patch',
-          payload: [{ op: 'replace', path: '/variables/step', value: 1 }] as any,
+          payload: [{ op: 'replace', path: '/variables/step', value: 1 }] as Operation[],
           entityType: 'ENCOUNTER',
           entityId: 'encounter-1',
           timing: 'ON_RESOLVE',
@@ -371,7 +415,7 @@ describe('Effect System E2E Tests', () => {
           name: 'Medium priority',
           description: null,
           effectType: 'patch',
-          payload: [{ op: 'replace', path: '/variables/step', value: 2 }] as any,
+          payload: [{ op: 'replace', path: '/variables/step', value: 2 }] as Operation[],
           entityType: 'ENCOUNTER',
           entityId: 'encounter-1',
           timing: 'ON_RESOLVE',
@@ -382,24 +426,24 @@ describe('Effect System E2E Tests', () => {
           updatedAt: new Date('2025-01-01'),
           deletedAt: null,
         },
-      ];
+      ] as unknown as Effect[];
 
       // Mock campaign access
-      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign as any);
+      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign);
 
       // Mock encounter lookup
       jest
         .spyOn(prismaService.encounter, 'findFirst')
-        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as EncounterWithCampaign);
 
       jest
         .spyOn(prismaService.encounter, 'findUnique')
-        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as EncounterWithCampaign);
 
       // Mock effect queries
       (prismaService.effect.findMany as jest.Mock) = jest
         .fn()
-        .mockImplementation(({ where }: any) => {
+        .mockImplementation(({ where }: EffectFindManyArgs) => {
           if (where.timing === 'ON_RESOLVE') return Promise.resolve(effects);
           return Promise.resolve([]);
         });
@@ -411,13 +455,13 @@ describe('Effect System E2E Tests', () => {
         resolvedAt: new Date(),
         version: 2,
       };
-      jest.spyOn(prismaService.encounter, 'update').mockResolvedValue(resolvedEncounter as any);
+      jest.spyOn(prismaService.encounter, 'update').mockResolvedValue(resolvedEncounter);
 
       // Mock effect execution records - track execution order
       const executionOrder: string[] = [];
       (prismaService.effectExecution.create as jest.Mock) = jest
         .fn()
-        .mockImplementation((args: any) => {
+        .mockImplementation((args: EffectExecutionCreateArgs) => {
           executionOrder.push(args.data.effectId);
           return Promise.resolve({
             id: `execution-${args.data.effectId}`,
@@ -433,9 +477,11 @@ describe('Effect System E2E Tests', () => {
         });
 
       // Mock transaction - pass prismaService as transaction client
-      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
-        return await callback(prismaService);
-      });
+      (prismaService.$transaction as jest.Mock).mockImplementation(
+        async <T>(callback: TransactionCallback<T>) => {
+          return await callback(prismaService);
+        }
+      );
 
       // Execute: Resolve encounter
       const result = await encounterService.resolve('encounter-1', mockAuthUser);
@@ -450,12 +496,12 @@ describe('Effect System E2E Tests', () => {
 
     it('should continue execution when some effects fail', async () => {
       // Setup: Create effects where second one will fail
-      const effectSuccess1: Effect = {
+      const effectSuccess1 = {
         id: 'effect-1',
         name: 'Valid effect',
         description: null,
         effectType: 'patch',
-        payload: [{ op: 'replace', path: '/variables/gold', value: 1500 }] as any,
+        payload: [{ op: 'replace', path: '/variables/gold', value: 1500 }] as Operation[],
         entityType: 'ENCOUNTER',
         entityId: 'encounter-1',
         timing: 'ON_RESOLVE',
@@ -465,14 +511,14 @@ describe('Effect System E2E Tests', () => {
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
         deletedAt: null,
-      };
+      } as unknown as Effect;
 
-      const effectFailure: Effect = {
+      const effectFailure = {
         id: 'effect-2',
         name: 'Invalid effect',
         description: null,
         effectType: 'patch',
-        payload: [{ op: 'replace', path: '/id', value: 'hacked' }] as any, // Protected field
+        payload: [{ op: 'replace', path: '/id', value: 'hacked' }] as Operation[], // Protected field
         entityType: 'ENCOUNTER',
         entityId: 'encounter-1',
         timing: 'ON_RESOLVE',
@@ -482,14 +528,14 @@ describe('Effect System E2E Tests', () => {
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
         deletedAt: null,
-      };
+      } as unknown as Effect;
 
-      const effectSuccess2: Effect = {
+      const effectSuccess2 = {
         id: 'effect-3',
         name: 'Another valid effect',
         description: null,
         effectType: 'patch',
-        payload: [{ op: 'replace', path: '/variables/food', value: 800 }] as any,
+        payload: [{ op: 'replace', path: '/variables/food', value: 800 }] as Operation[],
         entityType: 'ENCOUNTER',
         entityId: 'encounter-1',
         timing: 'ON_RESOLVE',
@@ -499,24 +545,24 @@ describe('Effect System E2E Tests', () => {
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
         deletedAt: null,
-      };
+      } as unknown as Effect;
 
       // Mock campaign access
-      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign as any);
+      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign);
 
       // Mock encounter lookup
       jest
         .spyOn(prismaService.encounter, 'findFirst')
-        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as EncounterWithCampaign);
 
       jest
         .spyOn(prismaService.encounter, 'findUnique')
-        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as EncounterWithCampaign);
 
       // Mock effect queries
       (prismaService.effect.findMany as jest.Mock) = jest
         .fn()
-        .mockImplementation(({ where }: any) => {
+        .mockImplementation(({ where }: EffectFindManyArgs) => {
           if (where.timing === 'ON_RESOLVE')
             return Promise.resolve([effectSuccess1, effectFailure, effectSuccess2]);
           return Promise.resolve([]);
@@ -529,12 +575,12 @@ describe('Effect System E2E Tests', () => {
         resolvedAt: new Date(),
         version: 2,
       };
-      jest.spyOn(prismaService.encounter, 'update').mockResolvedValue(resolvedEncounter as any);
+      jest.spyOn(prismaService.encounter, 'update').mockResolvedValue(resolvedEncounter);
 
       // Mock effect execution records
       (prismaService.effectExecution.create as jest.Mock) = jest
         .fn()
-        .mockImplementation((args: any) => {
+        .mockImplementation((args: EffectExecutionCreateArgs) => {
           return Promise.resolve({
             id: `execution-${args.data.effectId}`,
             effectId: args.data.effectId,
@@ -549,9 +595,11 @@ describe('Effect System E2E Tests', () => {
         });
 
       // Mock transaction - pass prismaService as transaction client
-      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
-        return await callback(prismaService);
-      });
+      (prismaService.$transaction as jest.Mock).mockImplementation(
+        async <T>(callback: TransactionCallback<T>) => {
+          return await callback(prismaService);
+        }
+      );
 
       // Execute: Resolve encounter
       const result = await encounterService.resolve('encounter-1', mockAuthUser);
@@ -572,7 +620,7 @@ describe('Effect System E2E Tests', () => {
   describe('Event Completion with State Mutations', () => {
     it('should execute effects and update event state during completion', async () => {
       // Setup: Create event with effect that modifies resources
-      const effect: Effect = {
+      const effect = {
         id: 'effect-1',
         name: 'Harvest resources',
         description: 'Increase food and gold',
@@ -580,7 +628,7 @@ describe('Effect System E2E Tests', () => {
         payload: [
           { op: 'replace', path: '/variables/food', value: 1000 },
           { op: 'replace', path: '/variables/gold', value: 500 },
-        ] as any,
+        ] as Operation[],
         entityType: 'EVENT',
         entityId: 'event-1',
         timing: 'ON_RESOLVE',
@@ -590,24 +638,24 @@ describe('Effect System E2E Tests', () => {
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
         deletedAt: null,
-      };
+      } as unknown as Effect;
 
       // Mock campaign access
-      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign as any);
+      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign);
 
       // Mock event lookup
       jest
         .spyOn(prismaService.event, 'findFirst')
-        .mockResolvedValue({ ...mockEvent, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEvent, campaign: mockCampaign } as EventWithCampaign);
 
       jest
         .spyOn(prismaService.event, 'findUnique')
-        .mockResolvedValue({ ...mockEvent, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEvent, campaign: mockCampaign } as EventWithCampaign);
 
       // Mock effect queries
       (prismaService.effect.findMany as jest.Mock) = jest
         .fn()
-        .mockImplementation(({ where }: any) => {
+        .mockImplementation(({ where }: EffectFindManyArgs) => {
           if (where.timing === 'ON_RESOLVE') return Promise.resolve([effect]);
           return Promise.resolve([]);
         });
@@ -619,12 +667,12 @@ describe('Effect System E2E Tests', () => {
         occurredAt: new Date(),
         version: 2,
       };
-      jest.spyOn(prismaService.event, 'update').mockResolvedValue(completedEvent as any);
+      jest.spyOn(prismaService.event, 'update').mockResolvedValue(completedEvent);
 
       // Mock effect execution records
       (prismaService.effectExecution.create as jest.Mock) = jest
         .fn()
-        .mockImplementation((args: any) => {
+        .mockImplementation((args: EffectExecutionCreateArgs) => {
           return Promise.resolve({
             id: `execution-${args.data.effectId}`,
             effectId: args.data.effectId,
@@ -639,9 +687,11 @@ describe('Effect System E2E Tests', () => {
         });
 
       // Mock transaction - pass prismaService as transaction client
-      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
-        return await callback(prismaService);
-      });
+      (prismaService.$transaction as jest.Mock).mockImplementation(
+        async <T>(callback: TransactionCallback<T>) => {
+          return await callback(prismaService);
+        }
+      );
 
       // Execute: Complete event
       const result = await eventService.complete('event-1', mockAuthUser);
@@ -688,7 +738,7 @@ describe('Effect System E2E Tests', () => {
       // Mock encounter lookup (should fail at campaign access check)
       jest
         .spyOn(prismaService.encounter, 'findFirst')
-        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as EncounterWithCampaign);
 
       // Execute: Attempt to resolve encounter
       await expect(encounterService.resolve('encounter-1', unauthorizedAuthUser)).rejects.toThrow(
@@ -709,12 +759,13 @@ describe('Effect System E2E Tests', () => {
       };
 
       // Mock campaign access
-      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign as any);
+      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign);
 
       // Mock encounter lookup
-      jest
-        .spyOn(prismaService.encounter, 'findFirst')
-        .mockResolvedValue({ ...resolvedEncounter, campaign: mockCampaign } as any);
+      jest.spyOn(prismaService.encounter, 'findFirst').mockResolvedValue({
+        ...resolvedEncounter,
+        campaign: mockCampaign,
+      } as EncounterWithCampaign);
 
       // Execute: Attempt to resolve already-resolved encounter
       await expect(encounterService.resolve('encounter-1', mockAuthUser)).rejects.toThrow(
@@ -730,7 +781,7 @@ describe('Effect System E2E Tests', () => {
   describe('Complex Patch Operations', () => {
     it('should handle nested path updates in JSON Patch', async () => {
       // Setup: Effect with nested path operations
-      const effect: Effect = {
+      const effect = {
         id: 'effect-1',
         name: 'Update nested resources',
         description: null,
@@ -739,7 +790,7 @@ describe('Effect System E2E Tests', () => {
           { op: 'replace', path: '/variables/resources/gold', value: 2000 },
           { op: 'replace', path: '/variables/resources/food', value: 1500 },
           { op: 'add', path: '/variables/resources/wood', value: 800 },
-        ] as any,
+        ] as Operation[],
         entityType: 'ENCOUNTER',
         entityId: 'encounter-1',
         timing: 'ON_RESOLVE',
@@ -749,7 +800,7 @@ describe('Effect System E2E Tests', () => {
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
         deletedAt: null,
-      };
+      } as unknown as Effect;
 
       // Setup encounter with nested resources
       const encounterWithNested = {
@@ -763,21 +814,23 @@ describe('Effect System E2E Tests', () => {
       };
 
       // Mock campaign access
-      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign as any);
+      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign);
 
       // Mock encounter lookup
-      jest
-        .spyOn(prismaService.encounter, 'findFirst')
-        .mockResolvedValue({ ...encounterWithNested, campaign: mockCampaign } as any);
+      jest.spyOn(prismaService.encounter, 'findFirst').mockResolvedValue({
+        ...encounterWithNested,
+        campaign: mockCampaign,
+      } as EncounterWithCampaign);
 
-      jest
-        .spyOn(prismaService.encounter, 'findUnique')
-        .mockResolvedValue({ ...encounterWithNested, campaign: mockCampaign } as any);
+      jest.spyOn(prismaService.encounter, 'findUnique').mockResolvedValue({
+        ...encounterWithNested,
+        campaign: mockCampaign,
+      } as EncounterWithCampaign);
 
       // Mock effect queries
       (prismaService.effect.findMany as jest.Mock) = jest
         .fn()
-        .mockImplementation(({ where }: any) => {
+        .mockImplementation(({ where }: EffectFindManyArgs) => {
           if (where.timing === 'ON_RESOLVE') return Promise.resolve([effect]);
           return Promise.resolve([]);
         });
@@ -789,12 +842,12 @@ describe('Effect System E2E Tests', () => {
         resolvedAt: new Date(),
         version: 2,
       };
-      jest.spyOn(prismaService.encounter, 'update').mockResolvedValue(resolvedEncounter as any);
+      jest.spyOn(prismaService.encounter, 'update').mockResolvedValue(resolvedEncounter);
 
       // Mock effect execution records
       (prismaService.effectExecution.create as jest.Mock) = jest
         .fn()
-        .mockImplementation((args: any) => {
+        .mockImplementation((args: EffectExecutionCreateArgs) => {
           return Promise.resolve({
             id: `execution-${args.data.effectId}`,
             effectId: args.data.effectId,
@@ -809,9 +862,11 @@ describe('Effect System E2E Tests', () => {
         });
 
       // Mock transaction - pass prismaService as transaction client
-      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
-        return await callback(prismaService);
-      });
+      (prismaService.$transaction as jest.Mock).mockImplementation(
+        async <T>(callback: TransactionCallback<T>) => {
+          return await callback(prismaService);
+        }
+      );
 
       // Execute: Resolve encounter
       const result = await encounterService.resolve('encounter-1', mockAuthUser);
@@ -830,12 +885,12 @@ describe('Effect System E2E Tests', () => {
 
     it('should reject operations on protected fields', async () => {
       // Setup: Effect attempting to modify protected field (id)
-      const maliciousEffect: Effect = {
+      const maliciousEffect = {
         id: 'effect-1',
         name: 'Malicious effect',
         description: 'Attempt to change entity ID',
         effectType: 'patch',
-        payload: [{ op: 'replace', path: '/id', value: 'hacked-id' }] as any,
+        payload: [{ op: 'replace', path: '/id', value: 'hacked-id' }] as Operation[],
         entityType: 'ENCOUNTER',
         entityId: 'encounter-1',
         timing: 'ON_RESOLVE',
@@ -845,24 +900,24 @@ describe('Effect System E2E Tests', () => {
         createdAt: new Date('2025-01-01'),
         updatedAt: new Date('2025-01-01'),
         deletedAt: null,
-      };
+      } as unknown as Effect;
 
       // Mock campaign access
-      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign as any);
+      jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue(mockCampaign);
 
       // Mock encounter lookup
       jest
         .spyOn(prismaService.encounter, 'findFirst')
-        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as EncounterWithCampaign);
 
       jest
         .spyOn(prismaService.encounter, 'findUnique')
-        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as any);
+        .mockResolvedValue({ ...mockEncounter, campaign: mockCampaign } as EncounterWithCampaign);
 
       // Mock effect queries
       (prismaService.effect.findMany as jest.Mock) = jest
         .fn()
-        .mockImplementation(({ where }: any) => {
+        .mockImplementation(({ where }: EffectFindManyArgs) => {
           if (where.timing === 'ON_RESOLVE') return Promise.resolve([maliciousEffect]);
           return Promise.resolve([]);
         });
@@ -874,12 +929,12 @@ describe('Effect System E2E Tests', () => {
         resolvedAt: new Date(),
         version: 2,
       };
-      jest.spyOn(prismaService.encounter, 'update').mockResolvedValue(resolvedEncounter as any);
+      jest.spyOn(prismaService.encounter, 'update').mockResolvedValue(resolvedEncounter);
 
       // Mock effect execution records
       (prismaService.effectExecution.create as jest.Mock) = jest
         .fn()
-        .mockImplementation((args: any) => {
+        .mockImplementation((args: EffectExecutionCreateArgs) => {
           return Promise.resolve({
             id: `execution-${args.data.effectId}`,
             effectId: args.data.effectId,
@@ -894,9 +949,11 @@ describe('Effect System E2E Tests', () => {
         });
 
       // Mock transaction - pass prismaService as transaction client
-      (prismaService.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
-        return await callback(prismaService);
-      });
+      (prismaService.$transaction as jest.Mock).mockImplementation(
+        async <T>(callback: TransactionCallback<T>) => {
+          return await callback(prismaService);
+        }
+      );
 
       // Execute: Resolve encounter
       const result = await encounterService.resolve('encounter-1', mockAuthUser);

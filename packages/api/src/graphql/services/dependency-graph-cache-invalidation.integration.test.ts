@@ -4,9 +4,23 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import type {
+  FieldCondition as PrismaFieldCondition,
+  StateVariable as PrismaStateVariable,
+  Settlement as PrismaSettlement,
+  Campaign as PrismaCampaign,
+} from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
+import type {
+  CreateFieldConditionInput,
+  UpdateFieldConditionInput,
+} from '../inputs/field-condition.input';
+import type {
+  CreateStateVariableInput,
+  UpdateStateVariableInput,
+} from '../inputs/state-variable.input';
 import { VariableScope, VariableType } from '../types/state-variable.type';
 import { DependencyExtractor } from '../utils/dependency-extractor';
 
@@ -18,6 +32,18 @@ import { DependencyGraphService } from './dependency-graph.service';
 import { StateVariableService } from './state-variable.service';
 import { VariableEvaluationService } from './variable-evaluation.service';
 import { VersionService } from './version.service';
+
+// Type helpers for nested Prisma relations
+type SettlementWithKingdom = PrismaSettlement & {
+  kingdom: {
+    campaignId: string;
+  };
+};
+
+type CampaignWithOwner = PrismaCampaign & {
+  name: string;
+  ownerId: string;
+};
 
 describe('Dependency Graph Cache Invalidation Integration Tests', () => {
   let conditionService: ConditionService;
@@ -165,7 +191,7 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
         kingdom: {
           campaignId,
         },
-      } as any);
+      } as SettlementWithKingdom);
 
       // Mock settlement lookup for campaign ID extraction
       jest.spyOn(prismaService.settlement, 'findUnique').mockResolvedValue({
@@ -173,15 +199,17 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
         kingdom: {
           campaignId,
         },
-      } as any);
+      } as SettlementWithKingdom);
 
-      jest.spyOn(prismaService.fieldCondition, 'create').mockResolvedValue(createdCondition as any);
+      jest
+        .spyOn(prismaService.fieldCondition, 'create')
+        .mockResolvedValue(createdCondition as PrismaFieldCondition);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
 
       // Act
-      await conditionService.create(conditionInput as any, mockUser);
+      await conditionService.create(conditionInput as CreateFieldConditionInput, mockUser);
 
       // Assert
       expect(invalidateSpy).toHaveBeenCalledWith(campaignId);
@@ -219,20 +247,22 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
       // Mock lookups
       jest
         .spyOn(prismaService.fieldCondition, 'findUnique')
-        .mockResolvedValue(existingCondition as any);
+        .mockResolvedValue(existingCondition as PrismaFieldCondition);
       jest.spyOn(prismaService.settlement, 'findFirst').mockResolvedValue({
         id: settlementId,
         kingdom: {
           campaignId,
         },
-      } as any);
+      } as SettlementWithKingdom);
       jest.spyOn(prismaService.settlement, 'findUnique').mockResolvedValue({
         id: settlementId,
         kingdom: {
           campaignId,
         },
-      } as any);
-      jest.spyOn(prismaService.fieldCondition, 'update').mockResolvedValue(updatedCondition as any);
+      } as SettlementWithKingdom);
+      jest
+        .spyOn(prismaService.fieldCondition, 'update')
+        .mockResolvedValue(updatedCondition as PrismaFieldCondition);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -243,7 +273,7 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
         {
           expression: { '>': [{ var: 'population' }, 10000] },
           expectedVersion: 0,
-        } as any,
+        } as UpdateFieldConditionInput,
         mockUser
       );
 
@@ -282,20 +312,22 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
       // Mock lookups
       jest
         .spyOn(prismaService.fieldCondition, 'findUnique')
-        .mockResolvedValue(existingCondition as any);
+        .mockResolvedValue(existingCondition as PrismaFieldCondition);
       jest.spyOn(prismaService.settlement, 'findFirst').mockResolvedValue({
         id: settlementId,
         kingdom: {
           campaignId,
         },
-      } as any);
+      } as SettlementWithKingdom);
       jest.spyOn(prismaService.settlement, 'findUnique').mockResolvedValue({
         id: settlementId,
         kingdom: {
           campaignId,
         },
-      } as any);
-      jest.spyOn(prismaService.fieldCondition, 'update').mockResolvedValue(deletedCondition as any);
+      } as SettlementWithKingdom);
+      jest
+        .spyOn(prismaService.fieldCondition, 'update')
+        .mockResolvedValue(deletedCondition as PrismaFieldCondition);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -331,13 +363,15 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
         description: null,
       };
 
-      jest.spyOn(prismaService.fieldCondition, 'create').mockResolvedValue(createdCondition as any);
+      jest
+        .spyOn(prismaService.fieldCondition, 'create')
+        .mockResolvedValue(createdCondition as PrismaFieldCondition);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
 
       // Act
-      await conditionService.create(conditionInput as any, mockUser);
+      await conditionService.create(conditionInput as CreateFieldConditionInput, mockUser);
 
       // Assert
       expect(invalidateSpy).not.toHaveBeenCalled();
@@ -376,15 +410,17 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
         id: campaignId,
         name: 'Test Campaign',
         ownerId: mockUser.id,
-      } as any);
+      } as CampaignWithOwner);
 
-      jest.spyOn(prismaService.stateVariable, 'create').mockResolvedValue(createdVariable as any);
+      jest
+        .spyOn(prismaService.stateVariable, 'create')
+        .mockResolvedValue(createdVariable as PrismaStateVariable);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
 
       // Act
-      await stateVariableService.create(variableInput as any, mockUser);
+      await stateVariableService.create(variableInput as CreateStateVariableInput, mockUser);
 
       // Assert
       expect(invalidateSpy).toHaveBeenCalledWith(campaignId);
@@ -422,12 +458,14 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
       // Mock lookups
       jest
         .spyOn(prismaService.stateVariable, 'findUnique')
-        .mockResolvedValue(existingVariable as any);
+        .mockResolvedValue(existingVariable as PrismaStateVariable);
       jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue({
         id: campaignId,
         ownerId: mockUser.id,
-      } as any);
-      jest.spyOn(prismaService.stateVariable, 'update').mockResolvedValue(updatedVariable as any);
+      } as CampaignWithOwner);
+      jest
+        .spyOn(prismaService.stateVariable, 'update')
+        .mockResolvedValue(updatedVariable as PrismaStateVariable);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -438,7 +476,7 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
         {
           value: 200,
           expectedVersion: 0,
-        } as any,
+        } as UpdateStateVariableInput,
         mockUser
       );
 
@@ -477,12 +515,14 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
       // Mock lookups
       jest
         .spyOn(prismaService.stateVariable, 'findUnique')
-        .mockResolvedValue(existingVariable as any);
+        .mockResolvedValue(existingVariable as PrismaStateVariable);
       jest.spyOn(prismaService.campaign, 'findFirst').mockResolvedValue({
         id: campaignId,
         ownerId: mockUser.id,
-      } as any);
-      jest.spyOn(prismaService.stateVariable, 'update').mockResolvedValue(deletedVariable as any);
+      } as CampaignWithOwner);
+      jest
+        .spyOn(prismaService.stateVariable, 'update')
+        .mockResolvedValue(deletedVariable as PrismaStateVariable);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
@@ -519,13 +559,15 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
         description: null,
       };
 
-      jest.spyOn(prismaService.stateVariable, 'create').mockResolvedValue(createdVariable as any);
+      jest
+        .spyOn(prismaService.stateVariable, 'create')
+        .mockResolvedValue(createdVariable as PrismaStateVariable);
 
       // Spy on invalidateGraph
       const invalidateSpy = jest.spyOn(dependencyGraphService, 'invalidateGraph');
 
       // Act
-      await stateVariableService.create(variableInput as any, mockUser);
+      await stateVariableService.create(variableInput as CreateStateVariableInput, mockUser);
 
       // Assert
       expect(invalidateSpy).not.toHaveBeenCalled();
@@ -544,7 +586,7 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
         id: campaignId,
         name: 'Test Campaign',
         ownerId: mockUser.id,
-      } as any);
+      } as CampaignWithOwner);
 
       // Mock graph builder dependencies (empty for this test)
       jest.spyOn(prismaService.fieldCondition, 'findFirst').mockResolvedValue(null);
@@ -575,17 +617,19 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
       const branchId = 'main';
 
       // Mock campaign access verification for both campaigns
-      jest.spyOn(prismaService.campaign, 'findFirst').mockImplementation((args?: any) => {
-        const where = args?.where;
-        if (where && (where.id === campaign1Id || where.id === campaign2Id)) {
-          return Promise.resolve({
-            id: where.id,
-            name: `Campaign ${where.id}`,
-            ownerId: mockUser.id,
-          } as any) as any;
-        }
-        return Promise.resolve(null) as any;
-      });
+      jest
+        .spyOn(prismaService.campaign, 'findFirst')
+        .mockImplementation((args?: { where?: { id?: string } }) => {
+          const where = args?.where;
+          if (where && (where.id === campaign1Id || where.id === campaign2Id)) {
+            return Promise.resolve({
+              id: where.id,
+              name: `Campaign ${where.id}`,
+              ownerId: mockUser.id,
+            } as CampaignWithOwner);
+          }
+          return Promise.resolve(null);
+        });
 
       // Mock empty graphs for both
       jest.spyOn(prismaService.fieldCondition, 'findFirst').mockResolvedValue(null);

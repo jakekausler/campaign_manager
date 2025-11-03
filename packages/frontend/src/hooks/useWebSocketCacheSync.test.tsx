@@ -158,12 +158,12 @@ describe('useWebSocketCacheSync', () => {
 
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      // Simulate event with unknown entity type
+      // Simulate event with unknown entity type to test error handling
       const event: EntityUpdatedEvent = {
         type: 'entity_updated',
         timestamp: new Date().toISOString(),
         payload: {
-          entityType: 'unknown' as any,
+          entityType: 'unknown' as unknown as 'settlement',
           entityId: 'unknown-1',
           campaignId: 'campaign-1',
         },

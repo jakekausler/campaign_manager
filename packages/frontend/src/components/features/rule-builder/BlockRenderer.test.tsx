@@ -194,10 +194,11 @@ describe('BlockRenderer', () => {
 
   describe('Unknown operators', () => {
     it('should render error state for unknown operator', () => {
-      const block = {
+      // Testing with invalid operator to verify error handling
+      const block: Block = {
         id: 'unknown-1',
         type: 'logical' as const,
-        operator: 'unknown' as any,
+        operator: 'unknown' as unknown as 'and',
         children: [],
       };
 

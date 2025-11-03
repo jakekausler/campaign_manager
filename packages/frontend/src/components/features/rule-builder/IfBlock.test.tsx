@@ -111,11 +111,11 @@ describe('IfBlock', () => {
   describe('Validation', () => {
     it('should show invalid state when condition is missing', () => {
       const mockOnUpdate = vi.fn();
-      const block = {
+      const block: Block = {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [undefined, mockThenBlock, mockElseBlock] as any,
+        children: [undefined, mockThenBlock, mockElseBlock],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);
@@ -127,11 +127,11 @@ describe('IfBlock', () => {
 
     it('should show invalid state when thenValue is missing', () => {
       const mockOnUpdate = vi.fn();
-      const block = {
+      const block: Block = {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [mockConditionBlock, undefined, mockElseBlock] as any,
+        children: [mockConditionBlock, undefined, mockElseBlock],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);
@@ -143,11 +143,11 @@ describe('IfBlock', () => {
 
     it('should show invalid state when elseValue is missing', () => {
       const mockOnUpdate = vi.fn();
-      const block = {
+      const block: Block = {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [mockConditionBlock, mockThenBlock, undefined] as any,
+        children: [mockConditionBlock, mockThenBlock, undefined],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);
@@ -203,11 +203,11 @@ describe('IfBlock', () => {
   describe('Placeholder rendering', () => {
     it('should show placeholder for missing condition', () => {
       const mockOnUpdate = vi.fn();
-      const block = {
+      const block: Block = {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [undefined, mockThenBlock, mockElseBlock] as any,
+        children: [undefined, mockThenBlock, mockElseBlock],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);
@@ -217,11 +217,11 @@ describe('IfBlock', () => {
 
     it('should show placeholder for missing then value', () => {
       const mockOnUpdate = vi.fn();
-      const block = {
+      const block: Block = {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [mockConditionBlock, undefined, mockElseBlock] as any,
+        children: [mockConditionBlock, undefined, mockElseBlock],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);
@@ -231,11 +231,11 @@ describe('IfBlock', () => {
 
     it('should show placeholder for missing else value', () => {
       const mockOnUpdate = vi.fn();
-      const block = {
+      const block: Block = {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [mockConditionBlock, mockThenBlock, undefined] as any,
+        children: [mockConditionBlock, mockThenBlock, undefined],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);

@@ -25,7 +25,7 @@ describe('HealthController', () => {
 
     // Mock response chaining
     mockResponse.status.mockReturnValue(mockResponse);
-    mockResponse.json.mockReturnValue(mockResponse as any);
+    mockResponse.json.mockReturnValue(mockResponse as Response);
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [HealthController],

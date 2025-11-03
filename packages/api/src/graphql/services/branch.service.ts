@@ -10,7 +10,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import type { Branch as PrismaBranch } from '@prisma/client';
+import type { Branch as PrismaBranch, Prisma } from '@prisma/client';
 
 import { CampaignMembershipService } from '../../auth/services/campaign-membership.service';
 import { PrismaService } from '../../database/prisma.service';
@@ -520,7 +520,7 @@ export class BranchService {
     entityType: string,
     worldTime: Date,
     user: AuthenticatedUser,
-    tx: any
+    tx: Prisma.TransactionClient
   ): Promise<number> {
     // Get the source branch to find its campaign
     const sourceBranch = await tx.branch.findUnique({

@@ -44,7 +44,7 @@ const mockEffectPre: Effect = {
   name: 'Pre-combat buff',
   description: 'Increase settlement defense',
   effectType: 'patch',
-  payload: [{ op: 'replace', path: '/variables/defense', value: 100 }] as any,
+  payload: [{ op: 'replace', path: '/variables/defense', value: 100 }] as Prisma.JsonArray,
   entityType: 'ENCOUNTER',
   entityId: 'encounter-1',
   timing: 'PRE',
@@ -61,7 +61,7 @@ const mockEffectOnResolve: Effect = {
   name: 'Combat resolution',
   description: 'Apply combat results',
   effectType: 'patch',
-  payload: [{ op: 'replace', path: '/variables/casualties', value: 5 }] as any,
+  payload: [{ op: 'replace', path: '/variables/casualties', value: 5 }] as Prisma.JsonArray,
   entityType: 'ENCOUNTER',
   entityId: 'encounter-1',
   timing: 'ON_RESOLVE',
@@ -78,7 +78,7 @@ const mockEffectPost: Effect = {
   name: 'Post-combat cleanup',
   description: 'Remove temporary buffs',
   effectType: 'patch',
-  payload: [{ op: 'remove', path: '/variables/defense' }] as any,
+  payload: [{ op: 'remove', path: '/variables/defense' }] as Prisma.JsonArray,
   entityType: 'ENCOUNTER',
   entityId: 'encounter-1',
   timing: 'POST',
@@ -105,7 +105,7 @@ const mockCampaign = {
 describe('EncounterService - Resolution Integration', () => {
   let service: EncounterService;
   let prismaService: PrismaService;
-  let pubSub: any;
+  let pubSub: { publish: jest.Mock };
   let module: TestingModule;
 
   beforeEach(async () => {
@@ -145,16 +145,18 @@ describe('EncounterService - Resolution Integration', () => {
     };
 
     // Configure $transaction mock
-    (mockPrisma.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
-      if (typeof callback === 'function') {
-        const txClient = {
-          encounter: mockPrisma.encounter,
-          effectExecution: mockPrisma.effectExecution,
-        };
-        return await callback(txClient);
+    (mockPrisma.$transaction as jest.Mock).mockImplementation(
+      async (callback: (tx: unknown) => Promise<unknown>) => {
+        if (typeof callback === 'function') {
+          const txClient = {
+            encounter: mockPrisma.encounter,
+            effectExecution: mockPrisma.effectExecution,
+          };
+          return await callback(txClient);
+        }
+        return undefined;
       }
-      return undefined;
-    });
+    );
 
     module = await Test.createTestingModule({
       providers: [
@@ -216,7 +218,7 @@ describe('EncounterService - Resolution Integration', () => {
       (prismaService.effect.findMany as jest.Mock).mockResolvedValue([]);
 
       // Act
-      const result = await service.resolve('encounter-1', mockUser as any);
+      const result = await service.resolve('encounter-1', mockUser);
 
       // Assert
       expect(result).toBeDefined();
@@ -271,7 +273,7 @@ describe('EncounterService - Resolution Integration', () => {
       });
 
       // Act
-      const result = await service.resolve('encounter-1', mockUser as any);
+      const result = await service.resolve('encounter-1', mockUser);
 
       // Assert
       expect(result).toBeDefined();
@@ -287,9 +289,7 @@ describe('EncounterService - Resolution Integration', () => {
       (prismaService.encounter.findFirst as jest.Mock).mockResolvedValue(null);
 
       // Act & Assert
-      await expect(service.resolve('nonexistent', mockUser as any)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(service.resolve('nonexistent', mockUser)).rejects.toThrow(NotFoundException);
     });
 
     it('should reject if encounter is already resolved', async () => {
@@ -298,9 +298,7 @@ describe('EncounterService - Resolution Integration', () => {
       (prismaService.encounter.findFirst as jest.Mock).mockResolvedValue(resolvedEncounter);
 
       // Act & Assert
-      await expect(service.resolve('encounter-1', mockUser as any)).rejects.toThrow(
-        BadRequestException
-      );
+      await expect(service.resolve('encounter-1', mockUser)).rejects.toThrow(BadRequestException);
     });
 
     it('should continue resolution even if some effects fail', async () => {
@@ -346,7 +344,7 @@ describe('EncounterService - Resolution Integration', () => {
       });
 
       // Act
-      const result = await service.resolve('encounter-1', mockUser as any);
+      const result = await service.resolve('encounter-1', mockUser);
 
       // Assert
       expect(result.encounter.isResolved).toBe(true);
@@ -371,12 +369,14 @@ describe('EncounterService - Resolution Integration', () => {
         });
       });
 
-      (prismaService.effect.findMany as jest.Mock).mockImplementation(({ where }: any) => {
-        if (where.timing === 'PRE') return Promise.resolve([mockEffectPre]);
-        if (where.timing === 'ON_RESOLVE') return Promise.resolve([mockEffectOnResolve]);
-        if (where.timing === 'POST') return Promise.resolve([mockEffectPost]);
-        return Promise.resolve([]);
-      });
+      (prismaService.effect.findMany as jest.Mock).mockImplementation(
+        ({ where }: { where: Record<string, unknown> }) => {
+          if (where.timing === 'PRE') return Promise.resolve([mockEffectPre]);
+          if (where.timing === 'ON_RESOLVE') return Promise.resolve([mockEffectOnResolve]);
+          if (where.timing === 'POST') return Promise.resolve([mockEffectPost]);
+          return Promise.resolve([]);
+        }
+      );
 
       const mockEffectPatch = module.get<EffectPatchService>(EffectPatchService);
       (mockEffectPatch.applyPatch as jest.Mock).mockReturnValue({
@@ -385,23 +385,25 @@ describe('EncounterService - Resolution Integration', () => {
         errors: [],
       });
 
-      (prismaService.effectExecution.create as jest.Mock).mockImplementation(({ data }: any) => {
-        executionOrder.push(data.effectId);
-        return Promise.resolve({
-          id: 'execution-1',
-          effectId: data.effectId,
-          entityType: 'ENCOUNTER',
-          entityId: 'encounter-1',
-          executedAt: new Date(),
-          executedBy: 'user-1',
-          context: mockEncounter,
-          result: { success: true },
-          error: null,
-        });
-      });
+      (prismaService.effectExecution.create as jest.Mock).mockImplementation(
+        ({ data }: { data: Record<string, unknown> }) => {
+          executionOrder.push(data.effectId);
+          return Promise.resolve({
+            id: 'execution-1',
+            effectId: data.effectId,
+            entityType: 'ENCOUNTER',
+            entityId: 'encounter-1',
+            executedAt: new Date(),
+            executedBy: 'user-1',
+            context: mockEncounter,
+            result: { success: true },
+            error: null,
+          });
+        }
+      );
 
       // Act
-      await service.resolve('encounter-1', mockUser as any);
+      await service.resolve('encounter-1', mockUser);
 
       // Assert
       expect(executionOrder).toEqual([
@@ -425,7 +427,7 @@ describe('EncounterService - Resolution Integration', () => {
       (prismaService.effect.findMany as jest.Mock).mockResolvedValue([]);
 
       // Act
-      await service.resolve('encounter-1', mockUser as any);
+      await service.resolve('encounter-1', mockUser);
 
       // Assert
       expect(pubSub.publish).toHaveBeenCalledWith(

@@ -33,8 +33,17 @@ vi.mock('@/config/env', () => ({
   },
 }));
 
+// Mock socket type that matches Socket.IO interface subset
+type MockSocket = {
+  on: ReturnType<typeof vi.fn>;
+  off: ReturnType<typeof vi.fn>;
+  emit: ReturnType<typeof vi.fn>;
+  simulateEvent: (event: string, data: unknown) => void;
+  getListeners: (event: string) => Array<(...args: unknown[]) => void>;
+};
+
 // Create mock socket
-function createMockSocket() {
+function createMockSocket(): MockSocket {
   const listeners = new Map<string, Array<(...args: unknown[]) => void>>();
 
   return {
@@ -104,7 +113,7 @@ function createWrapper(contextValue: WebSocketContextValue) {
 }
 
 describe('useWebSocketSubscription', () => {
-  let mockSocket: ReturnType<typeof createMockSocket>;
+  let mockSocket: MockSocket;
 
   beforeEach(() => {
     mockSocket = createMockSocket();
@@ -129,7 +138,7 @@ describe('useWebSocketSubscription', () => {
           ),
         {
           wrapper: createWrapper({
-            socket: mockSocket as any,
+            socket: mockSocket as unknown as WebSocketContextValue['socket'],
             connectionState: ConnectionState.Connected,
             error: null,
             reconnectAttempts: 0,
@@ -174,7 +183,7 @@ describe('useWebSocketSubscription', () => {
           ),
         {
           wrapper: createWrapper({
-            socket: mockSocket as any,
+            socket: mockSocket as unknown as WebSocketContextValue['socket'],
             connectionState: ConnectionState.Connected,
             error: null,
             reconnectAttempts: 0,
@@ -206,7 +215,7 @@ describe('useWebSocketSubscription', () => {
           ),
         {
           wrapper: createWrapper({
-            socket: mockSocket as any,
+            socket: mockSocket as unknown as WebSocketContextValue['socket'],
             connectionState: ConnectionState.Connected,
             error: null,
             reconnectAttempts: 0,
@@ -245,7 +254,7 @@ describe('useWebSocketSubscription', () => {
           ),
         {
           wrapper: createWrapper({
-            socket: mockSocket as any,
+            socket: mockSocket as unknown as WebSocketContextValue['socket'],
             connectionState: ConnectionState.Connected,
             error: null,
             reconnectAttempts: 0,
@@ -297,7 +306,7 @@ describe('useWebSocketSubscription', () => {
           ),
         {
           wrapper: createWrapper({
-            socket: mockSocket as any,
+            socket: mockSocket as unknown as WebSocketContextValue['socket'],
             connectionState: ConnectionState.Connecting,
             error: null,
             reconnectAttempts: 0,
@@ -317,7 +326,7 @@ describe('useWebSocketSubscription', () => {
 
       // Create a stable wrapper that can be updated
       let contextValue: WebSocketContextValue = {
-        socket: mockSocket as any,
+        socket: mockSocket as unknown as WebSocketContextValue['socket'],
         connectionState: ConnectionState.Connected,
         error: null,
         reconnectAttempts: 0,
@@ -398,7 +407,7 @@ describe('useWebSocketSubscription', () => {
         {
           initialProps: { handlerFn: handler },
           wrapper: createWrapper({
-            socket: mockSocket as any,
+            socket: mockSocket as unknown as WebSocketContextValue['socket'],
             connectionState: ConnectionState.Connected,
             error: null,
             reconnectAttempts: 0,
@@ -457,7 +466,7 @@ describe('useCampaignSubscription', () => {
 
     renderHook(() => useCampaignSubscription('campaign-1', handlers), {
       wrapper: createWrapper({
-        socket: mockSocket as any,
+        socket: mockSocket as unknown as WebSocketContextValue['socket'],
         connectionState: ConnectionState.Connected,
         error: null,
         reconnectAttempts: 0,
@@ -488,7 +497,7 @@ describe('useCampaignSubscription', () => {
 
     renderHook(() => useCampaignSubscription('campaign-1', handlers), {
       wrapper: createWrapper({
-        socket: mockSocket as any,
+        socket: mockSocket as unknown as WebSocketContextValue['socket'],
         connectionState: ConnectionState.Connected,
         error: null,
         reconnectAttempts: 0,
@@ -533,7 +542,7 @@ describe('useCampaignSubscription', () => {
 
     renderHook(() => useCampaignSubscription(undefined, handlers), {
       wrapper: createWrapper({
-        socket: mockSocket as any,
+        socket: mockSocket as unknown as WebSocketContextValue['socket'],
         connectionState: ConnectionState.Connected,
         error: null,
         reconnectAttempts: 0,
@@ -562,7 +571,7 @@ describe('useSettlementSubscription', () => {
 
     renderHook(() => useSettlementSubscription('settlement-1', handlers), {
       wrapper: createWrapper({
-        socket: mockSocket as any,
+        socket: mockSocket as unknown as WebSocketContextValue['socket'],
         connectionState: ConnectionState.Connected,
         error: null,
         reconnectAttempts: 0,
@@ -590,7 +599,7 @@ describe('useSettlementSubscription', () => {
 
     renderHook(() => useSettlementSubscription('settlement-1', handlers), {
       wrapper: createWrapper({
-        socket: mockSocket as any,
+        socket: mockSocket as unknown as WebSocketContextValue['socket'],
         connectionState: ConnectionState.Connected,
         error: null,
         reconnectAttempts: 0,
@@ -645,7 +654,7 @@ describe('useStructureSubscription', () => {
 
     renderHook(() => useStructureSubscription('structure-1', handlers), {
       wrapper: createWrapper({
-        socket: mockSocket as any,
+        socket: mockSocket as unknown as WebSocketContextValue['socket'],
         connectionState: ConnectionState.Connected,
         error: null,
         reconnectAttempts: 0,
@@ -671,7 +680,7 @@ describe('useStructureSubscription', () => {
 
     renderHook(() => useStructureSubscription('structure-1', handlers), {
       wrapper: createWrapper({
-        socket: mockSocket as any,
+        socket: mockSocket as unknown as WebSocketContextValue['socket'],
         connectionState: ConnectionState.Connected,
         error: null,
         reconnectAttempts: 0,

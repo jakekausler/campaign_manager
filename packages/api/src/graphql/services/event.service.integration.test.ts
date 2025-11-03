@@ -44,7 +44,7 @@ const mockEffectPre: Effect = {
   name: 'Pre-event preparation',
   description: 'Set up decorations',
   effectType: 'patch',
-  payload: [{ op: 'replace', path: '/variables/decorationLevel', value: 10 }] as any,
+  payload: [{ op: 'replace', path: '/variables/decorationLevel', value: 10 }] as Prisma.JsonArray,
   entityType: 'EVENT',
   entityId: 'event-1',
   timing: 'PRE',
@@ -61,7 +61,9 @@ const mockEffectOnResolve: Effect = {
   name: 'Event execution',
   description: 'Run the ceremony',
   effectType: 'patch',
-  payload: [{ op: 'replace', path: '/variables/ceremonyComplete', value: true }] as any,
+  payload: [
+    { op: 'replace', path: '/variables/ceremonyComplete', value: true },
+  ] as Prisma.JsonArray,
   entityType: 'EVENT',
   entityId: 'event-1',
   timing: 'ON_RESOLVE',
@@ -78,7 +80,7 @@ const mockEffectPost: Effect = {
   name: 'Post-event cleanup',
   description: 'Clean up decorations',
   effectType: 'patch',
-  payload: [{ op: 'remove', path: '/variables/decorationLevel' }] as any,
+  payload: [{ op: 'remove', path: '/variables/decorationLevel' }] as Prisma.JsonArray,
   entityType: 'EVENT',
   entityId: 'event-1',
   timing: 'POST',
@@ -105,7 +107,7 @@ const mockCampaign = {
 describe('EventService - Completion Integration', () => {
   let service: EventService;
   let prismaService: PrismaService;
-  let pubSub: any;
+  let pubSub: { publish: jest.Mock };
   let module: TestingModule;
 
   beforeEach(async () => {
@@ -145,16 +147,18 @@ describe('EventService - Completion Integration', () => {
     };
 
     // Configure $transaction mock
-    (mockPrisma.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
-      if (typeof callback === 'function') {
-        const txClient = {
-          event: mockPrisma.event,
-          effectExecution: mockPrisma.effectExecution,
-        };
-        return await callback(txClient);
+    (mockPrisma.$transaction as jest.Mock).mockImplementation(
+      async (callback: (tx: unknown) => Promise<unknown>) => {
+        if (typeof callback === 'function') {
+          const txClient = {
+            event: mockPrisma.event,
+            effectExecution: mockPrisma.effectExecution,
+          };
+          return await callback(txClient);
+        }
+        return undefined;
       }
-      return undefined;
-    });
+    );
 
     module = await Test.createTestingModule({
       providers: [
@@ -216,7 +220,7 @@ describe('EventService - Completion Integration', () => {
       (prismaService.effect.findMany as jest.Mock).mockResolvedValue([]);
 
       // Act
-      const result = await service.complete('event-1', mockUser as any);
+      const result = await service.complete('event-1', mockUser);
 
       // Assert
       expect(result).toBeDefined();
@@ -271,7 +275,7 @@ describe('EventService - Completion Integration', () => {
       });
 
       // Act
-      const result = await service.complete('event-1', mockUser as any);
+      const result = await service.complete('event-1', mockUser);
 
       // Assert
       expect(result).toBeDefined();
@@ -287,9 +291,7 @@ describe('EventService - Completion Integration', () => {
       (prismaService.event.findFirst as jest.Mock).mockResolvedValue(null);
 
       // Act & Assert
-      await expect(service.complete('nonexistent', mockUser as any)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(service.complete('nonexistent', mockUser)).rejects.toThrow(NotFoundException);
     });
 
     it('should reject if event is already completed', async () => {
@@ -298,9 +300,7 @@ describe('EventService - Completion Integration', () => {
       (prismaService.event.findFirst as jest.Mock).mockResolvedValue(completedEvent);
 
       // Act & Assert
-      await expect(service.complete('event-1', mockUser as any)).rejects.toThrow(
-        BadRequestException
-      );
+      await expect(service.complete('event-1', mockUser)).rejects.toThrow(BadRequestException);
     });
 
     it('should continue completion even if some effects fail', async () => {
@@ -346,7 +346,7 @@ describe('EventService - Completion Integration', () => {
       });
 
       // Act
-      const result = await service.complete('event-1', mockUser as any);
+      const result = await service.complete('event-1', mockUser);
 
       // Assert
       expect(result.event.isCompleted).toBe(true);
@@ -371,12 +371,14 @@ describe('EventService - Completion Integration', () => {
         });
       });
 
-      (prismaService.effect.findMany as jest.Mock).mockImplementation(({ where }: any) => {
-        if (where.timing === 'PRE') return Promise.resolve([mockEffectPre]);
-        if (where.timing === 'ON_RESOLVE') return Promise.resolve([mockEffectOnResolve]);
-        if (where.timing === 'POST') return Promise.resolve([mockEffectPost]);
-        return Promise.resolve([]);
-      });
+      (prismaService.effect.findMany as jest.Mock).mockImplementation(
+        ({ where }: { where: Record<string, unknown> }) => {
+          if (where.timing === 'PRE') return Promise.resolve([mockEffectPre]);
+          if (where.timing === 'ON_RESOLVE') return Promise.resolve([mockEffectOnResolve]);
+          if (where.timing === 'POST') return Promise.resolve([mockEffectPost]);
+          return Promise.resolve([]);
+        }
+      );
 
       const mockEffectPatch = module.get<EffectPatchService>(EffectPatchService);
       (mockEffectPatch.applyPatch as jest.Mock).mockReturnValue({
@@ -385,23 +387,25 @@ describe('EventService - Completion Integration', () => {
         errors: [],
       });
 
-      (prismaService.effectExecution.create as jest.Mock).mockImplementation(({ data }: any) => {
-        executionOrder.push(data.effectId);
-        return Promise.resolve({
-          id: 'execution-1',
-          effectId: data.effectId,
-          entityType: 'EVENT',
-          entityId: 'event-1',
-          executedAt: new Date(),
-          executedBy: 'user-1',
-          context: mockEvent,
-          result: { success: true },
-          error: null,
-        });
-      });
+      (prismaService.effectExecution.create as jest.Mock).mockImplementation(
+        ({ data }: { data: Record<string, unknown> }) => {
+          executionOrder.push(data.effectId);
+          return Promise.resolve({
+            id: 'execution-1',
+            effectId: data.effectId,
+            entityType: 'EVENT',
+            entityId: 'event-1',
+            executedAt: new Date(),
+            executedBy: 'user-1',
+            context: mockEvent,
+            result: { success: true },
+            error: null,
+          });
+        }
+      );
 
       // Act
-      await service.complete('event-1', mockUser as any);
+      await service.complete('event-1', mockUser);
 
       // Assert
       expect(executionOrder).toEqual([
@@ -425,7 +429,7 @@ describe('EventService - Completion Integration', () => {
       (prismaService.effect.findMany as jest.Mock).mockResolvedValue([]);
 
       // Act
-      await service.complete('event-1', mockUser as any);
+      await service.complete('event-1', mockUser);
 
       // Assert
       expect(pubSub.publish).toHaveBeenCalledWith(

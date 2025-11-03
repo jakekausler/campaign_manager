@@ -173,8 +173,8 @@ describe('FieldConditionResolver', () => {
 
     it('should list conditions with sorting', async () => {
       const orderBy: FieldConditionOrderByInput = {
-        field: 'PRIORITY' as any,
-        order: 'DESC' as any,
+        field: 'PRIORITY',
+        order: 'DESC',
       };
 
       mockConditionService.findMany.mockResolvedValue([]);
@@ -207,8 +207,8 @@ describe('FieldConditionResolver', () => {
     it('should list conditions with all parameters', async () => {
       const where: FieldConditionWhereInput = { entityType: 'Settlement' };
       const orderBy: FieldConditionOrderByInput = {
-        field: 'CREATED_AT' as any,
-        order: 'ASC' as any,
+        field: 'CREATED_AT',
+        order: 'ASC',
       };
 
       mockConditionService.findMany.mockResolvedValue([]);
@@ -360,7 +360,7 @@ describe('FieldConditionResolver', () => {
         entityType: input.entityType,
         entityId: input.entityId!,
         field: input.field,
-        expression: input.expression as any,
+        expression: input.expression as Prisma.JsonValue,
         description: input.description!,
         isActive: true,
         priority: input.priority!,
@@ -396,7 +396,7 @@ describe('FieldConditionResolver', () => {
         entityType: input.entityType,
         entityId: null,
         field: input.field,
-        expression: input.expression as any,
+        expression: input.expression as Prisma.JsonValue,
         description: input.description!,
         isActive: true,
         priority: 0,
@@ -447,7 +447,7 @@ describe('FieldConditionResolver', () => {
         entityType: 'Settlement',
         entityId: 'settlement-123',
         field: 'is_trade_hub',
-        expression: input.expression! as any,
+        expression: input.expression! as Prisma.JsonValue,
         description: input.description!,
         isActive: input.isActive!,
         priority: input.priority!,
@@ -503,7 +503,7 @@ describe('FieldConditionResolver', () => {
         entityType: 'Settlement',
         entityId: 'settlement-123',
         field: 'is_trade_hub',
-        expression: {} as any,
+        expression: {} as Prisma.JsonValue,
         description: null,
         isActive: true,
         priority: 0,
@@ -610,12 +610,12 @@ describe('FieldConditionResolver', () => {
   // ============= Field Resolvers Tests =============
 
   describe('Field Resolvers', () => {
-    const mockCondition = {
+    const mockCondition: PrismaFieldCondition = {
       id: 'condition-123',
       entityType: 'Settlement',
       entityId: 'settlement-123',
       field: 'is_trade_hub',
-      expression: {},
+      expression: {} as Prisma.JsonValue,
       description: null,
       isActive: true,
       priority: 0,
@@ -625,7 +625,7 @@ describe('FieldConditionResolver', () => {
       deletedAt: null,
       createdBy: 'user-456',
       updatedBy: 'user-789',
-    } as any;
+    };
 
     it('should resolve createdBy field', () => {
       const result = resolver.resolveCreatedBy(mockCondition);

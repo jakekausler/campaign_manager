@@ -162,8 +162,9 @@ export function useWebSocketSubscription<TEvent extends WebSocketEvent = WebSock
       handlerRef.current(event);
     };
 
-    // Socket.IO's on() method expects any arguments, so we cast to any
-    socket.on(eventType, eventHandler as any);
+    // Socket.IO's on() method expects (eventName: string, listener: (...args: any[]) => void)
+    // Our eventHandler type is compatible with this signature
+    socket.on(eventType, eventHandler as (...args: unknown[]) => void);
 
     // Cleanup function
     return () => {
@@ -172,7 +173,7 @@ export function useWebSocketSubscription<TEvent extends WebSocketEvent = WebSock
       }
 
       // Remove event listener
-      socket.off(eventType, eventHandler as any);
+      socket.off(eventType, eventHandler as (...args: unknown[]) => void);
 
       // Unsubscribe from room
       unsubscribe();

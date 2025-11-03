@@ -5,7 +5,7 @@
 
 import { ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import type { Party, Kingdom, Settlement, Structure } from '@prisma/client';
+import type { Party, Kingdom, Settlement, Structure, Campaign, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
@@ -13,6 +13,31 @@ import type { VariableSchema } from '../types/variable-schema.types';
 
 import { AuditService } from './audit.service';
 import { VariableSchemaService } from './variable-schema.service';
+
+/**
+ * Type definitions for test data with variable schema fields
+ */
+type PartialCampaign = Pick<Campaign, 'id' | 'ownerId'>;
+
+type PartyWithSchemas = Party & {
+  variableSchemas: Prisma.JsonValue;
+};
+
+type KingdomWithSchemas = Kingdom & {
+  variableSchemas: Prisma.JsonValue;
+};
+
+type SettlementWithSchemas = Settlement & {
+  variableSchemas: Prisma.JsonValue;
+};
+
+type StructureWithSchemas = Structure & {
+  variableSchemas: Prisma.JsonValue;
+};
+
+type SettlementWithKingdom = Settlement & {
+  kingdom: Pick<Kingdom, 'id' | 'campaignId'>;
+};
 
 describe('VariableSchemaService', () => {
   let service: VariableSchemaService;
@@ -158,21 +183,23 @@ describe('VariableSchemaService', () => {
       };
 
       jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(mockParty);
-      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({
+      const mockCampaign: PartialCampaign = {
         id: 'campaign-1',
         ownerId: 'user-1',
-      } as any);
-      jest.spyOn(prisma.party, 'update').mockResolvedValue({
+      };
+      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue(mockCampaign as Campaign);
+      const updatedParty: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: [schema],
-      } as any);
+        variableSchemas: [schema] as unknown as Prisma.JsonValue,
+      };
+      jest.spyOn(prisma.party, 'update').mockResolvedValue(updatedParty as Party);
 
       await service.defineSchema('party', 'party-1', schema, mockUser);
 
       expect(prisma.party.update).toHaveBeenCalledWith({
         where: { id: 'party-1' },
         data: {
-          variableSchemas: [schema],
+          variableSchemas: [schema] as unknown as Prisma.JsonValue,
         },
       });
       expect(audit.log).toHaveBeenCalledWith('party', 'party-1', 'UPDATE', 'user-1', {
@@ -194,20 +221,22 @@ describe('VariableSchemaService', () => {
         defaultValue: 100,
       };
 
-      const partyWithSchema = {
+      const partyWithSchema: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: [existingSchema],
+        variableSchemas: [existingSchema] as unknown as Prisma.JsonValue,
       };
 
-      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as any);
-      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({
+      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as Party);
+      const mockCampaign: PartialCampaign = {
         id: 'campaign-1',
         ownerId: 'user-1',
-      } as any);
-      jest.spyOn(prisma.party, 'update').mockResolvedValue({
+      };
+      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue(mockCampaign as Campaign);
+      const updatedParty: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: [newSchema],
-      } as any);
+        variableSchemas: [newSchema] as unknown as Prisma.JsonValue,
+      };
+      jest.spyOn(prisma.party, 'update').mockResolvedValue(updatedParty as Party);
 
       await service.defineSchema('party', 'party-1', newSchema, mockUser);
 
@@ -255,12 +284,12 @@ describe('VariableSchemaService', () => {
         description: 'Party gold',
       };
 
-      const partyWithSchema = {
+      const partyWithSchema: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: [schema],
+        variableSchemas: [schema] as unknown as Prisma.JsonValue,
       };
 
-      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as any);
+      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as Party);
 
       const result = await service.getSchema('party', 'party-1', 'gold', mockUser);
 
@@ -292,12 +321,12 @@ describe('VariableSchemaService', () => {
         { name: 'alignment', type: 'enum', enumValues: ['good', 'neutral', 'evil'] },
       ];
 
-      const partyWithSchemas = {
+      const partyWithSchemas: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: schemas,
+        variableSchemas: schemas as unknown as Prisma.JsonValue,
       };
 
-      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchemas as any);
+      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchemas as Party);
 
       const result = await service.listSchemas('party', 'party-1', mockUser);
 
@@ -320,20 +349,22 @@ describe('VariableSchemaService', () => {
         { name: 'motto', type: 'string' },
       ];
 
-      const partyWithSchemas = {
+      const partyWithSchemas: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: schemas,
+        variableSchemas: schemas as unknown as Prisma.JsonValue,
       };
 
-      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchemas as any);
-      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({
+      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchemas as Party);
+      const mockCampaign: PartialCampaign = {
         id: 'campaign-1',
         ownerId: 'user-1',
-      } as any);
-      jest.spyOn(prisma.party, 'update').mockResolvedValue({
+      };
+      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue(mockCampaign as Campaign);
+      const updatedParty: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: [{ name: 'motto', type: 'string' }],
-      } as any);
+        variableSchemas: [{ name: 'motto', type: 'string' }] as unknown as Prisma.JsonValue,
+      };
+      jest.spyOn(prisma.party, 'update').mockResolvedValue(updatedParty as Party);
 
       await service.deleteSchema('party', 'party-1', 'gold', mockUser);
 
@@ -351,10 +382,11 @@ describe('VariableSchemaService', () => {
 
     it('should throw NotFoundException when schema does not exist', async () => {
       jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(mockParty);
-      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({
+      const mockCampaign: PartialCampaign = {
         id: 'campaign-1',
         ownerId: 'user-1',
-      } as any);
+      };
+      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue(mockCampaign as Campaign);
 
       await expect(
         service.deleteSchema('party', 'party-1', 'nonexistent', mockUser)
@@ -370,21 +402,23 @@ describe('VariableSchemaService', () => {
         description: 'Party gold',
       };
 
-      const partyWithSchema = {
+      const partyWithSchema: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: [schema],
+        variableSchemas: [schema] as unknown as Prisma.JsonValue,
         variables: {},
       };
 
-      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as any);
-      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({
+      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as Party);
+      const mockCampaign: PartialCampaign = {
         id: 'campaign-1',
         ownerId: 'user-1',
-      } as any);
-      jest.spyOn(prisma.party, 'update').mockResolvedValue({
+      };
+      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue(mockCampaign as Campaign);
+      const updatedParty: PartyWithSchemas = {
         ...mockParty,
         variables: { gold: 100 },
-      } as any);
+      };
+      jest.spyOn(prisma.party, 'update').mockResolvedValue(updatedParty as Party);
 
       await service.setVariable('party', 'party-1', 'gold', 100, mockUser);
 
@@ -405,16 +439,17 @@ describe('VariableSchemaService', () => {
         type: 'number',
       };
 
-      const partyWithSchema = {
+      const partyWithSchema: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: [schema],
+        variableSchemas: [schema] as unknown as Prisma.JsonValue,
       };
 
-      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as any);
-      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({
+      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as Party);
+      const mockCampaign: PartialCampaign = {
         id: 'campaign-1',
         ownerId: 'user-1',
-      } as any);
+      };
+      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue(mockCampaign as Campaign);
 
       await expect(
         service.setVariable('party', 'party-1', 'gold', 'not-a-number', mockUser)
@@ -423,10 +458,11 @@ describe('VariableSchemaService', () => {
 
     it('should throw NotFoundException when schema not defined', async () => {
       jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(mockParty);
-      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({
+      const mockCampaign: PartialCampaign = {
         id: 'campaign-1',
         ownerId: 'user-1',
-      } as any);
+      };
+      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue(mockCampaign as Campaign);
 
       await expect(
         service.setVariable('party', 'party-1', 'undefined-var', 100, mockUser)
@@ -441,13 +477,13 @@ describe('VariableSchemaService', () => {
         type: 'number',
       };
 
-      const partyWithVariable = {
+      const partyWithVariable: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: [schema],
+        variableSchemas: [schema] as unknown as Prisma.JsonValue,
         variables: { gold: 100 },
       };
 
-      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithVariable as any);
+      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithVariable as Party);
 
       const result = await service.getVariable('party', 'party-1', 'gold', mockUser);
 
@@ -461,13 +497,13 @@ describe('VariableSchemaService', () => {
         defaultValue: 0,
       };
 
-      const partyWithSchema = {
+      const partyWithSchema: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: [schema],
+        variableSchemas: [schema] as unknown as Prisma.JsonValue,
         variables: {},
       };
 
-      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as any);
+      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as Party);
 
       const result = await service.getVariable('party', 'party-1', 'gold', mockUser);
 
@@ -480,13 +516,13 @@ describe('VariableSchemaService', () => {
         type: 'number',
       };
 
-      const partyWithSchema = {
+      const partyWithSchema: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: [schema],
+        variableSchemas: [schema] as unknown as Prisma.JsonValue,
         variables: {},
       };
 
-      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as any);
+      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithSchema as Party);
 
       const result = await service.getVariable('party', 'party-1', 'gold', mockUser);
 
@@ -509,13 +545,13 @@ describe('VariableSchemaService', () => {
         { name: 'motto', type: 'string' },
       ];
 
-      const partyWithVariables = {
+      const partyWithVariables: PartyWithSchemas = {
         ...mockParty,
-        variableSchemas: schemas,
+        variableSchemas: schemas as unknown as Prisma.JsonValue,
         variables: { gold: 100, motto: 'For honor!' },
       };
 
-      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithVariables as any);
+      jest.spyOn(prisma.party, 'findFirst').mockResolvedValue(partyWithVariables as Party);
 
       const result = await service.listVariables('party', 'party-1', mockUser);
 
@@ -552,15 +588,17 @@ describe('VariableSchemaService', () => {
         type: 'number',
       };
 
-      jest.spyOn(prisma.kingdom, 'findFirst').mockResolvedValue(mockKingdom as any);
-      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({
+      jest.spyOn(prisma.kingdom, 'findFirst').mockResolvedValue(mockKingdom);
+      const mockCampaign: PartialCampaign = {
         id: 'campaign-1',
         ownerId: 'user-1',
-      } as any);
-      jest.spyOn(prisma.kingdom, 'update').mockResolvedValue({
+      };
+      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue(mockCampaign as Campaign);
+      const updatedKingdom: KingdomWithSchemas = {
         ...mockKingdom,
-        variableSchemas: [schema],
-      } as any);
+        variableSchemas: [schema] as unknown as Prisma.JsonValue,
+      };
+      jest.spyOn(prisma.kingdom, 'update').mockResolvedValue(updatedKingdom as Kingdom);
 
       await service.defineSchema('kingdom', 'kingdom-1', schema, mockUser);
 
@@ -588,19 +626,22 @@ describe('VariableSchemaService', () => {
         type: 'number',
       };
 
-      jest.spyOn(prisma.settlement, 'findFirst').mockResolvedValue(mockSettlement as any);
-      jest.spyOn(prisma.kingdom, 'findFirst').mockResolvedValue({
+      jest.spyOn(prisma.settlement, 'findFirst').mockResolvedValue(mockSettlement);
+      const mockKingdomPartial: Pick<Kingdom, 'id' | 'campaignId'> = {
         id: 'kingdom-1',
         campaignId: 'campaign-1',
-      } as any);
-      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({
+      };
+      jest.spyOn(prisma.kingdom, 'findFirst').mockResolvedValue(mockKingdomPartial as Kingdom);
+      const mockCampaign: PartialCampaign = {
         id: 'campaign-1',
         ownerId: 'user-1',
-      } as any);
-      jest.spyOn(prisma.settlement, 'update').mockResolvedValue({
+      };
+      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue(mockCampaign as Campaign);
+      const updatedSettlement: SettlementWithSchemas = {
         ...mockSettlement,
-        variableSchemas: [schema],
-      } as any);
+        variableSchemas: [schema] as unknown as Prisma.JsonValue,
+      };
+      jest.spyOn(prisma.settlement, 'update').mockResolvedValue(updatedSettlement as Settlement);
 
       await service.defineSchema('settlement', 'settlement-1', schema, mockUser);
 
@@ -628,27 +669,43 @@ describe('VariableSchemaService', () => {
         type: 'boolean',
       };
 
-      jest.spyOn(prisma.structure, 'findFirst').mockResolvedValue(mockStructure as any);
-      jest.spyOn(prisma.settlement, 'findFirst').mockResolvedValue({
+      jest.spyOn(prisma.structure, 'findFirst').mockResolvedValue(mockStructure);
+      const mockSettlementWithKingdom: SettlementWithKingdom = {
         id: 'settlement-1',
         kingdomId: 'kingdom-1',
+        locationId: 'location-1',
+        name: 'Test Settlement',
+        level: 1,
+        variables: {},
+        variableSchemas: [],
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        archivedAt: null,
         kingdom: {
           id: 'kingdom-1',
           campaignId: 'campaign-1',
         },
-      } as any);
-      jest.spyOn(prisma.kingdom, 'findFirst').mockResolvedValue({
+      };
+      jest
+        .spyOn(prisma.settlement, 'findFirst')
+        .mockResolvedValue(mockSettlementWithKingdom as Settlement);
+      const mockKingdomPartial: Pick<Kingdom, 'id' | 'campaignId'> = {
         id: 'kingdom-1',
         campaignId: 'campaign-1',
-      } as any);
-      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({
+      };
+      jest.spyOn(prisma.kingdom, 'findFirst').mockResolvedValue(mockKingdomPartial as Kingdom);
+      const mockCampaign: PartialCampaign = {
         id: 'campaign-1',
         ownerId: 'user-1',
-      } as any);
-      jest.spyOn(prisma.structure, 'update').mockResolvedValue({
+      };
+      jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue(mockCampaign as Campaign);
+      const updatedStructure: StructureWithSchemas = {
         ...mockStructure,
-        variableSchemas: [schema],
-      } as any);
+        variableSchemas: [schema] as unknown as Prisma.JsonValue,
+      };
+      jest.spyOn(prisma.structure, 'update').mockResolvedValue(updatedStructure as Structure);
 
       await service.defineSchema('structure', 'structure-1', schema, mockUser);
 

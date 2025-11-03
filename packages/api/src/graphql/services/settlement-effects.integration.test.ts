@@ -370,7 +370,9 @@ describe('Settlement Effects Integration', () => {
       // Assert: Bonus was applied
       expect(result.success).toBe(true);
       expect(result.patchedEntity?.variables?.tradeBonus).toBe(15);
-      expect((result.patchedEntity?.variables as any)?.economicBoomActive).toBe(true);
+      expect((result.patchedEntity?.variables as Record<string, unknown>)?.economicBoomActive).toBe(
+        true
+      );
     });
   });
 
@@ -460,7 +462,7 @@ describe('Settlement Effects Integration', () => {
       expect(result.success).toBe(true);
       expect(result.patchedEntity?.name).toBe('Riverside City');
       expect(result.patchedEntity?.level).toBe(6);
-      expect((result.patchedEntity?.variables as any)?.renamed).toBe(true);
+      expect((result.patchedEntity?.variables as Record<string, unknown>)?.renamed).toBe(true);
     });
   });
 });

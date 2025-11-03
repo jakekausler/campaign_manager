@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
-import { Timeline } from '@/components/features/timeline';
+import { Timeline, type TimelineProps } from '@/components/features/timeline';
 import { useTimelineReschedule } from '@/hooks';
 import { useEncountersByCampaign } from '@/services/api/hooks/encounters';
 import { useEventsByCampaign } from '@/services/api/hooks/events';
@@ -599,7 +599,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: any;
+      let timelineProps: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -640,7 +640,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: any;
+      let timelineProps: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -715,7 +715,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: any;
+      let timelineProps: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -855,7 +855,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: any;
+      let timelineProps: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -893,7 +893,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: any;
+      let timelineProps: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -931,7 +931,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: any;
+      let timelineProps: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -964,7 +964,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: any;
+      let timelineProps: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);

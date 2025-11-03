@@ -357,8 +357,12 @@ describe('Merge System E2E Tests', () => {
 
       // Should have conflicts for population and wealth
       expect(entityPreview.conflicts).toHaveLength(2);
-      const populationConflict = entityPreview.conflicts.find((c: any) => c.path === 'population');
-      const wealthConflict = entityPreview.conflicts.find((c: any) => c.path === 'wealth');
+      const populationConflict = entityPreview.conflicts.find(
+        (c: { path: string }) => c.path === 'population'
+      );
+      const wealthConflict = entityPreview.conflicts.find(
+        (c: { path: string }) => c.path === 'wealth'
+      );
       expect(populationConflict).toBeDefined();
       expect(wealthConflict).toBeDefined();
 
@@ -563,10 +567,16 @@ describe('Merge System E2E Tests', () => {
       expect(entityPreview.conflicts.length).toBeGreaterThanOrEqual(3);
 
       // Resolve conflicts
-      const nameConflict = entityPreview.conflicts.find((c: any) => c.path === 'name');
-      const populationConflict = entityPreview.conflicts.find((c: any) => c.path === 'population');
-      const kingdomConflict = entityPreview.conflicts.find((c: any) => c.path === 'kingdomId');
-      const goldConflict = entityPreview.conflicts.find((c: any) => c.path === 'resources.gold');
+      const nameConflict = entityPreview.conflicts.find((c: { path: string }) => c.path === 'name');
+      const populationConflict = entityPreview.conflicts.find(
+        (c: { path: string }) => c.path === 'population'
+      );
+      const kingdomConflict = entityPreview.conflicts.find(
+        (c: { path: string }) => c.path === 'kingdomId'
+      );
+      const goldConflict = entityPreview.conflicts.find(
+        (c: { path: string }) => c.path === 'resources.gold'
+      );
 
       expect(nameConflict).toBeDefined();
       expect(populationConflict).toBeDefined();
@@ -758,8 +768,10 @@ describe('Merge System E2E Tests', () => {
 
       // Should have conflicts: name, level
       // Should auto-resolve: capacity (only source changed), defenseRating (both same)
-      const nameConflict = entityPreview.conflicts.find((c: any) => c.path === 'name');
-      const levelConflict = entityPreview.conflicts.find((c: any) => c.path === 'level');
+      const nameConflict = entityPreview.conflicts.find((c: { path: string }) => c.path === 'name');
+      const levelConflict = entityPreview.conflicts.find(
+        (c: { path: string }) => c.path === 'level'
+      );
 
       expect(nameConflict).toBeDefined();
       expect(levelConflict).toBeDefined();
@@ -1840,7 +1852,9 @@ describe('Merge System E2E Tests', () => {
       expect(entityPreview.conflicts.length).toBeGreaterThan(0);
 
       // Verify at least one conflict path contains the deep nested property
-      const hasDeepConflict = entityPreview.conflicts.some((c: any) => c.path.includes('config'));
+      const hasDeepConflict = entityPreview.conflicts.some((c: { path: string }) =>
+        c.path.includes('config')
+      );
       expect(hasDeepConflict).toBe(true);
     });
   });
@@ -1870,8 +1884,8 @@ describe('Merge System E2E Tests', () => {
       );
 
       // Create 100 settlements with conflicting changes
-      const settlements: any[] = [];
-      const resolutions: any[] = [];
+      const settlements: unknown[] = [];
+      const resolutions: unknown[] = [];
 
       for (let i = 0; i < 100; i++) {
         // Create unique location for each settlement

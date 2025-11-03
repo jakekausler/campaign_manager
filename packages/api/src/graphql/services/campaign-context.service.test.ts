@@ -18,7 +18,7 @@ import { StructureService } from './structure.service';
 describe('CampaignContextService', () => {
   let service: CampaignContextService;
   let prisma: PrismaService;
-  let redis: any;
+  let redis: { del: jest.Mock; set: jest.Mock; get: jest.Mock };
   let partyService: jest.Mocked<PartyService>;
   let kingdomService: jest.Mocked<KingdomService>;
   let settlementService: jest.Mocked<SettlementService>;
@@ -149,7 +149,7 @@ describe('CampaignContextService', () => {
         },
       ];
 
-      partyService.findByCampaign.mockResolvedValue(mockParties as any);
+      partyService.findByCampaign.mockResolvedValue(mockParties);
       kingdomService.findByCampaign.mockResolvedValue([]);
       settlementService.findByKingdoms.mockResolvedValue([]);
       structureService.findBySettlements.mockResolvedValue([]);
@@ -193,7 +193,7 @@ describe('CampaignContextService', () => {
       ];
 
       partyService.findByCampaign.mockResolvedValue([]);
-      kingdomService.findByCampaign.mockResolvedValue(mockKingdoms as any);
+      kingdomService.findByCampaign.mockResolvedValue(mockKingdoms);
       settlementService.findByKingdoms.mockResolvedValue([]);
       structureService.findBySettlements.mockResolvedValue([]);
 
@@ -253,9 +253,9 @@ describe('CampaignContextService', () => {
       ];
 
       partyService.findByCampaign.mockResolvedValue([]);
-      kingdomService.findByCampaign.mockResolvedValue(mockKingdoms as any);
-      settlementService.findByKingdoms.mockResolvedValue(mockSettlements as any);
-      structureService.findBySettlements.mockResolvedValue(mockStructures as any);
+      kingdomService.findByCampaign.mockResolvedValue(mockKingdoms);
+      settlementService.findByKingdoms.mockResolvedValue(mockSettlements);
+      structureService.findBySettlements.mockResolvedValue(mockStructures);
 
       // Act
       const context = await service.getCampaignContext(mockCampaignId, mockUser);
@@ -299,7 +299,7 @@ describe('CampaignContextService', () => {
         variableSchemas: [],
       }));
 
-      partyService.findByCampaign.mockResolvedValue(mockParties as any);
+      partyService.findByCampaign.mockResolvedValue(mockParties);
       kingdomService.findByCampaign.mockResolvedValue([]);
       settlementService.findByKingdoms.mockResolvedValue([]);
       structureService.findBySettlements.mockResolvedValue([]);

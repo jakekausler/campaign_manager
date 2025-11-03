@@ -114,15 +114,13 @@ describe('LevelValidator', () => {
 
     describe('type validation', () => {
       it('should reject non-number values', () => {
-        expect(() => LevelValidator.validateLevel('5' as any, 'party')).toThrow(
+        expect(() => LevelValidator.validateLevel('5' as unknown as number, 'party')).toThrow(
           BadRequestException
         );
-        expect(() => LevelValidator.validateLevel(null as any, 'party')).toThrow(
+        expect(() => LevelValidator.validateLevel(null as unknown as number, 'party')).toThrow(
           BadRequestException
         );
-        expect(() => LevelValidator.validateLevel(undefined as any, 'party')).toThrow(
-          BadRequestException
-        );
+        expect(() => LevelValidator.validateLevel(undefined, 'party')).toThrow(BadRequestException);
       });
 
       it('should reject NaN', () => {
@@ -136,7 +134,7 @@ describe('LevelValidator', () => {
 
       it('should provide descriptive error for non-number type', () => {
         try {
-          LevelValidator.validateLevel('invalid' as any, 'party');
+          LevelValidator.validateLevel('invalid' as unknown as number, 'party');
           fail('Expected BadRequestException');
         } catch (error) {
           expect(error).toBeInstanceOf(BadRequestException);

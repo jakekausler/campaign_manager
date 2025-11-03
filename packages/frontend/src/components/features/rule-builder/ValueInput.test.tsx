@@ -305,7 +305,14 @@ describe('ValueInput', () => {
   // Edge cases
   describe('Edge Cases', () => {
     it('handles undefined value gracefully', () => {
-      render(<ValueInput value={undefined as any} expectedType="string" onChange={mockOnChange} />);
+      // undefined is not a valid value type, but we test graceful handling
+      render(
+        <ValueInput
+          value={undefined as unknown as LiteralValue}
+          expectedType="string"
+          onChange={mockOnChange}
+        />
+      );
 
       expect(screen.getByRole('textbox')).toHaveValue('');
     });
@@ -320,8 +327,13 @@ describe('ValueInput', () => {
     });
 
     it('falls back to string input for unknown expectedType', () => {
+      // 'unknown' is not a valid ExpectedType, but we test fallback handling
       render(
-        <ValueInput value={'fallback'} expectedType={'unknown' as any} onChange={mockOnChange} />
+        <ValueInput
+          value={'fallback'}
+          expectedType={'unknown' as unknown as ExpectedType}
+          onChange={mockOnChange}
+        />
       );
 
       expect(screen.getByRole('textbox')).toBeInTheDocument();

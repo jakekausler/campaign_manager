@@ -83,7 +83,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -134,7 +134,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -172,7 +172,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -208,7 +208,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -244,7 +244,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -280,7 +280,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -325,7 +325,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -367,7 +367,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -403,7 +403,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -445,7 +445,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -483,7 +483,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -519,7 +519,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -565,7 +565,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -615,7 +615,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 
@@ -681,9 +681,9 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.stateVariable.findMany.mockResolvedValue(stateVariables as any);
+      prisma.stateVariable.findMany.mockResolvedValue(stateVariables);
       prisma.effect.findMany.mockResolvedValue([]);
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
@@ -743,7 +743,7 @@ describe('Settlement & Structure Dependency Graph Integration', () => {
       ];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      prisma.fieldCondition.findMany.mockResolvedValue(conditions as any);
+      prisma.fieldCondition.findMany.mockResolvedValue(conditions);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([]);
 

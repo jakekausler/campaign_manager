@@ -21,7 +21,13 @@ import { ParentSettlementContext } from './ParentSettlementContext';
  */
 
 // Wrapper to provide Router context for all tests
-function TestWrapper({ children, mocks }: { children: React.ReactNode; mocks: any[] }) {
+function TestWrapper({
+  children,
+  mocks,
+}: {
+  children: React.ReactNode;
+  mocks: ReadonlyArray<unknown>;
+}) {
   return (
     <BrowserRouter>
       <MockedProvider mocks={mocks}>{children}</MockedProvider>

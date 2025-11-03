@@ -331,44 +331,60 @@ describe('MetricsController', () => {
 
   describe('healthStatusToNumber', () => {
     it('should convert healthy to 2', () => {
-      const result = (controller as any).healthStatusToNumber('healthy');
+      const result = (controller as unknown as Record<string, (status: string) => number>)[
+        'healthStatusToNumber'
+      ]('healthy');
       expect(result).toBe(2);
     });
 
     it('should convert degraded to 1', () => {
-      const result = (controller as any).healthStatusToNumber('degraded');
+      const result = (controller as unknown as Record<string, (status: string) => number>)[
+        'healthStatusToNumber'
+      ]('degraded');
       expect(result).toBe(1);
     });
 
     it('should convert unhealthy to 0', () => {
-      const result = (controller as any).healthStatusToNumber('unhealthy');
+      const result = (controller as unknown as Record<string, (status: string) => number>)[
+        'healthStatusToNumber'
+      ]('unhealthy');
       expect(result).toBe(0);
     });
 
     it('should return 0 for unknown status', () => {
-      const result = (controller as any).healthStatusToNumber('unknown' as any);
+      const result = (controller as unknown as Record<string, (status: string) => number>)[
+        'healthStatusToNumber'
+      ]('unknown');
       expect(result).toBe(0);
     });
   });
 
   describe('componentStatusToNumber', () => {
     it('should convert up to 2', () => {
-      const result = (controller as any).componentStatusToNumber('up');
+      const result = (controller as unknown as Record<string, (status: string) => number>)[
+        'componentStatusToNumber'
+      ]('up');
       expect(result).toBe(2);
     });
 
     it('should convert degraded to 1', () => {
-      const result = (controller as any).componentStatusToNumber('degraded');
+      const result = (controller as unknown as Record<string, (status: string) => number>)[
+        'componentStatusToNumber'
+      ]('degraded');
       expect(result).toBe(1);
     });
 
     it('should convert down to 0', () => {
-      const result = (controller as any).componentStatusToNumber('down');
+      const result = (controller as unknown as Record<string, (status: string) => number>)[
+        'componentStatusToNumber'
+      ]('down');
       expect(result).toBe(0);
     });
 
     it('should return 0 for unknown status', () => {
-      const result = (controller as any).componentStatusToNumber('unknown' as any);
+      const result = (controller as unknown as Record<string, (status: string) => number>)[
+        'componentStatusToNumber'
+      ]('unknown');
       expect(result).toBe(0);
     });
   });

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { Branch as PrismaBranch, Version } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
@@ -103,7 +104,7 @@ export interface CherryPickResult {
   /** List of conflicts (if any) */
   conflicts?: MergeConflict[];
   /** Version that was created (if successful) */
-  versionCreated?: any;
+  versionCreated?: Version;
   /** Error message if cherry-pick failed */
   error?: string;
 }
@@ -572,7 +573,7 @@ export class MergeService {
           mergedBy: user.id,
           conflictsCount: allConflicts.reduce((sum, e) => sum + e.conflicts.length, 0),
           entitiesMerged: versionsCreated,
-          resolutionsData: resolutions as any,
+          resolutionsData: resolutions as unknown as Prisma.InputJsonValue,
           metadata: {},
         },
       });
@@ -595,7 +596,7 @@ export class MergeService {
     sourceBranchId: string,
     targetBranchId: string,
     worldTime: Date,
-    tx: any
+    tx: Prisma.TransactionClient
   ): Promise<Array<{ entityType: string; entityId: string }>> {
     // Get all versions from both branches up to worldTime
     const [sourceVersions, targetVersions] = await Promise.all([
@@ -675,14 +676,15 @@ export class MergeService {
    */
   private setValueAtPath(obj: Record<string, unknown>, path: string, value: unknown): void {
     const parts = path.split('.');
-    let current: any = obj;
+    let current: Record<string, unknown> = obj;
 
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
       if (!(part in current)) {
         current[part] = {};
       }
-      current = current[part];
+      // Type assertion needed because we know this will be an object due to the initialization above
+      current = current[part] as Record<string, unknown>;
     }
 
     current[parts[parts.length - 1]] = value;

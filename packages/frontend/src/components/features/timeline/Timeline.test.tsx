@@ -1,34 +1,53 @@
 import { render, screen } from '@testing-library/react';
-import type { TimelineItem } from 'vis-timeline/types';
+import type { TimelineItem, TimelineGroup, TimelineOptions } from 'vis-timeline/types';
 import { describe, it, expect, vi } from 'vitest';
+import type { Mock } from 'vitest';
 
 import { Timeline } from './Timeline';
+
+// Type definitions for mock objects
+type MockHTMLElement = {
+  setAttribute?: (name: string, value: string) => void;
+  removeAttribute?: (name: string) => void;
+};
+
+type EventHandler = (...args: unknown[]) => void;
+
+interface MockDataItem {
+  id: string | number;
+  [key: string]: unknown;
+}
 
 // Mock vis-timeline and vis-data libraries
 vi.mock('vis-timeline/standalone', () => {
   class MockTimeline {
-    container: any;
-    items: any;
-    groups: any;
-    options: any;
+    container: MockHTMLElement;
+    items: MockDataItem[];
+    groups: TimelineGroup[];
+    options: Partial<TimelineOptions>;
     customTimes: Map<string, Date>;
-    eventHandlers: Map<string, any>;
-    setItems: any;
-    setGroups: any;
-    setOptions: any;
-    addCustomTime: any;
-    setCustomTime: any;
-    removeCustomTime: any;
-    on: any;
-    zoomIn: any;
-    zoomOut: any;
-    fit: any;
-    moveTo: any;
-    destroy: any;
-    setSelection: any;
-    getSelection: any;
+    eventHandlers: Map<string, EventHandler>;
+    setItems: Mock;
+    setGroups: Mock;
+    setOptions: Mock;
+    addCustomTime: Mock;
+    setCustomTime: Mock;
+    removeCustomTime: Mock;
+    on: Mock;
+    zoomIn: Mock;
+    zoomOut: Mock;
+    fit: Mock;
+    moveTo: Mock;
+    destroy: Mock;
+    setSelection: Mock;
+    getSelection: Mock;
 
-    constructor(container: any, items: any, groups: any, options: any) {
+    constructor(
+      container: MockHTMLElement,
+      items: MockDataItem[],
+      groups: TimelineGroup[],
+      options: Partial<TimelineOptions>
+    ) {
       this.container = container;
       this.items = items;
       this.groups = groups;
@@ -37,13 +56,13 @@ vi.mock('vis-timeline/standalone', () => {
       this.eventHandlers = new Map();
 
       // Mock methods
-      this.setItems = vi.fn((newItems: any) => {
+      this.setItems = vi.fn((newItems: MockDataItem[]) => {
         this.items = newItems;
       });
-      this.setGroups = vi.fn((newGroups: any) => {
+      this.setGroups = vi.fn((newGroups: TimelineGroup[]) => {
         this.groups = newGroups;
       });
-      this.setOptions = vi.fn((newOptions: any) => {
+      this.setOptions = vi.fn((newOptions: Partial<TimelineOptions>) => {
         this.options = { ...this.options, ...newOptions };
       });
       this.addCustomTime = vi.fn((time: Date, id: string) => {
@@ -64,7 +83,7 @@ vi.mock('vis-timeline/standalone', () => {
           container.removeAttribute(`data-custom-time-${id}`);
         }
       });
-      this.on = vi.fn((event: string, handler: any) => {
+      this.on = vi.fn((event: string, handler: EventHandler) => {
         this.eventHandlers.set(event, handler);
       });
       this.zoomIn = vi.fn();
@@ -88,19 +107,19 @@ vi.mock('vis-timeline/standalone', () => {
 });
 
 vi.mock('vis-data', () => {
-  class MockDataSet {
-    data: any[];
+  class MockDataSet<T extends MockDataItem = MockDataItem> {
+    data: T[];
     length: number;
-    add: any;
-    clear: any;
-    update: any;
-    get: any;
+    add: Mock;
+    clear: Mock;
+    update: Mock;
+    get: Mock;
 
-    constructor(data: any = []) {
+    constructor(data: T[] | T = []) {
       this.data = Array.isArray(data) ? [...data] : [];
       this.length = this.data.length;
 
-      this.add = vi.fn((items: any) => {
+      this.add = vi.fn((items: T | T[]) => {
         const itemsArray = Array.isArray(items) ? items : [items];
         this.data.push(...itemsArray);
         this.length = this.data.length;
@@ -109,14 +128,14 @@ vi.mock('vis-data', () => {
         this.data = [];
         this.length = 0;
       });
-      this.update = vi.fn((item: any) => {
-        const index = this.data.findIndex((d: any) => d.id === item.id);
+      this.update = vi.fn((item: T) => {
+        const index = this.data.findIndex((d) => d.id === item.id);
         if (index !== -1) {
           this.data[index] = item;
         }
       });
-      this.get = vi.fn((id: any) => {
-        return this.data.find((d: any) => d.id === id);
+      this.get = vi.fn((id: string | number) => {
+        return this.data.find((d) => d.id === id);
       });
     }
   }

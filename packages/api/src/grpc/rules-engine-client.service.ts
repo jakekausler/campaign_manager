@@ -1,6 +1,7 @@
 import { join } from 'path';
 
 import * as grpc from '@grpc/grpc-js';
+import type { Client, GrpcObject, ServiceError } from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
@@ -18,6 +19,14 @@ import type {
   GetCacheStatsRequest,
   CacheStatsResponse,
 } from './rules-engine.types';
+
+/**
+ * gRPC client with dynamic methods added by proto loader
+ */
+interface DynamicGrpcClient extends Client {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [methodName: string]: any;
+}
 
 /**
  * Circuit breaker states for resilience pattern
@@ -46,7 +55,7 @@ enum CircuitState {
 @Injectable()
 export class RulesEngineClientService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RulesEngineClientService.name);
-  private client: any; // gRPC client (dynamically loaded)
+  private client: DynamicGrpcClient | null = null; // gRPC client (dynamically loaded)
   private isConnected = false;
   private readonly enabled: boolean;
   private readonly host: string;
@@ -103,9 +112,15 @@ export class RulesEngineClientService implements OnModuleInit, OnModuleDestroy {
       oneofs: true,
     });
 
-    const proto: any = grpc.loadPackageDefinition(packageDefinition);
+    const proto: GrpcObject = grpc.loadPackageDefinition(packageDefinition);
 
-    this.client = new proto.rulesengine.RulesEngine(
+    // Type assertion needed because GrpcObject index signature returns a union type
+    const RulesEngineClient = (proto.rulesengine as GrpcObject).RulesEngine as new (
+      address: string,
+      credentials: grpc.ChannelCredentials
+    ) => DynamicGrpcClient;
+
+    this.client = new RulesEngineClient(
       `${this.host}:${this.port}`,
       grpc.credentials.createInsecure()
     );
@@ -209,16 +224,20 @@ export class RulesEngineClientService implements OnModuleInit, OnModuleDestroy {
       const deadline = new Date();
       deadline.setMilliseconds(deadline.getMilliseconds() + this.timeout);
 
-      this.client[method](request, { deadline }, (error: any, response: TResponse) => {
-        if (error) {
-          this.logger.error(`gRPC ${method} failed:`, error.message);
-          this.recordFailure();
-          reject(error);
-        } else {
-          this.recordSuccess();
-          resolve(response);
+      this.client![method](
+        request,
+        { deadline },
+        (error: ServiceError | null, response: TResponse) => {
+          if (error) {
+            this.logger.error(`gRPC ${method} failed:`, error.message);
+            this.recordFailure();
+            reject(error);
+          } else {
+            this.recordSuccess();
+            resolve(response);
+          }
         }
-      });
+      );
     });
   }
 

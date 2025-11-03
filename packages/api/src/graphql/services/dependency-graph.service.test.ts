@@ -268,7 +268,7 @@ describe('DependencyGraphService', () => {
       graph.addEdge({
         fromId: 'CONDITION:cond-1',
         toId: 'VARIABLE:var-1',
-        type: 'READS' as any,
+        type: DependencyEdgeType.READS,
         metadata: {},
       });
 
@@ -347,7 +347,7 @@ describe('DependencyGraphService', () => {
       graph.addEdge({
         fromId: 'CONDITION:cond-1',
         toId: 'VARIABLE:var-1',
-        type: 'READS' as any,
+        type: DependencyEdgeType.READS,
         metadata: {},
       });
 
@@ -427,8 +427,8 @@ describe('DependencyGraphService', () => {
         label: 'C',
         metadata: {},
       });
-      graph.addEdge({ fromId: 'A', toId: 'B', type: 'DEPENDS_ON' as any, metadata: {} });
-      graph.addEdge({ fromId: 'B', toId: 'C', type: 'DEPENDS_ON' as any, metadata: {} });
+      graph.addEdge({ fromId: 'A', toId: 'B', type: DependencyEdgeType.DEPENDS_ON, metadata: {} });
+      graph.addEdge({ fromId: 'B', toId: 'C', type: DependencyEdgeType.DEPENDS_ON, metadata: {} });
 
       prisma.campaign.findFirst.mockResolvedValue({ id: 'campaign-1' });
       jest.spyOn(builder, 'buildGraphForCampaign').mockResolvedValue(graph);
@@ -457,8 +457,8 @@ describe('DependencyGraphService', () => {
         label: 'B',
         metadata: {},
       });
-      graph.addEdge({ fromId: 'A', toId: 'B', type: 'DEPENDS_ON' as any, metadata: {} });
-      graph.addEdge({ fromId: 'B', toId: 'A', type: 'DEPENDS_ON' as any, metadata: {} });
+      graph.addEdge({ fromId: 'A', toId: 'B', type: DependencyEdgeType.DEPENDS_ON, metadata: {} });
+      graph.addEdge({ fromId: 'B', toId: 'A', type: DependencyEdgeType.DEPENDS_ON, metadata: {} });
 
       prisma.campaign.findFirst.mockResolvedValue({ id: 'campaign-1' });
       jest.spyOn(builder, 'buildGraphForCampaign').mockResolvedValue(graph);
@@ -504,8 +504,8 @@ describe('DependencyGraphService', () => {
         label: 'C',
         metadata: {},
       });
-      graph.addEdge({ fromId: 'A', toId: 'B', type: 'DEPENDS_ON' as any, metadata: {} });
-      graph.addEdge({ fromId: 'B', toId: 'C', type: 'DEPENDS_ON' as any, metadata: {} });
+      graph.addEdge({ fromId: 'A', toId: 'B', type: DependencyEdgeType.DEPENDS_ON, metadata: {} });
+      graph.addEdge({ fromId: 'B', toId: 'C', type: DependencyEdgeType.DEPENDS_ON, metadata: {} });
 
       prisma.campaign.findFirst.mockResolvedValue({ id: 'campaign-1' });
       jest.spyOn(builder, 'buildGraphForCampaign').mockResolvedValue(graph);
@@ -534,8 +534,8 @@ describe('DependencyGraphService', () => {
         label: 'B',
         metadata: {},
       });
-      graph.addEdge({ fromId: 'A', toId: 'B', type: 'DEPENDS_ON' as any, metadata: {} });
-      graph.addEdge({ fromId: 'B', toId: 'A', type: 'DEPENDS_ON' as any, metadata: {} });
+      graph.addEdge({ fromId: 'A', toId: 'B', type: DependencyEdgeType.DEPENDS_ON, metadata: {} });
+      graph.addEdge({ fromId: 'B', toId: 'A', type: DependencyEdgeType.DEPENDS_ON, metadata: {} });
 
       prisma.campaign.findFirst.mockResolvedValue({ id: 'campaign-1' });
       jest.spyOn(builder, 'buildGraphForCampaign').mockResolvedValue(graph);

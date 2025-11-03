@@ -809,7 +809,7 @@ describe('MergeService', () => {
 
       // Act & Assert
       await expect(
-        service.cherryPickVersion('version-nonexistent', 'branch-target', mockUser as any)
+        service.cherryPickVersion('version-nonexistent', 'branch-target', mockUser)
       ).rejects.toThrow('Version version-nonexistent not found');
     });
 
@@ -820,7 +820,7 @@ describe('MergeService', () => {
 
       // Act & Assert
       await expect(
-        service.cherryPickVersion('version-source', 'branch-nonexistent', mockUser as any)
+        service.cherryPickVersion('version-source', 'branch-nonexistent', mockUser)
       ).rejects.toThrow('Target branch branch-nonexistent not found');
     });
 
@@ -854,11 +854,7 @@ describe('MergeService', () => {
       mockAuditService.log = jest.fn().mockResolvedValue(undefined);
 
       // Act
-      const result = await service.cherryPickVersion(
-        'version-source',
-        'branch-target',
-        mockUser as any
-      );
+      const result = await service.cherryPickVersion('version-source', 'branch-target', mockUser);
 
       // Assert
       expect(result.success).toBe(true);
@@ -902,11 +898,7 @@ describe('MergeService', () => {
         .mockResolvedValueOnce(targetPayload); // target
 
       // Act
-      const result = await service.cherryPickVersion(
-        'version-source',
-        'branch-target',
-        mockUser as any
-      );
+      const result = await service.cherryPickVersion('version-source', 'branch-target', mockUser);
 
       // Assert
       expect(result.success).toBe(false);
@@ -968,7 +960,7 @@ describe('MergeService', () => {
       const result = await service.cherryPickVersion(
         'version-source',
         'branch-target',
-        mockUser as any,
+        mockUser,
         resolutions
       );
 
@@ -1011,11 +1003,7 @@ describe('MergeService', () => {
         .mockResolvedValueOnce(targetPayload);
 
       // Act
-      const result = await service.cherryPickVersion(
-        'version-source',
-        'branch-target',
-        mockUser as any
-      );
+      const result = await service.cherryPickVersion('version-source', 'branch-target', mockUser);
 
       // Assert
       expect(result.success).toBe(false);
@@ -1055,11 +1043,7 @@ describe('MergeService', () => {
       mockAuditService.log = jest.fn().mockResolvedValue(undefined);
 
       // Act
-      const result = await service.cherryPickVersion(
-        'version-source',
-        'branch-target',
-        mockUser as any
-      );
+      const result = await service.cherryPickVersion('version-source', 'branch-target', mockUser);
 
       // Assert
       expect(result.success).toBe(true);
@@ -1097,7 +1081,7 @@ describe('MergeService', () => {
       mockAuditService.log = jest.fn().mockResolvedValue(undefined);
 
       // Act
-      await service.cherryPickVersion('version-source', 'branch-target', mockUser as any);
+      await service.cherryPickVersion('version-source', 'branch-target', mockUser);
 
       // Assert
       expect(mockVersionService.resolveVersion).toHaveBeenCalledWith(
@@ -1138,7 +1122,7 @@ describe('MergeService', () => {
       mockAuditService.log = jest.fn().mockResolvedValue(undefined);
 
       // Act
-      await service.cherryPickVersion('version-source', 'branch-target', mockUser as any);
+      await service.cherryPickVersion('version-source', 'branch-target', mockUser);
 
       // Assert
       expect(mockAuditService.log).toHaveBeenCalledWith(
@@ -1191,7 +1175,7 @@ describe('MergeService', () => {
 
       // Act & Assert
       await expect(
-        service.cherryPickVersion('version-source', 'branch-target', mockUser as any, resolutions)
+        service.cherryPickVersion('version-source', 'branch-target', mockUser, resolutions)
       ).rejects.toThrow('not all conflicts have been resolved');
     });
 
@@ -1222,11 +1206,7 @@ describe('MergeService', () => {
         .mockResolvedValueOnce(targetPayload);
 
       // Act
-      const result = await service.cherryPickVersion(
-        'version-source',
-        'branch-target',
-        mockUser as any
-      );
+      const result = await service.cherryPickVersion('version-source', 'branch-target', mockUser);
 
       // Assert
       expect(result.success).toBe(false);

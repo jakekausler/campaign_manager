@@ -171,7 +171,7 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
         const context = JSON.parse(request.contextJson);
 
         // Evaluate each condition
-        const results: Record<string, any> = {};
+        const results: Record<string, unknown> = {};
         for (const condition of conditions) {
           try {
             const result = await applyAsync(condition.expression as JSONLogicCondition, context);

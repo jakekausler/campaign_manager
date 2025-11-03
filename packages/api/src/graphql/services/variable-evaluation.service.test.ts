@@ -594,7 +594,7 @@ describe('VariableEvaluationService', () => {
 
     it('should reject undefined formula', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = service.validateFormula(undefined as any);
+      const result = service.validateFormula(undefined);
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Formula cannot be null or undefined');
@@ -624,7 +624,7 @@ describe('VariableEvaluationService', () => {
     it('should reject formula exceeding max depth', () => {
       // Create deeply nested formula (depth > 10)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let formula: any = { var: 'test' };
+      let formula: Record<string, unknown> = { var: 'test' };
       for (let i = 0; i < 12; i++) {
         formula = { and: [formula] };
       }
@@ -638,7 +638,7 @@ describe('VariableEvaluationService', () => {
     it('should validate formula at max depth limit', () => {
       // Create formula at exactly max depth (10)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let formula: any = { var: 'test' };
+      let formula: Record<string, unknown> = { var: 'test' };
       for (let i = 0; i < 9; i++) {
         formula = { and: [formula] };
       }

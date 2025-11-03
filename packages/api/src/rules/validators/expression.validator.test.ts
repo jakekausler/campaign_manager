@@ -2,6 +2,8 @@
  * Expression Validator Tests
  */
 
+import type { RulesLogic } from 'json-logic-js';
+
 import { OperatorRegistry } from '../operator-registry';
 
 import { ExpressionValidator } from './expression.validator';
@@ -18,7 +20,7 @@ describe('ExpressionValidator', () => {
   describe('validate', () => {
     describe('basic validation', () => {
       it('should accept valid simple comparison expression', () => {
-        const expression = { '==': [{ var: 'age' }, 18] } as any;
+        const expression: RulesLogic = { '==': [{ var: 'age' }, 18] };
 
         const result = validator.validate(expression);
 
@@ -27,9 +29,9 @@ describe('ExpressionValidator', () => {
       });
 
       it('should accept valid logical expression', () => {
-        const expression = {
+        const expression: RulesLogic = {
           and: [{ '>': [{ var: 'age' }, 18] }, { '==': [{ var: 'active' }, true] }],
-        } as any;
+        };
 
         const result = validator.validate(expression);
 
@@ -38,9 +40,9 @@ describe('ExpressionValidator', () => {
       });
 
       it('should accept valid nested expression', () => {
-        const expression = {
+        const expression: RulesLogic = {
           if: [{ '>': [{ var: 'age' }, 18] }, 'adult', 'minor'],
-        } as any;
+        };
 
         const result = validator.validate(expression);
 
@@ -49,6 +51,7 @@ describe('ExpressionValidator', () => {
       });
 
       it('should reject null expression', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validator.validate(null as any);
 
         expect(result.valid).toBe(false);
@@ -56,7 +59,8 @@ describe('ExpressionValidator', () => {
       });
 
       it('should reject undefined expression', () => {
-        const result = validator.validate(undefined as any);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result = validator.validate(undefined);
 
         expect(result.valid).toBe(false);
         expect(result.errors).toContain('Expression cannot be null or undefined');
@@ -70,6 +74,8 @@ describe('ExpressionValidator', () => {
       });
 
       it('should accept array literals', () => {
+        // Array literals are not directly assignable to RulesLogic, but validator accepts unknown
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const expression = [1, 2, 3] as any;
 
         const result = validator.validate(expression);
@@ -80,7 +86,7 @@ describe('ExpressionValidator', () => {
 
     describe('operator validation', () => {
       it('should accept standard JSONLogic operators', () => {
-        const operators = [
+        const operators: RulesLogic[] = [
           { '==': [1, 1] },
           { '!=': [1, 2] },
           { '<': [1, 2] },
@@ -101,7 +107,7 @@ describe('ExpressionValidator', () => {
           { var: 'foo' },
           { missing: ['a', 'b'] },
           { missing_some: [1, ['a', 'b']] },
-        ] as any[];
+        ];
 
         operators.forEach((expr) => {
           const result = validator.validate(expr);
@@ -111,6 +117,8 @@ describe('ExpressionValidator', () => {
       });
 
       it('should reject unknown operators when not registered', () => {
+        // Testing invalid operator - type assertion needed
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const expression = { unknownOp: [1, 2] } as any;
 
         const result = validator.validate(expression);
@@ -126,6 +134,8 @@ describe('ExpressionValidator', () => {
           implementation: () => true,
         });
 
+        // Testing custom operator - type assertion needed since it's not in standard RulesLogic
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const expression = { customOp: [1, 2] } as any;
 
         const result = validator.validate(expression);
@@ -135,6 +145,8 @@ describe('ExpressionValidator', () => {
       });
 
       it('should reject custom operators that are not registered', () => {
+        // Testing unregistered operator - type assertion needed
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const expression = { notRegistered: [1, 2] } as any;
 
         const result = validator.validate(expression);
@@ -144,8 +156,10 @@ describe('ExpressionValidator', () => {
       });
 
       it('should validate nested operators', () => {
+        // Testing nested invalid operator - type assertion needed
         const expression = {
           and: [{ '==': [{ var: 'a' }, 1] }, { unknownOp: [2, 3] }],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
         const result = validator.validate(expression);
@@ -155,8 +169,10 @@ describe('ExpressionValidator', () => {
       });
 
       it('should accumulate multiple errors', () => {
+        // Testing multiple invalid operators - type assertion needed
         const expression = {
           and: [{ unknownOp1: [1, 2] }, { unknownOp2: [3, 4] }],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
         const result = validator.validate(expression);
@@ -170,7 +186,7 @@ describe('ExpressionValidator', () => {
 
     describe('structure validation', () => {
       it('should validate deeply nested expressions', () => {
-        const expression = {
+        const expression: RulesLogic = {
           if: [
             {
               and: [
@@ -186,7 +202,7 @@ describe('ExpressionValidator', () => {
             { '+': [{ var: 'baseHealth' }, 10] },
             { var: 'baseHealth' },
           ],
-        } as any;
+        };
 
         const result = validator.validate(expression);
 
@@ -195,9 +211,9 @@ describe('ExpressionValidator', () => {
       });
 
       it('should handle expressions with arrays', () => {
-        const expression = {
+        const expression: RulesLogic = {
           in: [{ var: 'status' }, ['active', 'pending', 'completed']],
-        } as any;
+        };
 
         const result = validator.validate(expression);
 
@@ -205,9 +221,9 @@ describe('ExpressionValidator', () => {
       });
 
       it('should handle map operations', () => {
-        const expression = {
+        const expression: RulesLogic = {
           map: [{ var: 'numbers' }, { '*': [{ var: '' }, 2] }],
-        } as any;
+        };
 
         const result = validator.validate(expression);
 
@@ -215,9 +231,9 @@ describe('ExpressionValidator', () => {
       });
 
       it('should handle reduce operations', () => {
-        const expression = {
+        const expression: RulesLogic = {
           reduce: [{ var: 'numbers' }, { '+': [{ var: 'current' }, { var: 'accumulator' }] }, 0],
-        } as any;
+        };
 
         const result = validator.validate(expression);
 
@@ -225,9 +241,9 @@ describe('ExpressionValidator', () => {
       });
 
       it('should handle filter operations', () => {
-        const expression = {
+        const expression: RulesLogic = {
           filter: [{ var: 'items' }, { '>': [{ var: 'price' }, 10] }],
-        } as any;
+        };
 
         const result = validator.validate(expression);
 
@@ -237,19 +253,21 @@ describe('ExpressionValidator', () => {
 
     describe('edge cases', () => {
       it('should handle empty objects', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validator.validate({} as any);
 
         expect(result.valid).toBe(true);
       });
 
       it('should handle empty arrays', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = validator.validate([] as any);
 
         expect(result.valid).toBe(true);
       });
 
       it('should handle expressions with null values', () => {
-        const expression = { '==': [{ var: 'value' }, null] } as any;
+        const expression: RulesLogic = { '==': [{ var: 'value' }, null] };
 
         const result = validator.validate(expression);
 
@@ -257,7 +275,7 @@ describe('ExpressionValidator', () => {
       });
 
       it('should validate expressions with special characters in var names', () => {
-        const expression = { '==': [{ var: 'user.name' }, 'John'] } as any;
+        const expression: RulesLogic = { '==': [{ var: 'user.name' }, 'John'] };
 
         const result = validator.validate(expression);
 
@@ -265,7 +283,7 @@ describe('ExpressionValidator', () => {
       });
 
       it('should handle expressions with numeric keys', () => {
-        const expression = { '==': [{ var: '0' }, 'first'] } as any;
+        const expression: RulesLogic = { '==': [{ var: '0' }, 'first'] };
 
         const result = validator.validate(expression);
 
@@ -275,6 +293,8 @@ describe('ExpressionValidator', () => {
 
     describe('error reporting', () => {
       it('should provide clear error messages', () => {
+        // Testing error message format - type assertion needed
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const expression = { badOperator: [1, 2] } as any;
 
         const result = validator.validate(expression);
@@ -285,8 +305,10 @@ describe('ExpressionValidator', () => {
       });
 
       it('should not duplicate errors for repeated invalid operators', () => {
+        // Testing error deduplication - type assertion needed
         const expression = {
           and: [{ badOp: [1, 2] }, { badOp: [3, 4] }, { badOp: [5, 6] }],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
         const result = validator.validate(expression);
@@ -310,8 +332,10 @@ describe('ExpressionValidator', () => {
           implementation: () => 5,
         });
 
+        // Testing registered custom operators - type assertion needed
         const expression = {
           and: [{ inside: ['loc1', 'region1'] }, { '<': [{ distanceFrom: ['loc1', 'loc2'] }, 10] }],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
         const result = validator.validate(expression);
@@ -326,8 +350,10 @@ describe('ExpressionValidator', () => {
           implementation: () => true,
         });
 
+        // Testing mixed registered and unregistered operators - type assertion needed
         const expression = {
           and: [{ inside: ['loc1', 'region1'] }, { notRegistered: ['arg'] }],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
 
         const result = validator.validate(expression);

@@ -475,10 +475,11 @@ describe('StateVariableService - Versioning Integration', () => {
   describe('getCampaignIdForScope', () => {
     it('should return scopeId for campaign scope', async () => {
       // Access private method via any cast for testing
-      const campaignId = await (service as any).getCampaignIdForScope(
-        VariableScope.CAMPAIGN,
-        'campaign-123'
-      );
+      const campaignId = await (
+        service as unknown as {
+          getCampaignIdForScope: (scope: string, scopeId: string) => Promise<string>;
+        }
+      ).getCampaignIdForScope(VariableScope.CAMPAIGN, 'campaign-123');
       expect(campaignId).toBe('campaign-123');
     });
 
@@ -488,10 +489,11 @@ describe('StateVariableService - Versioning Integration', () => {
         campaignId: 'campaign-456',
       });
 
-      const campaignId = await (service as any).getCampaignIdForScope(
-        VariableScope.PARTY,
-        'party-123'
-      );
+      const campaignId = await (
+        service as unknown as {
+          getCampaignIdForScope: (scope: string, scopeId: string) => Promise<string>;
+        }
+      ).getCampaignIdForScope(VariableScope.PARTY, 'party-123');
       expect(campaignId).toBe('campaign-456');
     });
 
@@ -501,16 +503,21 @@ describe('StateVariableService - Versioning Integration', () => {
         kingdom: { campaignId: 'campaign-789' },
       });
 
-      const campaignId = await (service as any).getCampaignIdForScope(
-        VariableScope.SETTLEMENT,
-        'settlement-123'
-      );
+      const campaignId = await (
+        service as unknown as {
+          getCampaignIdForScope: (scope: string, scopeId: string) => Promise<string>;
+        }
+      ).getCampaignIdForScope(VariableScope.SETTLEMENT, 'settlement-123');
       expect(campaignId).toBe('campaign-789');
     });
 
     it('should throw error for location scope (no direct campaign)', async () => {
       await expect(
-        (service as any).getCampaignIdForScope(VariableScope.LOCATION, 'location-123')
+        (
+          service as unknown as {
+            getCampaignIdForScope: (scope: string, scopeId: string) => Promise<string>;
+          }
+        ).getCampaignIdForScope(VariableScope.LOCATION, 'location-123')
       ).rejects.toThrow('Location-scoped variables cannot be versioned');
     });
   });

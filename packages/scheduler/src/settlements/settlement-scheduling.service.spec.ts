@@ -11,6 +11,15 @@ import { QueueService } from '../queue/queue.service';
 
 import { GrowthEventType, SettlementSchedulingService } from './settlement-scheduling.service';
 
+// Test fixture types for private method testing
+interface GrowthCalculation {
+  campaignId: string;
+  settlementId: string;
+  eventType: GrowthEventType;
+  nextExecutionTime: Date;
+  parameters: Record<string, unknown>;
+}
+
 describe('SettlementSchedulingService', () => {
   let service: SettlementSchedulingService;
   let apiClientService: jest.Mocked<ApiClientService>;
@@ -314,7 +323,9 @@ describe('SettlementSchedulingService', () => {
         variables: {},
       };
 
-      const calculations = (service as any).calculateGrowthEvents(settlement);
+      const calculations = (
+        service as unknown as Record<string, (s: SettlementSummary) => GrowthCalculation[]>
+      )['calculateGrowthEvents'](settlement);
 
       expect(calculations).toHaveLength(3);
       expect(calculations[0].eventType).toBe(GrowthEventType.POPULATION_GROWTH);
@@ -341,8 +352,12 @@ describe('SettlementSchedulingService', () => {
         variables: {},
       };
 
-      const calc1 = (service as any).calculateGrowthEvents(settlementLevel1);
-      const calc2 = (service as any).calculateGrowthEvents(settlementLevel2);
+      const calc1 = (
+        service as unknown as Record<string, (s: SettlementSummary) => GrowthCalculation[]>
+      )['calculateGrowthEvents'](settlementLevel1);
+      const calc2 = (
+        service as unknown as Record<string, (s: SettlementSummary) => GrowthCalculation[]>
+      )['calculateGrowthEvents'](settlementLevel2);
 
       // Level 2 should have shorter intervals (faster growth)
       const interval1 = calc1[0].nextExecutionTime.getTime() - Date.now();
@@ -364,7 +379,9 @@ describe('SettlementSchedulingService', () => {
         },
       };
 
-      const calculations = (service as any).calculateGrowthEvents(settlement);
+      const calculations = (
+        service as unknown as Record<string, (s: SettlementSummary) => GrowthCalculation[]>
+      )['calculateGrowthEvents'](settlement);
 
       // Check that intervals are approximately correct (within 1 minute tolerance)
       const popInterval = (calculations[0].nextExecutionTime.getTime() - Date.now()) / (60 * 1000);
@@ -386,7 +403,9 @@ describe('SettlementSchedulingService', () => {
         variables: {},
       };
 
-      const calculations = (service as any).calculateGrowthEvents(settlement);
+      const calculations = (
+        service as unknown as Record<string, (s: SettlementSummary) => GrowthCalculation[]>
+      )['calculateGrowthEvents'](settlement);
 
       // Population growth parameters
       expect(calculations[0].parameters.growthRate).toBe(0.05);
@@ -424,7 +443,9 @@ describe('SettlementSchedulingService', () => {
         },
       };
 
-      const calculations = (service as any).calculateGrowthEvents(settlement);
+      const calculations = (
+        service as unknown as Record<string, (s: SettlementSummary) => GrowthCalculation[]>
+      )['calculateGrowthEvents'](settlement);
 
       expect(calculations[0].parameters.growthRate).toBe(0.08);
       expect(calculations[0].parameters.currentPopulation).toBe(250);
@@ -444,7 +465,9 @@ describe('SettlementSchedulingService', () => {
         variables: {},
       };
 
-      const calculations = (service as any).calculateGrowthEvents(settlement);
+      const calculations = (
+        service as unknown as Record<string, (s: SettlementSummary) => GrowthCalculation[]>
+      )['calculateGrowthEvents'](settlement);
 
       // Should use default multiplier of 1.0 for unknown levels
       expect(calculations).toHaveLength(3);
@@ -457,7 +480,7 @@ describe('SettlementSchedulingService', () => {
   describe('queueGrowthJob', () => {
     it('should queue job with correct delay', async () => {
       const futureTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-      const calculation = {
+      const calculation: GrowthCalculation = {
         campaignId: 'campaign-1',
         settlementId: 'settlement-1',
         eventType: GrowthEventType.POPULATION_GROWTH,
@@ -465,7 +488,9 @@ describe('SettlementSchedulingService', () => {
         parameters: { growthRate: 0.05 },
       };
 
-      await (service as any).queueGrowthJob(calculation);
+      await (service as unknown as Record<string, (c: GrowthCalculation) => Promise<void>>)[
+        'queueGrowthJob'
+      ](calculation);
 
       expect(queueService.addJob).toHaveBeenCalledTimes(1);
       const callArgs = queueService.addJob.mock.calls[0];
@@ -482,7 +507,7 @@ describe('SettlementSchedulingService', () => {
 
     it('should queue overdue job with zero delay', async () => {
       const pastTime = new Date(Date.now() - 10 * 60 * 1000); // 10 minutes ago
-      const calculation = {
+      const calculation: GrowthCalculation = {
         campaignId: 'campaign-1',
         settlementId: 'settlement-1',
         eventType: GrowthEventType.RESOURCE_GENERATION,
@@ -490,7 +515,9 @@ describe('SettlementSchedulingService', () => {
         parameters: {},
       };
 
-      await (service as any).queueGrowthJob(calculation);
+      await (service as unknown as Record<string, (c: GrowthCalculation) => Promise<void>>)[
+        'queueGrowthJob'
+      ](calculation);
 
       expect(queueService.addJob).toHaveBeenCalledTimes(1);
       const callArgs = queueService.addJob.mock.calls[0];
@@ -500,7 +527,7 @@ describe('SettlementSchedulingService', () => {
     it('should handle queue errors', async () => {
       queueService.addJob.mockRejectedValue(new Error('Queue full'));
 
-      const calculation = {
+      const calculation: GrowthCalculation = {
         campaignId: 'campaign-1',
         settlementId: 'settlement-1',
         eventType: GrowthEventType.LEVEL_UP_CHECK,
@@ -508,7 +535,11 @@ describe('SettlementSchedulingService', () => {
         parameters: {},
       };
 
-      await expect((service as any).queueGrowthJob(calculation)).rejects.toThrow('Queue full');
+      await expect(
+        (service as unknown as Record<string, (c: GrowthCalculation) => Promise<void>>)[
+          'queueGrowthJob'
+        ](calculation)
+      ).rejects.toThrow('Queue full');
     });
   });
 });

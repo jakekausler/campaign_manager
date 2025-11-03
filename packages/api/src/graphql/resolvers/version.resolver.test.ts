@@ -255,7 +255,7 @@ describe('VersionResolver', () => {
       // Use a symbol to track the iterator without worrying about its structure
       const mockAsyncIterator = Symbol('asyncIterator');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockPubSub.asyncIterator.mockReturnValue(mockAsyncIterator as any);
+      mockPubSub.asyncIterator.mockReturnValue(mockAsyncIterator);
 
       const result = resolver.entityModified('entity-123');
 

@@ -310,11 +310,11 @@ describe('StructureService', () => {
 
     beforeEach(() => {
       // Add additional mocks needed for update
-      (prisma as any).branch = {
+      (prisma as Record<string, unknown>).branch = {
         findFirst: jest.fn(),
       };
-      (prisma as any).structure.findUnique = jest.fn();
-      (prisma as any).$transaction = jest.fn((callback) => callback(prisma));
+      (prisma as Record<string, unknown>).structure.findUnique = jest.fn();
+      (prisma as Record<string, unknown>).$transaction = jest.fn((callback) => callback(prisma));
     });
 
     it('should update a structure with valid data', async () => {
@@ -329,7 +329,9 @@ describe('StructureService', () => {
         .mockResolvedValueOnce(mockStructure) // findById
         .mockResolvedValueOnce(mockStructure); // hasPermission check
       (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
-      ((prisma as any).branch.findFirst as jest.Mock).mockResolvedValue(mockBranch);
+      ((prisma as Record<string, unknown>).branch.findFirst as jest.Mock).mockResolvedValue(
+        mockBranch
+      );
       (prisma.structure.update as jest.Mock).mockResolvedValue({
         ...mockStructure,
         ...input,
@@ -467,7 +469,7 @@ describe('StructureService', () => {
 
     beforeEach(() => {
       // Add findUnique mock needed by setLevel for context invalidation
-      (prisma as any).structure.findUnique = jest.fn();
+      (prisma as Record<string, unknown>).structure.findUnique = jest.fn();
     });
 
     it('should set structure level', async () => {

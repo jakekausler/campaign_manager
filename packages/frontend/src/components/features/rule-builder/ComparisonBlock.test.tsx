@@ -96,11 +96,11 @@ describe('ComparisonBlock', () => {
   describe('Validation', () => {
     it('should show invalid state when left is missing', () => {
       const mockOnUpdate = vi.fn();
-      const block = {
+      const block: Block = {
         id: 'comp-1',
         type: 'comparison' as const,
         operator: '==' as const,
-        children: [undefined, mockRightBlock] as any,
+        children: [undefined, mockRightBlock],
       };
 
       render(<ComparisonBlock block={block} onUpdate={mockOnUpdate} />);
@@ -112,11 +112,11 @@ describe('ComparisonBlock', () => {
 
     it('should show invalid state when right is missing', () => {
       const mockOnUpdate = vi.fn();
-      const block = {
+      const block: Block = {
         id: 'comp-1',
         type: 'comparison' as const,
         operator: '==' as const,
-        children: [mockLeftBlock, undefined] as any,
+        children: [mockLeftBlock, undefined],
       };
 
       render(<ComparisonBlock block={block} onUpdate={mockOnUpdate} />);
@@ -140,11 +140,11 @@ describe('ComparisonBlock', () => {
   describe('Placeholders', () => {
     it('should show placeholder for missing left operand', () => {
       const mockOnUpdate = vi.fn();
-      const block = {
+      const block: Block = {
         id: 'comp-1',
         type: 'comparison' as const,
         operator: '==' as const,
-        children: [undefined, mockRightBlock] as any,
+        children: [undefined, mockRightBlock],
       };
 
       render(<ComparisonBlock block={block} onUpdate={mockOnUpdate} />);
@@ -154,11 +154,11 @@ describe('ComparisonBlock', () => {
 
     it('should show placeholder for missing right operand', () => {
       const mockOnUpdate = vi.fn();
-      const block = {
+      const block: Block = {
         id: 'comp-1',
         type: 'comparison' as const,
         operator: '==' as const,
-        children: [mockLeftBlock, undefined] as any,
+        children: [mockLeftBlock, undefined],
       };
 
       render(<ComparisonBlock block={block} onUpdate={mockOnUpdate} />);
