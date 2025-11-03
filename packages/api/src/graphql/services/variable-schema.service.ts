@@ -40,6 +40,16 @@ export class VariableSchemaService {
   ) {}
 
   /**
+   * Convert JsonValue to VariableSchema array with validation
+   */
+  private parseSchemas(jsonValue: Prisma.JsonValue | null | undefined): VariableSchema[] {
+    if (!jsonValue || !Array.isArray(jsonValue)) {
+      return [];
+    }
+    return jsonValue as unknown as VariableSchema[];
+  }
+
+  /**
    * Validate a variable value against its schema
    * Throws BadRequestException if validation fails
    */
@@ -105,7 +115,7 @@ export class VariableSchemaService {
     }
 
     // Get existing schemas
-    const existingSchemas = (entity.variableSchemas as VariableSchema[]) || [];
+    const existingSchemas = this.parseSchemas(entity.variableSchemas);
 
     // Remove any existing schema with the same name
     const filteredSchemas = existingSchemas.filter((s) => s.name !== schema.name);
@@ -139,7 +149,7 @@ export class VariableSchemaService {
       throw new NotFoundException(`${entityType} with ID ${entityId} not found`);
     }
 
-    const schemas = (entity.variableSchemas as VariableSchema[]) || [];
+    const schemas = this.parseSchemas(entity.variableSchemas);
     const schema = schemas.find((s) => s.name === variableName);
 
     return schema || null;
@@ -159,7 +169,7 @@ export class VariableSchemaService {
       throw new NotFoundException(`${entityType} with ID ${entityId} not found`);
     }
 
-    return (entity.variableSchemas as VariableSchema[]) || [];
+    return this.parseSchemas(entity.variableSchemas);
   }
 
   /**
@@ -178,7 +188,7 @@ export class VariableSchemaService {
       throw new NotFoundException(`${entityType} with ID ${entityId} not found`);
     }
 
-    const existingSchemas = (entity.variableSchemas as VariableSchema[]) || [];
+    const existingSchemas = this.parseSchemas(entity.variableSchemas);
     const schemaExists = existingSchemas.some((s) => s.name === variableName);
 
     if (!schemaExists) {
@@ -226,7 +236,7 @@ export class VariableSchemaService {
     }
 
     // Find schema
-    const schemas = (entity.variableSchemas as VariableSchema[]) || [];
+    const schemas = this.parseSchemas(entity.variableSchemas);
     const schema = schemas.find((s) => s.name === variableName);
 
     if (!schema) {
@@ -272,7 +282,7 @@ export class VariableSchemaService {
     }
 
     // Find schema
-    const schemas = (entity.variableSchemas as VariableSchema[]) || [];
+    const schemas = this.parseSchemas(entity.variableSchemas);
     const schema = schemas.find((s) => s.name === variableName);
 
     if (!schema) {

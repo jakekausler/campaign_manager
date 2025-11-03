@@ -115,7 +115,7 @@ describe('IfBlock', () => {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [undefined, mockThenBlock, mockElseBlock],
+        children: [undefined as unknown as Block, mockThenBlock, mockElseBlock],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);
@@ -131,7 +131,7 @@ describe('IfBlock', () => {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [mockConditionBlock, undefined, mockElseBlock],
+        children: [mockConditionBlock, undefined as unknown as Block, mockElseBlock],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);
@@ -147,7 +147,7 @@ describe('IfBlock', () => {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [mockConditionBlock, mockThenBlock, undefined],
+        children: [mockConditionBlock, mockThenBlock, undefined as unknown as Block],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);
@@ -207,7 +207,7 @@ describe('IfBlock', () => {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [undefined, mockThenBlock, mockElseBlock],
+        children: [undefined as unknown as Block, mockThenBlock, mockElseBlock],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);
@@ -221,7 +221,7 @@ describe('IfBlock', () => {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [mockConditionBlock, undefined, mockElseBlock],
+        children: [mockConditionBlock, undefined as unknown as Block, mockElseBlock],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);
@@ -235,7 +235,7 @@ describe('IfBlock', () => {
         id: 'if-1',
         type: 'conditional' as const,
         operator: 'if' as const,
-        children: [mockConditionBlock, mockThenBlock, undefined],
+        children: [mockConditionBlock, mockThenBlock, undefined as unknown as Block],
       };
 
       render(<IfBlock block={block} onUpdate={mockOnUpdate} />);

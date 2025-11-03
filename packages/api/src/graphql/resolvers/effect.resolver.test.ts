@@ -3,11 +3,8 @@
  * Integration tests for Effect GraphQL queries and mutations
  */
 
-import type {
-  Effect as PrismaEffect,
-  Prisma,
-  EffectTiming as PrismaEffectTiming,
-} from '@prisma/client';
+import type { Effect as PrismaEffect, Prisma } from '@prisma/client';
+import { EffectTiming as PrismaEffectTiming } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../context/graphql-context';
 import type {
@@ -26,6 +23,7 @@ import type {
   EffectExecutionSummary as ServiceEffectExecutionSummary,
 } from '../services/effect-execution.service';
 import type { EffectService } from '../services/effect.service';
+import { EffectTiming } from '../types/effect.type';
 
 import { EffectResolver } from './effect.resolver';
 
@@ -76,7 +74,7 @@ describe('EffectResolver', () => {
         payload: [{ op: 'replace', path: '/population', value: 1000 }] as Prisma.JsonArray,
         entityType: 'encounter',
         entityId: 'encounter-456',
-        timing: PrismaEffectTiming.ON_RESOLVE,
+        timing: EffectTiming.ON_RESOLVE,
         priority: 0,
         isActive: true,
         version: 1,
@@ -114,7 +112,7 @@ describe('EffectResolver', () => {
           payload: [{ op: 'replace', path: '/field1', value: 'value1' }] as Prisma.JsonArray,
           entityType: 'encounter',
           entityId: 'encounter-1',
-          timing: PrismaEffectTiming.PRE,
+          timing: EffectTiming.PRE,
           priority: 0,
           isActive: true,
           version: 1,
@@ -130,7 +128,7 @@ describe('EffectResolver', () => {
           payload: [{ op: 'replace', path: '/field2', value: 'value2' }] as Prisma.JsonArray,
           entityType: 'event',
           entityId: 'event-1',
-          timing: PrismaEffectTiming.POST,
+          timing: EffectTiming.POST,
           priority: 1,
           isActive: true,
           version: 1,
@@ -164,7 +162,7 @@ describe('EffectResolver', () => {
       const where: EffectWhereInput = {
         entityType: 'encounter',
         entityId: 'encounter-1',
-        timing: PrismaEffectTiming.ON_RESOLVE,
+        timing: EffectTiming.ON_RESOLVE,
         isActive: true,
       };
       const orderBy: EffectOrderByInput = {
@@ -191,7 +189,7 @@ describe('EffectResolver', () => {
           payload: [{ op: 'replace', path: '/field1', value: 'value1' }] as Prisma.JsonArray,
           entityType: 'encounter',
           entityId: 'encounter-1',
-          timing: PrismaEffectTiming.PRE,
+          timing: EffectTiming.PRE,
           priority: 0,
           isActive: true,
           version: 1,
@@ -206,14 +204,14 @@ describe('EffectResolver', () => {
       const result = await resolver.getEffectsForEntity(
         'encounter',
         'encounter-1',
-        PrismaEffectTiming.PRE,
+        EffectTiming.PRE,
         mockUser
       );
 
       expect(mockEffectService.findForEntity).toHaveBeenCalledWith(
         'encounter',
         'encounter-1',
-        PrismaEffectTiming.PRE,
+        EffectTiming.PRE,
         mockUser
       );
       expect(result).toEqual(mockEffects);
@@ -231,7 +229,7 @@ describe('EffectResolver', () => {
         payload: { op: 'replace', path: '/field', value: 'value' },
         entityType: 'encounter',
         entityId: 'encounter-1',
-        timing: PrismaEffectTiming.ON_RESOLVE,
+        timing: EffectTiming.ON_RESOLVE,
         priority: 0,
       };
 
@@ -277,7 +275,7 @@ describe('EffectResolver', () => {
         payload: [{ op: 'replace', path: '/field', value: 'value' }] as Prisma.JsonArray,
         entityType: 'encounter',
         entityId: 'encounter-1',
-        timing: PrismaEffectTiming.ON_RESOLVE,
+        timing: EffectTiming.ON_RESOLVE,
         priority: 0,
         isActive: true,
         version: 2,
@@ -305,7 +303,7 @@ describe('EffectResolver', () => {
         payload: [{ op: 'replace', path: '/field', value: 'value' }] as Prisma.JsonArray,
         entityType: 'encounter',
         entityId: 'encounter-1',
-        timing: PrismaEffectTiming.ON_RESOLVE,
+        timing: EffectTiming.ON_RESOLVE,
         priority: 0,
         isActive: true,
         version: 1,
@@ -331,7 +329,7 @@ describe('EffectResolver', () => {
         payload: [{ op: 'replace', path: '/field', value: 'value' }] as Prisma.JsonArray,
         entityType: 'encounter',
         entityId: 'encounter-1',
-        timing: PrismaEffectTiming.ON_RESOLVE,
+        timing: EffectTiming.ON_RESOLVE,
         priority: 0,
         isActive: false,
         version: 2,
@@ -411,7 +409,7 @@ describe('EffectResolver', () => {
       const input: ExecuteEffectsForEntityInput = {
         entityType: 'encounter',
         entityId: 'encounter-1',
-        timing: PrismaEffectTiming.ON_RESOLVE,
+        timing: EffectTiming.ON_RESOLVE,
         dryRun: false,
       };
 
@@ -445,7 +443,7 @@ describe('EffectResolver', () => {
       expect(mockEffectExecutionService.executeEffectsForEntity).toHaveBeenCalledWith(
         'ENCOUNTER',
         'encounter-1',
-        PrismaEffectTiming.ON_RESOLVE,
+        EffectTiming.ON_RESOLVE,
         mockUser
       );
       expect(result).toEqual(mockSummary);
@@ -455,7 +453,7 @@ describe('EffectResolver', () => {
       const input: ExecuteEffectsForEntityInput = {
         entityType: 'encounter',
         entityId: 'encounter-1',
-        timing: PrismaEffectTiming.POST,
+        timing: EffectTiming.POST,
         dryRun: false,
       };
 

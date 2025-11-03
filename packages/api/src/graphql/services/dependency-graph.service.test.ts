@@ -7,7 +7,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../../database/prisma.service';
-import { DependencyNodeType } from '../types/dependency-graph.type';
+import { DependencyNodeType, DependencyEdgeType } from '../types/dependency-graph.type';
 import { DependencyGraph } from '../utils/dependency-graph';
 
 import { DependencyGraphBuilderService } from './dependency-graph-builder.service';

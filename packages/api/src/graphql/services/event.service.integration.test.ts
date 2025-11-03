@@ -9,7 +9,7 @@
 
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import type { Event, Effect } from '@prisma/client';
+import type { Event, Effect, Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 
@@ -95,6 +95,7 @@ const mockEffectPost: Effect = {
 const mockUser = {
   id: 'user-1',
   email: 'test@example.com',
+  role: 'owner',
 };
 
 const mockCampaign = {
@@ -389,7 +390,7 @@ describe('EventService - Completion Integration', () => {
 
       (prismaService.effectExecution.create as jest.Mock).mockImplementation(
         ({ data }: { data: Record<string, unknown> }) => {
-          executionOrder.push(data.effectId);
+          executionOrder.push(data.effectId as string);
           return Promise.resolve({
             id: 'execution-1',
             effectId: data.effectId,

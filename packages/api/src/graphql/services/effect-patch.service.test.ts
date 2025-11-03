@@ -98,7 +98,7 @@ describe('EffectPatchService', () => {
 
       it('should reject patch with invalid operation type', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const patch = [{ op: 'invalid', path: '/name', value: 'Test' }] as Operation[];
+        const patch = [{ op: 'invalid', path: '/name', value: 'Test' }] as any as Operation[];
 
         const result = service.validatePatch(patch, 'SETTLEMENT');
 
@@ -473,7 +473,7 @@ describe('EffectPatchService', () => {
       it('should fail if patch format is invalid', () => {
         const entity = { name: 'Test' };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const patch = [{ op: 'invalid', path: '/name', value: 'New' }] as Operation[];
+        const patch = [{ op: 'invalid', path: '/name', value: 'New' }] as any as Operation[];
 
         const result = service.applyPatch(entity, patch, 'SETTLEMENT');
 

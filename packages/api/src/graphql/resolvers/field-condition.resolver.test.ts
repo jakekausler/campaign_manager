@@ -3,7 +3,7 @@
  * Integration tests for FieldCondition GraphQL queries and mutations
  */
 
-import type { FieldCondition as PrismaFieldCondition } from '@prisma/client';
+import type { FieldCondition as PrismaFieldCondition, Prisma } from '@prisma/client';
 
 import type { AuthenticatedUser } from '../context/graphql-context';
 import type {
@@ -13,6 +13,8 @@ import type {
   FieldConditionWhereInput,
   UpdateFieldConditionInput,
 } from '../inputs/field-condition.input';
+import { FieldConditionSortField } from '../inputs/field-condition.input';
+import { SortOrder } from '../inputs/filter.input';
 import type { ConditionService } from '../services/condition.service';
 import type { EvaluationResult } from '../types/field-condition.type';
 
@@ -173,8 +175,8 @@ describe('FieldConditionResolver', () => {
 
     it('should list conditions with sorting', async () => {
       const orderBy: FieldConditionOrderByInput = {
-        field: 'PRIORITY',
-        order: 'DESC',
+        field: FieldConditionSortField.PRIORITY,
+        order: SortOrder.DESC,
       };
 
       mockConditionService.findMany.mockResolvedValue([]);
@@ -207,8 +209,8 @@ describe('FieldConditionResolver', () => {
     it('should list conditions with all parameters', async () => {
       const where: FieldConditionWhereInput = { entityType: 'Settlement' };
       const orderBy: FieldConditionOrderByInput = {
-        field: 'CREATED_AT',
-        order: 'ASC',
+        field: FieldConditionSortField.CREATED_AT,
+        order: SortOrder.ASC,
       };
 
       mockConditionService.findMany.mockResolvedValue([]);
@@ -628,13 +630,15 @@ describe('FieldConditionResolver', () => {
     };
 
     it('should resolve createdBy field', () => {
-      const result = resolver.resolveCreatedBy(mockCondition);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = resolver.resolveCreatedBy(mockCondition as any);
 
       expect(result).toBe('user-456');
     });
 
     it('should resolve updatedBy field', () => {
-      const result = resolver.resolveUpdatedBy(mockCondition);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = resolver.resolveUpdatedBy(mockCondition as any);
 
       expect(result).toBe('user-789');
     });
@@ -642,13 +646,15 @@ describe('FieldConditionResolver', () => {
     it('should resolve updatedBy as null when not set', () => {
       const conditionWithoutUpdate = { ...mockCondition, updatedBy: null };
 
-      const result = resolver.resolveUpdatedBy(conditionWithoutUpdate);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = resolver.resolveUpdatedBy(conditionWithoutUpdate as any);
 
       expect(result).toBeNull();
     });
 
     it('should resolve version field', () => {
-      const result = resolver.resolveVersion(mockCondition);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = resolver.resolveVersion(mockCondition as any);
 
       expect(result).toBe(3);
     });

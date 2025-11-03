@@ -35,9 +35,12 @@ vi.mock('@/config/env', () => ({
 
 // Mock socket type that matches Socket.IO interface subset
 type MockSocket = {
-  on: ReturnType<typeof vi.fn>;
-  off: ReturnType<typeof vi.fn>;
-  emit: ReturnType<typeof vi.fn>;
+  // Use less specific types that are compatible with vitest mock signatures
+  on: ReturnType<typeof vi.fn<[event: string, handler: (...args: unknown[]) => void], void>>;
+  off: ReturnType<typeof vi.fn<[event: string, handler: (...args: unknown[]) => void], void>>;
+  emit: ReturnType<
+    typeof vi.fn<[_event: string, _data: unknown, callback?: (response: unknown) => void], void>
+  >;
   simulateEvent: (event: string, data: unknown) => void;
   getListeners: (event: string) => Array<(...args: unknown[]) => void>;
 };
@@ -47,13 +50,13 @@ function createMockSocket(): MockSocket {
   const listeners = new Map<string, Array<(...args: unknown[]) => void>>();
 
   return {
-    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+    on: vi.fn<[event: string, handler: (...args: unknown[]) => void], void>((event, handler) => {
       if (!listeners.has(event)) {
         listeners.set(event, []);
       }
       listeners.get(event)!.push(handler);
     }),
-    off: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+    off: vi.fn<[event: string, handler: (...args: unknown[]) => void], void>((event, handler) => {
       const handlers = listeners.get(event);
       if (handlers) {
         const index = handlers.indexOf(handler);
@@ -62,14 +65,16 @@ function createMockSocket(): MockSocket {
         }
       }
     }),
-    emit: vi.fn((_event: string, _data: unknown, callback?: (response: unknown) => void) => {
-      // Simulate successful subscription response
-      if (callback) {
-        setTimeout(() => {
-          callback({ success: true });
-        }, 0);
+    emit: vi.fn<[_event: string, _data: unknown, callback?: (response: unknown) => void], void>(
+      (_event, _data, callback?) => {
+        // Simulate successful subscription response
+        if (callback) {
+          setTimeout(() => {
+            callback({ success: true });
+          }, 0);
+        }
       }
-    }),
+    ),
     // Helper to simulate receiving an event
     simulateEvent: (event: string, data: unknown) => {
       const handlers = listeners.get(event);

@@ -20,6 +20,7 @@ import type { Campaign, Kingdom, Location, User, World } from '@prisma/client';
 import { CampaignMembershipService } from '../../auth/services/campaign-membership.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../../graphql/context/graphql-context';
+import type { ConflictResolution } from '../../graphql/inputs/branch.input';
 import { REDIS_PUBSUB } from '../../graphql/pubsub/redis-pubsub.provider';
 import { AuditService } from '../../graphql/services/audit.service';
 import { BranchService } from '../../graphql/services/branch.service';
@@ -1885,7 +1886,7 @@ describe('Merge System E2E Tests', () => {
 
       // Create 100 settlements with conflicting changes
       const settlements: unknown[] = [];
-      const resolutions: unknown[] = [];
+      const resolutions: ConflictResolution[] = [];
 
       for (let i = 0; i < 100; i++) {
         // Create unique location for each settlement

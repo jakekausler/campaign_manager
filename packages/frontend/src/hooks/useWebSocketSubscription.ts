@@ -164,7 +164,8 @@ export function useWebSocketSubscription<TEvent extends WebSocketEvent = WebSock
 
     // Socket.IO's on() method expects (eventName: string, listener: (...args: any[]) => void)
     // Our eventHandler type is compatible with this signature
-    socket.on(eventType, eventHandler as (...args: unknown[]) => void);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket.on(eventType, eventHandler as any);
 
     // Cleanup function
     return () => {
@@ -173,7 +174,8 @@ export function useWebSocketSubscription<TEvent extends WebSocketEvent = WebSock
       }
 
       // Remove event listener
-      socket.off(eventType, eventHandler as (...args: unknown[]) => void);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      socket.off(eventType, eventHandler as any);
 
       // Unsubscribe from room
       unsubscribe();

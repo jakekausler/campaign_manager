@@ -1,3 +1,4 @@
+import type { MockedResponse } from '@apollo/client/testing';
 import { MockedProvider } from '@apollo/client/testing/react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -26,7 +27,7 @@ function TestWrapper({
   mocks,
 }: {
   children: React.ReactNode;
-  mocks: ReadonlyArray<unknown>;
+  mocks: ReadonlyArray<MockedResponse>;
 }) {
   return (
     <BrowserRouter>

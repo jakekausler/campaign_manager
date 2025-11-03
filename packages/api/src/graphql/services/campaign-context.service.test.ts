@@ -18,7 +18,7 @@ import { StructureService } from './structure.service';
 describe('CampaignContextService', () => {
   let service: CampaignContextService;
   let prisma: PrismaService;
-  let redis: { del: jest.Mock; set: jest.Mock; get: jest.Mock };
+  let redis: { del: jest.Mock; set: jest.Mock; setex: jest.Mock; get: jest.Mock };
   let partyService: jest.Mocked<PartyService>;
   let kingdomService: jest.Mocked<KingdomService>;
   let settlementService: jest.Mocked<SettlementService>;
@@ -137,6 +137,11 @@ describe('CampaignContextService', () => {
           manualLevelOverride: null,
           variables: { gold: 1000 },
           variableSchemas: [{ name: 'gold', type: 'number' }],
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          archivedAt: null,
         },
         {
           id: 'party-2',
@@ -146,6 +151,11 @@ describe('CampaignContextService', () => {
           manualLevelOverride: 7,
           variables: { reputation: 'good' },
           variableSchemas: [{ name: 'reputation', type: 'string' }],
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          archivedAt: null,
         },
       ];
 
@@ -189,6 +199,11 @@ describe('CampaignContextService', () => {
           level: 10,
           variables: { treasury: 50000 },
           variableSchemas: [{ name: 'treasury', type: 'number' }],
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          archivedAt: null,
         },
       ];
 
@@ -226,6 +241,11 @@ describe('CampaignContextService', () => {
           level: 10,
           variables: {},
           variableSchemas: [],
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          archivedAt: null,
         },
       ];
 
@@ -234,9 +254,15 @@ describe('CampaignContextService', () => {
           id: 'settlement-1',
           name: 'Capital City',
           kingdomId: 'kingdom-1',
+          locationId: 'location-1',
           level: 8,
           variables: { population: 50000 },
           variableSchemas: [{ name: 'population', type: 'number' }],
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          archivedAt: null,
         },
       ];
 
@@ -249,6 +275,11 @@ describe('CampaignContextService', () => {
           level: 5,
           variables: { blessing: true },
           variableSchemas: [{ name: 'blessing', type: 'boolean' }],
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          archivedAt: null,
         },
       ];
 
@@ -297,6 +328,11 @@ describe('CampaignContextService', () => {
         manualLevelOverride: null,
         variables: {},
         variableSchemas: [],
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        archivedAt: null,
       }));
 
       partyService.findByCampaign.mockResolvedValue(mockParties);

@@ -594,7 +594,7 @@ describe('VariableEvaluationService', () => {
 
     it('should reject undefined formula', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = service.validateFormula(undefined);
+      const result = service.validateFormula(undefined as any);
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Formula cannot be null or undefined');
@@ -629,7 +629,8 @@ describe('VariableEvaluationService', () => {
         formula = { and: [formula] };
       }
 
-      const result = service.validateFormula(formula);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = service.validateFormula(formula as any);
 
       expect(result.isValid).toBe(false);
       expect(result.errors.some((e) => e.includes('maximum depth'))).toBe(true);
@@ -643,7 +644,8 @@ describe('VariableEvaluationService', () => {
         formula = { and: [formula] };
       }
 
-      const result = service.validateFormula(formula);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = service.validateFormula(formula as any);
 
       expect(result.isValid).toBe(true);
     });

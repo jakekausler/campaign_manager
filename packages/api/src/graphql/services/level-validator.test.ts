@@ -120,7 +120,9 @@ describe('LevelValidator', () => {
         expect(() => LevelValidator.validateLevel(null as unknown as number, 'party')).toThrow(
           BadRequestException
         );
-        expect(() => LevelValidator.validateLevel(undefined, 'party')).toThrow(BadRequestException);
+        expect(() => LevelValidator.validateLevel(undefined as unknown as number, 'party')).toThrow(
+          BadRequestException
+        );
       });
 
       it('should reject NaN', () => {

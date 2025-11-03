@@ -310,11 +310,12 @@ describe('StructureService', () => {
 
     beforeEach(() => {
       // Add additional mocks needed for update
-      (prisma as Record<string, unknown>).branch = {
+      const prismaMock = prisma as unknown as Record<string, unknown>;
+      prismaMock.branch = {
         findFirst: jest.fn(),
       };
-      (prisma as Record<string, unknown>).structure.findUnique = jest.fn();
-      (prisma as Record<string, unknown>).$transaction = jest.fn((callback) => callback(prisma));
+      (prismaMock.structure as Record<string, unknown>).findUnique = jest.fn();
+      prismaMock.$transaction = jest.fn((callback: (p: unknown) => unknown) => callback(prisma));
     });
 
     it('should update a structure with valid data', async () => {
@@ -329,7 +330,8 @@ describe('StructureService', () => {
         .mockResolvedValueOnce(mockStructure) // findById
         .mockResolvedValueOnce(mockStructure); // hasPermission check
       (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
-      ((prisma as Record<string, unknown>).branch.findFirst as jest.Mock).mockResolvedValue(
+      const prismaMock = prisma as unknown as Record<string, unknown>;
+      ((prismaMock.branch as Record<string, unknown>).findFirst as jest.Mock).mockResolvedValue(
         mockBranch
       );
       (prisma.structure.update as jest.Mock).mockResolvedValue({
@@ -469,7 +471,8 @@ describe('StructureService', () => {
 
     beforeEach(() => {
       // Add findUnique mock needed by setLevel for context invalidation
-      (prisma as Record<string, unknown>).structure.findUnique = jest.fn();
+      const prismaMock = prisma as unknown as Record<string, unknown>;
+      (prismaMock.structure as Record<string, unknown>).findUnique = jest.fn();
     });
 
     it('should set structure level', async () => {

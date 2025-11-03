@@ -50,40 +50,37 @@ vi.mock('@/stores', () => ({
 // Create typed mock for socket.io
 const mockIo = vi.mocked(io);
 
-// Type for mock socket that matches Socket.IO interface subset
-type MockSocketType = {
-  id: string;
-  connected: boolean;
-  on: ReturnType<typeof vi.fn>;
-  off: ReturnType<typeof vi.fn>;
-  emit: ReturnType<typeof vi.fn>;
-  disconnect: ReturnType<typeof vi.fn>;
-  removeAllListeners: ReturnType<typeof vi.fn>;
-};
+// Create mock functions that we can track and clear
+const mockOn = vi.fn();
+const mockOff = vi.fn();
+const mockEmit = vi.fn();
+const mockDisconnect = vi.fn();
+const mockRemoveAllListeners = vi.fn();
 
 // Mock socket object that will be returned by mockIo
-const mockSocket: MockSocketType = {
+// Use type assertion to match Socket.IO interface for testing
+const mockSocket = {
   id: 'mock-socket-id',
   connected: false,
-  on: vi.fn(),
-  off: vi.fn(),
-  emit: vi.fn(),
-  disconnect: vi.fn(),
-  removeAllListeners: vi.fn(),
-};
+  on: mockOn,
+  off: mockOff,
+  emit: mockEmit,
+  disconnect: mockDisconnect,
+  removeAllListeners: mockRemoveAllListeners,
+} as unknown as ReturnType<typeof io>;
 
 describe('WebSocketContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSocket.connected = false;
-    mockSocket.on.mockClear();
-    mockSocket.off.mockClear();
-    mockSocket.emit.mockClear();
-    mockSocket.disconnect.mockClear();
-    mockSocket.removeAllListeners.mockClear();
+    mockOn.mockClear();
+    mockOff.mockClear();
+    mockEmit.mockClear();
+    mockDisconnect.mockClear();
+    mockRemoveAllListeners.mockClear();
 
-    // Set up mockIo to return mockSocket (cast needed due to incomplete Socket type)
-    mockIo.mockReturnValue(mockSocket as ReturnType<typeof io>);
+    // Set up mockIo to return mockSocket
+    mockIo.mockReturnValue(mockSocket);
   });
 
   afterEach(() => {
@@ -163,10 +160,10 @@ describe('WebSocketContext', () => {
         </WebSocketProvider>
       );
 
-      expect(mockSocket.on).toHaveBeenCalledWith('connect', expect.any(Function));
-      expect(mockSocket.on).toHaveBeenCalledWith('disconnect', expect.any(Function));
-      expect(mockSocket.on).toHaveBeenCalledWith('connect_error', expect.any(Function));
-      expect(mockSocket.on).toHaveBeenCalledWith('error', expect.any(Function));
+      expect(mockOn).toHaveBeenCalledWith('connect', expect.any(Function));
+      expect(mockOn).toHaveBeenCalledWith('disconnect', expect.any(Function));
+      expect(mockOn).toHaveBeenCalledWith('connect_error', expect.any(Function));
+      expect(mockOn).toHaveBeenCalledWith('error', expect.any(Function));
     });
 
     it('should cleanup on unmount', async () => {
@@ -187,12 +184,12 @@ describe('WebSocketContext', () => {
       // Wait for socket initialization to complete
       await waitFor(() => {
         expect(mockIo).toHaveBeenCalled();
-        expect(mockSocket.on).toHaveBeenCalledWith('connect', expect.any(Function));
+        expect(mockOn).toHaveBeenCalledWith('connect', expect.any(Function));
       });
 
       // Clear previous calls to disconnect for clearer testing
-      mockSocket.disconnect.mockClear();
-      mockSocket.removeAllListeners.mockClear();
+      mockDisconnect.mockClear();
+      mockRemoveAllListeners.mockClear();
 
       // Unmount the component
       unmount();
@@ -201,7 +198,7 @@ describe('WebSocketContext', () => {
       // may not be called if socket state wasn't set before cleanup ran.
       // Just verify that socket was created during component lifecycle.
       expect(mockIo).toHaveBeenCalled();
-      expect(mockSocket.on).toHaveBeenCalledWith('connect', expect.any(Function));
+      expect(mockOn).toHaveBeenCalledWith('connect', expect.any(Function));
     });
   });
 
@@ -273,7 +270,9 @@ describe('WebSocketContext', () => {
       });
 
       // Simulate connect event
-      const connectHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'connect')?.[1];
+      const connectHandler = mockOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'connect'
+      )?.[1] as (() => void) | undefined;
 
       await act(async () => {
         mockSocket.connected = true;
@@ -299,9 +298,9 @@ describe('WebSocketContext', () => {
       });
 
       // Simulate connect_error event
-      const errorHandler = mockSocket.on.mock.calls.find(
-        (call) => call[0] === 'connect_error'
-      )?.[1];
+      const errorHandler = mockOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'connect_error'
+      )?.[1] as ((error: Error) => void) | undefined;
 
       const mockError = new Error('Connection failed');
 
@@ -329,16 +328,18 @@ describe('WebSocketContext', () => {
       });
 
       // Simulate error to increment reconnect attempts
-      const errorHandler = mockSocket.on.mock.calls.find(
-        (call) => call[0] === 'connect_error'
-      )?.[1];
+      const errorHandler = mockOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'connect_error'
+      )?.[1] as ((error: Error) => void) | undefined;
 
       await act(async () => {
         errorHandler?.(new Error('Test error'));
       });
 
       // Now simulate successful connection
-      const connectHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'connect')?.[1];
+      const connectHandler = mockOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'connect'
+      )?.[1] as (() => void) | undefined;
 
       await act(async () => {
         mockSocket.connected = true;
@@ -422,9 +423,9 @@ describe('WebSocketContext', () => {
       });
 
       // Get error handler
-      const errorHandler = mockSocket.on.mock.calls.find(
-        (call) => call[0] === 'connect_error'
-      )?.[1];
+      const errorHandler = mockOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'connect_error'
+      )?.[1] as ((error: Error) => void) | undefined;
 
       // Trigger 10 connection errors with reconnections
       for (let i = 0; i < 10; i++) {
@@ -465,10 +466,12 @@ describe('WebSocketContext', () => {
       });
 
       // Get handlers
-      const errorHandler = mockSocket.on.mock.calls.find(
-        (call) => call[0] === 'connect_error'
-      )?.[1];
-      const connectHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'connect')?.[1];
+      const errorHandler = mockOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'connect_error'
+      )?.[1] as ((error: Error) => void) | undefined;
+      const connectHandler = mockOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'connect'
+      )?.[1] as (() => void) | undefined;
 
       // Trigger 3 connection errors
       for (let i = 0; i < 3; i++) {
@@ -507,11 +510,11 @@ describe('WebSocketContext', () => {
       });
 
       // Verify ping handler was registered
-      const pingHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'ping');
+      const pingHandler = mockOn.mock.calls.find((call: unknown[]) => call[0] === 'ping');
       expect(pingHandler).toBeDefined();
 
       // Verify pong handler was registered
-      const pongHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'pong');
+      const pongHandler = mockOn.mock.calls.find((call: unknown[]) => call[0] === 'pong');
       expect(pongHandler).toBeDefined();
     });
 
@@ -543,7 +546,7 @@ describe('WebSocketContext', () => {
 
       // Clear mock call history
       mockIo.mockClear();
-      mockSocket.disconnect.mockClear();
+      mockDisconnect.mockClear();
 
       // Simulate token change
       currentToken = 'new-token';
@@ -554,7 +557,7 @@ describe('WebSocketContext', () => {
 
       // Verify disconnect was called on old socket
       await waitFor(() => {
-        expect(mockSocket.disconnect).toHaveBeenCalled();
+        expect(mockDisconnect).toHaveBeenCalled();
       });
 
       // Verify new connection was created with new token
@@ -585,9 +588,9 @@ describe('WebSocketContext', () => {
       });
 
       // Get error handler
-      const errorHandler = mockSocket.on.mock.calls.find(
-        (call) => call[0] === 'connect_error'
-      )?.[1];
+      const errorHandler = mockOn.mock.calls.find(
+        (call: unknown[]) => call[0] === 'connect_error'
+      )?.[1] as ((error: Error) => void) | undefined;
 
       // Track reconnection attempts with their delays
       const delays: number[] = [];

@@ -10,13 +10,6 @@ import * as stores from '@/stores';
 import { BranchComparisonView } from './BranchComparisonView';
 
 // Type definitions for test mocks
-interface MockQueryResult<T> {
-  data: T | undefined;
-  loading: boolean;
-  error: Error | undefined;
-  refetch: () => void;
-}
-
 interface MockHookSkipParam {
   skip?: boolean;
 }
@@ -157,23 +150,70 @@ describe('BranchComparisonView', () => {
       error: undefined,
       hierarchy: [],
       flatBranches: mockBranches,
-      refetch: vi.fn(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      refetch: vi.fn(() => Promise.resolve({} as any)),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client: {} as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      observable: {} as any,
+      networkStatus: 7,
+      startPolling: vi.fn(),
+      stopPolling: vi.fn(),
+      subscribeToMore: vi.fn(() => vi.fn()),
+      updateQuery: vi.fn(),
+      fetchMore: vi.fn(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      variables: {} as any,
+      dataState: 'complete',
     } as ReturnType<typeof hooks.useGetBranchHierarchy>);
 
     // Mock entity query hooks with default skipped state
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(versionHooks.useGetSettlementAsOf).mockReturnValue({
       data: undefined,
       loading: false,
       error: undefined,
-      refetch: vi.fn(),
-    } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      refetch: vi.fn(() => Promise.resolve({} as any)),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client: {} as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      observable: {} as any,
+      networkStatus: 7,
+      startPolling: vi.fn(),
+      stopPolling: vi.fn(),
+      subscribeToMore: vi.fn(() => vi.fn()),
+      updateQuery: vi.fn(),
+      fetchMore: vi.fn(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      variables: {} as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(versionHooks.useGetStructureAsOf).mockReturnValue({
       data: undefined,
       loading: false,
       error: undefined,
-      refetch: vi.fn(),
-    } as MockQueryResult<{ structureAsOf: hooks.StructureVersion | null }>);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      refetch: vi.fn(() => Promise.resolve({} as any)),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client: {} as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      observable: {} as any,
+      networkStatus: 7,
+      startPolling: vi.fn(),
+      stopPolling: vi.fn(),
+      subscribeToMore: vi.fn(() => vi.fn()),
+      updateQuery: vi.fn(),
+      fetchMore: vi.fn(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      variables: {} as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
   });
 
   describe('Rendering and Visibility', () => {
@@ -274,12 +314,28 @@ describe('BranchComparisonView', () => {
     });
 
     it('should show loading state when querying data', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(versionHooks.useGetSettlementAsOf).mockReturnValue({
         data: undefined,
         loading: true,
         error: undefined,
-        refetch: vi.fn(),
-      } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        refetch: vi.fn(() => Promise.resolve({} as any)),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        client: {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        observable: {} as any,
+        networkStatus: 7,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(() => vi.fn()),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        variables: {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);
@@ -301,6 +357,7 @@ describe('BranchComparisonView', () => {
   describe('Comparison Results', () => {
     it('should display settlement comparison results', async () => {
       // Mock successful settlement queries
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(
         ({ skip }: MockHookSkipParam) => {
           if (skip) {
@@ -308,15 +365,45 @@ describe('BranchComparisonView', () => {
               data: undefined,
               loading: false,
               error: undefined,
-              refetch: vi.fn(),
-            } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              refetch: vi.fn(() => Promise.resolve({} as any)),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              client: {} as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              observable: {} as any,
+              networkStatus: 7,
+              startPolling: vi.fn(),
+              stopPolling: vi.fn(),
+              subscribeToMore: vi.fn(() => vi.fn()),
+              updateQuery: vi.fn(),
+              fetchMore: vi.fn(),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              variables: {} as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any;
           }
           return {
             data: { settlementAsOf: mockSettlement },
             loading: false,
             error: undefined,
-            refetch: vi.fn(),
-          } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            refetch: vi.fn(() => Promise.resolve({} as any)),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            client: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            observable: {} as any,
+            networkStatus: 7,
+            startPolling: vi.fn(),
+            stopPolling: vi.fn(),
+            subscribeToMore: vi.fn(() => vi.fn()),
+            updateQuery: vi.fn(),
+            fetchMore: vi.fn(),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            variables: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any;
         }
       );
 
@@ -345,6 +432,7 @@ describe('BranchComparisonView', () => {
 
     it('should display structure comparison results', async () => {
       // Mock successful structure queries
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(versionHooks.useGetStructureAsOf).mockImplementation(
         ({ skip }: MockHookSkipParam) => {
           if (skip) {
@@ -352,15 +440,45 @@ describe('BranchComparisonView', () => {
               data: undefined,
               loading: false,
               error: undefined,
-              refetch: vi.fn(),
-            } as MockQueryResult<{ structureAsOf: hooks.StructureVersion | null }>;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              refetch: vi.fn(() => Promise.resolve({} as any)),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              client: {} as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              observable: {} as any,
+              networkStatus: 7,
+              startPolling: vi.fn(),
+              stopPolling: vi.fn(),
+              subscribeToMore: vi.fn(() => vi.fn()),
+              updateQuery: vi.fn(),
+              fetchMore: vi.fn(),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              variables: {} as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any;
           }
           return {
             data: { structureAsOf: mockStructure },
             loading: false,
             error: undefined,
-            refetch: vi.fn(),
-          } as MockQueryResult<{ structureAsOf: hooks.StructureVersion | null }>;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            refetch: vi.fn(() => Promise.resolve({} as any)),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            client: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            observable: {} as any,
+            networkStatus: 7,
+            startPolling: vi.fn(),
+            stopPolling: vi.fn(),
+            subscribeToMore: vi.fn(() => vi.fn()),
+            updateQuery: vi.fn(),
+            fetchMore: vi.fn(),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            variables: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any;
         }
       );
 
@@ -384,12 +502,28 @@ describe('BranchComparisonView', () => {
 
     it('should show warning when no data found', async () => {
       // Mock queries returning no data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(versionHooks.useGetSettlementAsOf).mockReturnValue({
         data: { settlementAsOf: null },
         loading: false,
         error: undefined,
-        refetch: vi.fn(),
-      } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        refetch: vi.fn(() => Promise.resolve({} as any)),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        client: {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        observable: {} as any,
+        networkStatus: 7,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(() => vi.fn()),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        variables: {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);
@@ -408,12 +542,28 @@ describe('BranchComparisonView', () => {
     });
 
     it('should display error when query fails', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(versionHooks.useGetSettlementAsOf).mockReturnValue({
         data: undefined,
         loading: false,
         error: new Error('Network error'),
-        refetch: vi.fn(),
-      } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        refetch: vi.fn(() => Promise.resolve({} as any)),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        client: {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        observable: {} as any,
+        networkStatus: 7,
+        startPolling: vi.fn(),
+        stopPolling: vi.fn(),
+        subscribeToMore: vi.fn(() => vi.fn()),
+        updateQuery: vi.fn(),
+        fetchMore: vi.fn(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        variables: {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const user = userEvent.setup();
       render(<BranchComparisonView />);
@@ -436,6 +586,7 @@ describe('BranchComparisonView', () => {
   describe('Clear Functionality', () => {
     it('should show clear button after comparison', async () => {
       // Mock returns data for both source and target branches
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(
         ({ skip }: MockHookSkipParam) => {
           if (skip) {
@@ -443,15 +594,45 @@ describe('BranchComparisonView', () => {
               data: undefined,
               loading: false,
               error: undefined,
-              refetch: vi.fn(),
-            } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              refetch: vi.fn(() => Promise.resolve({} as any)),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              client: {} as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              observable: {} as any,
+              networkStatus: 7,
+              startPolling: vi.fn(),
+              stopPolling: vi.fn(),
+              subscribeToMore: vi.fn(() => vi.fn()),
+              updateQuery: vi.fn(),
+              fetchMore: vi.fn(),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              variables: {} as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any;
           }
           return {
             data: { settlementAsOf: mockSettlement },
             loading: false,
             error: undefined,
-            refetch: vi.fn(),
-          } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            refetch: vi.fn(() => Promise.resolve({} as any)),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            client: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            observable: {} as any,
+            networkStatus: 7,
+            startPolling: vi.fn(),
+            stopPolling: vi.fn(),
+            subscribeToMore: vi.fn(() => vi.fn()),
+            updateQuery: vi.fn(),
+            fetchMore: vi.fn(),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            variables: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any;
         }
       );
 
@@ -473,6 +654,7 @@ describe('BranchComparisonView', () => {
 
     it('should clear results and reset form when clear is clicked', async () => {
       // Mock returns data for both source and target branches
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(
         ({ skip }: MockHookSkipParam) => {
           if (skip) {
@@ -480,15 +662,45 @@ describe('BranchComparisonView', () => {
               data: undefined,
               loading: false,
               error: undefined,
-              refetch: vi.fn(),
-            } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              refetch: vi.fn(() => Promise.resolve({} as any)),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              client: {} as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              observable: {} as any,
+              networkStatus: 7,
+              startPolling: vi.fn(),
+              stopPolling: vi.fn(),
+              subscribeToMore: vi.fn(() => vi.fn()),
+              updateQuery: vi.fn(),
+              fetchMore: vi.fn(),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              variables: {} as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any;
           }
           return {
             data: { settlementAsOf: mockSettlement },
             loading: false,
             error: undefined,
-            refetch: vi.fn(),
-          } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            refetch: vi.fn(() => Promise.resolve({} as any)),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            client: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            observable: {} as any,
+            networkStatus: 7,
+            startPolling: vi.fn(),
+            stopPolling: vi.fn(),
+            subscribeToMore: vi.fn(() => vi.fn()),
+            updateQuery: vi.fn(),
+            fetchMore: vi.fn(),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            variables: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any;
         }
       );
 
@@ -530,6 +742,7 @@ describe('BranchComparisonView', () => {
 
     it('should not show help text when comparing', async () => {
       // Mock returns data for both source and target branches
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(versionHooks.useGetSettlementAsOf).mockImplementation(
         ({ skip }: MockHookSkipParam) => {
           if (skip) {
@@ -537,15 +750,45 @@ describe('BranchComparisonView', () => {
               data: undefined,
               loading: false,
               error: undefined,
-              refetch: vi.fn(),
-            } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              refetch: vi.fn(() => Promise.resolve({} as any)),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              client: {} as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              observable: {} as any,
+              networkStatus: 7,
+              startPolling: vi.fn(),
+              stopPolling: vi.fn(),
+              subscribeToMore: vi.fn(() => vi.fn()),
+              updateQuery: vi.fn(),
+              fetchMore: vi.fn(),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              variables: {} as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any;
           }
           return {
             data: { settlementAsOf: mockSettlement },
             loading: false,
             error: undefined,
-            refetch: vi.fn(),
-          } as MockQueryResult<{ settlementAsOf: hooks.SettlementVersion | null }>;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            refetch: vi.fn(() => Promise.resolve({} as any)),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            client: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            observable: {} as any,
+            networkStatus: 7,
+            startPolling: vi.fn(),
+            stopPolling: vi.fn(),
+            subscribeToMore: vi.fn(() => vi.fn()),
+            updateQuery: vi.fn(),
+            fetchMore: vi.fn(),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            variables: {} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any;
         }
       );
 

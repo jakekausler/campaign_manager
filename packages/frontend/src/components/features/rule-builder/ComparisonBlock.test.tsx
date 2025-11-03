@@ -100,7 +100,7 @@ describe('ComparisonBlock', () => {
         id: 'comp-1',
         type: 'comparison' as const,
         operator: '==' as const,
-        children: [undefined, mockRightBlock],
+        children: [undefined as unknown as Block, mockRightBlock],
       };
 
       render(<ComparisonBlock block={block} onUpdate={mockOnUpdate} />);
@@ -116,7 +116,7 @@ describe('ComparisonBlock', () => {
         id: 'comp-1',
         type: 'comparison' as const,
         operator: '==' as const,
-        children: [mockLeftBlock, undefined],
+        children: [mockLeftBlock, undefined as unknown as Block],
       };
 
       render(<ComparisonBlock block={block} onUpdate={mockOnUpdate} />);
@@ -144,7 +144,7 @@ describe('ComparisonBlock', () => {
         id: 'comp-1',
         type: 'comparison' as const,
         operator: '==' as const,
-        children: [undefined, mockRightBlock],
+        children: [undefined as unknown as Block, mockRightBlock],
       };
 
       render(<ComparisonBlock block={block} onUpdate={mockOnUpdate} />);
@@ -158,7 +158,7 @@ describe('ComparisonBlock', () => {
         id: 'comp-1',
         type: 'comparison' as const,
         operator: '==' as const,
-        children: [mockLeftBlock, undefined],
+        children: [mockLeftBlock, undefined as unknown as Block],
       };
 
       render(<ComparisonBlock block={block} onUpdate={mockOnUpdate} />);

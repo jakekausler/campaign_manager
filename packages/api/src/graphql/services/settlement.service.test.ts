@@ -302,11 +302,12 @@ describe('SettlementService', () => {
 
     beforeEach(() => {
       // Add branch mock to the prisma mock object
-      (prisma as Record<string, unknown>).branch = {
+      const prismaMock = prisma as unknown as Record<string, unknown>;
+      prismaMock.branch = {
         findFirst: jest.fn(),
       };
-      (prisma as Record<string, unknown>).settlement.findUnique = jest.fn();
-      (prisma as Record<string, unknown>).$transaction = jest.fn((callback) => callback(prisma));
+      (prismaMock.settlement as Record<string, unknown>).findUnique = jest.fn();
+      prismaMock.$transaction = jest.fn((callback: (p: unknown) => unknown) => callback(prisma));
     });
 
     it('should update a settlement with valid data', async () => {
@@ -321,7 +322,8 @@ describe('SettlementService', () => {
         .mockResolvedValueOnce(mockSettlementWithVersion) // findById
         .mockResolvedValueOnce(mockSettlementWithVersion); // hasPermission check
       (prisma.settlement.findUnique as jest.Mock).mockResolvedValue(mockSettlementWithKingdom);
-      ((prisma as Record<string, unknown>).branch.findFirst as jest.Mock).mockResolvedValue(
+      const prismaMock = prisma as unknown as Record<string, unknown>;
+      ((prismaMock.branch as Record<string, unknown>).findFirst as jest.Mock).mockResolvedValue(
         mockBranch
       );
       (prisma.settlement.update as jest.Mock).mockResolvedValue({
@@ -454,7 +456,8 @@ describe('SettlementService', () => {
 
     beforeEach(() => {
       // Add findUnique mock needed by setLevel for context invalidation
-      (prisma as Record<string, unknown>).settlement.findUnique = jest.fn();
+      const prismaMock = prisma as unknown as Record<string, unknown>;
+      (prismaMock.settlement as Record<string, unknown>).findUnique = jest.fn();
     });
 
     it('should set settlement level', async () => {

@@ -34,7 +34,21 @@ type StructureWithRelations = Structure & {
   };
 };
 
-type MockBranch = Pick<Branch, 'id' | 'campaignId' | 'name' | 'deletedAt'>;
+type MockBranch = Pick<
+  Branch,
+  | 'id'
+  | 'campaignId'
+  | 'name'
+  | 'deletedAt'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'parentId'
+  | 'description'
+  | 'divergedAt'
+  | 'isPinned'
+  | 'color'
+  | 'tags'
+>;
 
 describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
   let settlementService: SettlementService;
@@ -193,6 +207,14 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        parentId: null,
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
       } satisfies MockBranch);
 
       // Spy on invalidateGraph
@@ -258,6 +280,14 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        parentId: null,
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
       } satisfies MockBranch);
 
       // Spy on invalidateGraph
@@ -380,6 +410,14 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        parentId: null,
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
       } satisfies MockBranch);
 
       // Spy on invalidateGraph
@@ -450,6 +488,14 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        parentId: null,
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
       } satisfies MockBranch);
 
       // Spy on invalidateGraph
@@ -575,6 +621,14 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        parentId: null,
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
       } satisfies MockBranch);
 
       // Spy on invalidateGraph
@@ -642,6 +696,14 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        parentId: null,
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
       } satisfies MockBranch);
 
       // Make invalidateGraph throw an error
@@ -707,6 +769,14 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
         campaignId,
         name: 'main',
         deletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        parentId: null,
+        description: null,
+        divergedAt: null,
+        isPinned: false,
+        color: null,
+        tags: [],
       } satisfies MockBranch);
 
       // Make invalidateGraph throw an error

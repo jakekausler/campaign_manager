@@ -599,7 +599,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: TimelineProps;
+      let timelineProps!: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -612,7 +612,7 @@ describe('TimelinePage', () => {
 
       // Simulate clicking on a timeline item (single-click, no Ctrl key)
       const mockEvent = new MouseEvent('click', { ctrlKey: false });
-      timelineProps.onSelect({
+      timelineProps.onSelect!({
         items: ['event-event-1'], // Timeline item ID format
         event: mockEvent as Event,
       });
@@ -640,7 +640,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: TimelineProps;
+      let timelineProps!: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -651,7 +651,7 @@ describe('TimelinePage', () => {
 
       // Simulate Ctrl+clicking on a timeline item
       const mockEvent = new MouseEvent('click', { ctrlKey: true });
-      timelineProps.onSelect({
+      timelineProps.onSelect!({
         items: ['event-event-1'],
         event: mockEvent as Event,
       });
@@ -685,7 +685,7 @@ describe('TimelinePage', () => {
       if (timelineProps.onSelect) {
         // Simulate clicking on empty space (no items selected)
         const mockEvent = new MouseEvent('click', { ctrlKey: false });
-        timelineProps.onSelect({
+        timelineProps.onSelect!({
           items: [],
           event: mockEvent as Event,
         });
@@ -715,7 +715,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: TimelineProps;
+      let timelineProps!: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -726,7 +726,7 @@ describe('TimelinePage', () => {
 
       // Simulate clicking on an encounter
       const mockEvent = new MouseEvent('click', { ctrlKey: false });
-      timelineProps.onSelect({
+      timelineProps.onSelect!({
         items: ['encounter-encounter-1'],
         event: mockEvent as Event,
       });
@@ -855,7 +855,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: TimelineProps;
+      let timelineProps!: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -866,7 +866,7 @@ describe('TimelinePage', () => {
 
       // Simulate clicking on an event (single-click, no Ctrl key)
       const mockEvent = new MouseEvent('click', { ctrlKey: false });
-      timelineProps.onSelect({
+      timelineProps.onSelect!({
         items: ['event-event-1'],
         event: mockEvent as Event,
       });
@@ -893,7 +893,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: TimelineProps;
+      let timelineProps!: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -904,7 +904,7 @@ describe('TimelinePage', () => {
 
       // Simulate clicking on an encounter
       const mockEvent = new MouseEvent('click', { ctrlKey: false });
-      timelineProps.onSelect({
+      timelineProps.onSelect!({
         items: ['encounter-encounter-1'],
         event: mockEvent as Event,
       });
@@ -931,7 +931,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: TimelineProps;
+      let timelineProps!: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -942,7 +942,7 @@ describe('TimelinePage', () => {
 
       // Simulate Ctrl+clicking on an event
       const mockEvent = new MouseEvent('click', { ctrlKey: true });
-      timelineProps.onSelect({
+      timelineProps.onSelect!({
         items: ['event-event-1'],
         event: mockEvent as Event,
       });
@@ -964,7 +964,7 @@ describe('TimelinePage', () => {
       renderWithApollo(<TimelinePage />);
 
       // Wait for Timeline to be called with items and get the props
-      let timelineProps: TimelineProps;
+      let timelineProps!: TimelineProps;
       await waitFor(() => {
         const calls = vi.mocked(Timeline).mock.calls;
         expect(calls.length).toBeGreaterThan(0);
@@ -975,7 +975,7 @@ describe('TimelinePage', () => {
 
       // Open EntityInspector
       const mockEvent = new MouseEvent('click', { ctrlKey: false });
-      timelineProps.onSelect({
+      timelineProps.onSelect!({
         items: ['event-event-1'],
         event: mockEvent as Event,
       });

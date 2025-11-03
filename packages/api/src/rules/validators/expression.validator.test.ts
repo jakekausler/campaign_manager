@@ -60,7 +60,7 @@ describe('ExpressionValidator', () => {
 
       it('should reject undefined expression', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const result = validator.validate(undefined);
+        const result = validator.validate(undefined as any);
 
         expect(result.valid).toBe(false);
         expect(result.errors).toContain('Expression cannot be null or undefined');

@@ -137,6 +137,11 @@ export class RulesEngineClientService implements OnModuleInit, OnModuleDestroy {
    */
   private waitForReady(): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('gRPC client not initialized'));
+        return;
+      }
+
       const deadline = new Date();
       deadline.setSeconds(deadline.getSeconds() + 5);
 

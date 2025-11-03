@@ -617,19 +617,17 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
       const branchId = 'main';
 
       // Mock campaign access verification for both campaigns
-      jest
-        .spyOn(prismaService.campaign, 'findFirst')
-        .mockImplementation((args?: { where?: { id?: string } }) => {
-          const where = args?.where;
-          if (where && (where.id === campaign1Id || where.id === campaign2Id)) {
-            return Promise.resolve({
-              id: where.id,
-              name: `Campaign ${where.id}`,
-              ownerId: mockUser.id,
-            } as CampaignWithOwner);
-          }
-          return Promise.resolve(null);
-        });
+      jest.spyOn(prismaService.campaign, 'findFirst').mockImplementation((args?: unknown) => {
+        const where = (args as { where?: { id?: string } } | undefined)?.where;
+        if (where && (where.id === campaign1Id || where.id === campaign2Id)) {
+          return Promise.resolve({
+            id: where.id,
+            name: `Campaign ${where.id}`,
+            ownerId: mockUser.id,
+          } as CampaignWithOwner) as never;
+        }
+        return Promise.resolve(null) as never;
+      });
 
       // Mock empty graphs for both
       jest.spyOn(prismaService.fieldCondition, 'findFirst').mockResolvedValue(null);
