@@ -47,6 +47,7 @@ Implement a comprehensive audit logging system that tracks all mutations with ac
 ### Stage 1: Database Schema & Prisma Model
 
 **Goal**: Create database schema and Prisma model for audit logging
+
 **Status**: Not Started
 
 Tasks:
@@ -71,39 +72,71 @@ Tasks:
 
 ---
 
-### Stage 2: Audit Service Implementation
+### Stage 2: Audit Service - Core Creation Logic
 
-**Goal**: Create AuditService with methods for creating and querying audit logs
+**Goal**: Create AuditService with audit log creation and diff calculation
+
 **Status**: Not Started
 
 Tasks:
 
-- [ ] Create `audit` module with `audit.service.ts` and `audit.resolver.ts`
+- [ ] Create `audit` module with `audit.service.ts`
 - [ ] Implement `createAuditLog()` method in AuditService
 - [ ] Implement diff calculation using `json-diff` library
-- [ ] Implement query methods: `findAuditLogs()`, `countAuditLogs()`
-- [ ] Add filtering logic for all supported filter types
-- [ ] Implement cursor-based pagination
+- [ ] Add proper error handling and logging
 
 **Success Criteria**:
 
 - AuditService can create audit log entries
-- AuditService can query with multiple filter combinations
-- Pagination works correctly with cursor-based approach
+- Diff calculation produces accurate, structured diffs
+- Service handles errors gracefully without throwing
 
 **Tests**:
 
 - Unit test: `createAuditLog()` with various entity types
-- Unit test: Diff calculation produces correct output
-- Unit test: Filtering by userId, entityType, operation
-- Unit test: Date range filtering
-- Unit test: Pagination with various page sizes
+- Unit test: Diff calculation produces correct output for simple changes
+- Unit test: Diff calculation handles nested object changes
+- Unit test: Diff calculation handles array changes
+- Unit test: Error handling when database write fails
 
 ---
 
-### Stage 3: Audit Logging Interceptor
+### Stage 3: Audit Service - Query Methods
+
+**Goal**: Implement query and filtering capabilities for audit logs
+
+**Status**: Not Started
+
+Tasks:
+
+- [ ] Implement `findAuditLogs()` method in AuditService
+- [ ] Implement `countAuditLogs()` method
+- [ ] Add filtering logic for userId, entityType, entityId, operation
+- [ ] Add date range filtering
+- [ ] Implement cursor-based pagination
+
+**Success Criteria**:
+
+- AuditService can query with multiple filter combinations
+- Pagination works correctly with cursor-based approach
+- Empty result sets handled properly
+- Performance is acceptable for large datasets
+
+**Tests**:
+
+- Unit test: Filtering by userId
+- Unit test: Filtering by entityType and operation
+- Unit test: Date range filtering (start date, end date, both)
+- Unit test: Combining multiple filters
+- Unit test: Pagination with various page sizes
+- Unit test: Pagination cursor navigation (forward/backward)
+
+---
+
+### Stage 4: Audit Logging Interceptor
 
 **Goal**: Create NestJS interceptor to automatically log all mutations
+
 **Status**: Not Started
 
 Tasks:
@@ -133,9 +166,10 @@ Tasks:
 
 ---
 
-### Stage 4: Settlement & Structure Audit Integration
+### Stage 5: Settlement & Structure Audit Integration
 
 **Goal**: Ensure Settlement and Structure mutations are properly audited
+
 **Status**: Not Started
 
 Tasks:
@@ -165,33 +199,60 @@ Tasks:
 
 ---
 
-### Stage 5: GraphQL Audit Query API
+### Stage 6: GraphQL Audit Query API - Basic Queries
 
-**Goal**: Expose GraphQL queries for retrieving audit logs
+**Goal**: Expose basic GraphQL queries for retrieving audit logs
+
 **Status**: Not Started
 
 Tasks:
 
+- [ ] Create `audit.resolver.ts` for GraphQL resolvers
 - [ ] Define `AuditLogFilterInput` GraphQL input type
 - [ ] Define `AuditLogConnection` type for paginated results
-- [ ] Implement `auditLogs` query resolver
+- [ ] Define `AuditLog` GraphQL object type
+- [ ] Implement basic `auditLogs` query resolver
 - [ ] Implement `auditLogCount` query resolver
-- [ ] Add filter support: by user, entity type, entity ID, operation, date range
-- [ ] Add Settlement-specific filter: `settlementsCreated`, `settlementsUpdated`, `settlementsDeleted`
-- [ ] Add Structure-specific filter: `structuresCreated`, `structuresUpdated`, `structuresDeleted`
-- [ ] Add sorting options (by createdAt, userId, operation)
 
 **Success Criteria**:
 
 - Can query audit logs with no filters (returns all)
-- Can filter by each supported dimension
-- Can combine multiple filters
+- Can query audit log count
 - Pagination returns correct page sizes and cursors
-- Settlement/Structure-specific filters work correctly
+- GraphQL schema is properly typed
 
 **Tests**:
 
 - Integration test: Query all audit logs
+- Integration test: Query audit log count
+- Integration test: Pagination with cursors
+- Integration test: Empty result set handling
+
+---
+
+### Stage 7: GraphQL Audit Query API - Filtering & Sorting
+
+**Goal**: Add comprehensive filtering and sorting to audit query API
+
+**Status**: Not Started
+
+Tasks:
+
+- [ ] Add filter support: by user, entity type, entity ID, operation, date range
+- [ ] Add Settlement-specific filter: `settlementsCreated`, `settlementsUpdated`, `settlementsDeleted`
+- [ ] Add Structure-specific filter: `structuresCreated`, `structuresUpdated`, `structuresDeleted`
+- [ ] Add sorting options (by createdAt, userId, operation)
+- [ ] Optimize query performance with proper database indexes
+
+**Success Criteria**:
+
+- Can filter by each supported dimension
+- Can combine multiple filters
+- Settlement/Structure-specific filters work correctly
+- Sorting works in both ascending and descending order
+
+**Tests**:
+
 - Integration test: Filter by userId
 - Integration test: Filter by entityType
 - Integration test: Filter by operation (CREATE, UPDATE, DELETE)
@@ -199,48 +260,79 @@ Tasks:
 - Integration test: Filter for settlementsCreated
 - Integration test: Filter for structuresUpdated
 - Integration test: Combine multiple filters
-- Integration test: Pagination with cursors
+- Integration test: Sorting by createdAt (asc/desc)
 
 ---
 
-### Stage 6: Audit Log Viewer UI (List & Filters)
+### Stage 8: Audit Log Viewer UI - Basic Display
 
-**Goal**: Create frontend UI for viewing and filtering audit logs
+**Goal**: Create frontend UI for viewing audit logs
+
 **Status**: Not Started
 
 Tasks:
 
 - [ ] Create `AuditLogPage` component with route `/audit`
-- [ ] Create `AuditLogTable` component with sortable columns
+- [ ] Create `AuditLogTable` component with column headers
 - [ ] Implement column headers: Timestamp, User, Entity Type, Entity, Operation, Reason
-- [ ] Add inline filters: user dropdown, entity type dropdown, operation dropdown, date range picker
 - [ ] Integrate with `useAuditLogs` GraphQL hook
-- [ ] Implement client-side sorting
-- [ ] Implement pagination controls (load more / infinite scroll)
 - [ ] Add loading and error states
+- [ ] Add basic responsive styling
 
 **Success Criteria**:
 
 - Audit log page displays all audit entries
-- Can filter by user, entity type, operation, date range
-- Can sort by timestamp (ascending/descending)
-- Pagination loads more results correctly
+- Table columns display correct data
 - Loading states provide good UX
+- Error states show helpful messages
 
 **Tests**:
 
 - Component test: AuditLogTable renders with mock data
-- Component test: Clicking filter applies filter to query
-- Component test: Sorting changes query order
-- Component test: Pagination loads next page
+- Component test: Columns display correct values
 - Component test: Loading state displays correctly
 - Component test: Error state displays correctly
+- Component test: Empty state displays when no audit logs
 
 ---
 
-### Stage 7: Audit Log Viewer UI (Diff Display)
+### Stage 9: Audit Log Viewer UI - Filters & Pagination
+
+**Goal**: Add filtering, sorting, and pagination to audit log viewer
+
+**Status**: Not Started
+
+Tasks:
+
+- [ ] Add inline filters: user dropdown, entity type dropdown, operation dropdown
+- [ ] Add date range picker for date filtering
+- [ ] Implement client-side sorting on columns
+- [ ] Implement pagination controls (load more / infinite scroll)
+- [ ] Add filter reset/clear functionality
+- [ ] Persist filter state in URL query parameters
+
+**Success Criteria**:
+
+- Can filter by user, entity type, operation, date range
+- Can sort by timestamp (ascending/descending)
+- Pagination loads more results correctly
+- Filter state persists across page refreshes
+
+**Tests**:
+
+- Component test: Clicking filter applies filter to query
+- Component test: Date range picker updates query
+- Component test: Sorting changes query order
+- Component test: Pagination loads next page
+- Component test: Clear filters resets all filters
+- Component test: URL query params update with filters
+
+---
+
+### Stage 10: Audit Log Viewer UI - Diff Display
 
 **Goal**: Add detailed diff view for audit log entries
+
 **Status**: Not Started
 
 Tasks:
@@ -271,9 +363,10 @@ Tasks:
 
 ---
 
-### Stage 8: Audit Log Export Functionality
+### Stage 11: Audit Log Export - Basic Functionality
 
-**Goal**: Add export functionality for audit logs (CSV and JSON)
+**Goal**: Add basic export functionality for audit logs (CSV and JSON)
+
 **Status**: Not Started
 
 Tasks:
@@ -283,17 +376,15 @@ Tasks:
 - [ ] Implement JSON export: export filtered results as JSON array
 - [ ] Add download trigger using browser download API
 - [ ] Include current filters in export (export visible data only)
-- [ ] Add "Export All" option (ignores pagination)
-- [ ] Show progress indicator for large exports
-- [ ] Add confirmation dialog for large exports (>1000 records)
+- [ ] Generate reasonable filenames (e.g., `audit-log-2025-11-03.csv`)
 
 **Success Criteria**:
 
 - Can export audit logs as CSV
 - Can export audit logs as JSON
 - Export respects current filters
-- Large exports show progress indicator
-- Downloaded files have reasonable filenames (e.g., `audit-log-2025-11-03.csv`)
+- Downloaded files have reasonable filenames
+- CSV format is valid and opens in spreadsheet software
 
 **Tests**:
 
@@ -301,14 +392,45 @@ Tasks:
 - Unit test: CSV export produces valid CSV format
 - Unit test: JSON export produces valid JSON
 - Integration test: Export respects filters
-- Integration test: Export all fetches all records
-- Integration test: Large export shows progress
+- Integration test: Exported data matches displayed data
 
 ---
 
-### Stage 9: Permission & Authorization
+### Stage 12: Audit Log Export - Advanced Features
+
+**Goal**: Add advanced export features (export all, progress, confirmations)
+
+**Status**: Not Started
+
+Tasks:
+
+- [ ] Add "Export All" option (ignores pagination, fetches all matching records)
+- [ ] Show progress indicator for large exports
+- [ ] Add confirmation dialog for large exports (>1000 records)
+- [ ] Implement streaming/chunked export for very large datasets
+- [ ] Add export cancellation capability
+
+**Success Criteria**:
+
+- Export All fetches all matching records regardless of pagination
+- Large exports show progress indicator
+- User is warned before exporting large datasets
+- Can cancel long-running exports
+
+**Tests**:
+
+- Integration test: Export all fetches all records
+- Integration test: Large export shows progress
+- Integration test: Confirmation dialog appears for large exports
+- Component test: Export can be cancelled
+- Integration test: Cancelled export stops fetching data
+
+---
+
+### Stage 13: Permission & Authorization
 
 **Goal**: Add authorization checks to audit log access
+
 **Status**: Not Started
 
 Tasks:
@@ -337,9 +459,10 @@ Tasks:
 
 ---
 
-### Stage 10: Documentation & Polish
+### Stage 14: Documentation & Polish
 
 **Goal**: Document audit system and add final polish
+
 **Status**: Not Started
 
 Tasks:
