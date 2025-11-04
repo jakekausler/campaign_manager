@@ -66,19 +66,27 @@ export default defineConfig({
       '**/__performance__/**',
       '**/*.performance.test.{ts,tsx}',
     ],
+    // Memory-conscious test sequencing
+    // Keep tests deterministic and run hooks in stack order for better memory management
+    sequence: {
+      shuffle: false, // Keep deterministic order
+      hooks: 'stack', // Run hooks in stack order
+    },
     // Run tests in fork processes to prevent memory accumulation
-    // Each fork will be recycled after a certain number of tests
     pool: 'forks',
     poolOptions: {
       forks: {
-        // Restart fork after each test file to prevent memory accumulation
-        // Each test file gets a fresh 6GB heap with no retained memory from previous files
-        singleFork: false,
+        // Phase 4 optimization: Enable singleFork for better memory recovery
+        // Single fork allows garbage collection between test files
+        singleFork: true,
         minForks: 1,
         maxForks: 1, // Only 1 fork active at a time (sequential execution)
-        // 6GB per fork (reaches 7GB GitHub Actions runner limit)
-        // Total: 1GB wrapper + 6GB worker = 7GB (at runner limit, no safety margin)
-        execArgv: ['--max-old-space-size=6144', '--expose-gc'],
+        // Phase 4 optimization: Reduced from 6144MB to 2048MB (2GB)
+        // After Phases 1-3, memory usage reduced ~57% (7GB → 3GB)
+        // Removed --expose-gc: V8's automatic GC is more efficient than manual GC
+        execArgv: ['--max-old-space-size=2048'],
+        // Enable proper test isolation
+        isolate: true,
       },
     },
     // Ensure proper cleanup between tests
