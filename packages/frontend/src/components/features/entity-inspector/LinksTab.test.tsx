@@ -1,7 +1,8 @@
 import { screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 
 import { LinksTab } from './LinksTab';
@@ -12,6 +13,12 @@ afterEach(() => {
 });
 
 describe('LinksTab', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
   describe('Settlement Links', () => {
     describe('Loading State', () => {
       it('should display loading message while fetching settlement', () => {

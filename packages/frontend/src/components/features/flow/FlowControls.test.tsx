@@ -1,7 +1,8 @@
 import { render, screen, act } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { NODE_COLORS } from '@/utils/node-colors';
 
 import { FlowControls } from './FlowControls';
@@ -19,6 +20,9 @@ vi.mock('@xyflow/react', async () => {
 });
 
 describe('FlowControls', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
   beforeEach(() => {
     vi.useFakeTimers();
     mockGetZoom.mockReturnValue(1.0); // Default zoom level
@@ -27,6 +31,10 @@ describe('FlowControls', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.useRealTimers();
+  });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
   });
 
   const renderComponent = () => {

@@ -1,6 +1,7 @@
 import { cleanup, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 import { useSelectionStore } from '@/stores';
 
@@ -46,6 +47,13 @@ vi.mock('@/components/features/map', () => ({
 }));
 
 describe('MapPage', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   // Mock selection store functions
   const mockSelectEntity = vi.fn();
   const mockToggleSelection = vi.fn();

@@ -1,5 +1,7 @@
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
+
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 
 import { Effect, EffectTiming } from './EffectsTab';
 import { ResolutionDialog, ValidationResult } from './ResolutionDialog';
@@ -65,6 +67,13 @@ const defaultValidation: ValidationResult = {
 };
 
 describe('ResolutionDialog', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   let mockOnConfirm: ReturnType<typeof vi.fn>;
   let mockOnCancel: ReturnType<typeof vi.fn>;
 

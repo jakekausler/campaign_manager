@@ -1,8 +1,9 @@
 import { ApolloProvider } from '@apollo/client/react';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { toast } from 'sonner';
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, afterAll, beforeEach } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 import * as settlements from '@/services/api/mutations/settlements';
 import * as structures from '@/services/api/mutations/structures';
@@ -58,6 +59,13 @@ afterEach(() => {
 });
 
 describe('LevelControl', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   describe('Rendering', () => {
     it('should render with current level badge', () => {
       render(

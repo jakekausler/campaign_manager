@@ -1,8 +1,9 @@
 import { MockedProvider } from '@apollo/client/testing/react';
 import { render, screen, waitFor, within, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import * as structureHooks from '@/services/api/hooks/structures';
 
 import { StructureListView } from './StructureListView';
@@ -26,6 +27,13 @@ vi.mock('@/services/api/mutations/structures', () => ({
 }));
 
 describe('StructureListView', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   const mockStructures = [
     {
       id: 'structure-1',

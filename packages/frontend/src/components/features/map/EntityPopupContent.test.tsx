@@ -1,5 +1,7 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi, afterAll } from 'vitest';
+
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 
 import {
   LocationPopupContent,
@@ -8,9 +10,16 @@ import {
 } from './EntityPopupContent';
 import type { LocationPopupData, SettlementPopupData, StructurePopupData } from './types';
 
+// Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+enableMemoryProfiling({ warnThresholdMB: 50 });
+
 afterEach(() => {
   cleanup(); // Unmount all React components and hooks
   vi.clearAllMocks();
+});
+
+afterAll(() => {
+  printMemorySummary({ sortBy: 'rss', topN: 10 });
 });
 
 describe('LocationPopupContent', () => {

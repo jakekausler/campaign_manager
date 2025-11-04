@@ -1,6 +1,8 @@
 import { render, screen, waitFor, fireEvent, act, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi, afterEach, afterAll } from 'vitest';
+
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 
 import { EventPanel } from './EventPanel';
 import type { EventData } from './EventPanel';
@@ -11,6 +13,13 @@ afterEach(() => {
 });
 
 describe('EventPanel', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   const mockEvent: EventData = {
     id: 'event-1',
     name: 'The Great Festival',

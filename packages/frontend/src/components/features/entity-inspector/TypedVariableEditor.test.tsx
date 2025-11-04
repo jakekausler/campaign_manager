@@ -15,8 +15,9 @@
 
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi, afterEach, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import type { VariableSchema } from '@/utils/variable-validation';
 
 import { TypedVariableEditor } from './TypedVariableEditor';
@@ -27,6 +28,13 @@ afterEach(() => {
 });
 
 describe('TypedVariableEditor', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   const mockSchemas: VariableSchema[] = [
     {
       name: 'population',

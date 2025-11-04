@@ -1,6 +1,7 @@
 import { Database, GitBranch, Zap, Box } from 'lucide-react';
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, afterAll, vi } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { renderWithReactFlow, screen, cleanup } from '@/__tests__/utils/test-utils';
 import type { FlowNodeData } from '@/utils';
 
@@ -15,9 +16,16 @@ const mockNodeData: FlowNodeData = {
 };
 
 describe('CustomNode', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
   afterEach(() => {
     cleanup(); // Critical: unmount React Flow instances to prevent memory leaks
     vi.clearAllMocks();
+  });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
   });
   it('renders node with label and type', () => {
     renderWithReactFlow(

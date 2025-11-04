@@ -1,7 +1,8 @@
 import { screen, waitFor, within, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, afterEach, vi } from 'vitest';
+import { describe, expect, it, afterEach, afterAll, vi } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 
 import { OverviewTab, type Entity } from './OverviewTab';
@@ -12,6 +13,12 @@ afterEach(() => {
 });
 
 describe('OverviewTab', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
   const mockSettlement: Entity = {
     id: 'settlement-1',
     name: 'Ironhold',

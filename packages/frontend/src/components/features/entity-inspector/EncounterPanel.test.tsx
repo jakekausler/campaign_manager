@@ -1,6 +1,8 @@
 import { render, screen, waitFor, fireEvent, act, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi, afterEach, afterAll } from 'vitest';
+
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 
 import { EncounterPanel } from './EncounterPanel';
 import type { EncounterData } from './EncounterPanel';
@@ -11,6 +13,13 @@ afterEach(() => {
 });
 
 describe('EncounterPanel', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   const mockEncounter: EncounterData = {
     id: 'encounter-1',
     name: 'Bandit Ambush',

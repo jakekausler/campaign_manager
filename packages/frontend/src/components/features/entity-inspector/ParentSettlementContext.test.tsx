@@ -4,8 +4,9 @@ import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GraphQLError } from 'graphql';
 import { BrowserRouter } from 'react-router-dom';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { GET_SETTLEMENT_DETAILS } from '@/services/api/hooks/settlements';
 
 import { ParentSettlementContext } from './ParentSettlementContext';
@@ -42,6 +43,13 @@ function TestWrapper({
 }
 
 describe('ParentSettlementContext', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   const mockSettlementId = 'settlement-1';
   const mockOnNavigate = vi.fn();
 

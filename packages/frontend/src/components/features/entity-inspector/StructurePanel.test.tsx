@@ -1,8 +1,9 @@
 import { ApolloProvider } from '@apollo/client/react';
 import { render, screen, waitFor, fireEvent, act, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi, afterEach, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 
 import { StructurePanel } from './StructurePanel';
@@ -22,6 +23,13 @@ afterEach(() => {
 });
 
 describe('StructurePanel', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   const mockOnNavigate = vi.fn();
 
   const mockStructure: StructureData = {

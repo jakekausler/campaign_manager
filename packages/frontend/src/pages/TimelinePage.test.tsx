@@ -1,8 +1,9 @@
 import { screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useSearchParams } from 'react-router-dom';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 import { Timeline, type TimelineProps } from '@/components/features/timeline';
 import { useTimelineReschedule } from '@/hooks';
@@ -160,6 +161,13 @@ afterEach(() => {
 });
 
 describe('TimelinePage', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();

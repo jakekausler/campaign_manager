@@ -1,8 +1,9 @@
 import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Node } from '@xyflow/react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import type { FlowNodeData } from '@/utils';
 
 import { SelectionPanel } from './SelectionPanel';
@@ -40,9 +41,16 @@ function createTestNode(
 }
 
 describe('SelectionPanel', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
   afterEach(() => {
     cleanup(); // Unmount all React components
     vi.clearAllMocks(); // Clear all mock function call history
+  });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
   });
 
   describe('rendering', () => {

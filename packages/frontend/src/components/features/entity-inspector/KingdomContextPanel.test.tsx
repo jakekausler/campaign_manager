@@ -2,8 +2,9 @@ import type { MockedResponse } from '@apollo/client/testing';
 import { MockedProvider } from '@apollo/client/testing/react';
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { GET_KINGDOM_BY_ID } from '@/services/api/hooks/kingdoms';
 import { GET_SETTLEMENTS_BY_KINGDOM } from '@/services/api/hooks/settlements';
 
@@ -60,6 +61,13 @@ function renderWithMocks(ui: React.ReactElement, mocks: MockedResponse[] = []) {
 }
 
 describe('KingdomContextPanel', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   describe('Loading State', () => {
     it('should display loading skeleton while fetching kingdom', () => {
       const kingdomMock = createKingdomMock(null);

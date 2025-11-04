@@ -11,8 +11,9 @@
 import { cleanup, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { Map as MapLibre } from 'maplibre-gl';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, afterAll } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 
 import { Map } from './Map';
@@ -48,6 +49,9 @@ vi.mock('maplibre-gl', () => {
 });
 
 describe('Map Component', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
   afterEach(() => {
     cleanup(); // Unmount all React components and hooks
     vi.clearAllMocks();
@@ -55,6 +59,10 @@ describe('Map Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
   });
 
   describe('Rendering', () => {

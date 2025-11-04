@@ -1,6 +1,8 @@
 import { cleanup, renderHook, act } from '@testing-library/react';
 import { Map as MapLibre, Popup } from 'maplibre-gl';
-import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
+
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 
 import type { PopupData } from './types';
 import { useEntityPopup } from './useEntityPopup';
@@ -42,6 +44,9 @@ vi.mock('react-dom/client', () => ({
 }));
 
 describe('useEntityPopup', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
   let mockMap: MapLibre;
 
   afterEach(() => {
@@ -52,6 +57,10 @@ describe('useEntityPopup', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockMap = {} as MapLibre;
+  });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
   });
 
   it('should return popup functions and state', () => {

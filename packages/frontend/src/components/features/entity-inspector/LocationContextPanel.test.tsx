@@ -3,8 +3,9 @@ import { MockedProvider } from '@apollo/client/testing/react';
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, afterAll, vi } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { GET_LOCATION_DETAILS } from '@/services/api/hooks/locations';
 
 import { LocationContextPanel } from './LocationContextPanel';
@@ -57,6 +58,13 @@ function renderWithRouter(ui: React.ReactElement, mocks: MockedResponse[] = []) 
 }
 
 describe('LocationContextPanel', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+
   describe('Loading State', () => {
     it('should display loading skeleton while fetching location', () => {
       const mock = createMock(null);

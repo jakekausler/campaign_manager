@@ -1,6 +1,6 @@
 import { ApolloProvider } from '@apollo/client/react';
 import { fireEvent, screen, waitFor, render, cleanup } from '@testing-library/react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, afterAll } from 'vitest';
 
 import {
   mockEncounters,
@@ -8,6 +8,7 @@ import {
   mockSettlements,
   mockStructures,
 } from '@/__tests__/mocks/data';
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 
 import { EntityInspector } from './EntityInspector';
@@ -31,12 +32,19 @@ afterEach(() => {
 });
 
 describe('EntityInspector', () => {
+  // Phase 2 (Mitigation Plan) Task 2.3: Enable memory profiling for diagnostic visibility
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
   const mockOnClose = vi.fn();
 
   const renderWithApollo = (ui: React.ReactElement) => {
     const client = createTestApolloClient();
     return render(<ApolloProvider client={client}>{ui}</ApolloProvider>);
   };
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
 
   describe('Component Rendering', () => {
     it('should not render content when isOpen is false', () => {
