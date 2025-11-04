@@ -13,7 +13,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "lint": "eslint src --ext .ts,.tsx",
     "start": "vite preview",
-    "test": "bash run-tests.sh",
+    "test": "vitest run",
     "test:performance": "vitest run --config vitest.performance.config.ts",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
