@@ -17,6 +17,8 @@ import {
   mockEffects,
   mockAudits,
   mockVersions,
+  mockBranches,
+  mockBranchHierarchy,
 } from './data';
 
 export const graphqlHandlers = [
@@ -763,6 +765,87 @@ export const graphqlHandlers = [
 
     return HttpResponse.json({
       data: { entityVersions: versions },
+    });
+  }),
+
+  // Branch Queries
+  graphql.query('GetBranches', ({ variables }) => {
+    const { campaignId } = variables as { campaignId: string };
+
+    // Simulate server error for "invalid-*" IDs
+    if (campaignId.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Internal server error' }],
+      });
+    }
+
+    // Filter branches by campaignId
+    const branches = mockBranches.filter((b) => b.campaignId === campaignId);
+
+    return HttpResponse.json({
+      data: { branches },
+    });
+  }),
+
+  graphql.query('GetBranchHierarchy', ({ variables }) => {
+    const { campaignId } = variables as { campaignId: string };
+
+    // Simulate server error for "invalid-*" IDs
+    if (campaignId.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Internal server error' }],
+      });
+    }
+
+    // Return mock hierarchy for campaign-1
+    if (campaignId === 'campaign-1') {
+      return HttpResponse.json({
+        data: { branchHierarchy: mockBranchHierarchy },
+      });
+    }
+
+    // Return empty hierarchy for other campaigns
+    return HttpResponse.json({
+      data: { branchHierarchy: [] },
+    });
+  }),
+
+  // Branch Mutations
+  graphql.mutation('UpdateBranch', ({ variables }) => {
+    const { id, input } = variables as {
+      id: string;
+      input: {
+        name?: string | null;
+        description?: string | null;
+        isPinned?: boolean | null;
+        color?: string | null;
+        tags?: string[] | null;
+      };
+    };
+
+    // Simulate server error for "invalid-*" IDs
+    if (id.startsWith('invalid-')) {
+      return HttpResponse.json({
+        errors: [{ message: 'Internal server error' }],
+      });
+    }
+
+    const branch = mockBranches.find((b) => b.id === id);
+    if (!branch) {
+      return HttpResponse.json({
+        errors: [{ message: 'Branch not found' }],
+      });
+    }
+
+    // Mock updated branch
+    const updatedBranch = {
+      ...branch,
+      ...input,
+      updatedAt: new Date().toISOString(),
+    };
+
+    return HttpResponse.json({
+      data: { updateBranch: updatedBranch },
     });
   }),
 ];

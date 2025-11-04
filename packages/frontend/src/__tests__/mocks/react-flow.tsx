@@ -21,14 +21,26 @@ import { vi } from 'vitest';
  * Related: Phase 5 of test-performance-optimization-plan.md
  */
 
+interface ReactFlowNode {
+  id: string;
+  type?: string;
+  data: Record<string, unknown>;
+  selected?: boolean;
+  [key: string]: unknown;
+}
+
 interface ReactFlowProps {
   children?: ReactNode;
-  nodes?: unknown[];
+  nodes?: ReactFlowNode[];
   edges?: unknown[];
+  nodeTypes?: Record<
+    string,
+    React.ComponentType<{ data: Record<string, unknown>; selected: boolean }>
+  >;
   onNodesChange?: (...args: unknown[]) => void;
   onEdgesChange?: (...args: unknown[]) => void;
   onConnect?: (...args: unknown[]) => void;
-  onNodeClick?: (...args: unknown[]) => void;
+  onNodeClick?: (event: React.MouseEvent, node: ReactFlowNode) => void;
   onNodeDoubleClick?: (...args: unknown[]) => void;
   onPaneClick?: (...args: unknown[]) => void;
   fitView?: boolean;
@@ -42,14 +54,64 @@ interface ReactFlowProviderProps {
 /**
  * Lightweight mock of ReactFlow component
  * Renders a simple div with test-id for querying in tests
+ *
+ * Enhanced to render node content using custom node types so that
+ * tests can query for node content (branch names, descriptions, etc.)
  */
-export const mockReactFlow = ({ children, nodes, edges, ...props }: ReactFlowProps) => (
+export const mockReactFlow = ({
+  children,
+  nodes,
+  edges,
+  nodeTypes,
+  onNodeClick,
+  _onNodesChange,
+  _onEdgesChange,
+  _onConnect,
+  _onNodeDoubleClick,
+  _onPaneClick,
+  _fitView,
+  _minZoom,
+  _maxZoom,
+  _defaultEdgeOptions,
+  ...restProps
+}: ReactFlowProps) => (
   <div
     data-testid="react-flow-mock"
     data-nodes-count={nodes?.length ?? 0}
     data-edges-count={edges?.length ?? 0}
-    {...props}
+    className="react-flow"
+    {...restProps}
   >
+    {/* Render nodes using custom node types if provided */}
+    {nodes?.map((node) => {
+      const NodeComponent = nodeTypes?.[node.type || 'default'];
+      if (NodeComponent) {
+        return (
+          <div
+            key={node.id}
+            data-testid={`flow-node-${node.id}`}
+            onClick={(e) => onNodeClick?.(e, node)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onNodeClick?.(e as unknown as React.MouseEvent, node);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            style={{ cursor: 'pointer' }}
+          >
+            <NodeComponent data={node.data} selected={node.selected || false} />
+          </div>
+        );
+      }
+      // Fallback: render node data as JSON
+      return (
+        <div key={node.id} data-testid={`flow-node-${node.id}`}>
+          {JSON.stringify(node.data)}
+        </div>
+      );
+    })}
     {children}
   </div>
 );
@@ -124,6 +186,68 @@ export const mockUseEdgesState = (initialEdges: unknown[] = []) => {
 };
 
 /**
+ * Mock Position enum from React Flow
+ * Used for edge positioning (Top, Right, Bottom, Left)
+ */
+export enum Position {
+  Top = 'top',
+  Right = 'right',
+  Bottom = 'bottom',
+  Left = 'left',
+}
+
+/**
+ * Mock getSmoothStepPath function
+ * Returns a simple SVG path string for testing
+ */
+export const mockGetSmoothStepPath = (params: {
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  [key: string]: unknown;
+}) => {
+  // Simple linear path for testing
+  return [`M ${params.sourceX},${params.sourceY} L ${params.targetX},${params.targetY}`, 0, 0];
+};
+
+/**
+ * Mock BaseEdge component
+ * Renders a simple path element for testing
+ */
+export const mockBaseEdge = ({ path, ...props }: { path: string; [key: string]: unknown }) => (
+  <path d={path} className="react-flow__edge-path" {...props} />
+);
+
+/**
+ * Mock EdgeLabelRenderer component
+ * Renders children in a div for testing
+ */
+export const mockEdgeLabelRenderer = ({ children }: { children?: ReactNode }) => (
+  <div className="react-flow__edge-label-renderer">{children}</div>
+);
+
+/**
+ * Mock Handle component
+ * Renders a simple div for node connection handles
+ */
+export const mockHandle = ({
+  type,
+  position,
+  ...props
+}: {
+  type: string;
+  position: Position;
+  [key: string]: unknown;
+}) => (
+  <div
+    data-testid={`handle-${type}-${position}`}
+    className={`react-flow__handle react-flow__handle-${type} react-flow__handle-${position}`}
+    {...props}
+  />
+);
+
+/**
  * Full mock module export
  * Use this to replace the entire @xyflow/react module in tests
  */
@@ -133,13 +257,22 @@ export const createReactFlowMock = () => ({
   useReactFlow: mockUseReactFlow,
   useNodesState: mockUseNodesState,
   useEdgesState: mockUseEdgesState,
+  Position,
+  getSmoothStepPath: mockGetSmoothStepPath,
+  BaseEdge: mockBaseEdge,
+  EdgeLabelRenderer: mockEdgeLabelRenderer,
+  Handle: mockHandle,
   // Re-export commonly used types/utilities if needed
   MiniMap: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="minimap-mock">{children}</div>
+    <div data-testid="minimap-mock" className="react-flow__minimap">
+      {children}
+    </div>
   ),
   Controls: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="controls-mock">{children}</div>
+    <div data-testid="controls-mock" className="react-flow__controls">
+      {children}
+    </div>
   ),
-  Background: () => <div data-testid="background-mock" />,
+  Background: () => <div data-testid="background-mock" className="react-flow__background" />,
   Panel: ({ children }: { children?: ReactNode }) => <div data-testid="panel-mock">{children}</div>,
 });

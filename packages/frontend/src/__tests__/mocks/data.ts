@@ -583,3 +583,117 @@ export const mockVersions = [
     createdAt: '2024-06-01T08:00:00.000Z',
   },
 ];
+
+/**
+ * Mock branch data for branching system testing
+ */
+export const mockBranches = [
+  {
+    id: 'main',
+    name: 'Main Timeline',
+    description: 'Primary campaign timeline',
+    campaignId: 'campaign-1',
+    parentId: null,
+    parent: null,
+    divergedAt: null,
+    isPinned: true,
+    color: '#3b82f6',
+    tags: ['primary'],
+    createdAt: '2024-01-01T00:00:00.000Z',
+    updatedAt: '2024-01-01T00:00:00.000Z',
+    deletedAt: null,
+  },
+  {
+    id: 'branch-1',
+    name: 'Alternate Branch',
+    description: 'Alternative timeline branch',
+    campaignId: 'campaign-1',
+    parentId: 'main',
+    parent: {
+      id: 'main',
+      name: 'Main Timeline',
+    },
+    divergedAt: '2024-06-01T00:00:00.000Z',
+    isPinned: false,
+    color: '#10b981',
+    tags: ['alternate'],
+    createdAt: '2024-06-01T00:00:00.000Z',
+    updatedAt: '2024-06-01T00:00:00.000Z',
+    deletedAt: null,
+  },
+  {
+    id: 'branch-2',
+    name: 'Experimental Branch',
+    description: 'Experimental what-if scenario',
+    campaignId: 'campaign-1',
+    parentId: 'branch-1',
+    parent: {
+      id: 'branch-1',
+      name: 'Alternate Branch',
+    },
+    divergedAt: '2024-07-01T00:00:00.000Z',
+    isPinned: false,
+    color: '#f59e0b',
+    tags: ['experimental', 'test'],
+    createdAt: '2024-07-01T00:00:00.000Z',
+    updatedAt: '2024-07-01T00:00:00.000Z',
+    deletedAt: null,
+  },
+];
+
+/**
+ * Mock branch hierarchy data for tree structure testing
+ */
+export const mockBranchHierarchy = [
+  {
+    branch: {
+      id: 'main',
+      name: 'Main Timeline',
+      description: 'Primary campaign timeline',
+      divergedAt: null,
+      isPinned: true,
+      color: '#3b82f6',
+      tags: ['primary'],
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+    },
+    children: [
+      {
+        branch: {
+          id: 'branch-1',
+          name: 'Alternate Branch',
+          description: 'Alternative timeline branch',
+          divergedAt: '2024-06-01T00:00:00.000Z',
+          isPinned: false,
+          color: '#10b981',
+          tags: ['alternate'],
+          createdAt: '2024-06-01T00:00:00.000Z',
+          updatedAt: '2024-06-01T00:00:00.000Z',
+        },
+        children: [
+          {
+            branch: {
+              id: 'branch-2',
+              name: 'Experimental Branch',
+              divergedAt: '2024-07-01T00:00:00.000Z',
+              isPinned: false,
+              color: '#f59e0b',
+              tags: ['experimental', 'test'],
+            },
+            children: [
+              {
+                branch: {
+                  id: 'branch-3',
+                  name: 'Nested Branch',
+                  isPinned: false,
+                  color: '#8b5cf6',
+                  tags: [],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];

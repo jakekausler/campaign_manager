@@ -651,6 +651,13 @@ pnpm --filter @campaign/frontend test # Run tests with Vitest
 - Testing with Vitest and MSW
 - Troubleshooting and best practices
 
+**See [packages/frontend/docs/testing/mocking-guide.md](packages/frontend/docs/testing/mocking-guide.md) for test mocking patterns:**
+
+- When and how to mock React Flow, MapLibre GL, and other heavy dependencies
+- Memory profiling for identifying memory-heavy tests
+- GeoJSON fixture best practices for minimal test data
+- Complete examples with memory impact analysis
+
 ## Feature Documentation
 
 Complete feature documentation available in `docs/features/` and `docs/development/`:
