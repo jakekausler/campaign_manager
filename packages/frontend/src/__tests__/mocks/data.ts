@@ -4,18 +4,18 @@
  * Provides realistic test data for Settlement, Structure, Event, and Encounter entities.
  */
 
+// Reduced to 2 essential events for memory efficiency
 export const mockEvents = [
   {
     id: 'event-1',
     campaignId: 'campaign-1',
     locationId: 'location-1',
     name: 'Royal Festival',
-    description: 'Annual celebration in Ironhold',
     eventType: 'kingdom',
     scheduledAt: '2024-06-15T12:00:00.000Z',
     occurredAt: '2024-06-15T14:00:00.000Z',
     isCompleted: true,
-    variables: { attendees: 500, revenue: 1200 },
+    variables: { attendees: 500 },
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-06-15T14:00:00.000Z',
     deletedAt: null,
@@ -26,7 +26,6 @@ export const mockEvents = [
     campaignId: 'campaign-1',
     locationId: 'location-2',
     name: 'Harvest Moon',
-    description: 'Scheduled harvest celebration',
     eventType: 'world',
     scheduledAt: '2024-08-20T18:00:00.000Z',
     occurredAt: null,
@@ -37,52 +36,20 @@ export const mockEvents = [
     deletedAt: null,
     archivedAt: null,
   },
-  {
-    id: 'event-3',
-    campaignId: 'campaign-1',
-    locationId: null,
-    name: "Hero's Quest",
-    description: 'Party main quest event',
-    eventType: 'party',
-    scheduledAt: '2024-03-01T10:00:00.000Z',
-    occurredAt: null,
-    isCompleted: false,
-    variables: { questProgress: 0.65 },
-    createdAt: '2024-01-03T00:00:00.000Z',
-    updatedAt: '2024-03-01T10:00:00.000Z',
-    deletedAt: null,
-    archivedAt: null,
-  },
-  {
-    id: 'event-4',
-    campaignId: 'campaign-2',
-    locationId: 'location-3',
-    name: 'Storm Warning',
-    description: 'Approaching storm event',
-    eventType: 'story',
-    scheduledAt: '2024-12-01T00:00:00.000Z',
-    occurredAt: null,
-    isCompleted: false,
-    variables: { severity: 7 },
-    createdAt: '2024-01-04T00:00:00.000Z',
-    updatedAt: '2024-01-04T00:00:00.000Z',
-    deletedAt: null,
-    archivedAt: null,
-  },
 ];
 
+// Reduced to 2 essential encounters for memory efficiency
 export const mockEncounters = [
   {
     id: 'encounter-1',
     campaignId: 'campaign-1',
     locationId: 'location-1',
     name: 'Dragon Attack',
-    description: 'Ancient dragon attacked the settlement',
     difficulty: 15,
     scheduledAt: '2024-05-10T14:00:00.000Z',
     isResolved: true,
     resolvedAt: '2024-05-10T16:30:00.000Z',
-    variables: { casualties: 12, goldLost: 5000 },
+    variables: { casualties: 12 },
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-05-10T16:30:00.000Z',
     deletedAt: null,
@@ -93,51 +60,19 @@ export const mockEncounters = [
     campaignId: 'campaign-1',
     locationId: 'location-2',
     name: 'Dragon Sighting',
-    description: 'Ancient dragon spotted in the mountains',
     difficulty: 15,
     scheduledAt: '2024-07-15T09:00:00.000Z',
     isResolved: false,
     resolvedAt: null,
-    variables: { threatLevel: 'high' },
+    variables: {},
     createdAt: '2024-01-02T00:00:00.000Z',
     updatedAt: '2024-01-02T00:00:00.000Z',
     deletedAt: null,
     archivedAt: null,
   },
-  {
-    id: 'encounter-3',
-    campaignId: 'campaign-1',
-    locationId: null,
-    name: 'Mysterious Stranger',
-    description: 'Cloaked figure in the tavern',
-    difficulty: 3,
-    scheduledAt: '2024-02-20T20:00:00.000Z',
-    isResolved: false,
-    resolvedAt: null,
-    variables: { suspicious: true },
-    createdAt: '2024-01-03T00:00:00.000Z',
-    updatedAt: '2024-01-03T00:00:00.000Z',
-    deletedAt: null,
-    archivedAt: null,
-  },
-  {
-    id: 'encounter-4',
-    campaignId: 'campaign-3', // Changed from campaign-2 to campaign-3 so campaign-2 has only events
-    locationId: 'location-3',
-    name: 'Storm Elemental',
-    description: 'Elemental manifestation of the storm',
-    difficulty: 12,
-    scheduledAt: '2024-11-30T12:00:00.000Z',
-    isResolved: false,
-    resolvedAt: null,
-    variables: { elementalType: 'storm' },
-    createdAt: '2024-01-04T00:00:00.000Z',
-    updatedAt: '2024-01-04T00:00:00.000Z',
-    deletedAt: null,
-    archivedAt: null,
-  },
 ];
 
+// Reduced to 3 essential settlements for memory efficiency
 export const mockSettlements = [
   {
     id: 'settlement-1',
@@ -162,12 +97,10 @@ export const mockSettlements = [
     },
     variables: {
       prosperity: 75,
-      morale: 80,
       has_walls: true,
     },
     variableSchemas: [
       { name: 'prosperity', type: 'number' },
-      { name: 'morale', type: 'number' },
       { name: 'has_walls', type: 'boolean' },
     ],
   },
@@ -190,30 +123,6 @@ export const mockSettlements = [
     version: 1,
     computedFields: {
       population: 800,
-      defense: 15,
-    },
-    variableSchemas: [],
-  },
-  {
-    id: 'settlement-3',
-    kingdomId: 'kingdom-2',
-    locationId: 'location-3',
-    campaignId: 'campaign-2',
-    ownerId: 'user-2',
-    name: 'Stormwatch',
-    level: 4,
-    x: 300,
-    y: 350,
-    z: 0,
-    isArchived: false,
-    archivedAt: null,
-    createdAt: '2024-01-03T00:00:00.000Z',
-    updatedAt: '2024-01-03T00:00:00.000Z',
-    deletedAt: null,
-    version: 1,
-    computedFields: {
-      population: 2500,
-      defense: 40,
     },
     variableSchemas: [],
   },
@@ -238,29 +147,9 @@ export const mockSettlements = [
     variables: {},
     variableSchemas: [],
   },
-  {
-    id: 'settlement-error-structures',
-    kingdomId: 'kingdom-3',
-    locationId: 'location-5',
-    campaignId: 'campaign-1',
-    ownerId: 'user-1',
-    name: 'Error Settlement',
-    level: 1,
-    x: 60,
-    y: 60,
-    z: 0,
-    isArchived: false,
-    archivedAt: null,
-    createdAt: '2024-01-05T00:00:00.000Z',
-    updatedAt: '2024-01-05T00:00:00.000Z',
-    deletedAt: null,
-    version: 1,
-    computedFields: {},
-    variables: {},
-    variableSchemas: [],
-  },
 ];
 
+// Reduced to 3 essential structures for memory efficiency
 export const mockStructures = [
   {
     id: 'structure-1',
@@ -280,18 +169,11 @@ export const mockStructures = [
     version: 1,
     computedFields: {
       capacity: 100,
-      training_speed: 1.2,
     },
     variables: {
       garrison_size: 50,
-      is_upgraded: false,
-      maintenance_cost: 25,
     },
-    variableSchemas: [
-      { name: 'garrison_size', type: 'number' },
-      { name: 'is_upgraded', type: 'boolean' },
-      { name: 'maintenance_cost', type: 'number' },
-    ],
+    variableSchemas: [{ name: 'garrison_size', type: 'number' }],
   },
   {
     id: 'structure-2',
@@ -311,7 +193,6 @@ export const mockStructures = [
     version: 1,
     computedFields: {
       trade_bonus: 0.15,
-      capacity: 50,
     },
     variableSchemas: [],
   },
@@ -333,50 +214,6 @@ export const mockStructures = [
     version: 1,
     computedFields: {
       knowledge: 75,
-      research_speed: 1.5,
-    },
-    variableSchemas: [],
-  },
-  {
-    id: 'structure-4',
-    settlementId: 'settlement-2',
-    typeId: 'temple',
-    type: 'temple',
-    name: 'Temple of Light',
-    level: 1,
-    x: 15,
-    y: 25,
-    orientation: 180,
-    isArchived: false,
-    archivedAt: null,
-    createdAt: '2024-01-02T00:00:00.000Z',
-    updatedAt: '2024-01-02T00:00:00.000Z',
-    deletedAt: null,
-    version: 1,
-    computedFields: {
-      faith: 50,
-      healing_rate: 0.1,
-    },
-    variableSchemas: [],
-  },
-  {
-    id: 'structure-5',
-    settlementId: 'settlement-3',
-    typeId: 'forge',
-    type: 'forge',
-    name: 'Master Forge',
-    level: 0,
-    x: 20,
-    y: 30,
-    orientation: 0,
-    isArchived: false,
-    archivedAt: null,
-    createdAt: '2024-01-03T00:00:00.000Z',
-    updatedAt: '2024-01-03T00:00:00.000Z',
-    deletedAt: null,
-    version: 1,
-    computedFields: {
-      production: 50,
     },
     variableSchemas: [],
   },
@@ -546,6 +383,7 @@ export const mockDependencyGraph = {
   builtAt: '2024-01-01T00:00:00.000Z',
 };
 
+// Reduced to 2 essential conditions for memory efficiency
 export const mockConditions = [
   {
     id: 'condition-1',
@@ -553,7 +391,6 @@ export const mockConditions = [
     entityId: 'settlement-1',
     field: 'is_trade_hub',
     expression: { '>=': [{ var: 'level' }, 3] },
-    description: 'Applies when settlement level is 3 or higher',
     isActive: true,
     priority: 10,
     version: 1,
@@ -569,7 +406,6 @@ export const mockConditions = [
     entityId: 'settlement-1',
     field: 'is_fortified',
     expression: { '>=': [{ var: 'defense' }, 30] },
-    description: 'Applies when defense is 30 or higher',
     isActive: true,
     priority: 20,
     version: 1,
@@ -579,45 +415,13 @@ export const mockConditions = [
     createdBy: 'user-1',
     updatedBy: null,
   },
-  {
-    id: 'condition-3',
-    entityType: 'Structure',
-    entityId: 'structure-1',
-    field: 'is_operational',
-    expression: { '>=': [{ var: 'level' }, 1] },
-    description: 'Applies when structure level is 1 or higher',
-    isActive: true,
-    priority: 5,
-    version: 1,
-    createdAt: '2024-01-01T00:00:00.000Z',
-    updatedAt: '2024-01-01T00:00:00.000Z',
-    deletedAt: null,
-    createdBy: 'user-1',
-    updatedBy: null,
-  },
-  {
-    id: 'condition-4',
-    entityType: 'Settlement',
-    entityId: null, // Type-level condition
-    field: 'exists',
-    expression: { '>': [{ var: 'level' }, 0] },
-    description: 'Type-level: settlement exists if level is greater than 0',
-    isActive: true,
-    priority: 1,
-    version: 1,
-    createdAt: '2024-01-01T00:00:00.000Z',
-    updatedAt: '2024-01-01T00:00:00.000Z',
-    deletedAt: null,
-    createdBy: 'user-1',
-    updatedBy: null,
-  },
 ];
 
+// Reduced to 2 essential effects for memory efficiency
 export const mockEffects = [
   {
     id: 'effect-1',
     name: 'Boost Population',
-    description: 'Increases settlement population by 100',
     effectType: 'patch',
     payload: [
       {
@@ -655,7 +459,6 @@ export const mockEffects = [
   {
     id: 'effect-2',
     name: 'Boost Defense',
-    description: 'Increases settlement defense by 10',
     effectType: 'patch',
     payload: [
       {
@@ -675,69 +478,9 @@ export const mockEffects = [
     deletedAt: null,
     executions: [],
   },
-  {
-    id: 'effect-3',
-    name: 'Damage Settlement',
-    description: 'Reduces settlement population due to dragon attack',
-    effectType: 'patch',
-    payload: [
-      {
-        op: 'add',
-        path: '/variables/population',
-        value: -50,
-      },
-    ],
-    entityType: 'encounter',
-    entityId: 'encounter-1',
-    timing: 'ON_RESOLVE',
-    priority: 5,
-    isActive: true,
-    version: 1,
-    createdAt: '2024-01-01T00:00:00.000Z',
-    updatedAt: '2024-01-01T00:00:00.000Z',
-    deletedAt: null,
-    executions: [
-      {
-        id: 'execution-2',
-        effectId: 'effect-3',
-        executedAt: '2024-05-10T16:30:00.000Z',
-        status: 'SUCCESS',
-        patchApplied: [
-          {
-            op: 'add',
-            path: '/variables/population',
-            value: -50,
-          },
-        ],
-        error: null,
-      },
-    ],
-  },
-  {
-    id: 'effect-4',
-    name: 'Pre-encounter Warning',
-    description: 'Sends warning before encounter',
-    effectType: 'patch',
-    payload: [
-      {
-        op: 'add',
-        path: '/variables/alert_level',
-        value: 'high',
-      },
-    ],
-    entityType: 'encounter',
-    entityId: 'encounter-2',
-    timing: 'PRE',
-    priority: 1,
-    isActive: true,
-    version: 1,
-    createdAt: '2024-01-01T00:00:00.000Z',
-    updatedAt: '2024-01-01T00:00:00.000Z',
-    deletedAt: null,
-    executions: [],
-  },
 ];
 
+// Reduced to 3 essential audits for memory efficiency
 export const mockAudits = [
   {
     id: 'audit-1',
@@ -748,12 +491,9 @@ export const mockAudits = [
     changes: {
       name: 'Ironhold',
       level: 3,
-      kingdomId: 'kingdom-1',
-      locationId: 'location-1',
     },
     metadata: {
       ipAddress: '192.168.1.1',
-      userAgent: 'Mozilla/5.0',
     },
     timestamp: '2024-01-01T00:00:00.000Z',
   },
@@ -768,76 +508,14 @@ export const mockAudits = [
         before: 3,
         after: 4,
       },
-      variables: {
-        before: { prosperity: 75, morale: 80 },
-        after: { prosperity: 80, morale: 85, has_walls: true },
-      },
     },
     metadata: {
       ipAddress: '192.168.1.1',
-      userAgent: 'Mozilla/5.0',
     },
     timestamp: '2024-06-15T10:30:00.000Z',
   },
   {
     id: 'audit-3',
-    entityType: 'Settlement',
-    entityId: 'settlement-1',
-    operation: 'UPDATE',
-    userId: 'user-2',
-    changes: {
-      name: {
-        before: 'Ironhold',
-        after: 'Ironhold Fortress',
-      },
-    },
-    metadata: {
-      ipAddress: '10.0.0.5',
-      userAgent: 'Chrome/120.0',
-    },
-    timestamp: '2024-11-20T14:15:00.000Z',
-  },
-  {
-    id: 'audit-4',
-    entityType: 'Structure',
-    entityId: 'structure-1',
-    operation: 'CREATE',
-    userId: 'user-1',
-    changes: {
-      name: 'Main Barracks',
-      type: 'barracks',
-      level: 2,
-      settlementId: 'settlement-1',
-    },
-    metadata: {
-      ipAddress: '192.168.1.1',
-    },
-    timestamp: '2024-03-10T08:45:00.000Z',
-  },
-  {
-    id: 'audit-5',
-    entityType: 'Structure',
-    entityId: 'structure-1',
-    operation: 'UPDATE',
-    userId: 'user-1',
-    changes: {
-      level: {
-        before: 2,
-        after: 3,
-      },
-      variables: {
-        before: { garrison_size: 50, is_upgraded: false },
-        after: { garrison_size: 75, is_upgraded: true, maintenance_cost: 30 },
-      },
-    },
-    metadata: {
-      ipAddress: '192.168.1.1',
-    },
-    timestamp: '2024-07-25T16:20:00.000Z',
-  },
-  // Event completion audit entry (resolution)
-  {
-    id: 'audit-6',
     entityType: 'Event',
     entityId: 'event-1',
     operation: 'UPDATE',
@@ -848,71 +526,24 @@ export const mockAudits = [
     },
     metadata: {
       ipAddress: '192.168.1.1',
-      effectExecutionSummary: {
-        pre: { total: 2, succeeded: 2, failed: 0 },
-        onResolve: { total: 3, succeeded: 3, failed: 0 },
-        post: { total: 1, succeeded: 1, failed: 0 },
-      },
       effectsExecuted: 6,
-      totalEffects: 6,
     },
     timestamp: '2024-08-01T14:30:00.000Z',
-  },
-  // Encounter resolution audit entry (resolution)
-  {
-    id: 'audit-7',
-    entityType: 'Encounter',
-    entityId: 'encounter-1',
-    operation: 'UPDATE',
-    userId: 'user-2',
-    changes: {
-      isResolved: true,
-      resolvedAt: '2024-08-05T16:45:00.000Z',
-    },
-    metadata: {
-      ipAddress: '192.168.1.2',
-      effectExecutionSummary: {
-        pre: { total: 1, succeeded: 1, failed: 0 },
-        onResolve: { total: 2, succeeded: 1, failed: 1 },
-        post: { total: 1, succeeded: 1, failed: 0 },
-      },
-      effectsExecuted: 3,
-      totalEffects: 4,
-    },
-    timestamp: '2024-08-05T16:45:00.000Z',
-  },
-  // Event completion without effect execution summary (edge case)
-  {
-    id: 'audit-8',
-    entityType: 'Event',
-    entityId: 'event-2',
-    operation: 'UPDATE',
-    userId: 'user-1',
-    changes: {
-      isCompleted: true,
-      occurredAt: '2024-08-10T10:00:00.000Z',
-    },
-    metadata: {
-      ipAddress: '192.168.1.1',
-      effectsExecuted: 0,
-      totalEffects: 0,
-    },
-    timestamp: '2024-08-10T10:00:00.000Z',
   },
 ];
 
 /**
  * Mock version data for version history testing
  */
+// Reduced to 3 essential versions for memory efficiency
 export const mockVersions = [
-  // Settlement-1: Three versions showing progression
   {
     id: 'version-1',
     entityType: 'settlement',
     entityId: 'settlement-1',
     branchId: 'branch-1',
     validFrom: '2024-06-15T14:00:00.000Z',
-    validTo: null, // Current version
+    validTo: null,
     payload: { name: 'Ironhold', level: 3 },
     version: 3,
     comment: 'Upgraded to level 3',
@@ -942,47 +573,6 @@ export const mockVersions = [
     payload: { name: 'Ironhold', level: 1 },
     version: 1,
     comment: 'Initial creation',
-    createdBy: 'user-1',
-    createdAt: '2024-06-01T08:00:00.000Z',
-  },
-  // Settlement-single-version: Only one version
-  {
-    id: 'version-4',
-    entityType: 'settlement',
-    entityId: 'settlement-single-version',
-    branchId: 'branch-1',
-    validFrom: '2024-06-01T08:00:00.000Z',
-    validTo: null,
-    payload: { name: 'Newtown', level: 1 },
-    version: 1,
-    comment: 'Initial creation',
-    createdBy: 'user-1',
-    createdAt: '2024-06-01T08:00:00.000Z',
-  },
-  // Settlement-no-comments: Versions without comments
-  {
-    id: 'version-5',
-    entityType: 'settlement',
-    entityId: 'settlement-no-comments',
-    branchId: 'branch-1',
-    validFrom: '2024-06-10T10:00:00.000Z',
-    validTo: null,
-    payload: { name: 'Silent Town', level: 2 },
-    version: 2,
-    comment: null,
-    createdBy: 'user-1',
-    createdAt: '2024-06-10T10:00:00.000Z',
-  },
-  {
-    id: 'version-6',
-    entityType: 'settlement',
-    entityId: 'settlement-no-comments',
-    branchId: 'branch-1',
-    validFrom: '2024-06-01T08:00:00.000Z',
-    validTo: '2024-06-10T10:00:00.000Z',
-    payload: { name: 'Silent Town', level: 1 },
-    version: 1,
-    comment: null,
     createdBy: 'user-1',
     createdAt: '2024-06-01T08:00:00.000Z',
   },

@@ -20,6 +20,9 @@ import { BrowserRouter } from 'react-router-dom';
  *
  * This client is configured to work with MSW for mocking GraphQL requests.
  * Each test should create a fresh client to ensure isolation.
+ *
+ * IMPORTANT: Always cleanup Apollo clients after tests using `cleanupApolloClient()`
+ * or use `renderWithApollo()` which handles cleanup automatically.
  */
 export function createTestApolloClient() {
   return new ApolloClient({
@@ -56,6 +59,22 @@ export function createTestApolloClient() {
       },
     },
   });
+}
+
+/**
+ * Cleans up an Apollo Client instance
+ *
+ * Stops the client and clears all cached data. Use this in afterEach
+ * when creating Apollo clients manually with `createTestApolloClient()`.
+ *
+ * @param client - The Apollo Client instance to cleanup
+ */
+export async function cleanupApolloClient(client: ReturnType<typeof createTestApolloClient>) {
+  // Stop the client (halts all active queries/subscriptions)
+  await client.stop();
+
+  // Clear the cache to release memory
+  await client.clearStore();
 }
 
 /**

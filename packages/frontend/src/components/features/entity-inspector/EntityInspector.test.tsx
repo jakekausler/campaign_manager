@@ -635,11 +635,11 @@ describe('EntityInspector', () => {
     });
 
     it('should show validation warnings for event without occurredAt', async () => {
-      // event-4 has no occurredAt (should show warning but allow resolution)
+      // event-2 has no occurredAt (should show warning but allow resolution)
       renderWithApollo(
         <EntityInspector
           entityType="event"
-          entityId="event-4"
+          entityId="event-2"
           isOpen={true}
           onClose={mockOnClose}
         />
@@ -647,7 +647,7 @@ describe('EntityInspector', () => {
 
       // Wait for data to load
       await waitFor(() => {
-        expect(screen.getByText(mockEvents[3].name)).toBeInTheDocument();
+        expect(screen.getByText(mockEvents[1].name)).toBeInTheDocument();
       });
 
       // Open resolution dialog

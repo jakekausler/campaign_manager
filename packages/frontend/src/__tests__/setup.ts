@@ -40,14 +40,25 @@ beforeAll(() => {
 
 // Reset handlers after each test to ensure test isolation
 afterEach(async () => {
+  // Unmount all React components and hooks to release references
   cleanup();
+
+  // Reset MSW handlers to default state
   server.resetHandlers();
 
+  // Clear any accumulated event listeners to prevent memory leaks
+  // MSW uses event emitters internally which can accumulate listeners
+  if (server.events && typeof server.events.removeAllListeners === 'function') {
+    server.events.removeAllListeners();
+  }
+
   // Wait a tick to allow async cleanup to complete
+  // This ensures all pending promises and callbacks are resolved
   await new Promise((resolve) => setTimeout(resolve, 0));
 
   // Force garbage collection hint (if --expose-gc is enabled)
   // This helps prevent memory accumulation in large test suites
+  // Note: Only works if Node.js is started with --expose-gc flag
   if (global.gc) {
     global.gc();
   }
