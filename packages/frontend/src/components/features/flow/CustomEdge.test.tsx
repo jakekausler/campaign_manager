@@ -5,6 +5,12 @@ import { renderWithReactFlow, cleanup } from '@/__tests__/utils/test-utils';
 
 import { CustomEdge } from './CustomEdge';
 
+// Phase 1 (Mitigation Plan) Task 1.2: Mock React Flow to reduce memory usage
+vi.mock('@xyflow/react', async () => {
+  const mocks = await import('@/__tests__/mocks/react-flow');
+  return mocks.createReactFlowMock();
+});
+
 // Common edge props for testing
 const commonEdgeProps = {
   id: 'test-edge',

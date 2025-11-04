@@ -1,6 +1,12 @@
 import type { Node } from '@xyflow/react';
 import { afterEach, describe, it, expect, vi } from 'vitest';
 
+// Phase 1 (Mitigation Plan) Task 1.2: Mock React Flow to reduce memory usage
+vi.mock('@xyflow/react', async () => {
+  const mocks = await import('@/__tests__/mocks/react-flow');
+  return mocks.createReactFlowMock();
+});
+
 import {
   createEmptyFilters,
   hasActiveFilters,

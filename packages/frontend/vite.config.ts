@@ -81,12 +81,13 @@ export default defineConfig({
         singleFork: true,
         minForks: 1,
         maxForks: 1, // Only 1 fork active at a time (sequential execution)
-        // Phase 4+7 final: Set to 6144MB (6GB) - matches original working allocation
-        // Phase 7 removed error-masking wrapper script, exposing real memory requirements
-        // Phases 1-6 cleanup improved test stability but didn't reduce memory as projected
-        // Reality: Tests require ~6GB for reliable execution without crashes
+        // Phase 1 (Mitigation Plan): TEMPORARY increase to 8192MB (8GB)
+        // This is a temporary measure to enable 100% test completion while implementing
+        // React Flow mocking and other memory reduction strategies (Phase 1-3)
+        // Previous: 6144MB (6GB) - caused OOM at test #330 of 352 (94% completion)
+        // Goal: Reduce back to 6144MB or lower after Phase 2-3 optimizations complete
         // Removed --expose-gc: V8's automatic GC is more efficient than manual GC
-        execArgv: ['--max-old-space-size=6144'],
+        execArgv: ['--max-old-space-size=8192'],
         // Enable proper test isolation
         isolate: true,
       },

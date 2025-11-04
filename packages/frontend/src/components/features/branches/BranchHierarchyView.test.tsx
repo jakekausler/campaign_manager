@@ -8,6 +8,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET_BRANCH_HIERARCHY } from '@/services/api/hooks/branches';
 import { useCampaignStore } from '@/stores';
 
+// Phase 1 (Mitigation Plan) Task 1.2: Mock React Flow to reduce memory usage
+vi.mock('@xyflow/react', async () => {
+  const mocks = await import('@/__tests__/mocks/react-flow');
+  return mocks.createReactFlowMock();
+});
+
 afterEach(() => {
   cleanup(); // Unmount all React components and hooks
   vi.clearAllMocks();

@@ -11,6 +11,7 @@ export const mockEvents = [
     campaignId: 'campaign-1',
     locationId: 'location-1',
     name: 'Royal Festival',
+    description: null,
     eventType: 'kingdom',
     scheduledAt: '2024-06-15T12:00:00.000Z',
     occurredAt: '2024-06-15T14:00:00.000Z',
@@ -26,6 +27,7 @@ export const mockEvents = [
     campaignId: 'campaign-1',
     locationId: 'location-2',
     name: 'Harvest Moon',
+    description: null,
     eventType: 'world',
     scheduledAt: '2024-08-20T18:00:00.000Z',
     occurredAt: null,
@@ -45,6 +47,7 @@ export const mockEncounters = [
     campaignId: 'campaign-1',
     locationId: 'location-1',
     name: 'Dragon Attack',
+    description: null,
     difficulty: 15,
     scheduledAt: '2024-05-10T14:00:00.000Z',
     isResolved: true,
@@ -60,6 +63,7 @@ export const mockEncounters = [
     campaignId: 'campaign-1',
     locationId: 'location-2',
     name: 'Dragon Sighting',
+    description: null,
     difficulty: 15,
     scheduledAt: '2024-07-15T09:00:00.000Z',
     isResolved: false,
@@ -422,6 +426,7 @@ export const mockEffects = [
   {
     id: 'effect-1',
     name: 'Boost Population',
+    description: null,
     effectType: 'patch',
     payload: [
       {
@@ -459,6 +464,7 @@ export const mockEffects = [
   {
     id: 'effect-2',
     name: 'Boost Defense',
+    description: null,
     effectType: 'patch',
     payload: [
       {

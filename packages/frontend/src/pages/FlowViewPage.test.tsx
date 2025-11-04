@@ -44,6 +44,14 @@ vi.mock('@/services/api/hooks', () => ({
   })),
 }));
 
+// Phase 1 (Mitigation Plan) Task 1.2: Mock React Flow to reduce memory usage
+// React Flow's WebGL/Canvas rendering consumes significant native memory (~43.6MB for this file)
+// This mock provides lightweight DOM elements that preserve the API without heavy rendering
+vi.mock('@xyflow/react', async () => {
+  const mocks = await import('@/__tests__/mocks/react-flow');
+  return mocks.createReactFlowMock();
+});
+
 // Helper to create a test node
 function createTestNode(
   id: string,

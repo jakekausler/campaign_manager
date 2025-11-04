@@ -15,6 +15,7 @@
     "start": "vite preview",
     "test": "vitest run",
     "test:category": "ts-node scripts/analyze-categories-from-csv.ts",
+    "test:ci": "bash scripts/test-by-category.sh",
     "test:memory": "bash scripts/benchmark-memory.sh",
     "test:performance": "vitest run --config vitest.performance.config.ts",
     "test:watch": "vitest",

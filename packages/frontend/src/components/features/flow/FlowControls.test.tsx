@@ -6,7 +6,7 @@ import { NODE_COLORS } from '@/utils/node-colors';
 
 import { FlowControls } from './FlowControls';
 
-// Mock useReactFlow hook
+// Mock useReactFlow hook (Phase 1: Already has React Flow mock)
 const mockGetZoom = vi.fn();
 vi.mock('@xyflow/react', async () => {
   const actual = await vi.importActual('@xyflow/react');

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { vi } from 'vitest';
 
 /**
@@ -85,6 +86,44 @@ export const mockUseReactFlow = () => ({
 });
 
 /**
+ * Mock useNodesState hook
+ * Mimics React Flow's useNodesState which manages nodes state
+ * Returns a tuple [nodes, setNodes, onNodesChange] like the real hook
+ *
+ * Note: This is a mock hook that wraps useState, so ESLint warnings are suppressed
+ */
+// eslint-disable-next-line react-hooks/rules-of-hooks
+export const mockUseNodesState = (initialNodes: unknown[] = []) => {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [nodes, setNodes] = useState(initialNodes);
+  const onNodesChange = vi.fn((_changes: unknown[]) => {
+    // Simplified change handler - in real hook this applies changes
+    // For tests, we just call setNodes with current state
+    setNodes((prevNodes) => prevNodes);
+  });
+  return [nodes, setNodes, onNodesChange] as const;
+};
+
+/**
+ * Mock useEdgesState hook
+ * Mimics React Flow's useEdgesState which manages edges state
+ * Returns a tuple [edges, setEdges, onEdgesChange] like the real hook
+ *
+ * Note: This is a mock hook that wraps useState, so ESLint warnings are suppressed
+ */
+// eslint-disable-next-line react-hooks/rules-of-hooks
+export const mockUseEdgesState = (initialEdges: unknown[] = []) => {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [edges, setEdges] = useState(initialEdges);
+  const onEdgesChange = vi.fn((_changes: unknown[]) => {
+    // Simplified change handler - in real hook this applies changes
+    // For tests, we just call setEdges with current state
+    setEdges((prevEdges) => prevEdges);
+  });
+  return [edges, setEdges, onEdgesChange] as const;
+};
+
+/**
  * Full mock module export
  * Use this to replace the entire @xyflow/react module in tests
  */
@@ -92,6 +131,8 @@ export const createReactFlowMock = () => ({
   ReactFlow: mockReactFlow,
   ReactFlowProvider: mockReactFlowProvider,
   useReactFlow: mockUseReactFlow,
+  useNodesState: mockUseNodesState,
+  useEdgesState: mockUseEdgesState,
   // Re-export commonly used types/utilities if needed
   MiniMap: ({ children }: { children?: ReactNode }) => (
     <div data-testid="minimap-mock">{children}</div>
