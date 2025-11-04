@@ -1,10 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import { render, screen } from '@/__tests__/utils/test-utils';
+import { render, screen, cleanup } from '@/__tests__/utils/test-utils';
 
 import { FlowToolbar } from './FlowToolbar';
 
 describe('FlowToolbar', () => {
+  afterEach(() => {
+    cleanup(); // Unmount all React components
+    vi.clearAllMocks(); // Clear all mock function call history
+  });
   it('renders re-layout button', () => {
     const mockOnReLayout = vi.fn();
     render(<FlowToolbar onReLayout={mockOnReLayout} />);

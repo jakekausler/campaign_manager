@@ -73,10 +73,21 @@ describe('FlowViewPage - Node Double-Click Integration', () => {
     alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     alertSpy.mockRestore();
+
+    // Phase 5: Enhanced React Flow cleanup
     // Critical memory cleanup for React Flow instances
     cleanup(); // Unmount all React components
+
+    // Wait for React Flow to clean up internal state
+    // React Flow uses requestAnimationFrame and timers for cleanup
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Clear any remaining event listeners
+    // React Flow attaches listeners to window for pan/zoom/drag
+    window.dispatchEvent(new Event('beforeunload'));
+
     vi.clearAllMocks(); // Clear all mock function call history
   });
 

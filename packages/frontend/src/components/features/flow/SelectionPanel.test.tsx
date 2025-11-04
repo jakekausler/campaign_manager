@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Node } from '@xyflow/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import type { FlowNodeData } from '@/utils';
 
@@ -34,6 +34,11 @@ function createTestNode(
 }
 
 describe('SelectionPanel', () => {
+  afterEach(() => {
+    cleanup(); // Unmount all React components
+    vi.clearAllMocks(); // Clear all mock function call history
+  });
+
   describe('rendering', () => {
     it('should not render when no nodes are selected', () => {
       const { container } = render(

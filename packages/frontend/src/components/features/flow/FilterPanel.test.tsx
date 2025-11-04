@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import { createEmptyFilters, type GraphFilters } from '@/utils';
 
@@ -15,6 +15,11 @@ import { FilterPanel } from './FilterPanel';
  */
 
 describe('FilterPanel', () => {
+  afterEach(() => {
+    cleanup(); // Unmount all React components
+    vi.clearAllMocks(); // Clear all mock function call history
+  });
+
   const mockNodeTypeCounts = {
     VARIABLE: 10,
     CONDITION: 5,
