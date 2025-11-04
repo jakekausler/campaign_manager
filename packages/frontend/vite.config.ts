@@ -81,13 +81,13 @@ export default defineConfig({
         singleFork: true,
         minForks: 1,
         maxForks: 1, // Only 1 fork active at a time (sequential execution)
-        // Phase 1 (Mitigation Plan): TEMPORARY increase to 8192MB (8GB)
-        // This is a temporary measure to enable 100% test completion while implementing
-        // React Flow mocking and other memory reduction strategies (Phase 1-3)
-        // Previous: 6144MB (6GB) - caused OOM at test #330 of 352 (94% completion)
-        // Goal: Reduce back to 6144MB or lower after Phase 2-3 optimizations complete
+        // Phase 3 (Mitigation Plan) Task 3.3: Reduced from 8192MB (8GB) back to 6144MB (6GB)
+        // Previous temporary increase (Phase 1) enabled 100% test completion while implementing
+        // React Flow mocking (Phase 1) and memory profiling (Phase 2)
+        // Now testing if optimizations allow 6GB limit with full test suite completion
+        // Original issue: 6GB caused OOM at test #330 of 352 (94% completion)
         // Removed --expose-gc: V8's automatic GC is more efficient than manual GC
-        execArgv: ['--max-old-space-size=8192'],
+        execArgv: ['--max-old-space-size=6144'],
         // Enable proper test isolation
         isolate: true,
       },
