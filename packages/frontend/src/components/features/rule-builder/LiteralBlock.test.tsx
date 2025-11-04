@@ -1,9 +1,14 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { LiteralBlock } from './LiteralBlock';
 import type { Block, LiteralValue } from './types';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 // Helper function to create a literal block
 function createLiteralBlock(value: LiteralValue): Block {

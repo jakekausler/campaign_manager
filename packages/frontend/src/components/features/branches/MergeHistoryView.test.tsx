@@ -1,9 +1,14 @@
-import { screen } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { renderWithApollo as render } from '@/__tests__/utils/test-utils';
 import * as mergeHooks from '@/services/api/hooks/merge';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 import { MergeHistoryView, type MergeHistoryViewProps } from './MergeHistoryView';
 

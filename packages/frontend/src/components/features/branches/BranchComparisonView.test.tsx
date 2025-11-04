@@ -1,11 +1,16 @@
-import { screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { renderWithApollo as render } from '@/__tests__/utils/test-utils';
 import * as hooks from '@/services/api/hooks';
 import * as versionHooks from '@/services/api/hooks/version-comparison';
 import * as stores from '@/stores';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 import { BranchComparisonView } from './BranchComparisonView';
 

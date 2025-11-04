@@ -1,12 +1,17 @@
 import { MockedProvider } from '@apollo/client/testing/react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactFlowProvider } from '@xyflow/react';
 import type { DocumentNode } from 'graphql';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GET_BRANCH_HIERARCHY } from '@/services/api/hooks/branches';
 import { useCampaignStore } from '@/stores';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 import { BranchHierarchyView } from './BranchHierarchyView';
 

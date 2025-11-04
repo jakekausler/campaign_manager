@@ -1,8 +1,13 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { IfBlock } from './IfBlock';
 import type { Block } from './types';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 // Helper function to create a complete if block
 function createIfBlock(condition?: Block, thenValue?: Block, elseValue?: Block): Block {

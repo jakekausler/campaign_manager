@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import type { DrawFeature } from '../components/features/map/DrawControl';
 
@@ -7,6 +7,10 @@ import {
   validatePolygonGeometry,
   validateGeometry,
 } from './geometry-validation';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('validatePointCoordinates', () => {
   it('should pass for valid point within bounds', () => {

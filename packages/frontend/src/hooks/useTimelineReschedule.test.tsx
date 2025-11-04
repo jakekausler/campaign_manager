@@ -1,7 +1,7 @@
 import { MockedProvider } from '@apollo/client/testing/react';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { cleanup, renderHook, act, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { UPDATE_ENCOUNTER } from '@/services/api/mutations/encounters';
 import { UPDATE_EVENT } from '@/services/api/mutations/events';
@@ -15,6 +15,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
   console.error = originalError;
 });
 

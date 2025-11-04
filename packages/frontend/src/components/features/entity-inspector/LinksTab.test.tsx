@@ -1,10 +1,15 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 
 import { LinksTab } from './LinksTab';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
+});
 
 describe('LinksTab', () => {
   describe('Settlement Links', () => {

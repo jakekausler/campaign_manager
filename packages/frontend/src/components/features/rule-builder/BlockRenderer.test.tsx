@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { BlockRenderer } from './BlockRenderer';
 import type { Block } from './types';
@@ -23,6 +23,10 @@ describe('BlockRenderer', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
   });
 
   describe('Rendering different operator types', () => {

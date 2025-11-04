@@ -9,10 +9,14 @@
  * - State consistency
  */
 
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { create } from 'zustand';
 
 import { createCampaignSlice, type CampaignSlice, type Campaign } from './campaign-slice';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 // Create a test store for each test
 function createTestStore() {

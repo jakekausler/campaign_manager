@@ -1,7 +1,7 @@
 import { Position } from '@xyflow/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
-import { renderWithReactFlow } from '@/__tests__/utils/test-utils';
+import { renderWithReactFlow, cleanup } from '@/__tests__/utils/test-utils';
 
 import { CustomEdge } from './CustomEdge';
 
@@ -24,6 +24,10 @@ const commonEdgeProps = {
 };
 
 describe('CustomEdge', () => {
+  afterEach(() => {
+    cleanup(); // Critical: unmount React Flow instances to prevent memory leaks
+    vi.clearAllMocks();
+  });
   it('renders edge path', () => {
     const { container } = renderWithReactFlow(<CustomEdge {...commonEdgeProps} />);
 

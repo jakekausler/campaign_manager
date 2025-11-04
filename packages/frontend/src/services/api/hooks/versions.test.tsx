@@ -8,10 +8,10 @@
  */
 
 import { ApolloProvider } from '@apollo/client/react';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, cleanup } from '@testing-library/react';
 import { graphql, HttpResponse } from 'msw';
 import { type ReactNode } from 'react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { server } from '@/__tests__/mocks/server';
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
@@ -226,6 +226,8 @@ describe('Version History Hooks Integration Tests', () => {
 
   // Clean up after each test
   afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
+    vi.clearAllMocks(); // Clear all mock function call history
     server.resetHandlers();
   });
 

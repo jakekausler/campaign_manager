@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import {
   createLocationPointFeature,
@@ -7,6 +7,10 @@ import {
   createStructureFeature,
   filterValidFeatures,
 } from './geojson-utils';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('geojson-utils', () => {
   describe('createLocationPointFeature', () => {

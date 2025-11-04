@@ -2,7 +2,7 @@
  * Tests for resolution validation utilities
  */
 
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import {
   validateEventResolution,
@@ -11,6 +11,10 @@ import {
   type Event,
   type Encounter,
 } from './resolution-validation';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('resolution-validation', () => {
   describe('validateEventResolution', () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import {
   getNodeEditRoute,
@@ -6,6 +6,10 @@ import {
   isNodeEditable,
   getNodeEditMessage,
 } from './node-navigation';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('node-navigation', () => {
   describe('getNodeEditRoute', () => {

@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { RulePreview } from './RulePreview';
 import type { JSONLogicExpression } from './types';
@@ -12,6 +12,10 @@ describe('RulePreview', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
   });
 
   describe('Rendering', () => {
@@ -122,7 +126,7 @@ describe('RulePreview', () => {
       await user.clear(textarea);
       await user.type(textarea, 'invalid');
       await user.tab();
-      expect(await screen.findByText(/invalid json/i)).toBeInTheDocument();
+      expect(await screen.findByText(/syntax error in json/i)).toBeInTheDocument();
 
       // Enter valid JSON
       await user.clear(textarea);
@@ -130,7 +134,7 @@ describe('RulePreview', () => {
       await user.tab();
 
       await waitFor(() => {
-        expect(screen.queryByText(/invalid json/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/syntax error in json/i)).not.toBeInTheDocument();
       });
     });
   });
@@ -216,8 +220,8 @@ describe('RulePreview', () => {
 
       await user.click(screen.getByRole('button', { name: /evaluate/i }));
 
-      // Should show null result (JSONLogic returns null for missing variables)
-      expect(await screen.findByText(/null/i)).toBeInTheDocument();
+      // Should show false result (JSONLogic returns false for == with missing variables)
+      expect(await screen.findByText(/false/i)).toBeInTheDocument();
     });
   });
 

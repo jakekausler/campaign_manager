@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { BlockPalette } from './BlockPalette';
 import type { Block } from './types';
@@ -10,6 +10,10 @@ describe('BlockPalette', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
   });
 
   describe('Rendering', () => {

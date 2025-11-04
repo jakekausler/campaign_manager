@@ -1,6 +1,6 @@
-import { renderHook, act } from '@testing-library/react';
+import { cleanup, renderHook, act } from '@testing-library/react';
 import { Map as MapLibre, Popup } from 'maplibre-gl';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import type { PopupData } from './types';
 import { useEntityPopup } from './useEntityPopup';
@@ -43,6 +43,11 @@ vi.mock('react-dom/client', () => ({
 
 describe('useEntityPopup', () => {
   let mockMap: MapLibre;
+
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
+    vi.clearAllMocks();
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();

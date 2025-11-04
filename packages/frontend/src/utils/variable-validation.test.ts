@@ -12,7 +12,7 @@
  * - Default value application
  */
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   type VariableSchema,
@@ -20,6 +20,10 @@ import {
   validateAllVariables,
   convertFormValues,
 } from './variable-validation';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('variable-validation', () => {
   describe('validateVariableValue', () => {

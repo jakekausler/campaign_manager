@@ -1,5 +1,5 @@
 import type { Node } from '@xyflow/react';
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import {
   createEmptyFilters,
@@ -12,6 +12,10 @@ import {
   type GraphFilters,
 } from './graph-filters';
 import type { FlowNodeData, FlowEdgeData } from './graph-layout';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('graph-filters', () => {
   // Test data - nodes

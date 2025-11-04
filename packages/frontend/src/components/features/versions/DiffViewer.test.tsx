@@ -4,13 +4,18 @@
  * Tests the side-by-side diff viewer component that displays version comparisons.
  */
 
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import type { VersionDiff } from '@/services/api/hooks/versions';
 
 import { DiffViewer } from './DiffViewer';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 describe('DiffViewer', () => {
   describe('Basic Rendering', () => {

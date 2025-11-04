@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { calculatePolygonArea, countPolygonVertices, formatArea } from './geometry';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('calculatePolygonArea', () => {
   describe('valid polygons', () => {

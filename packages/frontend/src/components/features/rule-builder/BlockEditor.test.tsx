@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { BlockEditor } from './BlockEditor';
 import type { JSONLogicExpression } from './types';
@@ -80,6 +80,10 @@ describe('BlockEditor', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
   });
 
   describe('Rendering', () => {

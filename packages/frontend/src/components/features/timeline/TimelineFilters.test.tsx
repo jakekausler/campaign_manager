@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { cleanup, render, screen, fireEvent } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { DEFAULT_FILTERS, type TimelineFilters as FilterConfig } from '@/utils/timeline-filters';
 
@@ -12,6 +12,11 @@ import { TimelineFilters } from './TimelineFilters';
  *
  * Part of TICKET-022 Stage 11 implementation.
  */
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 describe('TimelineFilters', () => {
   describe('rendering', () => {

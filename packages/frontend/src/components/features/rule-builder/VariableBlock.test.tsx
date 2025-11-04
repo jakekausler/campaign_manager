@@ -1,8 +1,13 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { VariableBlock } from './VariableBlock';
 import type { Block } from './types';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 // Helper function to create a variable block
 function createVariableBlock(variablePath: string): Block {

@@ -1,5 +1,5 @@
 import type { Node } from '@xyflow/react';
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import type { DependencyNode, DependencyEdge, DependencyGraphResult } from '@/services/api/hooks';
 
@@ -11,6 +11,10 @@ import {
   type FlowNodeData,
   type FlowEdgeData,
 } from './graph-layout';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('graph-layout utilities', () => {
   describe('transformNode', () => {

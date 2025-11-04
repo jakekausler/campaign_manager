@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { validateScheduledTime, canRescheduleItem } from './timeline-validation';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('timeline-validation', () => {
   describe('validateScheduledTime', () => {

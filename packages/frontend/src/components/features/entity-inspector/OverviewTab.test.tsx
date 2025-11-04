@@ -1,10 +1,15 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, afterEach, vi } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 
 import { OverviewTab, type Entity } from './OverviewTab';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
+});
 
 describe('OverviewTab', () => {
   const mockSettlement: Entity = {

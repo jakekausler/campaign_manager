@@ -8,10 +8,14 @@
  * - State consistency
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, beforeEach, vi } from 'vitest';
 import { create } from 'zustand';
 
 import { createAuthSlice, type AuthSlice, type User } from './auth-slice';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 // Create a test store for each test
 function createTestStore() {

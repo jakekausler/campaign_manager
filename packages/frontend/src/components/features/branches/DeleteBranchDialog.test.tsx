@@ -1,8 +1,13 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { DeleteBranchDialog, type BranchInfo } from './DeleteBranchDialog';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 describe('DeleteBranchDialog', () => {
   const mockOnClose = vi.fn();

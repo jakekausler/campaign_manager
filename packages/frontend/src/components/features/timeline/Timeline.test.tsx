@@ -1,9 +1,14 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import type { TimelineItem, TimelineGroup, TimelineOptions } from 'vis-timeline/types';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import type { Mock } from 'vitest';
 
 import { Timeline } from './Timeline';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 // Type definitions for mock objects
 type MockHTMLElement = {

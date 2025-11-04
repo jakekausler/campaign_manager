@@ -1,10 +1,15 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 
 import { EffectsTab } from './EffectsTab';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
+});
 
 describe('EffectsTab', () => {
   describe('Loading State', () => {

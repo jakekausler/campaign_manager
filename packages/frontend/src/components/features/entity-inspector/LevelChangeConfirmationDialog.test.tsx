@@ -1,7 +1,12 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import { LevelChangeConfirmationDialog } from './LevelChangeConfirmationDialog';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
+});
 
 describe('LevelChangeConfirmationDialog', () => {
   const defaultProps = {

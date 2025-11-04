@@ -9,7 +9,7 @@
  * - State consistency and edge cases
  */
 
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { create } from 'zustand';
 
 import {
@@ -18,6 +18,10 @@ import {
   type SelectionSlice,
   type SelectedEntity,
 } from './selection-slice';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 // Create a test store for each test
 function createTestStore() {

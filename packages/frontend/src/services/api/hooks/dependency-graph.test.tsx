@@ -3,9 +3,9 @@
  */
 
 import { ApolloProvider } from '@apollo/client/react';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, cleanup } from '@testing-library/react';
 import { type ReactNode } from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
 import { createTestApolloClient } from '@/__tests__/utils/test-utils';
 
@@ -18,6 +18,11 @@ function createWrapper() {
     return <ApolloProvider client={client}>{children}</ApolloProvider>;
   };
 }
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
+});
 
 describe('useDependencyGraph', () => {
   it('should fetch dependency graph for a campaign', async () => {

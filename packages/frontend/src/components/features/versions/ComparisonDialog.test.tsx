@@ -11,9 +11,9 @@
  * - Edge cases (missing diff, identical versions)
  */
 
-import { screen } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 import { useCompareVersions } from '@/services/api/hooks/versions';
@@ -58,6 +58,10 @@ const mockVersionB = {
 };
 
 describe('ComparisonDialog', () => {
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -82,7 +86,7 @@ describe('ComparisonDialog', () => {
         />
       );
 
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     });
 
     it('should render when open is true', () => {
@@ -104,7 +108,7 @@ describe('ComparisonDialog', () => {
         />
       );
 
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument();
     });
 
     it('should call onClose when close button clicked', async () => {
@@ -531,7 +535,7 @@ describe('ComparisonDialog', () => {
         />
       );
 
-      expect(screen.getByRole('dialog')).toHaveAttribute(
+      expect(screen.getByRole('alertdialog')).toHaveAttribute(
         'aria-label',
         expect.stringMatching(/compare versions/i)
       );

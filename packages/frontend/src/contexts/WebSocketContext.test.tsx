@@ -9,10 +9,10 @@
  * - Cleanup on unmount
  */
 
-import { render, renderHook, waitFor, act } from '@testing-library/react';
+import { cleanup, render, renderHook, waitFor, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { io } from 'socket.io-client';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, describe, it, expect, beforeEach, vi } from 'vitest';
 
 import type { AuthSlice } from '@/stores/auth-slice';
 
@@ -84,6 +84,7 @@ describe('WebSocketContext', () => {
   });
 
   afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
     vi.clearAllTimers();
   });
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import {
   transformEventToTimelineItem,
@@ -7,6 +7,10 @@ import {
   type Event,
   type Encounter,
 } from './timeline-transforms';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('timeline-transforms', () => {
   describe('transformEventToTimelineItem', () => {

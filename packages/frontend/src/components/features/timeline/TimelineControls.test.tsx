@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import { createRef } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -25,6 +25,7 @@ describe('TimelineControls', () => {
   });
 
   afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
     vi.clearAllMocks();
   });
 

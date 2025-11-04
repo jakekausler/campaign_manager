@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import type { FlowNodeData, FlowEdgeData } from './graph-layout';
 import {
@@ -8,6 +8,10 @@ import {
   applySelectionStyles,
   applySelectionEdgeStyles,
 } from './graph-selection';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 /**
  * Test suite for graph selection utilities

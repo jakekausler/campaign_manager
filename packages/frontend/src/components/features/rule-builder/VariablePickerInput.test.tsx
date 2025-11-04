@@ -1,8 +1,13 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { VariablePickerInput, type VariableOption } from './VariablePickerInput';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 describe('VariablePickerInput', () => {
   const mockSettlementVariables: VariableOption[] = [

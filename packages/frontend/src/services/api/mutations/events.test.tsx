@@ -1,7 +1,7 @@
 import { MockedProvider } from '@apollo/client/testing/react';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, cleanup } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { UPDATE_EVENT, COMPLETE_EVENT, useUpdateEvent, useCompleteEvent } from './events';
 
@@ -18,7 +18,8 @@ describe('Event Mutations', () => {
   });
 
   afterEach(() => {
-    // Cleanup after each test
+    cleanup(); // Unmount all React components and hooks
+    vi.clearAllMocks(); // Clear all mock function call history
   });
 
   describe('useUpdateEvent', () => {

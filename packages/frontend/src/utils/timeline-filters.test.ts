@@ -1,5 +1,5 @@
 import type { TimelineItem } from 'vis-timeline/types';
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import {
   DEFAULT_FILTERS,
@@ -17,6 +17,10 @@ import {
   type TimelineFilters,
 } from './timeline-filters';
 import type { Event, Encounter } from './timeline-transforms';
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 /**
  * Unit tests for timeline filtering and grouping utilities

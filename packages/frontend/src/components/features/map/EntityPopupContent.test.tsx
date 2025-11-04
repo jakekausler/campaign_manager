@@ -1,5 +1,5 @@
-import { render, screen, within } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { cleanup, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import {
   LocationPopupContent,
@@ -7,6 +7,11 @@ import {
   StructurePopupContent,
 } from './EntityPopupContent';
 import type { LocationPopupData, SettlementPopupData, StructurePopupData } from './types';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 describe('LocationPopupContent', () => {
   it('should render location point data', () => {

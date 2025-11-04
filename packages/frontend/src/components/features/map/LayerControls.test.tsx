@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
@@ -16,6 +16,7 @@ describe('LayerControls', () => {
   const mockOnToggle = vi.fn();
 
   afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
     vi.clearAllMocks();
   });
 

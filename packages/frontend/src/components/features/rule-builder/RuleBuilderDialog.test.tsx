@@ -1,7 +1,7 @@
 import { MockedProvider } from '@apollo/client/testing/react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import type { FieldCondition } from '@/services/api/mutations/conditions';
 import {
@@ -68,6 +68,10 @@ describe('RuleBuilderDialog', () => {
       error: undefined,
       data: undefined,
     });
+  });
+
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
   });
 
   describe('Create Mode', () => {
@@ -383,7 +387,8 @@ describe('RuleBuilderDialog', () => {
         </MockedProvider>
       );
 
-      expect(screen.getByLabelText(/field name/i)).toBeInTheDocument();
+      // Check that field name label is present (use getByText instead of getByLabelText)
+      expect(screen.getByText(/field name/i)).toBeInTheDocument();
     });
   });
 

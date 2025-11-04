@@ -1,5 +1,5 @@
 import { ApolloProvider } from '@apollo/client/react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { toast } from 'sonner';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 
@@ -53,7 +53,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
 });
 
 describe('LevelControl', () => {

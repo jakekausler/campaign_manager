@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { NestedBlockRenderer } from './NestedBlockRenderer';
 import type { Block } from './types';
@@ -10,6 +10,10 @@ describe('NestedBlockRenderer', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
   });
 
   describe('Rendering different operator types', () => {

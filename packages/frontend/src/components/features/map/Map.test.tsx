@@ -8,10 +8,10 @@
  * - Cleanup on unmount
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { Map as MapLibre } from 'maplibre-gl';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 
@@ -48,6 +48,11 @@ vi.mock('maplibre-gl', () => {
 });
 
 describe('Map Component', () => {
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
+    vi.clearAllMocks();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });

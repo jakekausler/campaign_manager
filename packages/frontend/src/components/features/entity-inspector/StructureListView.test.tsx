@@ -1,11 +1,16 @@
 import { MockedProvider } from '@apollo/client/testing/react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import * as structureHooks from '@/services/api/hooks/structures';
 
 import { StructureListView } from './StructureListView';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
+});
 
 // Mock the useStructuresForMap hook
 vi.mock('@/services/api/hooks/structures', () => ({

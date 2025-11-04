@@ -1,10 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import type { ExpectedType } from './ValueInput';
 import { ValueInput } from './ValueInput';
 import type { JSONLogicExpression, LiteralValue } from './types';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 describe('ValueInput', () => {
   const mockOnChange = vi.fn();

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -84,6 +84,7 @@ describe('CherryPickDialog', () => {
   });
 
   afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
     vi.clearAllMocks();
   });
 

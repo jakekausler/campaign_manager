@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
-import { renderWithReactFlow, screen } from '@/__tests__/utils/test-utils';
+import { renderWithReactFlow, screen, cleanup } from '@/__tests__/utils/test-utils';
 import type { FlowNodeData } from '@/utils';
 
 import { VariableNode } from './VariableNode';
@@ -13,6 +13,10 @@ const mockNodeData: FlowNodeData = {
 };
 
 describe('VariableNode', () => {
+  afterEach(() => {
+    cleanup(); // Critical: unmount React Flow instances to prevent memory leaks
+    vi.clearAllMocks();
+  });
   it('renders with correct label', () => {
     renderWithReactFlow(
       <VariableNode

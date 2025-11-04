@@ -1,14 +1,19 @@
 import type { MockedResponse } from '@apollo/client/testing';
 import { MockedProvider } from '@apollo/client/testing/react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GraphQLError } from 'graphql';
 import { BrowserRouter } from 'react-router-dom';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import { GET_SETTLEMENT_DETAILS } from '@/services/api/hooks/settlements';
 
 import { ParentSettlementContext } from './ParentSettlementContext';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks(); // Clear all mock function call history
+});
 
 /**
  * Test suite for ParentSettlementContext component

@@ -12,9 +12,9 @@
  * - Responsive behavior
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 import { useEntityVersions } from '@/services/api/hooks/versions';
@@ -125,6 +125,10 @@ const mockSingleVersion = [
 const mockRefetch = vi.fn();
 
 describe('VersionList', () => {
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
+  });
+
   // Set up default mock implementation before each test
   beforeEach(() => {
     mockUseEntityVersions.mockImplementation((_entityType, entityId, _branchId) => {

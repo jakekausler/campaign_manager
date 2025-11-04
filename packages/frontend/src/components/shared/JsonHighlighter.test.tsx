@@ -4,10 +4,15 @@
  * Tests the lightweight JSON syntax highlighting component.
  */
 
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { JsonHighlighter } from './JsonHighlighter';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 describe('JsonHighlighter', () => {
   describe('Basic Rendering', () => {

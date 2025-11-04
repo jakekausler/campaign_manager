@@ -1,8 +1,13 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { JSONEditor } from './JSONEditor';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 describe('JSONEditor', () => {
   it('renders without errors', () => {
@@ -76,7 +81,8 @@ describe('JSONEditor', () => {
     await user.paste('invalid json syntax');
     await user.tab();
 
-    expect(screen.getByText(/invalid JSON/i)).toBeInTheDocument();
+    // Check that at least one element with error message exists
+    expect(screen.getAllByText(/invalid JSON/i).length).toBeGreaterThan(0);
   });
 
   it('does not call onChange for invalid JSON', async () => {

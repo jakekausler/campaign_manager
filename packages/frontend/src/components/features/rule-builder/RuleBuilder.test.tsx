@@ -1,8 +1,13 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import { RuleBuilder } from './RuleBuilder';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 describe('RuleBuilder', () => {
   it('renders without errors', () => {
@@ -96,7 +101,9 @@ describe('RuleBuilder', () => {
     await user.click(addBlockButton);
 
     // Switch to JSON mode and verify onChange was called
-    expect(onChange).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalled();
+    });
   });
 
   it('preserves expression when switching between modes', async () => {
@@ -128,7 +135,9 @@ describe('RuleBuilder', () => {
     const addBlockButton = screen.getByTestId('add-block-button');
     await user.click(addBlockButton);
 
-    expect(onChange).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalled();
+    });
   });
 
   it('calls onChange when expression is modified in JSON mode', async () => {

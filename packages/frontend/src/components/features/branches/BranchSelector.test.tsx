@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -106,6 +106,7 @@ describe('BranchSelector', () => {
   });
 
   afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
     vi.clearAllMocks();
   });
 

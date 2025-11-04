@@ -2,10 +2,10 @@
  * Tests for WebSocket Subscription Hooks
  */
 
-import { renderHook, waitFor } from '@testing-library/react';
+import { cleanup, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { createContext } from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import type {
   EntityUpdatedEvent,
@@ -126,6 +126,7 @@ describe('useWebSocketSubscription', () => {
   });
 
   afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
     vi.clearAllTimers();
   });
 

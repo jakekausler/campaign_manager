@@ -5,8 +5,8 @@
  */
 
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
-import { renderHook } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { cleanup, renderHook } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import type {
   EntityUpdatedEvent,
@@ -87,6 +87,10 @@ vi.mock('@apollo/client/react', async () => {
 });
 
 describe('useWebSocketCacheSync', () => {
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     testClient = createTestApolloClient();

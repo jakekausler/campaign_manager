@@ -3,15 +3,20 @@
  */
 
 import { MockedProvider } from '@apollo/client/testing/react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import type { Branch } from '@/services/api/hooks';
 import { UPDATE_BRANCH, GET_BRANCH_HIERARCHY } from '@/services/api/hooks/branches';
 import { useCampaignStore } from '@/stores';
 
 import { RenameBranchDialog } from './RenameBranchDialog';
+
+afterEach(() => {
+  cleanup(); // Unmount all React components and hooks
+  vi.clearAllMocks();
+});
 
 // Mock the campaign store
 vi.mock('@/stores', () => ({

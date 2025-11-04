@@ -1,7 +1,7 @@
 import { Database, GitBranch, Zap, Box } from 'lucide-react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
-import { renderWithReactFlow, screen } from '@/__tests__/utils/test-utils';
+import { renderWithReactFlow, screen, cleanup } from '@/__tests__/utils/test-utils';
 import type { FlowNodeData } from '@/utils';
 
 import { CustomNode } from './CustomNode';
@@ -15,6 +15,10 @@ const mockNodeData: FlowNodeData = {
 };
 
 describe('CustomNode', () => {
+  afterEach(() => {
+    cleanup(); // Critical: unmount React Flow instances to prevent memory leaks
+    vi.clearAllMocks();
+  });
   it('renders node with label and type', () => {
     renderWithReactFlow(
       <CustomNode

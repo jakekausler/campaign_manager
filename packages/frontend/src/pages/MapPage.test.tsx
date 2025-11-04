@@ -1,5 +1,5 @@
-import { screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { cleanup, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { renderWithApollo } from '@/__tests__/utils/test-utils';
 import { useSelectionStore } from '@/stores';
@@ -49,6 +49,10 @@ describe('MapPage', () => {
   // Mock selection store functions
   const mockSelectEntity = vi.fn();
   const mockToggleSelection = vi.fn();
+
+  afterEach(() => {
+    cleanup(); // Unmount all React components and hooks
+  });
 
   beforeEach(() => {
     // Reset mocks
