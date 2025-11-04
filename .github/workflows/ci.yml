@@ -113,7 +113,7 @@ jobs:
           pnpm --filter @campaign/shared test
 
   test-frontend:
-    name: Frontend Tests (All)
+    name: Frontend Tests (Category-based Execution)
     runs-on: ubuntu-latest
 
     env:
@@ -143,8 +143,11 @@ jobs:
       - name: Build shared package
         run: pnpm --filter @campaign/shared build
 
-      - name: Run all frontend tests
-        run: pnpm --filter @campaign/frontend test
+      # Use category-based test execution to prevent OOM (see docs/development/ci-memory-mitigation-plan.md)
+      # Splits 352 tests into 5 sequential categories, each running in a fresh Node process
+      # This prevents cumulative native memory buildup from React Flow, MapLibre GL, etc.
+      - name: Run frontend tests (category-based)
+        run: pnpm --filter @campaign/frontend test:ci
 
       - name: Run frontend performance regression tests
         run: pnpm --filter @campaign/frontend test:performance
