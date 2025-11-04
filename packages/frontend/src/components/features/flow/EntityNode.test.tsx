@@ -1,5 +1,6 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, afterAll, vi } from 'vitest';
 
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
 import { renderWithReactFlow, screen, cleanup } from '@/__tests__/utils/test-utils';
 import type { FlowNodeData } from '@/utils';
 
@@ -13,9 +14,18 @@ const mockNodeData: FlowNodeData = {
 };
 
 describe('EntityNode', () => {
+  // Phase 3: Enable memory profiling to track React Flow memory usage
+  enableMemoryProfiling({ warnThresholdMB: 30 });
+
   afterEach(() => {
     cleanup(); // Critical: unmount React Flow instances to prevent memory leaks
     vi.clearAllMocks();
+  });
+
+  // Phase 3: Print memory summary after all tests complete
+  afterAll(() => {
+    console.log('\n🎨 EntityNode Component Memory Profile:');
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
   });
   it('renders with correct label', () => {
     renderWithReactFlow(

@@ -2,7 +2,7 @@
 
 **Created:** 2025-11-04
 **Updated:** 2025-11-04
-**Status:** 🔄 In Progress (Phase 1 ✅ Complete, Phase 2 ✅ Complete)
+**Status:** 🔄 In Progress (Phase 1 ✅ Complete, Phase 2 ✅ Complete, Phase 3 ✅ Complete)
 **Owner:** Development Team
 
 ---
@@ -28,7 +28,7 @@ This plan follows the [Frontend Test Performance Optimization Plan](./test-perfo
 
 After completing Phases 1-7 of the test performance optimization plan, we discovered that tests require ~6GB memory (not the projected 2GB). Phase 7 removed error masking, exposing that tests were always crashing at the 6GB limit.
 
-**✅ Phases 1-2 Complete:** Root cause identified through systematic benchmarking and accumulation analysis.
+**✅ Phases 1-3 Complete:** Root cause identified through systematic benchmarking, accumulation analysis, and individual test profiling infrastructure created.
 
 **🔑 Critical Discovery (Phase 2):**
 
@@ -45,6 +45,7 @@ These libraries accumulate ~**57 MB/second** of native memory (not tracked by No
 
 1. ✅ **Phase 1:** Per-file memory profiling (identified 56MB heap vs 6GB worker gap)
 2. ✅ **Phase 2:** Accumulation pattern analysis (confirmed native memory leak via linear regression)
+3. ✅ **Phase 3:** Individual test profiling infrastructure (created reusable profiler utility)
 
 ---
 
@@ -385,10 +386,86 @@ describe('EntityInspector', () => {
 
 **Success Criteria:**
 
-- [ ] Memory profiling hook works in test files
-- [ ] High-memory tests are automatically flagged
-- [ ] Reports show memory delta per individual test
-- [ ] Identifies tests that don't clean up properly
+- [x] Memory profiling hook works in test files
+- [x] High-memory tests are automatically flagged
+- [x] Reports show memory delta per individual test
+- [x] Identifies tests that don't clean up properly
+
+**✅ Phase 3 Complete (2025-11-04)**
+
+**Deliverables:**
+
+- **Utility:** `packages/frontend/src/__tests__/utils/test-memory-profiler.ts` - Reusable memory profiling utility with beforeEach/afterEach hooks
+- **Tests:** `packages/frontend/src/__tests__/utils/test-memory-profiler.test.ts` - Comprehensive test suite (8 passing tests)
+- **Documentation:** `packages/frontend/src/__tests__/utils/test-memory-profiler-guide.md` - Complete usage guide with examples
+- **Demo:** `packages/frontend/src/components/features/flow/EntityNode.test.tsx` - Real-world demonstration on React Flow component
+
+**Key Features:**
+
+1. **`enableMemoryProfiling(options)`** - Single function call to enable profiling for any test suite
+2. **Automatic tracking** - Captures memory before/after each test via beforeEach/afterEach hooks
+3. **Configurable warnings** - Alert developers when tests exceed memory thresholds
+4. **Native memory detection** - Special warning for RSS >> heap (indicates React Flow/MapLibre usage)
+5. **Summary reports** - `printMemorySummary()` generates formatted tables showing top memory consumers
+6. **Export capabilities** - `getMemoryReports()` and `generateMemorySummary()` for programmatic access
+
+**Demo Results (EntityNode.test.tsx):**
+
+- ✅ All 4 tests passed with profiling enabled
+- Avg heap delta: 1.20MB per test
+- Avg RSS delta: 0.38MB per test
+- First test overhead: 2.89MB (React Flow initialization)
+- Subsequent tests: 0.59-0.70MB (efficient cleanup verified)
+- No memory warnings triggered (all < 30MB threshold)
+
+**Usage Pattern:**
+
+```typescript
+import { enableMemoryProfiling, printMemorySummary } from '@/__tests__/utils/test-memory-profiler';
+
+describe('MyComponent', () => {
+  enableMemoryProfiling({ warnThresholdMB: 50 });
+
+  // ... tests ...
+
+  afterAll(() => {
+    printMemorySummary({ sortBy: 'rss', topN: 10 });
+  });
+});
+```
+
+**Developer Benefits:**
+
+- Zero configuration - just add 2 lines to any test file
+- Automatic per-test memory tracking
+- Identifies heavy native library usage (React Flow, MapLibre, GeoJSON)
+- Helps optimize test data sizes and mock strategies
+- Validates cleanup patterns are working correctly
+
+**Impact & Value:**
+
+Phase 3 provides immediate value to developers by:
+
+- **Self-service profiling**: Any developer can add profiling to their tests without needing specialized tooling
+- **Actionable insights**: Identifies specific tests that trigger heavy native library usage
+- **Validation tool**: Confirms cleanup patterns are working (or highlights issues)
+- **Data-driven decisions**: Provides concrete numbers to justify mocking strategies
+
+**Example Use Cases:**
+
+1. **Before optimizing a test suite**: Run profiler to find the top 10 memory-consuming tests
+2. **After adding cleanup code**: Verify memory deltas decrease for subsequent tests
+3. **When adding new React Flow tests**: Monitor RSS to ensure native memory stays reasonable
+4. **For code review**: Include memory profile summaries to demonstrate test efficiency
+
+**Next Steps:**
+
+Developers can now add memory profiling to any test file to:
+
+1. Identify which tests use React Flow/MapLibre most heavily
+2. Validate cleanup is releasing memory properly
+3. Find opportunities to mock heavy dependencies
+4. Track memory patterns across test suites
 
 ---
 
