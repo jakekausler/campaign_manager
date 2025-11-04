@@ -14,6 +14,7 @@
     "lint": "eslint src --ext .ts,.tsx",
     "start": "vite preview",
     "test": "vitest run",
+    "test:category": "ts-node scripts/analyze-categories-from-csv.ts",
     "test:memory": "bash scripts/benchmark-memory.sh",
     "test:performance": "vitest run --config vitest.performance.config.ts",
     "test:watch": "vitest",
