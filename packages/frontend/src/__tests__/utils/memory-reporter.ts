@@ -3,6 +3,8 @@ import { resolve } from 'path';
 
 import type { Reporter, File, Task } from 'vitest';
 
+import { MemoryTracker } from './memory-tracker';
+
 interface MemoryStats {
   file: string;
   baseline: NodeJS.MemoryUsage;
@@ -24,24 +26,15 @@ class MemoryReporter implements Reporter {
   private fileBaselines: Map<string, NodeJS.MemoryUsage> = new Map();
   private fileResults: Map<string, MemoryStats> = new Map();
   private startTime: number = 0;
-  private intervalId: NodeJS.Timeout | null = null;
-  private memorySnapshots: Array<{
-    timestamp: number;
-    memory: NodeJS.MemoryUsage;
-  }> = [];
+  private memoryTracker: MemoryTracker = new MemoryTracker();
 
   onInit() {
-    console.log('\n🔬 Memory Reporter initialized');
-    console.log('📊 Tracking memory usage per test file...\n');
+    console.log('\n🔬 Memory Reporter initialized (Phase 2: Accumulation Pattern Analysis)');
+    console.log('📊 Tracking memory usage per test file with interval snapshots...\n');
     this.startTime = Date.now();
 
-    // Take memory snapshots every 2 seconds during test execution
-    this.intervalId = setInterval(() => {
-      this.memorySnapshots.push({
-        timestamp: Date.now(),
-        memory: process.memoryUsage(),
-      });
-    }, 2000);
+    // Start memory tracking with 2-second intervals for Phase 2 analysis
+    this.memoryTracker.start(2000);
   }
 
   onCollected(files?: File[]) {
@@ -61,10 +54,9 @@ class MemoryReporter implements Reporter {
   }
 
   async onFinished(files?: File[], errors?: unknown[]) {
-    // Stop snapshot collection
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-    }
+    // Stop memory tracker and get Phase 2 analysis
+    this.memoryTracker.stop();
+    const memoryReport = this.memoryTracker.getReport();
 
     const totalDuration = Date.now() - this.startTime;
 
@@ -167,27 +159,73 @@ class MemoryReporter implements Reporter {
     writeFileSync(csvPath, csvHeader + csvRows);
     console.log(`\n💾 Detailed report saved to: ${csvPath}\n`);
 
-    // Save memory snapshots for accumulation analysis
-    const snapshotsPath = resolve(process.cwd(), `/tmp/memory-snapshots-${timestamp}.json`);
-    writeFileSync(
-      snapshotsPath,
-      JSON.stringify(
-        {
-          startTime: this.startTime,
-          endTime: Date.now(),
-          snapshots: this.memorySnapshots.map((s) => ({
-            timestamp: s.timestamp,
-            heapUsedMB: s.memory.heapUsed / 1024 / 1024,
-            heapTotalMB: s.memory.heapTotal / 1024 / 1024,
-            externalMB: s.memory.external / 1024 / 1024,
-            rssMB: s.memory.rss / 1024 / 1024,
-          })),
-        },
-        null,
-        2
-      )
+    // === PHASE 2: Accumulation Pattern Analysis ===
+    console.log('\n\n=== 📈 Phase 2: Accumulation Pattern Analysis ===\n');
+
+    // Display trend analysis
+    const { trend, peaks, summary } = memoryReport;
+
+    console.log('📊 Trend Analysis (Linear Regression on RSS Memory):');
+    console.log(`   Slope: ${trend.slope > 0 ? '+' : ''}${trend.slope.toFixed(3)} MB/second`);
+    console.log(`   Baseline: ${trend.baseline.toFixed(2)} MB`);
+    console.log(
+      `   R² (fit quality): ${trend.r2.toFixed(4)} ${trend.r2 > 0.9 ? '(excellent linear fit)' : trend.r2 > 0.7 ? '(good fit)' : '(moderate fit)'}`
     );
-    console.log(`📸 Memory snapshots saved to: ${snapshotsPath}\n`);
+    console.log(
+      `   Total increase: ${trend.totalIncrease.toFixed(2)} MB over ${trend.duration.toFixed(1)}s`
+    );
+    console.log(
+      `   Accumulation rate: ${((trend.totalIncrease / trend.duration) * 60).toFixed(2)} MB/minute`
+    );
+
+    // Pattern characterization
+    let pattern = 'unknown';
+    if (trend.r2 > 0.8) {
+      pattern = trend.slope > 0.5 ? 'steep linear accumulation' : 'gradual linear accumulation';
+    } else if (peaks.length > 5) {
+      pattern = 'spike-based (multiple peaks)';
+    } else if (peaks.length > 0) {
+      pattern = 'mixed (linear + spikes)';
+    }
+
+    console.log(`   ⚡ Pattern: ${pattern.toUpperCase()}\n`);
+
+    // Display memory summary
+    console.log('📊 Memory Summary:');
+    console.log(`   Snapshots: ${summary.snapshotCount} (every 2 seconds)`);
+    console.log(`   Duration: ${summary.duration.toFixed(1)}s`);
+    console.log(`   Min Memory: ${summary.minMemory.toFixed(2)} MB`);
+    console.log(`   Max Memory: ${summary.maxMemory.toFixed(2)} MB`);
+    console.log(`   Avg Memory: ${summary.avgMemory.toFixed(2)} MB\n`);
+
+    // Display peaks
+    if (peaks.length > 0) {
+      console.log(`🔺 Memory Spikes Detected (>${100}MB increase):`);
+      console.table(
+        peaks.slice(0, 10).map((peak) => ({
+          Time: `${(peak.snapshot.timestampRelative / 1000).toFixed(1)}s`,
+          'Delta (MB)': peak.deltaFromPrevious.toFixed(1),
+          'RSS (MB)': peak.snapshot.rss_MB.toFixed(1),
+          'Heap (MB)': peak.snapshot.heapUsed_MB.toFixed(1),
+          'Test File': peak.snapshot.testFileContext || 'unknown',
+        }))
+      );
+    } else {
+      console.log('✅ No significant memory spikes detected (no increases >100MB)\n');
+    }
+
+    // Save Phase 2 analysis report
+    const phase2ReportPath = resolve(
+      process.cwd(),
+      `/tmp/phase2-accumulation-analysis-${timestamp}.json`
+    );
+    writeFileSync(phase2ReportPath, JSON.stringify(memoryReport, null, 2));
+    console.log(`\n💾 Phase 2 analysis saved to: ${phase2ReportPath}`);
+
+    // Save CSV of snapshots
+    const snapshotsCsvPath = resolve(process.cwd(), `/tmp/memory-snapshots-${timestamp}.csv`);
+    writeFileSync(snapshotsCsvPath, this.memoryTracker.exportToCSV());
+    console.log(`📊 Memory snapshots CSV saved to: ${snapshotsCsvPath}\n`);
 
     // Category analysis
     if (report.length > 0) {
