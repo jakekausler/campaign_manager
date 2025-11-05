@@ -107,6 +107,10 @@ export class AuditResolver {
       ...audit,
       changes: audit.changes as Record<string, unknown>,
       metadata: audit.metadata as Record<string, unknown>,
+      previousState: audit.previousState as Record<string, unknown> | undefined,
+      newState: audit.newState as Record<string, unknown> | undefined,
+      diff: audit.diff as Record<string, unknown> | undefined,
+      reason: audit.reason ?? undefined,
     }));
   }
 
@@ -140,6 +144,10 @@ export class AuditResolver {
       ...audit,
       changes: audit.changes as Record<string, unknown>,
       metadata: audit.metadata as Record<string, unknown>,
+      previousState: audit.previousState as Record<string, unknown> | undefined,
+      newState: audit.newState as Record<string, unknown> | undefined,
+      diff: audit.diff as Record<string, unknown> | undefined,
+      reason: audit.reason ?? undefined,
     }));
   }
 }

@@ -40,4 +40,28 @@ export class Audit {
 
   @Field({ description: 'When this audit entry was created' })
   timestamp!: Date;
+
+  @Field(() => GraphQLJSON, {
+    nullable: true,
+    description: 'Full entity state before the operation was performed',
+  })
+  previousState?: Record<string, unknown>;
+
+  @Field(() => GraphQLJSON, {
+    nullable: true,
+    description: 'Full entity state after the operation was performed',
+  })
+  newState?: Record<string, unknown>;
+
+  @Field(() => GraphQLJSON, {
+    nullable: true,
+    description: 'Computed diff between previousState and newState',
+  })
+  diff?: Record<string, unknown>;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Optional user-provided reason or explanation for this operation',
+  })
+  reason?: string;
 }
