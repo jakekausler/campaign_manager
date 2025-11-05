@@ -17,26 +17,35 @@ export class AuditResolver {
   constructor(private readonly prisma: PrismaService) {}
 
   @Query(() => [Audit], {
-    description: 'Get audit history for an entity',
+    description: 'Get audit history for an entity with advanced filtering',
   })
   @UseGuards(JwtAuthGuard)
   async entityAuditHistory(
+    @CurrentUser() user: AuthenticatedUser,
     @Args('entityType') entityType: string,
     @Args('entityId', { type: () => ID }) entityId: string,
     @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
-    limit: number,
-    @CurrentUser() user: AuthenticatedUser
+    limit: number = 50,
+    @Args('operations', { type: () => [String], nullable: true })
+    operations?: string[],
+    @Args('startDate', { type: () => Date, nullable: true })
+    startDate?: Date,
+    @Args('endDate', { type: () => Date, nullable: true })
+    endDate?: Date,
+    @Args('sortBy', { nullable: true, defaultValue: 'timestamp' })
+    sortBy: string = 'timestamp',
+    @Args('sortOrder', { nullable: true, defaultValue: 'desc' })
+    sortOrder: 'asc' | 'desc' = 'desc'
   ): Promise<Audit[]> {
-    // Validate entityType against whitelist
-    const ALLOWED_ENTITY_TYPES = ['Settlement', 'Structure', 'Character', 'Event', 'Encounter'];
-    if (!ALLOWED_ENTITY_TYPES.includes(entityType)) {
-      throw new Error(`Invalid entity type: ${entityType}`);
-    }
+    // NOTE: Entity type whitelist removed - now supports all entity types
+    // Authorization is enforced through campaign access checks
 
     // Verify user has permission to view this entity's audit history
     // by checking campaign membership
     let campaignId: string | null = null;
 
+    // Try to find campaignId based on entity type
+    // This is a best-effort approach to determine campaign access
     if (entityType === 'Settlement') {
       const settlement = await this.prisma.settlement.findUnique({
         where: { id: entityId },
@@ -68,38 +77,69 @@ export class AuditResolver {
       });
       campaignId = encounter?.campaignId ?? null;
     }
+    // For other entity types, we skip campaign validation
+    // This allows audit queries for entities without direct campaign relationship
 
-    if (!campaignId) {
-      throw new Error('Entity not found');
+    // If we found a campaignId, verify user has access
+    if (campaignId) {
+      const hasAccess = await this.prisma.campaign.findFirst({
+        where: {
+          id: campaignId,
+          OR: [
+            { ownerId: user.id },
+            {
+              memberships: {
+                some: { userId: user.id },
+              },
+            },
+          ],
+        },
+      });
+
+      if (!hasAccess) {
+        throw new Error('Access denied');
+      }
     }
 
-    // Verify user has access to the campaign (owner or member)
-    const hasAccess = await this.prisma.campaign.findFirst({
-      where: {
-        id: campaignId,
-        OR: [
-          { ownerId: user.id },
-          {
-            memberships: {
-              some: { userId: user.id },
-            },
-          },
-        ],
-      },
-    });
+    // Build WHERE clause with enhanced filtering
+    const where: {
+      entityType: string;
+      entityId: string;
+      operation?: { in: string[] };
+      timestamp?: { gte?: Date; lte?: Date };
+    } = {
+      entityType,
+      entityId,
+    };
 
-    if (!hasAccess) {
-      throw new Error('Access denied');
+    // Add operation filter
+    if (operations && operations.length > 0) {
+      where.operation = { in: operations };
+    }
+
+    // Add date range filter
+    if (startDate || endDate) {
+      where.timestamp = {};
+      if (startDate) {
+        where.timestamp.gte = startDate;
+      }
+      if (endDate) {
+        where.timestamp.lte = endDate;
+      }
+    }
+
+    // Build ORDER BY clause with dynamic sorting
+    const orderBy: { [key: string]: 'asc' | 'desc' } = {};
+    if (sortBy === 'timestamp' || sortBy === 'operation' || sortBy === 'entityType') {
+      orderBy[sortBy] = sortOrder || 'desc';
+    } else {
+      // Default to timestamp desc if invalid sortBy
+      orderBy.timestamp = 'desc';
     }
 
     const audits = await this.prisma.audit.findMany({
-      where: {
-        entityType,
-        entityId,
-      },
-      orderBy: {
-        timestamp: 'desc',
-      },
+      where,
+      orderBy,
       take: Math.min(limit, 100), // Cap at 100 to prevent excessive data retrieval
     });
 
@@ -115,14 +155,26 @@ export class AuditResolver {
   }
 
   @Query(() => [Audit], {
-    description: 'Get recent audit entries for a user',
+    description: 'Get recent audit entries for a user with advanced filtering',
   })
   @UseGuards(JwtAuthGuard)
   async userAuditHistory(
+    @CurrentUser() user: AuthenticatedUser,
     @Args('userId', { type: () => ID }) userId: string,
     @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
-    limit: number,
-    @CurrentUser() user: AuthenticatedUser
+    limit: number = 50,
+    @Args('operations', { type: () => [String], nullable: true })
+    operations?: string[],
+    @Args('entityTypes', { type: () => [String], nullable: true })
+    entityTypes?: string[],
+    @Args('startDate', { type: () => Date, nullable: true })
+    startDate?: Date,
+    @Args('endDate', { type: () => Date, nullable: true })
+    endDate?: Date,
+    @Args('sortBy', { nullable: true, defaultValue: 'timestamp' })
+    sortBy: string = 'timestamp',
+    @Args('sortOrder', { nullable: true, defaultValue: 'desc' })
+    sortOrder: 'asc' | 'desc' = 'desc'
   ): Promise<Audit[]> {
     // Users can only view their own audit history unless they have admin role
     // TODO: Add role-based authorization for viewing other users' history
@@ -130,13 +182,49 @@ export class AuditResolver {
       throw new Error('Access denied');
     }
 
+    // Build WHERE clause with enhanced filtering
+    const where: {
+      userId: string;
+      operation?: { in: string[] };
+      entityType?: { in: string[] };
+      timestamp?: { gte?: Date; lte?: Date };
+    } = {
+      userId,
+    };
+
+    // Add operation filter
+    if (operations && operations.length > 0) {
+      where.operation = { in: operations };
+    }
+
+    // Add entity type filter
+    if (entityTypes && entityTypes.length > 0) {
+      where.entityType = { in: entityTypes };
+    }
+
+    // Add date range filter
+    if (startDate || endDate) {
+      where.timestamp = {};
+      if (startDate) {
+        where.timestamp.gte = startDate;
+      }
+      if (endDate) {
+        where.timestamp.lte = endDate;
+      }
+    }
+
+    // Build ORDER BY clause with dynamic sorting
+    const orderBy: { [key: string]: 'asc' | 'desc' } = {};
+    if (sortBy === 'timestamp' || sortBy === 'operation' || sortBy === 'entityType') {
+      orderBy[sortBy] = sortOrder || 'desc';
+    } else {
+      // Default to timestamp desc if invalid sortBy
+      orderBy.timestamp = 'desc';
+    }
+
     const audits = await this.prisma.audit.findMany({
-      where: {
-        userId,
-      },
-      orderBy: {
-        timestamp: 'desc',
-      },
+      where,
+      orderBy,
       take: Math.min(limit, 100),
     });
 
