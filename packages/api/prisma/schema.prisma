@@ -222,18 +222,18 @@ model Branch {
   divergedAt  DateTime? // World time when branch diverged from parent
 
   // Metadata for organization and UI
-  isPinned    Boolean   @default(false) // Pin branch for quick access
-  color       String? // Hex color code for visual categorization
-  tags        String[]  @default([]) // Tags for organizing branches
+  isPinned Boolean  @default(false) // Pin branch for quick access
+  color    String? // Hex color code for visual categorization
+  tags     String[] @default([]) // Tags for organizing branches
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   // Relations
-  versions          Version[]
-  mergesAsSource    MergeHistory[] @relation("MergeSource")
-  mergesAsTarget    MergeHistory[] @relation("MergeTarget")
+  versions       Version[]
+  mergesAsSource MergeHistory[] @relation("MergeSource")
+  mergesAsTarget MergeHistory[] @relation("MergeTarget")
 
   @@index([campaignId])
   @@index([parentId])
@@ -505,13 +505,13 @@ model StateVariable {
 
   // Relations
   dependencies Dependency[]
+  // Note: updatedBy index created manually in migration with WHERE clause for sparse data
 
   @@unique([scope, scopeId, key, deletedAt])
   @@index([scope, scopeId, key])
   @@index([isActive])
   @@index([deletedAt])
   @@index([createdBy])
-  // Note: updatedBy index created manually in migration with WHERE clause for sparse data
 }
 
 model Condition {
@@ -716,9 +716,15 @@ model Audit {
   operation  String // "CREATE", "UPDATE", "DELETE"
   userId     String
   user       User     @relation(fields: [userId], references: [id])
-  changes    Json // JSON diff of changes (before/after)
+  changes    Json // JSON diff of changes (before/after) - LEGACY: use diff instead
   metadata   Json     @default("{}") // Additional context (IP, user agent, etc.)
   timestamp  DateTime @default(now())
+
+  // Enhanced audit fields (TICKET-032)
+  previousState Json? // Full entity state before the operation
+  newState      Json? // Full entity state after the operation
+  diff          Json? // Computed structured diff between previousState and newState
+  reason        String? // Optional user-provided reason for the operation
 
   @@index([entityType, entityId])
   @@index([userId])
