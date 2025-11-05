@@ -148,3 +148,30 @@ Missing features required by TICKET-032:
 **Commit**: fa6b668 - feat(api): add enhanced audit fields to GraphQL schema
 
 **Next Steps**: Stage 1D - Enhance AuditService API to populate new fields when creating audit entries.
+
+### Stage 1D Implementation (2025-11-05)
+
+**Completed**: Enhanced AuditService.log() method with optional state tracking parameters.
+
+#### Changes Made:
+
+1. **AuditService Enhancement** (`packages/api/src/graphql/services/audit.service.ts`):
+   - Imported `calculateDiff` utility from version.utils for consistent diff logic
+   - Added three new optional parameters to `log()` method:
+     - `previousState?` - Full entity snapshot before mutation
+     - `newState?` - Full entity snapshot after mutation
+     - `reason?` - User-provided explanation for operation
+   - Implemented auto-diff calculation when both states provided
+   - Used JSON round-trip serialization for type-safe Prisma InputJsonValue conversion
+   - Enhanced error logging with `hasEnhancedData` flag for debugging
+   - Updated JSDoc comments to document new parameters
+
+2. **Verification**:
+   - Type-check: ✅ Passed without errors
+   - Build: ✅ Compiled successfully
+   - Pre-commit hooks: ✅ Format and lint passed
+   - Code Review: ✅ Approved with no critical issues
+
+**Commit**: 82ef735 - feat(api): enhance AuditService with state tracking and auto-diff
+
+**Next Steps**: Stage 1E - Write integration tests for enhanced Audit functionality.
