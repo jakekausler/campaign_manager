@@ -68,12 +68,14 @@ describe('ComparisonDialog', () => {
 
   describe('Dialog Behavior', () => {
     it('should not render when open is false', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: null,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: null,
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -86,16 +88,18 @@ describe('ComparisonDialog', () => {
         />
       );
 
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('should render when open is true', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -108,19 +112,21 @@ describe('ComparisonDialog', () => {
         />
       );
 
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
     it('should call onClose when close button clicked', async () => {
       const user = userEvent.setup();
       const mockOnClose = vi.fn();
 
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -133,22 +139,27 @@ describe('ComparisonDialog', () => {
         />
       );
 
-      const closeButton = screen.getByRole('button', { name: /close/i });
-      await user.click(closeButton);
+      // There are two close buttons (X icon + footer button), get the visible one in footer
+      const buttons = screen.getAllByRole('button', { name: /close/i });
+      const footerCloseButton = buttons.find((btn) => btn.textContent === 'Close');
+
+      await user.click(footerCloseButton!);
 
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('should call onClose when cancel button clicked', async () => {
+    it('should call onClose when X button clicked', async () => {
       const user = userEvent.setup();
       const mockOnClose = vi.fn();
 
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -161,8 +172,11 @@ describe('ComparisonDialog', () => {
         />
       );
 
-      const cancelButton = screen.getByRole('button', { name: /cancel/i });
-      await user.click(cancelButton);
+      // Click the X button (has absolute positioning class)
+      const buttons = screen.getAllByRole('button', { name: /close/i });
+      const xButton = buttons.find((btn) => btn.classList.contains('absolute'));
+
+      await user.click(xButton!);
 
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
@@ -172,12 +186,14 @@ describe('ComparisonDialog', () => {
     it('should fetch diff when dialog opens', () => {
       const mockCompareVersions = vi.fn();
 
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: mockCompareVersions,
-        diff: null,
-        loading: true,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        mockCompareVersions,
+        {
+          data: null,
+          loading: true,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -199,12 +215,14 @@ describe('ComparisonDialog', () => {
     });
 
     it('should show loading state while fetching diff', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: null,
-        loading: true,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: null,
+          loading: true,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -222,12 +240,14 @@ describe('ComparisonDialog', () => {
     });
 
     it('should display diff when loaded', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -247,12 +267,14 @@ describe('ComparisonDialog', () => {
 
   describe('Version Labels', () => {
     it('should display version A metadata', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -271,12 +293,14 @@ describe('ComparisonDialog', () => {
     });
 
     it('should display version B metadata', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -295,12 +319,14 @@ describe('ComparisonDialog', () => {
     });
 
     it('should format timestamps correctly', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -314,17 +340,20 @@ describe('ComparisonDialog', () => {
       );
 
       // Should display formatted dates (format depends on formatTimestamp implementation)
-      // Just verify dates are present in some form
-      expect(screen.getByText(/june/i)).toBeInTheDocument();
+      // Both versions have June dates, so verify both are present
+      const juneTexts = screen.getAllByText(/june/i);
+      expect(juneTexts.length).toBeGreaterThanOrEqual(2); // Version A and Version B
     });
 
     it('should handle versions without comments', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -343,12 +372,14 @@ describe('ComparisonDialog', () => {
 
   describe('Error Handling', () => {
     it('should display error message when diff fetch fails', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: null,
-        loading: false,
-        error: new Error('Failed to fetch diff'),
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: null,
+          loading: false,
+          error: new Error('Failed to fetch diff'),
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -369,12 +400,14 @@ describe('ComparisonDialog', () => {
       const user = userEvent.setup();
       const mockCompareVersions = vi.fn();
 
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: mockCompareVersions,
-        diff: null,
-        loading: false,
-        error: new Error('Failed to fetch diff'),
-      });
+      mockUseCompareVersions.mockReturnValue([
+        mockCompareVersions,
+        {
+          data: null,
+          loading: false,
+          error: new Error('Failed to fetch diff'),
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -395,12 +428,14 @@ describe('ComparisonDialog', () => {
     });
 
     it('should not display DiffViewer when error occurs', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: null,
-        loading: false,
-        error: new Error('Failed to fetch diff'),
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: null,
+          loading: false,
+          error: new Error('Failed to fetch diff'),
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -425,12 +460,14 @@ describe('ComparisonDialog', () => {
         removed: {},
       };
 
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: emptyDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: emptyDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -448,12 +485,14 @@ describe('ComparisonDialog', () => {
     });
 
     it('should handle null diff', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: null,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: null,
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -473,12 +512,14 @@ describe('ComparisonDialog', () => {
     it('should re-fetch diff when version IDs change', () => {
       const mockCompareVersions = vi.fn();
 
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: mockCompareVersions,
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        mockCompareVersions,
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       const { rerender } = renderWithApollo(
         <ComparisonDialog
@@ -517,12 +558,14 @@ describe('ComparisonDialog', () => {
 
   describe('Accessibility', () => {
     it('should have proper ARIA labels', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -535,19 +578,21 @@ describe('ComparisonDialog', () => {
         />
       );
 
-      expect(screen.getByRole('alertdialog')).toHaveAttribute(
+      expect(screen.getByRole('dialog')).toHaveAttribute(
         'aria-label',
         expect.stringMatching(/compare versions/i)
       );
     });
 
     it('should announce loading state to screen readers', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: null,
-        loading: true,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: null,
+          loading: true,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -566,12 +611,14 @@ describe('ComparisonDialog', () => {
     });
 
     it('should announce errors to screen readers', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: null,
-        loading: false,
-        error: new Error('Failed to fetch diff'),
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: null,
+          loading: false,
+          error: new Error('Failed to fetch diff'),
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -593,12 +640,14 @@ describe('ComparisonDialog', () => {
       const user = userEvent.setup();
       const mockOnClose = vi.fn();
 
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
@@ -612,8 +661,10 @@ describe('ComparisonDialog', () => {
       );
 
       // Should be able to tab to close button and activate with Enter
-      const closeButton = screen.getByRole('button', { name: /close/i });
-      closeButton.focus();
+      const buttons = screen.getAllByRole('button', { name: /close/i });
+      const footerCloseButton = buttons.find((btn) => btn.textContent === 'Close');
+
+      footerCloseButton!.focus();
       await user.keyboard('{Enter}');
 
       expect(mockOnClose).toHaveBeenCalled();
@@ -622,12 +673,14 @@ describe('ComparisonDialog', () => {
 
   describe('Dialog Title', () => {
     it('should display descriptive title', () => {
-      mockUseCompareVersions.mockReturnValue({
-        compareVersions: vi.fn(),
-        diff: mockDiff,
-        loading: false,
-        error: null,
-      });
+      mockUseCompareVersions.mockReturnValue([
+        vi.fn(),
+        {
+          data: { versionDiff: mockDiff },
+          loading: false,
+          error: null,
+        },
+      ]);
 
       renderWithApollo(
         <ComparisonDialog
