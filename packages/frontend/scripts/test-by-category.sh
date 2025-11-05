@@ -68,9 +68,20 @@ run_category "MapPage" "src/pages/MapPage.test.tsx" || true
 # Timeline with events and encounters
 run_category "TimelinePage" "src/pages/TimelinePage.test.tsx" || true
 
-# Category 6: FlowViewPage
-# React Flow dependency graph visualization
-run_category "FlowViewPage" "src/pages/FlowViewPage.test.tsx" || true
+# Category 6a: FlowViewPage - Double-Click & Rendering (Batch 1 of 3)
+# 13 tests: Node Double-Click Integration + page rendering with empty state
+# Isolated to prevent memory accumulation from all 29 tests running in single process
+run_category "FlowViewPage - Double-Click & Rendering" "src/pages/FlowViewPage.test.tsx -t \"Node Double-Click|page rendering\"" || true
+
+# Category 6b: FlowViewPage - Node Mapping & Sync (Batch 2 of 3)
+# 9 tests: nodeToSelectedEntity mapping + selection synchronization
+# Each batch runs in fresh Node process to prevent cumulative native memory buildup
+run_category "FlowViewPage - Node Mapping & Sync" "src/pages/FlowViewPage.test.tsx -t \"nodeToSelectedEntity|selection synchronization\"" || true
+
+# Category 6c: FlowViewPage - Auto-scroll & Multi-select (Batch 3 of 3)
+# 7 tests: auto-scroll behavior + clear selection integration + multi-select behavior
+# Expected memory per batch: ~2-3GB (well under 6GB limit)
+run_category "FlowViewPage - Auto-scroll & Multi-select" "src/pages/FlowViewPage.test.tsx -t \"auto-scroll|clear selection|multi-select\"" || true
 
 # Category 7: Flow Components
 # React Flow-based component tests
