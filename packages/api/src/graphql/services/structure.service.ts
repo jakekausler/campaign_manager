@@ -472,8 +472,21 @@ export class StructureService {
       return updatedStructure;
     });
 
-    // Create audit entry
-    await this.audit.log('structure', id, 'UPDATE', user.id, updateData);
+    // Create audit entry with full state tracking
+    // Convert Prisma objects to plain objects for audit
+    const previousState = JSON.parse(JSON.stringify(structure)) as Record<string, unknown>;
+    const newState = JSON.parse(JSON.stringify(updated)) as Record<string, unknown>;
+
+    await this.audit.log(
+      'structure',
+      id,
+      'UPDATE',
+      user.id,
+      updateData,
+      {}, // metadata
+      previousState,
+      newState
+    );
 
     // Publish entityModified event for concurrent edit detection
     await this.pubSub.publish(`entity.modified.${id}`, {
@@ -575,8 +588,21 @@ export class StructureService {
       data: { deletedAt },
     });
 
-    // Create audit entry
-    await this.audit.log('structure', id, 'DELETE', user.id, { deletedAt });
+    // Create audit entry with full state tracking
+    // Convert Prisma objects to plain objects for audit
+    const previousState = JSON.parse(JSON.stringify(structure)) as Record<string, unknown>;
+    const newState = JSON.parse(JSON.stringify(deleted)) as Record<string, unknown>;
+
+    await this.audit.log(
+      'structure',
+      id,
+      'DELETE',
+      user.id,
+      { deletedAt },
+      {}, // metadata
+      previousState,
+      newState
+    );
 
     // Publish WebSocket event for real-time updates
     this.websocketPublisher.publishStructureUpdated(

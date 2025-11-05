@@ -378,9 +378,16 @@ describe('StructureService', () => {
       const result = await service.delete('structure-1', mockUser);
 
       expect(result.deletedAt).toBeDefined();
-      expect(audit.log).toHaveBeenCalledWith('structure', 'structure-1', 'DELETE', mockUser.id, {
-        deletedAt: expect.any(Date),
-      });
+      expect(audit.log).toHaveBeenCalledWith(
+        'structure',
+        'structure-1',
+        'DELETE',
+        mockUser.id,
+        { deletedAt: expect.any(Date) },
+        {}, // metadata
+        expect.any(Object), // previousState
+        expect.any(Object) // newState
+      );
     });
 
     it('should throw NotFoundException if structure not found', async () => {
@@ -512,6 +519,137 @@ describe('StructureService', () => {
       await expect(service.setLevel('structure-1', 4, mockUser)).rejects.toThrow(
         ForbiddenException
       );
+    });
+  });
+
+  describe('Enhanced Audit Logging', () => {
+    const mockSettlementWithKingdom = {
+      ...mockSettlement,
+      kingdom: mockKingdom,
+    };
+
+    const mockStructureWithSettlement = {
+      ...mockStructure,
+      settlement: mockSettlementWithKingdom,
+    };
+
+    const mockBranch = {
+      id: 'branch-1',
+      campaignId: 'campaign-1',
+      deletedAt: null,
+    };
+
+    beforeEach(() => {
+      // Add additional mocks needed for update/delete
+      const prismaMock = prisma as unknown as Record<string, unknown>;
+      prismaMock.branch = {
+        findFirst: jest.fn(),
+      };
+      (prismaMock.structure as Record<string, unknown>).findUnique = jest.fn();
+      prismaMock.$transaction = jest.fn((callback: (p: unknown) => unknown) => callback(prisma));
+    });
+
+    it('should create audit with previousState and newState on UPDATE', async () => {
+      const input = {
+        name: 'Updated Temple',
+        level: 5,
+      };
+      const expectedVersion = 1;
+      const branchId = 'branch-1';
+
+      const updatedStructure = {
+        ...mockStructure,
+        ...input,
+        version: 2,
+      };
+
+      (prisma.structure.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockStructure) // findById
+        .mockResolvedValueOnce(mockStructure); // hasPermission check
+      (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
+      const prismaMock = prisma as unknown as Record<string, unknown>;
+      ((prismaMock.branch as Record<string, unknown>).findFirst as jest.Mock).mockResolvedValue(
+        mockBranch
+      );
+      (prisma.structure.update as jest.Mock).mockResolvedValue(updatedStructure);
+
+      await service.update('structure-1', input, mockUser, expectedVersion, branchId);
+
+      // Verify audit.log was called with 8 parameters
+      expect(audit.log).toHaveBeenCalledTimes(1);
+      const auditCall = (audit.log as jest.Mock).mock.calls[0];
+      expect(auditCall).toHaveLength(8);
+
+      // Verify basic parameters
+      expect(auditCall[0]).toBe('structure'); // entityType
+      expect(auditCall[1]).toBe('structure-1'); // entityId
+      expect(auditCall[2]).toBe('UPDATE'); // action
+      expect(auditCall[3]).toBe(mockUser.id); // userId
+      // Note: changes includes version increment from the service
+      expect(auditCall[4]).toMatchObject(input); // changes should include at least the input fields
+      expect(auditCall[5]).toEqual({}); // metadata
+
+      // Verify previousState contains original structure data
+      const previousState = auditCall[6];
+      expect(previousState).toBeDefined();
+      expect(previousState).toBeInstanceOf(Object);
+      expect(previousState.id).toBe(mockStructure.id);
+      expect(previousState.name).toBe(mockStructure.name);
+      expect(previousState.level).toBe(mockStructure.level);
+
+      // Verify newState contains updated structure data
+      const newState = auditCall[7];
+      expect(newState).toBeDefined();
+      expect(newState).toBeInstanceOf(Object);
+      expect(newState.id).toBe(updatedStructure.id);
+      expect(newState.name).toBe(input.name);
+      expect(newState.level).toBe(input.level);
+      expect(newState.version).toBe(2);
+    });
+
+    it('should create audit with previousState and newState on DELETE', async () => {
+      const deletedAt = new Date('2024-01-01');
+      const deletedStructure = {
+        ...mockStructure,
+        deletedAt,
+      };
+
+      (prisma.structure.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockStructure) // findById
+        .mockResolvedValueOnce(mockStructure); // hasPermission check
+      (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
+      (prisma.structure.update as jest.Mock).mockResolvedValue(deletedStructure);
+
+      await service.delete('structure-1', mockUser);
+
+      // Verify audit.log was called with 8 parameters
+      expect(audit.log).toHaveBeenCalledTimes(1);
+      const auditCall = (audit.log as jest.Mock).mock.calls[0];
+      expect(auditCall).toHaveLength(8);
+
+      // Verify basic parameters
+      expect(auditCall[0]).toBe('structure'); // entityType
+      expect(auditCall[1]).toBe('structure-1'); // entityId
+      expect(auditCall[2]).toBe('DELETE'); // action
+      expect(auditCall[3]).toBe(mockUser.id); // userId
+      expect(auditCall[4]).toEqual({ deletedAt: expect.any(Date) }); // changes
+      expect(auditCall[5]).toEqual({}); // metadata
+
+      // Verify previousState contains original structure (deletedAt = null)
+      const previousState = auditCall[6];
+      expect(previousState).toBeDefined();
+      expect(previousState).toBeInstanceOf(Object);
+      expect(previousState.id).toBe(mockStructure.id);
+      expect(previousState.deletedAt).toBeNull();
+
+      // Verify newState contains deleted structure (deletedAt set)
+      // Note: JSON.parse(JSON.stringify(Date)) converts Date to ISO string
+      const newState = auditCall[7];
+      expect(newState).toBeDefined();
+      expect(newState).toBeInstanceOf(Object);
+      expect(newState.id).toBe(deletedStructure.id);
+      // Date gets serialized to ISO string by JSON.parse(JSON.stringify())
+      expect(newState.deletedAt).toBe(deletedAt.toISOString());
     });
   });
 });

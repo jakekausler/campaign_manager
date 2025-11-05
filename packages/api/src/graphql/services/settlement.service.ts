@@ -447,8 +447,21 @@ export class SettlementService {
       return updatedSettlement;
     });
 
-    // Create audit entry
-    await this.audit.log('settlement', id, 'UPDATE', user.id, updateData);
+    // Create audit entry with full state tracking
+    // Convert Prisma objects to plain objects for audit
+    const previousState = JSON.parse(JSON.stringify(settlement)) as Record<string, unknown>;
+    const newState = JSON.parse(JSON.stringify(updated)) as Record<string, unknown>;
+
+    await this.audit.log(
+      'settlement',
+      id,
+      'UPDATE',
+      user.id,
+      updateData,
+      {}, // metadata
+      previousState,
+      newState
+    );
 
     // Publish entityModified event for concurrent edit detection
     await this.pubSub.publish(`entity.modified.${id}`, {
@@ -546,8 +559,21 @@ export class SettlementService {
       data: { deletedAt },
     });
 
-    // Create audit entry
-    await this.audit.log('settlement', id, 'DELETE', user.id, { deletedAt });
+    // Create audit entry with full state tracking
+    // Convert Prisma objects to plain objects for audit
+    const previousState = JSON.parse(JSON.stringify(settlement)) as Record<string, unknown>;
+    const newState = JSON.parse(JSON.stringify(deleted)) as Record<string, unknown>;
+
+    await this.audit.log(
+      'settlement',
+      id,
+      'DELETE',
+      user.id,
+      { deletedAt },
+      {}, // metadata
+      previousState,
+      newState
+    );
 
     // Publish WebSocket event for real-time updates
     this.websocketPublisher.publishSettlementUpdated(
