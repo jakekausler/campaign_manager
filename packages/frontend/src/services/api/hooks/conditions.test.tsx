@@ -45,13 +45,13 @@ describe('Condition Hooks Integration Tests', () => {
       });
 
       // Should have conditions for settlement-1 (including type-level conditions)
-      expect(result.current.conditions.length).toBeGreaterThanOrEqual(2);
+      expect(result.current.conditions.length).toBeGreaterThanOrEqual(4);
 
       // Check instance-level conditions
       const instanceConditions = result.current.conditions.filter(
         (c) => c.entityId === 'settlement-1'
       );
-      expect(instanceConditions).toHaveLength(2);
+      expect(instanceConditions).toHaveLength(3);
       expect(instanceConditions[0].id).toBe('condition-1');
       expect(instanceConditions[0].field).toBe('is_trade_hub');
       expect(instanceConditions[1].id).toBe('condition-2');

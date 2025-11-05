@@ -75,7 +75,7 @@ describe('ConditionsTab', () => {
       renderWithApollo(<ConditionsTab entityType="Settlement" entityId="settlement-1" />);
 
       await waitFor(() => {
-        expect(screen.getByText(/field conditions \(3\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/field conditions \(4\)/i)).toBeInTheDocument();
       });
     });
 
@@ -159,14 +159,16 @@ describe('ConditionsTab', () => {
         expect(priorityElements.length).toBeGreaterThan(0);
       });
 
-      // is_fortified has priority 20, is_trade_hub has priority 10
-      // So is_fortified should appear first
+      // Priorities: is_fortified (20), is_capital (15), is_trade_hub (10), has_market (5)
+      // So is_fortified should appear first, is_capital second
       const cards = screen.getAllByText(/priority:/i);
       const firstCard = cards[0].closest('[class*="Card"]');
       const secondCard = cards[1].closest('[class*="Card"]');
+      const thirdCard = cards[2].closest('[class*="Card"]');
 
       expect(firstCard?.textContent).toContain('Is Fortified');
-      expect(secondCard?.textContent).toContain('Is Trade Hub');
+      expect(secondCard?.textContent).toContain('Is Capital');
+      expect(thirdCard?.textContent).toContain('Is Trade Hub');
     });
   });
 
@@ -176,7 +178,7 @@ describe('ConditionsTab', () => {
 
       await waitFor(() => {
         const explainButtons = screen.getAllByRole('button', { name: /explain/i });
-        expect(explainButtons.length).toBe(3);
+        expect(explainButtons.length).toBe(4);
       });
     });
 
@@ -197,7 +199,7 @@ describe('ConditionsTab', () => {
       renderWithApollo(<ConditionsTab entityType="Settlement" entityId="settlement-1" />);
 
       await waitFor(() => {
-        expect(screen.getAllByRole('button', { name: /explain/i }).length).toBe(3);
+        expect(screen.getAllByRole('button', { name: /explain/i }).length).toBe(4);
       });
 
       const explainButtons = screen.getAllByRole('button', { name: /explain/i });
@@ -216,7 +218,7 @@ describe('ConditionsTab', () => {
       renderWithApollo(<ConditionsTab entityType="Settlement" entityId="settlement-1" />);
 
       await waitFor(() => {
-        expect(screen.getAllByRole('button', { name: /explain/i }).length).toBe(3);
+        expect(screen.getAllByRole('button', { name: /explain/i }).length).toBe(4);
       });
 
       const explainButtons = screen.getAllByRole('button', { name: /explain/i });
