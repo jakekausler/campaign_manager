@@ -387,7 +387,7 @@ export const mockDependencyGraph = {
   builtAt: '2024-01-01T00:00:00.000Z',
 };
 
-// Reduced to 2 essential conditions for memory efficiency
+// Mock conditions with descriptions and count matching test expectations
 export const mockConditions = [
   {
     id: 'condition-1',
@@ -395,6 +395,7 @@ export const mockConditions = [
     entityId: 'settlement-1',
     field: 'is_trade_hub',
     expression: { '>=': [{ var: 'level' }, 3] },
+    description: 'Applies when settlement level is 3 or higher',
     isActive: true,
     priority: 10,
     version: 1,
@@ -410,8 +411,43 @@ export const mockConditions = [
     entityId: 'settlement-1',
     field: 'is_fortified',
     expression: { '>=': [{ var: 'defense' }, 30] },
+    description: 'Applies when defense rating is 30 or higher',
     isActive: true,
     priority: 20,
+    version: 1,
+    createdAt: '2024-01-01T00:00:00.000Z',
+    updatedAt: '2024-01-01T00:00:00.000Z',
+    deletedAt: null,
+    createdBy: 'user-1',
+    updatedBy: null,
+  },
+  {
+    id: 'condition-3',
+    entityType: 'Settlement',
+    entityId: 'settlement-1',
+    field: 'has_market',
+    expression: {
+      and: [{ '>=': [{ var: 'population' }, 1000] }, { '>=': [{ var: 'wealth' }, 5000] }],
+    },
+    description: 'Applies when population is 1000+ and wealth is 5000+',
+    isActive: true,
+    priority: 5,
+    version: 1,
+    createdAt: '2024-01-01T00:00:00.000Z',
+    updatedAt: '2024-01-01T00:00:00.000Z',
+    deletedAt: null,
+    createdBy: 'user-1',
+    updatedBy: null,
+  },
+  {
+    id: 'condition-4',
+    entityType: 'Structure',
+    entityId: 'structure-1',
+    field: 'is_operational',
+    expression: { '>=': [{ var: 'condition' }, 50] },
+    description: 'Applies when structure condition is 50% or higher',
+    isActive: true,
+    priority: 10,
     version: 1,
     createdAt: '2024-01-01T00:00:00.000Z',
     updatedAt: '2024-01-01T00:00:00.000Z',
