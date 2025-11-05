@@ -387,8 +387,9 @@ describe('RuleBuilderDialog', () => {
         </MockedProvider>
       );
 
-      // Check that field name label is present (use getByText instead of getByLabelText)
-      expect(screen.getByText(/field name/i)).toBeInTheDocument();
+      // Verify action buttons have descriptive accessible names
+      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /update rule/i })).toBeInTheDocument();
     });
   });
 

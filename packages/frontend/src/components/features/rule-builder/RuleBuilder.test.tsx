@@ -98,9 +98,12 @@ describe('RuleBuilder', () => {
 
     // Make a change in visual mode (add a block)
     const addBlockButton = screen.getByTestId('add-block-button');
-    await user.click(addBlockButton);
+    await user.click(addBlockButton); // Opens block palette
 
-    // Switch to JSON mode and verify onChange was called
+    // Click a specific block type to actually add it
+    await user.click(screen.getByTestId('add-number'));
+
+    // Verify onChange was called after completing the add block flow
     await waitFor(() => {
       expect(onChange).toHaveBeenCalled();
     });
@@ -133,8 +136,12 @@ describe('RuleBuilder', () => {
     render(<RuleBuilder onChange={onChange} />);
 
     const addBlockButton = screen.getByTestId('add-block-button');
-    await user.click(addBlockButton);
+    await user.click(addBlockButton); // Opens block palette
 
+    // Click a specific block type to actually add it
+    await user.click(screen.getByTestId('add-number'));
+
+    // Verify onChange was called after completing the add block flow
     await waitFor(() => {
       expect(onChange).toHaveBeenCalled();
     });
