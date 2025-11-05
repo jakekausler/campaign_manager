@@ -221,6 +221,48 @@ export const mockStructures = [
     },
     variableSchemas: [],
   },
+  {
+    id: 'structure-4',
+    settlementId: 'settlement-2',
+    typeId: 'marketplace',
+    type: 'marketplace',
+    name: 'Trader Post',
+    level: 1,
+    x: 15,
+    y: 25,
+    orientation: 0,
+    isArchived: false,
+    archivedAt: null,
+    createdAt: '2024-01-01T00:00:00.000Z',
+    updatedAt: '2024-01-01T00:00:00.000Z',
+    deletedAt: null,
+    version: 1,
+    computedFields: {
+      trade_bonus: 0.1,
+    },
+    variableSchemas: [],
+  },
+  {
+    id: 'structure-5',
+    settlementId: 'settlement-3',
+    typeId: 'barracks',
+    type: 'barracks',
+    name: 'Ruins of Old Fort',
+    level: 0,
+    x: 20,
+    y: 30,
+    orientation: 180,
+    isArchived: false,
+    archivedAt: null,
+    createdAt: '2024-01-01T00:00:00.000Z',
+    updatedAt: '2024-01-01T00:00:00.000Z',
+    deletedAt: null,
+    version: 1,
+    computedFields: {
+      capacity: 0,
+    },
+    variableSchemas: [],
+  },
 ];
 
 /**
@@ -462,7 +504,7 @@ export const mockEffects = [
   {
     id: 'effect-1',
     name: 'Boost Population',
-    description: null,
+    description: 'Increases settlement population by 100',
     effectType: 'patch',
     payload: [
       {
@@ -500,7 +542,7 @@ export const mockEffects = [
   {
     id: 'effect-2',
     name: 'Boost Defense',
-    description: null,
+    description: 'Increases settlement defense by 10',
     effectType: 'patch',
     payload: [
       {
@@ -522,7 +564,8 @@ export const mockEffects = [
   },
 ];
 
-// Reduced to 3 essential audits for memory efficiency
+// Audit log entries for testing version history and audit tracking
+// Now includes 8 entries covering Settlement, Structure, Event, and Encounter operations
 export const mockAudits = [
   {
     id: 'audit-1',
@@ -533,6 +576,13 @@ export const mockAudits = [
     changes: {
       name: 'Ironhold',
       level: 3,
+      kingdomId: 'kingdom-1',
+      locationId: 'location-1',
+      ownerId: 'owner-1',
+      x: 100,
+      y: 150,
+      z: 0,
+      isArchived: false,
     },
     metadata: {
       ipAddress: '192.168.1.1',
@@ -563,14 +613,156 @@ export const mockAudits = [
     operation: 'UPDATE',
     userId: 'user-1',
     changes: {
-      isCompleted: true,
-      occurredAt: '2024-08-01T14:30:00.000Z',
+      isCompleted: {
+        before: false,
+        after: true,
+      },
+      occurredAt: {
+        before: null,
+        after: '2024-08-01T14:30:00.000Z',
+      },
     },
     metadata: {
       ipAddress: '192.168.1.1',
       effectsExecuted: 6,
+      totalEffects: 6,
+      effectExecutionSummary: {
+        pre: {
+          total: 2,
+          succeeded: 2,
+          failed: 0,
+        },
+        onResolve: {
+          total: 3,
+          succeeded: 3,
+          failed: 0,
+        },
+        post: {
+          total: 1,
+          succeeded: 1,
+          failed: 0,
+        },
+      },
     },
     timestamp: '2024-08-01T14:30:00.000Z',
+  },
+  {
+    id: 'audit-2a',
+    entityType: 'Settlement',
+    entityId: 'settlement-1',
+    operation: 'UPDATE',
+    userId: 'user-2',
+    changes: {
+      name: {
+        before: 'Ironhold',
+        after: 'New Ironhold',
+      },
+    },
+    metadata: {
+      ipAddress: '192.168.1.2',
+    },
+    timestamp: '2024-07-01T12:00:00.000Z',
+  },
+  {
+    id: 'audit-structure-1',
+    entityType: 'Structure',
+    entityId: 'structure-1',
+    operation: 'CREATE',
+    userId: 'user-1',
+    changes: {
+      settlementId: 'settlement-1',
+      type: 'barracks',
+      name: 'Main Barracks',
+      level: 1,
+      x: 10,
+      y: 20,
+      orientation: 0,
+      isArchived: false,
+    },
+    metadata: {
+      ipAddress: '192.168.1.1',
+    },
+    timestamp: '2024-02-01T00:00:00.000Z',
+  },
+  {
+    id: 'audit-structure-1a',
+    entityType: 'Structure',
+    entityId: 'structure-1',
+    operation: 'UPDATE',
+    userId: 'user-1',
+    changes: {
+      level: {
+        before: 1,
+        after: 2,
+      },
+    },
+    metadata: {
+      ipAddress: '192.168.1.1',
+    },
+    timestamp: '2024-03-01T00:00:00.000Z',
+  },
+  {
+    id: 'audit-event-2',
+    entityType: 'Event',
+    entityId: 'event-2',
+    operation: 'UPDATE',
+    userId: 'user-1',
+    changes: {
+      isCompleted: {
+        before: false,
+        after: true,
+      },
+      occurredAt: {
+        before: null,
+        after: '2024-09-01T10:00:00.000Z',
+      },
+    },
+    metadata: {
+      ipAddress: '192.168.1.1',
+      effectsExecuted: 0,
+      totalEffects: 0,
+    },
+    timestamp: '2024-09-01T10:00:00.000Z',
+  },
+  {
+    id: 'audit-encounter-1',
+    entityType: 'Encounter',
+    entityId: 'encounter-1',
+    operation: 'UPDATE',
+    userId: 'user-1',
+    changes: {
+      isResolved: {
+        before: false,
+        after: true,
+      },
+      resolvedAt: {
+        before: null,
+        after: '2024-10-01T15:00:00.000Z',
+      },
+    },
+    metadata: {
+      ipAddress: '192.168.1.1',
+      effectsExecuted: 3,
+      totalEffects: 4,
+      effectExecutionSummary: {
+        pre: {
+          total: 1,
+          succeeded: 1,
+          failed: 0,
+        },
+        onResolve: {
+          total: 2,
+          succeeded: 1,
+          failed: 1,
+        },
+        post: {
+          total: 1,
+          succeeded: 1,
+          failed: 0,
+        },
+      },
+    },
+    timestamp: '2024-10-01T15:00:00.000Z',
   },
 ];
 

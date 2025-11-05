@@ -41,6 +41,14 @@ export const graphqlHandlers = [
       });
     }
 
+    // Special case: return settlement-1 for structures error test
+    if (id === 'settlement-error-structures') {
+      const settlement = mockSettlements.find((s) => s.id === 'settlement-1');
+      return HttpResponse.json({
+        data: { settlement },
+      });
+    }
+
     // Return error for entities that don't exist
     const settlement = mockSettlements.find((s) => s.id === id);
     if (!settlement) {
