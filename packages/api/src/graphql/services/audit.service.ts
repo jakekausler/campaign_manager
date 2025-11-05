@@ -7,6 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
+import { calculateDiff } from '../utils/version.utils';
 
 export type AuditOperation =
   | 'CREATE'
@@ -33,6 +34,9 @@ export class AuditService {
    * @param userId - The ID of the user who performed the operation
    * @param changes - The changes made (for CREATE: new values, for UPDATE: diff, for DELETE/ARCHIVE: timestamp)
    * @param metadata - Optional metadata (IP address, user agent, etc.)
+   * @param previousState - Optional full entity state before the operation
+   * @param newState - Optional full entity state after the operation
+   * @param reason - Optional user-provided explanation for the operation
    */
   async log(
     entityType: string,
@@ -40,9 +44,20 @@ export class AuditService {
     operation: AuditOperation,
     userId: string,
     changes: Record<string, unknown>,
-    metadata: Record<string, unknown> = {}
+    metadata: Record<string, unknown> = {},
+    previousState?: Record<string, unknown>,
+    newState?: Record<string, unknown>,
+    reason?: string
   ): Promise<void> {
     try {
+      // Calculate diff automatically if both states are provided
+      let diff: Prisma.InputJsonValue | undefined;
+      if (previousState && newState) {
+        const calculated = calculateDiff(previousState, newState);
+        // Convert VersionDiff to InputJsonValue via JSON serialization
+        diff = JSON.parse(JSON.stringify(calculated)) as Prisma.InputJsonValue;
+      }
+
       await this.prisma.audit.create({
         data: {
           entityType,
@@ -51,6 +66,11 @@ export class AuditService {
           userId,
           changes: changes as Prisma.InputJsonValue,
           metadata: metadata as Prisma.InputJsonValue,
+          // Enhanced audit fields (nullable for backward compatibility)
+          previousState: previousState ? (previousState as Prisma.InputJsonValue) : undefined,
+          newState: newState ? (newState as Prisma.InputJsonValue) : undefined,
+          diff: diff || undefined,
+          reason: reason || undefined,
         },
       });
     } catch (error) {
@@ -59,6 +79,7 @@ export class AuditService {
         entityType,
         entityId,
         operation,
+        hasEnhancedData: !!(previousState || newState || reason),
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
       });
