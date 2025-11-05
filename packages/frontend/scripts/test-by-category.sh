@@ -60,11 +60,23 @@ run_category "Standard Components" "src/components/features/branches/ src/compon
 # These components use complex UI libraries and heavy dependencies
 run_category "Heavy Components" "src/components/features/entity-inspector/ src/components/features/map/ src/components/features/timeline/ src/components/features/rule-builder/" || true
 
-# Category 4: Pages and Flow
-# Full page components and React Flow-based visualizations
-run_category "Pages and Flow" "src/pages/ src/components/features/flow/" || true
+# Category 4: MapPage
+# Heaviest test - MapLibre GL with full GeoJSON rendering
+run_category "MapPage" "src/pages/MapPage.test.tsx" || true
 
-# Category 5: Integration Tests
+# Category 5: TimelinePage
+# Timeline with events and encounters
+run_category "TimelinePage" "src/pages/TimelinePage.test.tsx" || true
+
+# Category 6: FlowViewPage
+# React Flow dependency graph visualization
+run_category "FlowViewPage" "src/pages/FlowViewPage.test.tsx" || true
+
+# Category 7: Flow Components
+# React Flow-based component tests
+run_category "Flow Components" "src/components/features/flow/" || true
+
+# Category 8: Integration Tests
 # Service-level integration tests
 run_category "Integration Tests" "src/services/" || true
 
