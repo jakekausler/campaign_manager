@@ -165,6 +165,8 @@ export class AuditResolver {
     @Args('userId', { type: () => ID }) userId: string,
     @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
     limit: number = 50,
+    @Args('skip', { type: () => Int, nullable: true, defaultValue: 0 })
+    skip: number = 0,
     @Args('operations', { type: () => [String], nullable: true })
     operations?: string[],
     @Args('entityTypes', { type: () => [String], nullable: true })
@@ -182,6 +184,12 @@ export class AuditResolver {
     // TODO: Add role-based authorization for viewing other users' history
     if (userId !== user.id) {
       throw new Error('Access denied');
+    }
+
+    // Validate skip parameter to prevent abuse (max 100,000 records)
+    // This prevents malicious users from scanning arbitrary portions of audit log
+    if (skip < 0 || skip > 100000) {
+      throw new Error('Invalid skip parameter: must be between 0 and 100,000');
     }
 
     // Build WHERE clause with enhanced filtering
@@ -227,6 +235,7 @@ export class AuditResolver {
     const audits = await this.prisma.audit.findMany({
       where,
       orderBy,
+      skip,
       take: Math.min(limit, 100),
     });
 

@@ -1,4 +1,6 @@
-import type { AuditEntry } from '../services/api/hooks/audit';
+import { type ApolloClient, gql } from '@apollo/client';
+
+import type { AuditEntry, UseUserAuditHistoryOptions } from '../services/api/hooks/audit';
 
 /**
  * Converts audit log entries to CSV format and triggers browser download.
@@ -127,4 +129,133 @@ function downloadFile(content: string, filename: string, mimeType: string): void
   // Cleanup
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+// GraphQL query for fetching all audit history with pagination
+const GET_USER_AUDIT_HISTORY = gql`
+  query GetUserAuditHistory(
+    $userId: ID!
+    $limit: Int
+    $skip: Int
+    $operations: [String!]
+    $startDate: DateTime
+    $endDate: DateTime
+    $sortBy: String
+    $sortOrder: String
+  ) {
+    userAuditHistory(
+      userId: $userId
+      limit: $limit
+      skip: $skip
+      operations: $operations
+      startDate: $startDate
+      endDate: $endDate
+      sortBy: $sortBy
+      sortOrder: $sortOrder
+    ) {
+      id
+      entityType
+      entityId
+      operation
+      userId
+      changes
+      metadata
+      timestamp
+      previousState
+      newState
+      diff
+      reason
+    }
+  }
+`;
+
+/**
+ * Interface for query result from GraphQL
+ */
+interface UserAuditHistoryData {
+  userAuditHistory: AuditEntry[];
+}
+
+/**
+ * Interface for GraphQL query variables
+ */
+interface UserAuditHistoryVariables {
+  userId: string;
+  limit?: number;
+  skip?: number;
+  operations?: string[];
+  startDate?: Date;
+  endDate?: Date;
+  sortBy?: string;
+  sortOrder?: string;
+}
+
+/**
+ * Fetches all audit data from the server with pagination.
+ * Makes repeated GraphQL queries until all matching records are fetched.
+ *
+ * @param client - Apollo Client instance for making GraphQL queries
+ * @param options - Filter options matching the current user's filter state
+ * @param onProgress - Optional callback for progress updates (current count)
+ * @returns Promise resolving to array of all matching audit entries
+ */
+export async function fetchAllAuditData(
+  client: ApolloClient,
+  options: Omit<UseUserAuditHistoryOptions, 'limit'>,
+  onProgress?: (count: number) => void
+): Promise<AuditEntry[]> {
+  const BATCH_SIZE = 100; // Fetch 100 records per request (max allowed by API)
+  const allEntries: AuditEntry[] = [];
+  let hasMore = true;
+  let skip = 0;
+
+  // Convert date strings to Date objects if provided
+  const startDateObj = options.startDate
+    ? new Date(options.startDate + 'T00:00:00.000Z')
+    : undefined;
+  const endDateObj = options.endDate ? new Date(options.endDate + 'T23:59:59.999Z') : undefined;
+
+  while (hasMore) {
+    try {
+      const { data } = await client.query<UserAuditHistoryData, UserAuditHistoryVariables>({
+        query: GET_USER_AUDIT_HISTORY,
+        variables: {
+          userId: options.userId,
+          limit: BATCH_SIZE,
+          skip,
+          operations:
+            options.operations && options.operations.length > 0 ? options.operations : undefined,
+          startDate: startDateObj,
+          endDate: endDateObj,
+          sortBy: options.sortBy || 'timestamp',
+          sortOrder: options.sortOrder || 'desc',
+        },
+        fetchPolicy: 'network-only', // Always fetch fresh data for export
+      });
+
+      const batch = data?.userAuditHistory || [];
+      allEntries.push(...batch);
+
+      // Call progress callback if provided
+      if (onProgress) {
+        onProgress(allEntries.length);
+      }
+
+      // Check if we should continue fetching
+      if (batch.length < BATCH_SIZE) {
+        // Received fewer results than requested, we've fetched all available data
+        hasMore = false;
+      } else {
+        // Move to next batch
+        skip += BATCH_SIZE;
+      }
+    } catch (error) {
+      console.error('Error fetching audit data batch:', error);
+      throw new Error(
+        `Failed to fetch audit data: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  return allEntries;
 }

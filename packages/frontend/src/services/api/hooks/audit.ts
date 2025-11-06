@@ -116,6 +116,7 @@ const GET_USER_AUDIT_HISTORY = gql`
   query GetUserAuditHistory(
     $userId: ID!
     $limit: Int
+    $skip: Int
     $operations: [String!]
     $startDate: DateTime
     $endDate: DateTime
@@ -125,6 +126,7 @@ const GET_USER_AUDIT_HISTORY = gql`
     userAuditHistory(
       userId: $userId
       limit: $limit
+      skip: $skip
       operations: $operations
       startDate: $startDate
       endDate: $endDate
@@ -154,6 +156,7 @@ interface UserAuditHistoryData {
 interface UserAuditHistoryVariables {
   userId: string;
   limit?: number;
+  skip?: number;
   operations?: string[];
   startDate?: Date;
   endDate?: Date;
@@ -174,6 +177,11 @@ export interface UseUserAuditHistoryOptions {
    * Maximum number of audit entries to fetch (default: 50, max: 100)
    */
   limit?: number;
+
+  /**
+   * Number of audit entries to skip (for pagination, default: 0)
+   */
+  skip?: number;
 
   /**
    * Filter by operation types (e.g., ['CREATE', 'UPDATE', 'DELETE'])
@@ -240,6 +248,7 @@ export function useUserAuditHistory(options: UseUserAuditHistoryOptions) {
   const {
     userId,
     limit = 50,
+    skip = 0,
     operations,
     startDate,
     endDate,
@@ -261,6 +270,7 @@ export function useUserAuditHistory(options: UseUserAuditHistoryOptions) {
     variables: {
       userId,
       limit,
+      skip,
       operations: operations && operations.length > 0 ? operations : undefined,
       startDate: startDateObj,
       endDate: endDateObj,

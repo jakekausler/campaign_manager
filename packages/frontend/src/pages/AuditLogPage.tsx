@@ -3,6 +3,7 @@
  * Displays all audit log entries for the current user with advanced filtering and pagination
  */
 
+import { useApolloClient } from '@apollo/client/react';
 import { ScrollText, ArrowUpDown, ArrowDown, ArrowUp, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -21,6 +22,9 @@ import { parseFiltersFromURL, serializeFiltersToURL } from '@/utils/audit-filter
  */
 export default function AuditLogPage() {
   // ALL HOOKS MUST BE CALLED UNCONDITIONALLY AT THE TOP (Rules of Hooks)
+
+  // Get Apollo client for export functionality
+  const apolloClient = useApolloClient();
 
   // Get current user for authorization
   const user = useCurrentUser();
@@ -156,7 +160,20 @@ export default function AuditLogPage() {
           {/* Sort Controls and Export Button */}
           <div className="flex items-center gap-2">
             {/* Export Button */}
-            <ExportButton entries={filteredAudits} disabled={loading} className="mr-2" />
+            <ExportButton
+              entries={filteredAudits}
+              disabled={loading}
+              className="mr-2"
+              apolloClient={apolloClient}
+              filterOptions={{
+                userId: user?.id || '',
+                operations: filters.operations.length > 0 ? filters.operations : undefined,
+                startDate: filters.startDate || undefined,
+                endDate: filters.endDate || undefined,
+                sortBy: filters.sortBy,
+                sortOrder: filters.sortOrder,
+              }}
+            />
 
             {/* Sort Controls */}
             <div className="text-xs text-gray-600 font-medium">Sort by:</div>
