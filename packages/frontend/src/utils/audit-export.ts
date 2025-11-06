@@ -197,17 +197,25 @@ interface UserAuditHistoryVariables {
  * @param client - Apollo Client instance for making GraphQL queries
  * @param options - Filter options matching the current user's filter state
  * @param onProgress - Optional callback for progress updates (current count)
+ * @param signal - Optional AbortSignal for cancelling the fetch operation
  * @returns Promise resolving to array of all matching audit entries
+ * @throws {Error} If the operation is aborted or if there's a network error
  */
 export async function fetchAllAuditData(
   client: ApolloClient,
   options: Omit<UseUserAuditHistoryOptions, 'limit'>,
-  onProgress?: (count: number) => void
+  onProgress?: (count: number) => void,
+  signal?: AbortSignal
 ): Promise<AuditEntry[]> {
   const BATCH_SIZE = 100; // Fetch 100 records per request (max allowed by API)
   const allEntries: AuditEntry[] = [];
   let hasMore = true;
   let skip = 0;
+
+  // Check if already aborted before starting
+  if (signal?.aborted) {
+    throw new Error('Export cancelled');
+  }
 
   // Convert date strings to Date objects if provided
   const startDateObj = options.startDate
@@ -216,6 +224,11 @@ export async function fetchAllAuditData(
   const endDateObj = options.endDate ? new Date(options.endDate + 'T23:59:59.999Z') : undefined;
 
   while (hasMore) {
+    // Check for abort before each batch
+    if (signal?.aborted) {
+      throw new Error('Export cancelled');
+    }
+
     try {
       const { data } = await client.query<UserAuditHistoryData, UserAuditHistoryVariables>({
         query: GET_USER_AUDIT_HISTORY,
@@ -231,6 +244,11 @@ export async function fetchAllAuditData(
           sortOrder: options.sortOrder || 'desc',
         },
         fetchPolicy: 'network-only', // Always fetch fresh data for export
+        context: {
+          fetchOptions: {
+            signal, // Pass abort signal to fetch
+          },
+        },
       });
 
       const batch = data?.userAuditHistory || [];
@@ -250,6 +268,10 @@ export async function fetchAllAuditData(
         skip += BATCH_SIZE;
       }
     } catch (error) {
+      // Check if error is due to abort
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Export cancelled');
+      }
       console.error('Error fetching audit data batch:', error);
       throw new Error(
         `Failed to fetch audit data: ${error instanceof Error ? error.message : 'Unknown error'}`

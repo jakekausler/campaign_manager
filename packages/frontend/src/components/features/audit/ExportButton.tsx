@@ -1,6 +1,6 @@
 import { type ApolloClient } from '@apollo/client';
-import { Download, FileJson, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { Download, FileJson, Loader2, XCircle } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { AuditEntry, UseUserAuditHistoryOptions } from '../../../services/api/hooks/audit';
@@ -62,25 +62,54 @@ export const ExportButton = ({
     count: number;
   } | null>(null);
 
+  // AbortController ref for cancelling export operations
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const isDisabled = disabled || entries.length === 0 || isFetching;
   const LARGE_EXPORT_THRESHOLD = 1000;
+
+  /**
+   * Cancel the ongoing export operation
+   */
+  const handleCancelExport = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsFetching(false);
+      setFetchProgress(0);
+      toast.info('Export cancelled', {
+        description: 'The export operation has been cancelled',
+      });
+    }
+  };
 
   /**
    * Fetch all audit data if "Export All" is checked, otherwise return current entries
    */
   const getEntriesToExport = async (): Promise<AuditEntry[]> => {
     if (exportAll) {
+      // Create new AbortController for this export operation
+      abortControllerRef.current = new AbortController();
       setIsFetching(true);
       setFetchProgress(0);
+
       try {
-        const allEntries = await fetchAllAuditData(apolloClient, filterOptions, (count) =>
-          setFetchProgress(count)
+        const allEntries = await fetchAllAuditData(
+          apolloClient,
+          filterOptions,
+          (count) => setFetchProgress(count),
+          abortControllerRef.current.signal
         );
         return allEntries;
       } catch (error) {
+        // Check if error is due to cancellation
+        if (error instanceof Error && error.message === 'Export cancelled') {
+          throw error; // Re-throw to be caught by performExport
+        }
         console.error('Failed to fetch all audit data:', error);
         throw error;
       } finally {
+        abortControllerRef.current = null;
         setIsFetching(false);
         setFetchProgress(0);
       }
@@ -133,6 +162,11 @@ export const ExportButton = ({
         }`,
       });
     } catch (error) {
+      // Don't show error toast if export was cancelled (already shown by handleCancelExport)
+      if (error instanceof Error && error.message === 'Export cancelled') {
+        return; // Silent return for cancelled exports
+      }
+
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to export audit data. Please try again.';
       console.error(`Export ${format} error:`, error);
@@ -156,7 +190,7 @@ export const ExportButton = ({
   /**
    * Handle confirmation dialog close action
    */
-  const handleCancelExport = () => {
+  const handleCloseConfirmation = () => {
     setShowConfirmation(false);
     setPendingExport(null);
   };
@@ -186,54 +220,58 @@ export const ExportButton = ({
           </Label>
         </div>
 
-        {/* Export Buttons */}
+        {/* Export Buttons or Cancel Button */}
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            disabled={isDisabled}
-            aria-label="Export audit log to CSV"
-          >
-            {isFetching ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Fetching... ({fetchProgress})
-              </>
-            ) : (
-              <>
+          {isFetching ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancelExport}
+              aria-label="Cancel export operation"
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              Cancel Export
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCSV}
+                disabled={isDisabled}
+                aria-label="Export audit log to CSV"
+              >
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV ({exportAll ? 'All' : entries.length})
-              </>
-            )}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportJSON}
-            disabled={isDisabled}
-            aria-label="Export audit log to JSON"
-          >
-            {isFetching ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Fetching... ({fetchProgress})
-              </>
-            ) : (
-              <>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportJSON}
+                disabled={isDisabled}
+                aria-label="Export audit log to JSON"
+              >
                 <FileJson className="mr-2 h-4 w-4" />
                 Export JSON ({exportAll ? 'All' : entries.length})
-              </>
-            )}
-          </Button>
+              </Button>
+            </>
+          )}
         </div>
+
+        {/* Progress Indicator */}
+        {isFetching && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Fetching records... ({fetchProgress})</span>
+          </div>
+        )}
       </div>
 
       {/* Confirmation Dialog for Large Exports */}
       {pendingExport && (
         <ExportConfirmationDialog
           open={showConfirmation}
-          onClose={handleCancelExport}
+          onClose={handleCloseConfirmation}
           onConfirm={handleConfirmExport}
           recordCount={pendingExport.count}
           isUnknownCount={exportAll}
