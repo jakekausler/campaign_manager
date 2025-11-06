@@ -516,3 +516,55 @@ This verification highlights the importance of validating automated code review 
 - Component test coverage (Stage 8 or later)
 
 **Next Steps**: Stages 8-10 per revised implementation plan (advanced export features, permissions, documentation)
+
+### Stage 8A Implementation (2025-11-06)
+
+**Status**: ✅ Complete
+
+**Completed**: "Export All" functionality for audit logs to export all matching records regardless of pagination.
+
+#### Changes Made:
+
+1. **Backend Enhancement** (`packages/api/src/graphql/resolvers/audit.resolver.ts`):
+   - Added `skip` parameter to `userAuditHistory` GraphQL resolver
+   - Added skip validation (0-100,000 limit) to prevent resource abuse
+   - Proper error handling with specific error messages
+
+2. **GraphQL Hook** (`packages/frontend/src/services/api/hooks/audit.ts`):
+   - Added `skip` parameter to query and hook interface
+   - Uses `fetchPolicy: 'network-only'` for exports to ensure fresh data
+
+3. **Export Utility** (`packages/frontend/src/utils/audit-export.ts`):
+   - Created `fetchAllAuditData()` function that fetches records in batches of 100
+   - Progress callback for UI updates during batch fetching
+   - Respects all active filters (date range, operations, entity types)
+
+4. **ExportButton Component** (`packages/frontend/src/components/features/audit/ExportButton.tsx`):
+   - Added "Export All" checkbox option
+   - Implemented loading states with progress indicators (shows record count)
+   - Improved error handling with specific error context
+   - Changed button text from "Export CSV (?)" to "Export CSV (All)" for clarity
+   - Proper accessibility with ARIA labels
+
+5. **Code Quality**:
+   - TypeScript type-check: ✅ Passed
+   - ESLint lint: ✅ Passed
+   - Code Review: ✅ Approved with recommendations for future enhancements
+   - Pre-commit hooks: ✅ All checks passed
+
+**Key Technical Decisions:**
+
+- **Skip limit of 100,000**: Balances legitimate use cases with protection against abuse
+- **Batch size of 100**: Optimal balance between network overhead and server load
+- **Network-only fetch policy**: Ensures exports always use fresh data from server
+- **Client-side batching**: Fetches all data on frontend before export for simplicity
+
+**Code Review Recommendations** (optional future enhancements):
+
+- Add confirmation dialog for very large exports (>1000 records)
+- Replace `alert()` with toast notification system for better UX
+- Show percentage or batch number in progress indicator
+
+**Commit**: 33aa3c1 - feat(api,frontend): add "Export All" functionality for audit logs
+
+**Next Steps**: Stage 8B - Add progress indicators and confirmation dialogs for large exports
