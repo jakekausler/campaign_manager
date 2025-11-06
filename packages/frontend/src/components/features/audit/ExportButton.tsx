@@ -1,12 +1,15 @@
 import { type ApolloClient } from '@apollo/client';
 import { Download, FileJson, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 import type { AuditEntry, UseUserAuditHistoryOptions } from '../../../services/api/hooks/audit';
 import { exportToCSV, exportToJSON, fetchAllAuditData } from '../../../utils/audit-export';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
 import { Label } from '../../ui/label';
+
+import { ExportConfirmationDialog } from './ExportConfirmationDialog';
 
 interface ExportButtonProps {
   /** Audit entries currently displayed (filtered/paginated) */
@@ -53,8 +56,14 @@ export const ExportButton = ({
   const [exportAll, setExportAll] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchProgress, setFetchProgress] = useState(0);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingExport, setPendingExport] = useState<{
+    format: 'CSV' | 'JSON';
+    count: number;
+  } | null>(null);
 
   const isDisabled = disabled || entries.length === 0 || isFetching;
+  const LARGE_EXPORT_THRESHOLD = 1000;
 
   /**
    * Fetch all audit data if "Export All" is checked, otherwise return current entries
@@ -80,99 +89,158 @@ export const ExportButton = ({
     return entries;
   };
 
-  const handleExportCSV = async () => {
+  /**
+   * Initiate export with confirmation if dataset is large
+   */
+  const initiateExport = (format: 'CSV' | 'JSON') => {
     if (entries.length === 0) {
-      console.warn('No audit entries to export');
+      toast.error('No audit entries to export');
       return;
     }
 
-    try {
-      const entriesToExport = await getEntriesToExport();
-      exportToCSV(entriesToExport);
-    } catch (error) {
-      // Provide specific error message based on error type
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to export audit data. Please try again.';
-      console.error('Export CSV error:', error);
-      alert(`Export failed: ${errorMessage}`);
+    // Determine if confirmation is needed
+    // For "Export All", we know it's >threshold but don't have exact count yet
+    // For current entries, use the actual count
+    const needsConfirmation = exportAll || entries.length > LARGE_EXPORT_THRESHOLD;
+
+    if (needsConfirmation) {
+      // Use threshold as minimum count indicator for Export All
+      const countForDialog = exportAll ? LARGE_EXPORT_THRESHOLD : entries.length;
+      setPendingExport({ format, count: countForDialog });
+      setShowConfirmation(true);
+    } else {
+      // Directly export without confirmation for small datasets
+      performExport(format);
     }
   };
 
-  const handleExportJSON = async () => {
-    if (entries.length === 0) {
-      console.warn('No audit entries to export');
-      return;
-    }
-
+  /**
+   * Perform the actual export operation
+   */
+  const performExport = async (format: 'CSV' | 'JSON') => {
     try {
       const entriesToExport = await getEntriesToExport();
-      exportToJSON(entriesToExport);
+
+      if (format === 'CSV') {
+        exportToCSV(entriesToExport);
+      } else {
+        exportToJSON(entriesToExport);
+      }
+
+      toast.success(`Audit logs exported as ${format}`, {
+        description: `Successfully exported ${entriesToExport.length.toLocaleString()} ${
+          entriesToExport.length === 1 ? 'entry' : 'entries'
+        }`,
+      });
     } catch (error) {
-      // Provide specific error message based on error type
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to export audit data. Please try again.';
-      console.error('Export JSON error:', error);
-      alert(`Export failed: ${errorMessage}`);
+      console.error(`Export ${format} error:`, error);
+      toast.error(`Export failed: ${format}`, {
+        description: errorMessage,
+      });
     }
+  };
+
+  /**
+   * Handle confirmation dialog confirm action
+   */
+  const handleConfirmExport = () => {
+    if (pendingExport) {
+      setShowConfirmation(false);
+      performExport(pendingExport.format);
+      setPendingExport(null);
+    }
+  };
+
+  /**
+   * Handle confirmation dialog close action
+   */
+  const handleCancelExport = () => {
+    setShowConfirmation(false);
+    setPendingExport(null);
+  };
+
+  const handleExportCSV = () => {
+    initiateExport('CSV');
+  };
+
+  const handleExportJSON = () => {
+    initiateExport('JSON');
   };
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      {/* Export All Checkbox */}
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="export-all"
-          checked={exportAll}
-          onCheckedChange={(checked) => setExportAll(checked === true)}
-          disabled={isDisabled}
-          aria-label="Export all matching records"
-        />
-        <Label htmlFor="export-all" className="text-sm font-normal cursor-pointer select-none">
-          Export All <span className="text-muted-foreground">(fetch all matching records)</span>
-        </Label>
+    <>
+      <div className={`flex flex-col gap-2 ${className}`}>
+        {/* Export All Checkbox */}
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="export-all"
+            checked={exportAll}
+            onCheckedChange={(checked) => setExportAll(checked === true)}
+            disabled={isDisabled}
+            aria-label="Export all matching records"
+          />
+          <Label htmlFor="export-all" className="text-sm font-normal cursor-pointer select-none">
+            Export All <span className="text-muted-foreground">(fetch all matching records)</span>
+          </Label>
+        </div>
+
+        {/* Export Buttons */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            disabled={isDisabled}
+            aria-label="Export audit log to CSV"
+          >
+            {isFetching ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Fetching... ({fetchProgress})
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV ({exportAll ? 'All' : entries.length})
+              </>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportJSON}
+            disabled={isDisabled}
+            aria-label="Export audit log to JSON"
+          >
+            {isFetching ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Fetching... ({fetchProgress})
+              </>
+            ) : (
+              <>
+                <FileJson className="mr-2 h-4 w-4" />
+                Export JSON ({exportAll ? 'All' : entries.length})
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
-      {/* Export Buttons */}
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportCSV}
-          disabled={isDisabled}
-          aria-label="Export audit log to CSV"
-        >
-          {isFetching ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Fetching... ({fetchProgress})
-            </>
-          ) : (
-            <>
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV ({exportAll ? 'All' : entries.length})
-            </>
-          )}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportJSON}
-          disabled={isDisabled}
-          aria-label="Export audit log to JSON"
-        >
-          {isFetching ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Fetching... ({fetchProgress})
-            </>
-          ) : (
-            <>
-              <FileJson className="mr-2 h-4 w-4" />
-              Export JSON ({exportAll ? 'All' : entries.length})
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
+      {/* Confirmation Dialog for Large Exports */}
+      {pendingExport && (
+        <ExportConfirmationDialog
+          open={showConfirmation}
+          onClose={handleCancelExport}
+          onConfirm={handleConfirmExport}
+          recordCount={pendingExport.count}
+          isUnknownCount={exportAll}
+          format={pendingExport.format}
+          loading={isFetching}
+        />
+      )}
+    </>
   );
 };
