@@ -372,3 +372,147 @@ This verification highlights the importance of validating automated code review 
 - Component test coverage (deferred to future stage)
 
 **Next Steps**: Stage 6 - Diff viewer for audit log entries (previousState/newState comparison)
+
+### Stage 6 Implementation (2025-11-06)
+
+**Status**: ✅ Complete
+
+**Completed**: Enhanced audit log viewer with expandable diff display for state changes.
+
+#### Changes Made:
+
+1. **Created AuditDiffViewer Component** (`packages/frontend/src/components/features/audit/AuditDiffViewer.tsx`):
+   - Specialized diff viewer for audit log entries (simpler than full DiffViewer from versions)
+   - Displays previousState, newState, and structured diff with collapsible sections
+   - Color-coded change types: green (added), blue (modified), red (removed)
+   - Operation-specific guidance text (CREATE, UPDATE, DELETE, etc.)
+   - Uses existing JsonHighlighter for syntax-highlighted JSON display
+   - Handles all operation types gracefully (CREATE with newState only, DELETE with previousState only)
+   - Empty state handling for legacy audit entries without enhanced fields
+
+2. **Enhanced AuditLogTable** (`packages/frontend/src/components/features/audit/AuditLogTable.tsx`):
+   - Added expandable row functionality with ChevronDown/ChevronRight icons
+   - Integrated AuditDiffViewer into expanded row sections
+   - Added entity navigation links (ExternalLink icon with "View" link)
+   - Entity link helper function maps entity types to detail page routes
+   - Only shows expand button when diff data is available (hasDiffData check)
+   - Proper accessibility: aria-expanded, aria-label, data-testid attributes
+   - Performance: memoized AuditLogRow components, useCallback for toggle
+
+3. **GraphQL Query Verification**:
+   - Confirmed GET_USER_AUDIT_HISTORY already includes enhanced fields (added in Stage 5)
+   - Query fetches: previousState, newState, diff, reason (lines 142-145 of audit.ts)
+   - No changes needed to GraphQL layer
+
+#### Key Design Decisions:
+
+- **Diff-First Approach**: Default to showing structured diff section expanded, with full state JSON collapsed
+- **Conditional Expand Button**: Only show expand/collapse UI when audit entry has enhanced data
+- **Entity Navigation**: Direct links to entity detail pages for quick access from audit log
+- **Consistent Patterns**: Followed existing expandable row patterns from MergePreviewDialog
+- **Reused Components**: Leveraged JsonHighlighter and existing icon library (lucide-react)
+
+#### Files Created:
+
+- `packages/frontend/src/components/features/audit/AuditDiffViewer.tsx` (new component)
+
+#### Files Modified:
+
+- `packages/frontend/src/components/features/audit/AuditLogTable.tsx` (expandable rows)
+
+#### Quality Assurance:
+
+- ✅ TypeScript type-check: Passed (all packages)
+- ✅ ESLint lint: Passed (all packages)
+- ✅ Code Reviewer subagent: Approved after fixing critical hasDiffData boolean logic error
+- ✅ Pre-commit hooks: All checks passed (format, lint, type-check)
+
+**Code Quality Improvements from Review:**
+
+- Fixed critical boolean logic error in hasDiffData check (was always true, now correctly checks existence)
+- Applied lazy initializer pattern for useState with Set for better performance
+- All accessibility attributes properly implemented (aria-expanded, aria-label, data-testid)
+
+**Deferred to Future Stages**:
+
+- Component test coverage (Stage 7 or later)
+- Export functionality integration (Stages 7-8)
+- Performance optimization for large audit logs (lazy loading, virtualization)
+- Optional UX improvements (copy ID button, break-words CSS, size warnings)
+
+**Commit**: bfd8166 - feat(frontend): add diff viewer for audit log entries
+
+**Next Steps**: Stages 7-10 per revised implementation plan (CSV/JSON export, permissions, documentation)
+
+### Stage 7 Implementation (2025-11-06)
+
+**Status**: ✅ Complete (Stages 7A, 7B, 7C)
+
+**Completed**: CSV and JSON export functionality for audit logs with comprehensive features.
+
+#### Changes Made:
+
+**Stage 7A - CSV Export** (`commit: 49a037a`):
+
+1. **Export Utility** (`packages/frontend/src/utils/audit-export.ts`):
+   - `exportToCSV()` function with proper CSV formatting
+   - CSV injection prevention through field escaping
+   - BOM (Byte Order Mark) for Excel compatibility
+   - Timestamp-based filenames (audit-log-YYYY-MM-DD.csv)
+   - Proper handling of nested JSON fields (serialized to JSON strings)
+
+2. **ExportButton Component** (`packages/frontend/src/components/features/audit/ExportButton.tsx`):
+   - Shows entry count for transparency ("Export 42 entries")
+   - Disabled state during loading and when no entries
+   - Download icon for clear visual affordance
+   - Accessible with proper ARIA labels
+
+3. **Integration** (`packages/frontend/src/pages/AuditLogPage.tsx`):
+   - Exports currently filtered/displayed audit entries
+   - Positioned with sort controls in page header
+   - Respects all active filters
+
+**Stage 7B - JSON Export** (`commit: 37053e0`):
+
+1. **Enhanced Export Utility**:
+   - `exportToJSON()` function with pretty-printing (2-space indentation)
+   - Includes all fields: previousState, newState, diff, reason
+   - Proper MIME type (application/json;charset=utf-8)
+   - No BOM for JSON (only CSV needs it)
+
+2. **Two-Button UI Pattern**:
+   - Converted from single button to button group
+   - CSV button with Download icon, JSON button with FileJson icon
+   - Both show entry count ("Export CSV (42)", "Export JSON (42)")
+   - Consistent disabled states and accessibility
+
+**Stage 7C - Code Review & Finalization**:
+
+1. **Quality Verification**:
+   - TypeScript type-check: ✅ Passed (all packages)
+   - ESLint lint: ✅ Passed (all packages)
+   - Code review findings addressed (performed during 7A and 7B)
+
+2. **Key Design Decisions**:
+   - Two-button layout over dropdown for better discoverability
+   - Client-side export (no server processing needed)
+   - Security measures: CSV injection prevention, XSS protection via Blob API
+   - Filter-respecting exports (only visible data)
+
+**Files Created**:
+
+- `packages/frontend/src/utils/audit-export.ts` (new - export utilities)
+- `packages/frontend/src/components/features/audit/ExportButton.tsx` (new - UI component)
+
+**Files Modified**:
+
+- `packages/frontend/src/pages/AuditLogPage.tsx` (integrated export buttons)
+
+**Deferred to Future Stages**:
+
+- Large dataset warnings (Stage 8)
+- Progress indicators for bulk exports (Stage 8)
+- Export cancellation (Stage 8)
+- Component test coverage (Stage 8 or later)
+
+**Next Steps**: Stages 8-10 per revised implementation plan (advanced export features, permissions, documentation)
