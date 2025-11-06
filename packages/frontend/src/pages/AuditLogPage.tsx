@@ -221,12 +221,28 @@ export default function AuditLogPage() {
             />
 
             {/* Sort Controls */}
-            <div className="text-xs text-gray-600 font-medium">Sort by:</div>
-            <Button variant="outline" size="sm" onClick={handleToggleSortBy} className="capitalize">
+            <div
+              className="text-xs text-gray-600 font-medium"
+              title="Change how audit logs are sorted"
+            >
+              Sort by:
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToggleSortBy}
+              className="capitalize"
+              title="Change sort field (timestamp, operation, or entity type)"
+            >
               {filters.sortBy}
               <ArrowUpDown className="ml-2 h-3 w-3" />
             </Button>
-            <Button variant="outline" size="sm" onClick={handleToggleSortOrder}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToggleSortOrder}
+              title={`Change sort order (currently ${filters.sortOrder === 'asc' ? 'oldest first' : 'newest first'})`}
+            >
               {filters.sortOrder === 'asc' ? (
                 <>
                   <ArrowUp className="h-3 w-3 mr-1" />

@@ -27,6 +27,8 @@ A full-stack campaign management tool for tabletop RPGs that unifies map, flowch
   - See [Branching System Documentation](docs/features/branching-system.md) for details
 - **Real-time Updates**: WebSocket-based synchronization
 - **Event Scheduling**: Cron-based automated event processing
+- **Audit System**: Comprehensive change tracking with state snapshots, structured diffs, filtering, export, and permissions
+  - See [Audit System Documentation](docs/features/audit-system.md) for details
 
 ## Tech Stack
 

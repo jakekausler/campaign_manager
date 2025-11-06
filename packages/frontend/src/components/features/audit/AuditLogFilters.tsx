@@ -45,6 +45,32 @@ const OPERATION_COLORS: Record<AuditEntry['operation'], string> = {
 };
 
 /**
+ * Helper function to get tooltip text for operation filter buttons
+ */
+function getOperationFilterTooltip(operation: AuditEntry['operation']): string {
+  switch (operation) {
+    case 'CREATE':
+      return 'Show entity creation operations';
+    case 'UPDATE':
+      return 'Show entity modification operations';
+    case 'DELETE':
+      return 'Show entity deletion operations';
+    case 'ARCHIVE':
+      return 'Show entity archival operations';
+    case 'RESTORE':
+      return 'Show entity restoration operations';
+    case 'FORK':
+      return 'Show branch creation operations';
+    case 'MERGE':
+      return 'Show branch merge operations';
+    case 'CHERRY_PICK':
+      return 'Show cherry-pick operations from other branches';
+    default:
+      return 'Filter by this operation type';
+  }
+}
+
+/**
  * AuditLogFilters component for filtering audit log entries
  *
  * Provides controls for:
@@ -140,11 +166,14 @@ export function AuditLogFilters({
       <CardContent className="space-y-4">
         {/* Operation Type Filter */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Operation Types</Label>
+          <Label className="text-sm font-medium" title="Filter audit logs by operation type">
+            Operation Types
+          </Label>
           <div className="flex flex-wrap gap-2">
             {ALL_OPERATIONS.map((operation) => {
               const isSelected = filters.operations.includes(operation);
               const colorClass = OPERATION_COLORS[operation];
+              const tooltip = getOperationFilterTooltip(operation);
 
               return (
                 <button
@@ -157,6 +186,7 @@ export function AuditLogFilters({
                     ${isSelected ? 'ring-2 ring-offset-1 ring-current' : ''}
                   `}
                   aria-pressed={isSelected}
+                  title={tooltip}
                 >
                   {operation.replace(/_/g, ' ')}
                 </button>
@@ -171,7 +201,11 @@ export function AuditLogFilters({
         {/* Date Range Filter */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="start-date" className="text-sm font-medium">
+            <Label
+              htmlFor="start-date"
+              className="text-sm font-medium"
+              title="Filter audit logs from this date forward"
+            >
               Start Date
             </Label>
             <Input
@@ -181,11 +215,16 @@ export function AuditLogFilters({
               onChange={handleStartDateChange}
               max={filters.endDate || undefined}
               className="text-sm"
+              title="Earliest date to include in results"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="end-date" className="text-sm font-medium">
+            <Label
+              htmlFor="end-date"
+              className="text-sm font-medium"
+              title="Filter audit logs up to this date"
+            >
               End Date
             </Label>
             <Input
@@ -195,13 +234,18 @@ export function AuditLogFilters({
               onChange={handleEndDateChange}
               min={filters.startDate || undefined}
               className="text-sm"
+              title="Latest date to include in results"
             />
           </div>
         </div>
 
         {/* Search Filter */}
         <div className="space-y-1.5">
-          <Label htmlFor="search-entity" className="text-sm font-medium">
+          <Label
+            htmlFor="search-entity"
+            className="text-sm font-medium"
+            title="Search for specific entity IDs"
+          >
             Search Entity ID
           </Label>
           <div className="relative">
@@ -213,6 +257,7 @@ export function AuditLogFilters({
               value={filters.searchQuery}
               onChange={handleSearchChange}
               className="pl-9 text-sm"
+              title="Search for audit logs by entity ID"
             />
           </div>
         </div>

@@ -143,6 +143,7 @@ const AuditLogRow = memo(({ audit }: { audit: AuditEntry }) => {
             <div className="flex items-center gap-2 mb-1">
               <span
                 className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${operationColor}`}
+                title={getOperationTooltip(audit.operation)}
               >
                 {audit.operation}
               </span>
@@ -263,5 +264,31 @@ function getOperationColor(operation: AuditEntry['operation']): string {
       return 'bg-pink-100 text-pink-800';
     default:
       return 'bg-gray-100 text-gray-800';
+  }
+}
+
+/**
+ * Helper function to get tooltip text for operation types
+ */
+function getOperationTooltip(operation: AuditEntry['operation']): string {
+  switch (operation) {
+    case 'CREATE':
+      return 'New entity was created';
+    case 'UPDATE':
+      return 'Entity was modified with state changes';
+    case 'DELETE':
+      return 'Entity was permanently deleted';
+    case 'ARCHIVE':
+      return 'Entity was archived but can be restored';
+    case 'RESTORE':
+      return 'Archived entity was restored to active state';
+    case 'FORK':
+      return 'New branch was created from this entity';
+    case 'MERGE':
+      return 'Changes from another branch were merged';
+    case 'CHERRY_PICK':
+      return 'Specific changes were applied from another branch';
+    default:
+      return 'Entity operation';
   }
 }
