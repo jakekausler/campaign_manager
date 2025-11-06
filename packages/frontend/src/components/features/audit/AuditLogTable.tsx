@@ -1,14 +1,16 @@
 /**
  * Audit Log Table Component
- * Displays a table of audit log entries with basic information
+ * Displays a table of audit log entries with expandable detail views
  */
 
-import { Clock, User, FileText } from 'lucide-react';
-import { memo } from 'react';
+import { Clock, User, FileText, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { memo, useState, useCallback } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AuditEntry } from '@/services/api/hooks/audit';
+
+import { AuditDiffViewer } from './AuditDiffViewer';
 
 interface AuditLogTableProps {
   audits: AuditEntry[];
@@ -100,8 +102,11 @@ export function AuditLogTable({ audits, loading, error }: AuditLogTableProps) {
 /**
  * Individual row component for an audit log entry
  * Memoized to prevent unnecessary re-renders
+ * Supports expanding to show diff viewer
  */
 const AuditLogRow = memo(({ audit }: { audit: AuditEntry }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const timestamp = new Date(audit.timestamp).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -114,46 +119,126 @@ const AuditLogRow = memo(({ audit }: { audit: AuditEntry }) => {
   // Determine operation color
   const operationColor = getOperationColor(audit.operation);
 
-  return (
-    <div className="p-4 border rounded-md hover:bg-slate-50 transition-colors">
-      <div className="flex items-start justify-between gap-4">
-        {/* Left side: Operation and Entity Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${operationColor}`}
-            >
-              {audit.operation}
-            </span>
-            <span className="text-sm font-semibold text-slate-900">{audit.entityType}</span>
-          </div>
-          <p className="text-xs text-slate-600 truncate" title={audit.entityId}>
-            Entity ID: {audit.entityId}
-          </p>
-          {audit.reason && (
-            <p className="text-xs text-slate-700 mt-1 italic">Reason: {audit.reason}</p>
-          )}
-        </div>
+  // Check if audit has diff data to show
+  const hasDiffData =
+    (audit.previousState !== null && audit.previousState !== undefined) ||
+    (audit.newState !== null && audit.newState !== undefined) ||
+    (audit.diff !== null && audit.diff !== undefined);
 
-        {/* Right side: Metadata */}
-        <div className="flex flex-col items-end gap-1 text-right shrink-0">
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <Clock className="h-3 w-3" />
-            <span>{timestamp}</span>
+  // Toggle expansion
+  const toggleExpand = useCallback(() => {
+    setIsExpanded((prev) => !prev);
+  }, []);
+
+  // Get entity navigation link (we'll create a helper function for this)
+  const entityLink = getEntityLink(audit.entityType, audit.entityId);
+
+  return (
+    <div className="border rounded-md">
+      {/* Main row - always visible */}
+      <div className="p-4 hover:bg-slate-50 transition-colors">
+        <div className="flex items-start justify-between gap-4">
+          {/* Left side: Operation and Entity Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${operationColor}`}
+              >
+                {audit.operation}
+              </span>
+              <span className="text-sm font-semibold text-slate-900">{audit.entityType}</span>
+              {/* Expand/Collapse button - only show if diff data is available */}
+              {hasDiffData && (
+                <button
+                  onClick={toggleExpand}
+                  className="ml-2 p-1 hover:bg-slate-200 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-expanded={isExpanded}
+                  aria-label={isExpanded ? 'Hide details' : 'Show details'}
+                  data-testid="audit-row-expand-button"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-slate-600" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-slate-600" />
+                  )}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-slate-600 truncate" title={audit.entityId}>
+                Entity ID: {audit.entityId}
+              </p>
+              {/* Entity navigation link */}
+              {entityLink && (
+                <a
+                  href={entityLink}
+                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  title="View entity details"
+                  data-testid="audit-entity-link"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  <span>View</span>
+                </a>
+              )}
+            </div>
+            {audit.reason && (
+              <p className="text-xs text-slate-700 mt-1 italic">Reason: {audit.reason}</p>
+            )}
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <User className="h-3 w-3" />
-            <span className="truncate max-w-[120px]" title={audit.userId}>
-              {audit.userId}
-            </span>
+
+          {/* Right side: Metadata */}
+          <div className="flex flex-col items-end gap-1 text-right shrink-0">
+            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+              <Clock className="h-3 w-3" />
+              <span>{timestamp}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+              <User className="h-3 w-3" />
+              <span className="truncate max-w-[120px]" title={audit.userId}>
+                {audit.userId}
+              </span>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Expanded section - diff viewer */}
+      {isExpanded && hasDiffData && (
+        <div className="px-4 pb-4 border-t bg-slate-50/50" data-testid="audit-row-expanded-content">
+          <div className="pt-3">
+            <AuditDiffViewer
+              previousState={audit.previousState}
+              newState={audit.newState}
+              diff={audit.diff}
+              operation={audit.operation}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 });
 
 AuditLogRow.displayName = 'AuditLogRow';
+
+/**
+ * Helper function to generate entity detail page links
+ * Returns null if entity type doesn't have a detail page route
+ */
+function getEntityLink(entityType: string, entityId: string): string | null {
+  // Map entity types to their detail page routes
+  // These routes should match the actual routes defined in the app
+  const routeMap: Record<string, string> = {
+    Settlement: `/settlements/${entityId}`,
+    Structure: `/structures/${entityId}`,
+    Character: `/characters/${entityId}`,
+    Event: `/events/${entityId}`,
+    Encounter: `/encounters/${entityId}`,
+    // Add more entity types as routes become available
+  };
+
+  return routeMap[entityType] || null;
+}
 
 /**
  * Helper function to determine operation badge color
