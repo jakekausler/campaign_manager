@@ -402,7 +402,7 @@ The `pnpm run build` command handles this automatically.
 | Code Reviewer     | **MANDATORY** before commits        | Every commit with code changes          |
 | Project Manager   | **MANDATORY** before ticket closure | Every ticket completion                 |
 | Prisma Debugger   | Prisma/database issues              | Schema, migration, query errors         |
-| Ticket Navigator  | Find next incomplete work           | `/next_ticket` command                  |
+| Task Navigator    | Find next incomplete work           | `/next_task` command                    |
 
 **Invocation Pattern (All Subagents):**
 

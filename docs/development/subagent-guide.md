@@ -294,16 +294,16 @@ Use Task tool with prisma-debugger subagent:
 
 ---
 
-## Ticket Navigator
+## Task Navigator
 
 **Full Description:**
 
-Quickly determine the next incomplete ticket and stage from the project plan. Used by `/next_ticket` slash command.
+Quickly determine the next incomplete task from the project plan. Used by `/next_task` slash command.
 
 **When to Use (Detailed):**
 
-- Starting work with `/next_ticket` slash command
-- Checking which ticket/stage to work on next
+- Starting work with `/next_task` slash command
+- Checking which task to work on next
 - Verifying completion status of tickets
 - Need to know current progress in project plan
 
