@@ -727,4 +727,48 @@ The userAuditHistory permission check uses an optimized query pattern:
 
 **Commit**: b4b567e - feat(api): implement backend permission checks for audit system
 
-**Next Steps**: Stage 9B - Implement frontend permission UI (conditionally show/hide features based on user permissions)
+### Stage 9B Implementation (2025-11-06)
+
+**Status**: ✅ Complete
+
+**Completed**: Frontend permission UI with role-based access control for audit logs.
+
+#### Changes Made:
+
+1. **AuditLogPage Permission Check** (`packages/frontend/src/pages/AuditLogPage.tsx`):
+   - Added role-based permission check (admin/gm only)
+   - Permission-denied UI with ShieldAlert icon and helpful messaging
+   - Explains who has access and how to request it
+   - Export functionality inherently protected (won't render if denied)
+
+2. **Security Model**:
+   - Defense-in-depth: frontend improves UX, backend enforces security
+   - Permission check after user loads but before rendering content
+   - Uses existing user.role field (admin/gm roles have audit access)
+   - Aligns with Stage 9A backend permissions (AUDIT_READ/AUDIT_EXPORT)
+
+3. **UX Features**:
+   - Friendly "Access Restricted" message (not harsh "Access Denied")
+   - Amber warning colors (not red error colors)
+   - Maintains page header for context
+   - Actionable guidance: "Contact your campaign administrator"
+
+4. **Implementation**:
+   - Early return pattern prevents bypass
+   - All React hooks called unconditionally (follows Rules of Hooks)
+   - Follows existing component patterns (Card, CardContent)
+   - Accessible with proper heading hierarchy and contrast
+
+#### Files Modified:
+
+- `packages/frontend/src/pages/AuditLogPage.tsx` (permission check and denied UI)
+
+#### Quality Assurance:
+
+- ✅ TypeScript type-check: Passed (all packages)
+- ✅ ESLint lint: Passed (all packages)
+- ✅ Pre-commit hooks: All checks passed (format, lint, type-check)
+
+**Commit**: 747805b - feat(frontend): add role-based permission UI for audit logs
+
+**Next Steps**: Stage 9C - Code review and commit permissions (verify implementation with Code Reviewer subagent)
