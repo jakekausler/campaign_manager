@@ -3,10 +3,11 @@
  * GraphQL resolvers for Audit queries
  */
 
-import { UseGuards } from '@nestjs/common';
+import { UnauthorizedException, UseGuards } from '@nestjs/common';
 import { Args, ID, Int, Query, Resolver } from '@nestjs/graphql';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { Permission, PermissionsService } from '../../auth/services/permissions.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
@@ -14,7 +15,10 @@ import { Audit } from '../types/audit.type';
 
 @Resolver(() => Audit)
 export class AuditResolver {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly permissionsService: PermissionsService
+  ) {}
 
   @Query(() => [Audit], {
     description: 'Get audit history for an entity with advanced filtering',
@@ -99,7 +103,20 @@ export class AuditResolver {
       });
 
       if (!hasAccess) {
-        throw new Error('Access denied');
+        throw new UnauthorizedException('Access denied: not a member of this campaign');
+      }
+
+      // Check if user has audit:read permission in this campaign
+      const hasPermission = await this.permissionsService.hasPermission(
+        campaignId,
+        user.id,
+        Permission.AUDIT_READ
+      );
+
+      if (!hasPermission) {
+        throw new UnauthorizedException(
+          'Access denied: insufficient permissions to view audit logs'
+        );
       }
     }
 
@@ -183,7 +200,35 @@ export class AuditResolver {
     // Users can only view their own audit history unless they have admin role
     // TODO: Add role-based authorization for viewing other users' history
     if (userId !== user.id) {
-      throw new Error('Access denied');
+      throw new UnauthorizedException('Access denied: you can only view your own audit history');
+    }
+
+    // Check if user has audit:read permission in at least one campaign
+    // Only OWNER and GM roles have audit:read permission, so check if user has either role
+    // This optimizes performance by avoiding N+1 queries
+    const hasAuditPermission = await this.prisma.campaign.findFirst({
+      where: {
+        OR: [
+          // User is campaign owner (owners always have audit:read)
+          { ownerId: user.id },
+          // User is a GM in the campaign (GMs have audit:read)
+          {
+            memberships: {
+              some: {
+                userId: user.id,
+                role: 'GM',
+              },
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!hasAuditPermission) {
+      throw new UnauthorizedException(
+        'Access denied: you must be a campaign owner or GM to view audit logs'
+      );
     }
 
     // Validate skip parameter to prevent abuse (max 100,000 records)

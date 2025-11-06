@@ -35,6 +35,10 @@ export enum Permission {
   BRANCH_CREATE = 'branch:create',
   BRANCH_WRITE = 'branch:write',
   BRANCH_DELETE = 'branch:delete',
+
+  // Audit permissions
+  AUDIT_READ = 'audit:read',
+  AUDIT_EXPORT = 'audit:export',
 }
 
 // Define permissions for each role
@@ -61,6 +65,8 @@ const ROLE_PERMISSIONS: Record<CampaignRole, Permission[]> = {
     Permission.BRANCH_CREATE,
     Permission.BRANCH_WRITE,
     Permission.BRANCH_DELETE,
+    Permission.AUDIT_READ,
+    Permission.AUDIT_EXPORT,
   ],
   [CampaignRole.GM]: [
     // Read/write access, but no delete or member management
@@ -77,6 +83,8 @@ const ROLE_PERMISSIONS: Record<CampaignRole, Permission[]> = {
     Permission.BRANCH_READ,
     Permission.BRANCH_CREATE,
     Permission.BRANCH_WRITE,
+    Permission.AUDIT_READ,
+    Permission.AUDIT_EXPORT,
   ],
   [CampaignRole.PLAYER]: [
     // Read access + own character edit
