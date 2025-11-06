@@ -4,7 +4,7 @@
  */
 
 import { useApolloClient } from '@apollo/client/react';
-import { ScrollText, ArrowUpDown, ArrowDown, ArrowUp, Loader2 } from 'lucide-react';
+import { ScrollText, ArrowUpDown, ArrowDown, ArrowUp, Loader2, ShieldAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
@@ -12,6 +12,7 @@ import { AuditLogFilters } from '@/components/features/audit/AuditLogFilters';
 import { AuditLogTable } from '@/components/features/audit/AuditLogTable';
 import { ExportButton } from '@/components/features/audit/ExportButton';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { useUserAuditHistory } from '@/services/api/hooks/audit';
 import { useCurrentUser } from '@/stores';
 import type { AuditLogFilters as Filters, AuditSortBy, SortOrder } from '@/utils/audit-filters';
@@ -76,6 +77,50 @@ export default function AuditLogPage() {
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-slate-400" />
           <p className="text-slate-600">Loading user information...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Permission check: Only campaign owners (admin) and GMs can view audit logs
+  // Backend enforces AUDIT_READ permission for these roles
+  const hasAuditAccess = user.role === 'admin' || user.role === 'gm';
+
+  // Show permission denied message if user doesn't have audit access
+  if (!hasAuditAccess) {
+    return (
+      <div className="h-screen flex flex-col bg-slate-50">
+        <header className="bg-white border-b px-6 py-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-slate-100 rounded-lg">
+              <ScrollText className="h-5 w-5 text-slate-700" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
+              <p className="text-sm text-muted-foreground">
+                Track all changes made to your campaign entities
+              </p>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center p-6">
+          <Card className="max-w-md w-full">
+            <CardContent className="p-8 text-center space-y-4">
+              <div className="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
+                <ShieldAlert className="h-8 w-8 text-amber-600" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-slate-900">Access Restricted</h2>
+                <p className="text-sm text-slate-600">
+                  You don&apos;t have permission to view audit logs. This feature is only available
+                  to campaign owners and game masters.
+                </p>
+              </div>
+              <div className="pt-2 text-xs text-slate-500">
+                <p>Contact your campaign administrator to request access.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
