@@ -111,10 +111,26 @@ export function useEntityAuditHistory(entityType: string, entityId: string, limi
   };
 }
 
-// GraphQL query for user audit history
+// GraphQL query for user audit history (with advanced filtering)
 const GET_USER_AUDIT_HISTORY = gql`
-  query GetUserAuditHistory($limit: Int) {
-    userAuditHistory(limit: $limit) {
+  query GetUserAuditHistory(
+    $userId: ID!
+    $limit: Int
+    $operations: [String!]
+    $startDate: DateTime
+    $endDate: DateTime
+    $sortBy: String
+    $sortOrder: String
+  ) {
+    userAuditHistory(
+      userId: $userId
+      limit: $limit
+      operations: $operations
+      startDate: $startDate
+      endDate: $endDate
+      sortBy: $sortBy
+      sortOrder: $sortOrder
+    ) {
       id
       entityType
       entityId
@@ -136,44 +152,124 @@ interface UserAuditHistoryData {
 }
 
 interface UserAuditHistoryVariables {
+  userId: string;
   limit?: number;
+  operations?: string[];
+  startDate?: Date;
+  endDate?: Date;
+  sortBy?: string;
+  sortOrder?: string;
 }
 
 /**
- * Hook to fetch audit history for the currently authenticated user
+ * Options for filtering and sorting user audit history
+ */
+export interface UseUserAuditHistoryOptions {
+  /**
+   * User ID to fetch audit history for (required for authorization)
+   */
+  userId: string;
+
+  /**
+   * Maximum number of audit entries to fetch (default: 50, max: 100)
+   */
+  limit?: number;
+
+  /**
+   * Filter by operation types (e.g., ['CREATE', 'UPDATE', 'DELETE'])
+   * Omit or pass empty array to show all operations
+   */
+  operations?: AuditEntry['operation'][];
+
+  /**
+   * Filter by start date (ISO 8601 date string, YYYY-MM-DD)
+   * Only entries on or after this date will be included
+   */
+  startDate?: string;
+
+  /**
+   * Filter by end date (ISO 8601 date string, YYYY-MM-DD)
+   * Only entries on or before this date will be included
+   */
+  endDate?: string;
+
+  /**
+   * Field to sort by (default: 'timestamp')
+   */
+  sortBy?: 'timestamp' | 'operation' | 'entityType';
+
+  /**
+   * Sort order (default: 'desc')
+   */
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * Hook to fetch audit history for the currently authenticated user with advanced filtering
  *
- * @param limit - Maximum number of audit entries to fetch (default: 50, max: 100)
- * @returns Object with audit entries, loading state, error, and refetch function
+ * @param options - Filtering and sorting options (including required userId)
+ * @returns Object with audit entries, loading state, error, refetch, and fetchMore functions
  *
  * @example
  * ```tsx
- * const { audits, loading, error, refetch } = useUserAuditHistory(100);
+ * // Basic usage
+ * const user = useCurrentUser();
+ * const { audits, loading, error } = useUserAuditHistory({ userId: user?.id || '' });
  *
- * if (loading) return <div>Loading audit history...</div>;
- * if (error) return <div>Error: {error.message}</div>;
+ * // With filters
+ * const { audits, loading, error, fetchMore } = useUserAuditHistory({
+ *   userId: user?.id || '',
+ *   operations: ['CREATE', 'UPDATE'],
+ *   startDate: '2025-01-01',
+ *   sortBy: 'timestamp',
+ *   sortOrder: 'desc',
+ *   limit: 50
+ * });
  *
- * return (
- *   <div>
- *     <h2>My Recent Actions</h2>
- *     <ul>
- *       {audits.map(audit => (
- *         <li key={audit.id}>
- *           {audit.operation} on {audit.entityType} at {new Date(audit.timestamp).toLocaleString()}
- *         </li>
- *       ))}
- *     </ul>
- *   </div>
- * );
+ * // Load more results
+ * const handleLoadMore = () => {
+ *   fetchMore({
+ *     variables: {
+ *       limit: 50 // Load next 50 entries
+ *     }
+ *   });
+ * };
  * ```
  */
-export function useUserAuditHistory(limit: number = 50) {
-  const { data, loading, error, refetch } = useQuery<
+export function useUserAuditHistory(options: UseUserAuditHistoryOptions) {
+  const {
+    userId,
+    limit = 50,
+    operations,
+    startDate,
+    endDate,
+    sortBy = 'timestamp',
+    sortOrder = 'desc',
+  } = options;
+
+  // Convert date strings to Date objects if provided
+  // Note: Using UTC (Z suffix) for consistency in audit logs across all timezones
+  // User selects local date, we convert to UTC midnight/end-of-day
+  // CRITICAL: End date must use .999Z (end of day) not .000Z (start of day)
+  const startDateObj = startDate ? new Date(startDate + 'T00:00:00.000Z') : undefined;
+  const endDateObj = endDate ? new Date(endDate + 'T23:59:59.999Z') : undefined;
+
+  const { data, loading, error, refetch, fetchMore } = useQuery<
     UserAuditHistoryData,
     UserAuditHistoryVariables
   >(GET_USER_AUDIT_HISTORY, {
-    variables: { limit },
+    variables: {
+      userId,
+      limit,
+      operations: operations && operations.length > 0 ? operations : undefined,
+      startDate: startDateObj,
+      endDate: endDateObj,
+      sortBy,
+      sortOrder,
+    },
     fetchPolicy: 'cache-and-network', // Always fetch fresh data for audit logs
     notifyOnNetworkStatusChange: true, // Show loading state during refetches
+    skip: !userId, // Don't run query if userId is missing
   });
 
   return {
@@ -181,5 +277,6 @@ export function useUserAuditHistory(limit: number = 50) {
     loading,
     error,
     refetch,
+    fetchMore,
   };
 }

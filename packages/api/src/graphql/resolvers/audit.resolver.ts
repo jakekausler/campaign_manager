@@ -37,15 +37,19 @@ export class AuditResolver {
     @Args('sortOrder', { nullable: true, defaultValue: 'desc' })
     sortOrder: 'asc' | 'desc' = 'desc'
   ): Promise<Audit[]> {
-    // NOTE: Entity type whitelist removed - now supports all entity types
-    // Authorization is enforced through campaign access checks
+    // Validate entityType against whitelist for security
+    // Only entity types with proper campaign-based authorization are supported
+    const ALLOWED_ENTITY_TYPES = ['Settlement', 'Structure', 'Character', 'Event', 'Encounter'];
+
+    if (!ALLOWED_ENTITY_TYPES.includes(entityType)) {
+      throw new Error(`Unsupported entity type: ${entityType}`);
+    }
 
     // Verify user has permission to view this entity's audit history
     // by checking campaign membership
     let campaignId: string | null = null;
 
-    // Try to find campaignId based on entity type
-    // This is a best-effort approach to determine campaign access
+    // Find campaignId based on entity type
     if (entityType === 'Settlement') {
       const settlement = await this.prisma.settlement.findUnique({
         where: { id: entityId },
@@ -77,8 +81,6 @@ export class AuditResolver {
       });
       campaignId = encounter?.campaignId ?? null;
     }
-    // For other entity types, we skip campaign validation
-    // This allows audit queries for entities without direct campaign relationship
 
     // If we found a campaignId, verify user has access
     if (campaignId) {
