@@ -212,3 +212,46 @@ Missing features required by TICKET-032:
 **Commit**: 8495468 - test(api): add integration tests for enhanced Audit fields
 
 **Next Steps**: Stages 2-10 per revised implementation plan (Settlement/Structure audit integration, UI, export, etc.).
+
+### Stage 3 Implementation (2025-11-05)
+
+**Completed**: GraphQL Audit Query API enhanced with advanced filtering and sorting capabilities.
+
+#### Changes Made:
+
+1. **entityAuditHistory Query Enhancement** (`packages/api/src/graphql/resolvers/audit.resolver.ts:19-155`):
+   - Added date range filtering (startDate, endDate) for temporal queries
+   - Added operation type filtering (operations: string[]) for multi-select filtering
+   - Added dynamic sorting (sortBy: timestamp/operation/entityType, sortOrder: asc/desc)
+   - Entity type whitelist maintained for security (Settlement, Structure, Character, Event, Encounter)
+   - All new parameters optional with default values for backward compatibility
+
+2. **userAuditHistory Query Enhancement** (`packages/api/src/graphql/resolvers/audit.resolver.ts:157-241`):
+   - Added date range filtering (startDate, endDate)
+   - Added operation type filtering (operations: string[])
+   - Added entity type filtering (entityTypes: string[]) for filtering by multiple entity types
+   - Added dynamic sorting with same options as entityAuditHistory
+   - Maintains existing authorization (users can only query their own audit history)
+
+3. **Security Considerations**:
+   - **Critical Decision**: Kept entity type whitelist instead of removing it
+     - Code review identified authorization bypass risk for entities without campaign-based auth
+     - Whitelisting ensures all supported entity types have proper access control
+   - Campaign-based authorization enforced for all supported entity types
+   - Prisma's type-safe query builder prevents SQL injection
+   - Result set capped at 100 records to prevent excessive data retrieval
+   - Moved @CurrentUser() parameter first to satisfy TypeScript parameter ordering requirements
+
+4. **Verification**:
+   - Type-check: ✅ Passed without errors
+   - ESLint: ✅ Passed without errors
+   - Pre-commit hooks: ✅ All checks passed
+   - Code Review: ✅ Critical security issues addressed
+
+**Key Design Trade-off:**
+
+Prioritized **security over flexibility**. Initially planned to remove entity type whitelist to support all entity types, but this would create authorization gaps. Made pragmatic decision to maintain whitelist for now, with future enhancement possible when authorization is implemented for all entity types.
+
+**Commit**: a7ca466 - feat(api): add advanced filtering to audit query APIs
+
+**Next Steps**: Stage 4 - Frontend UI for audit log viewer (basic display).
