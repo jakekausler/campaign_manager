@@ -661,3 +661,70 @@ This verification highlights the importance of validating automated code review 
 **Commit**: da5f035 - feat(frontend): add progress indicators and confirmation dialogs for large audit exports
 
 **Next Steps**: Stage 8C - Add export cancellation functionality
+
+### Stage 9A Implementation (2025-11-06)
+
+**Status**: ✅ Complete
+
+**Completed**: Backend permission checks for audit system with optimized queries and defense-in-depth security.
+
+#### Changes Made:
+
+1. **Permission Constants** (`packages/api/src/auth/services/permissions.service.ts`):
+   - Added `AUDIT_READ` and `AUDIT_EXPORT` permissions to Permission enum (lines 40-41)
+   - Granted both permissions to OWNER role (lines 68-69)
+   - Granted both permissions to GM role (lines 86-87)
+   - Properly excluded PLAYER and VIEWER roles (least-privilege principle)
+
+2. **entityAuditHistory Authorization** (`packages/api/src/graphql/resolvers/audit.resolver.ts:90-120`):
+   - Campaign membership verification using database query with OR condition
+   - AUDIT_READ permission check via PermissionsService after membership verified
+   - Defense-in-depth security: both campaign membership AND permission checks required
+   - Returns UnauthorizedException with descriptive error messages on authorization failure
+
+3. **userAuditHistory Authorization** (`packages/api/src/graphql/resolvers/audit.resolver.ts:202-238`):
+   - Self-access restriction enforced (users can only view own audit history)
+   - **Highly optimized permission check** using single database query with `findFirst`
+   - Checks if user has OWNER role OR GM membership in ANY campaign
+   - Prevents N+1 query pattern by avoiding per-campaign permission iteration
+   - Skip parameter validation for abuse prevention (0-100,000 limit)
+
+#### Key Technical Achievements:
+
+**Performance Optimization** (lines 209-226):
+The userAuditHistory permission check uses an optimized query pattern:
+
+- Single database query with `findFirst` (early exit at first match)
+- Direct role check using OR condition (`ownerId` or `GM` membership)
+- Minimal data transfer (`select: { id: true }` only)
+- Critical for users with many campaign memberships
+- Avoids N+1 query antipattern
+
+**Security Model**:
+
+- Defense in depth: layered authorization checks
+- Fail-secure design: deny by default
+- Proper error handling with appropriate HTTP status codes (UnauthorizedException)
+- Campaign-based access control maintained
+- Type-safe Permission enum usage (no magic strings)
+
+#### Code Quality:
+
+- ✅ TypeScript type-check: Passed (all packages)
+- ✅ ESLint lint: Passed (all packages)
+- ✅ Code Reviewer subagent: **APPROVED** with zero critical issues
+  - Strong security implementation with defense-in-depth
+  - Excellent performance optimization (avoids N+1 queries)
+  - High code quality and consistency with project conventions
+  - Proper separation of concerns (PermissionsService handles permission logic)
+- ✅ Pre-commit hooks: All checks passed
+
+#### Files Modified:
+
+- `packages/api/src/auth/services/permissions.service.ts` (permission constants and role grants)
+- `packages/api/src/graphql/resolvers/audit.resolver.ts` (authorization guards)
+- `plan/TICKET-032-stage-9-permissions.md` (stage documentation)
+
+**Commit**: b4b567e - feat(api): implement backend permission checks for audit system
+
+**Next Steps**: Stage 9B - Implement frontend permission UI (conditionally show/hide features based on user permissions)
