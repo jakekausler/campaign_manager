@@ -30,9 +30,9 @@ These final stages implement advanced export features, permission-based access c
 - [x] Add skip parameter validation in backend (0-100,000 limit)
 - [x] Improve error handling with specific error messages
 - [x] Improve UX - changed '?' to 'All' for better clarity
-- [ ] Re-run type-check after fixes
-- [ ] Re-run lint after fixes
-- [ ] Final verification and commit
+- [x] Re-run type-check after fixes
+- [x] Re-run lint after fixes
+- [x] Final verification and commit
 
 **Success Criteria**:
 
