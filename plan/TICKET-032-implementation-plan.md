@@ -105,20 +105,21 @@ Advanced export functionality with progress indicators and cancellation:
 
 ### [Stage 9: Permission-Based Access Control](./TICKET-032-stage-9-permissions.md)
 
-**Status**: 🔄 In Progress (1 of 3 sub-stages complete)
+**Status**: ✅ Complete (All 3 sub-stages complete)
 
 Authorization for audit log access with role-based filtering:
 
 - ✅ **Stage 9A**: Implement Backend Permission Checks (commit: b4b567e)
-- ⏳ **Stage 9B**: Implement Frontend Permission UI
-- ⏳ **Stage 9C**: Code Review and Commit Permissions
+- ✅ **Stage 9B**: Implement Frontend Permission UI (commit: 747805b)
+- ✅ **Stage 9C**: Code Review and Commit Permissions (commit: 5aa649c)
 
-**Key Features** (Planned):
+**Key Features**:
 
-- Permission checks at GraphQL resolver level (`audit:read`, `audit:export`)
-- Role-based filtering (users see own audits, admins see all)
+- Permission checks at GraphQL resolver level (`AUDIT_READ`, `AUDIT_EXPORT`)
+- Role-based filtering (users see own audits, admins/GMs see all)
 - Route guards and UI restrictions based on permissions
-- User-friendly error messages and tooltips
+- Performance-optimized permission checks (avoids N+1 queries)
+- Defense-in-depth security (frontend UX + backend enforcement)
 
 ---
 

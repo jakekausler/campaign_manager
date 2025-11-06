@@ -771,4 +771,45 @@ The userAuditHistory permission check uses an optimized query pattern:
 
 **Commit**: 747805b - feat(frontend): add role-based permission UI for audit logs
 
-**Next Steps**: Stage 9C - Code review and commit permissions (verify implementation with Code Reviewer subagent)
+### Stage 9C Completion (2025-11-06)
+
+**Status**: ✅ Complete
+
+**Completed**: Final review and documentation of permission implementation.
+
+#### Summary:
+
+Stage 9 (Permission-Based Access Control) is now complete with both backend and frontend implementations:
+
+**Backend Permissions** (Stage 9A, commit: b4b567e):
+
+- Added `AUDIT_READ` and `AUDIT_EXPORT` permissions to Permission enum
+- Granted permissions to OWNER and GM roles
+- Implemented permission checks in both GraphQL resolvers:
+  - `entityAuditHistory`: Campaign membership + AUDIT_READ permission required
+  - `userAuditHistory`: Self-access + role-based permission (OWNER/GM only)
+- Optimized permission checks to avoid N+1 query pattern
+- Defense-in-depth security with layered authorization
+
+**Frontend Permissions** (Stage 9B, commit: 747805b):
+
+- Role-based access control (admin/gm only)
+- Permission-denied UI with helpful messaging
+- Early return pattern prevents unauthorized access
+- Export functionality inherently protected
+
+**Key Achievements**:
+
+- ✅ Defense-in-depth security (frontend UX + backend enforcement)
+- ✅ Performance-optimized permission checks (single query vs N+1)
+- ✅ User-friendly error messages
+- ✅ Type-safe permission constants (no magic strings)
+- ✅ Backward-compatible with existing authorization system
+
+**Documentation** (Stage 9C, commit: 5aa649c):
+
+- Reorganized stage documentation for better navigation
+- Split combined file into separate stage-specific files
+- Updated implementation plan with completion status
+
+**Next Steps**: Stage 10 - Documentation and UI Polish

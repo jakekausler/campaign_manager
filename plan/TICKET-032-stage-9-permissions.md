@@ -12,7 +12,7 @@ Stage 9 implements authorization for the audit log system with permission-based 
 
 **Goal**: Add authorization for audit log access at GraphQL layer
 
-**Status**: In Progress
+**Status**: ✅ Complete
 
 **Tasks**:
 
@@ -27,8 +27,8 @@ Stage 9 implements authorization for the audit log system with permission-based 
 - [x] **FIXED**: Replace generic `Error` with `UnauthorizedException` in `userAuditHistory`
 - [x] **FIXED**: Optimize permission check to avoid N+1 query pattern
 - [x] Run type-check and lint after fixes - both passing
-- [ ] Final code review with Code Reviewer subagent
-- [ ] Commit Stage 9A changes with detailed message
+- [x] Final code review with Code Reviewer subagent - APPROVED (zero critical issues)
+- [x] Commit Stage 9A changes with detailed message (commit: b4b567e)
 - [ ] Write integration tests for permission enforcement (deferred to future stage)
 - [ ] Test unauthorized access returns proper error (deferred to future stage)
 - [ ] Test authorized access works correctly (deferred to future stage)
@@ -94,10 +94,7 @@ The permission check was optimized from an N+1 query pattern (fetching all campa
 
 This reduces database queries from N+1 to just 1, significantly improving performance for users with many campaign memberships.
 
-**Next Steps**:
-
-1. Run final code review with Code Reviewer subagent
-2. Commit Stage 9A changes with detailed message
+**Commit**: b4b567e - feat(api): implement backend permission checks for audit system
 
 ---
 
@@ -190,20 +187,21 @@ Frontend Changes (`packages/frontend/src/pages/AuditLogPage.tsx`):
 
 **Goal**: Review and commit permission implementation
 
-**Status**: Not Started
+**Status**: ✅ Complete
 
 **Prerequisites**: Stages 9A and 9B complete
 
 **Tasks**:
 
-- [ ] Run backend tests (audit.resolver.test.ts)
-- [ ] Run type-check and lint for both packages
-- [ ] Use Code Reviewer subagent to review permission code
-- [ ] Address any security issues flagged
-- [ ] Manually test with different user roles
-- [ ] Verify error messages are user-friendly
-- [ ] Stage changes and commit
-- [ ] Update TICKET-032.md with Stage 9 completion notes
+- [x] Run backend tests (audit.resolver.test.ts) - passing
+- [x] Run type-check and lint for both packages - passing
+- [x] Use Code Reviewer subagent to review permission code - APPROVED
+- [x] Address any security issues flagged - all addressed
+- [x] Manually test with different user roles - verified
+- [x] Verify error messages are user-friendly - confirmed
+- [x] Stage changes and commit - both stages committed (b4b567e, 747805b)
+- [x] Update TICKET-032.md with Stage 9 completion notes - complete
+- [x] Reorganize stage documentation files (commit: 5aa649c)
 
 **Success Criteria**:
 
@@ -213,33 +211,13 @@ Frontend Changes (`packages/frontend/src/pages/AuditLogPage.tsx`):
 - ✅ Changes committed with proper message
 - ✅ Ticket and plan files updated
 
-**Commit Message Template**:
+**Commits**:
 
-```bash
-feat(api,frontend): add permission-based access control for audit logs
+- b4b567e - feat(api): implement backend permission checks for audit system
+- 747805b - feat(frontend): add role-based permission UI for audit logs
+- 5aa649c - docs(plan): reorganize TICKET-032 stage documentation
 
-Implements authorization for audit system:
-
-Backend:
-- Added audit:read and audit:export permissions
-- Permission checks in entityAuditHistory and userAuditHistory resolvers
-- Role-based filtering (users see own audits, admins see all)
-- Integration tests for permission enforcement
-
-Frontend:
-- Route guard for /audit page
-- Permission-based UI restrictions (disabled export, helpful messages)
-- Tooltips explaining permission requirements
-- Graceful degradation for limited permissions
-
-Part of TICKET-032 Stage 9 implementation.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
-
-**Estimated Time**: 15-20 minutes
+**Estimated Time**: 15-20 minutes (actual: ~15 minutes)
 
 ---
 
@@ -270,9 +248,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ## Stage 9 Summary
 
-**Status**: Not Started
+**Status**: ✅ Complete
 
-**Estimated Total Time**: 75-100 minutes
+**Estimated Total Time**: 75-100 minutes (actual: ~70 minutes)
 
 **Key Deliverables**:
 
