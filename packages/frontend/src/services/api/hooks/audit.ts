@@ -32,11 +32,24 @@ export interface AuditEntry {
   id: string;
   entityType: string;
   entityId: string;
-  operation: 'CREATE' | 'UPDATE' | 'DELETE' | 'ARCHIVE' | 'RESTORE';
+  operation:
+    | 'CREATE'
+    | 'UPDATE'
+    | 'DELETE'
+    | 'ARCHIVE'
+    | 'RESTORE'
+    | 'FORK'
+    | 'MERGE'
+    | 'CHERRY_PICK';
   userId: string;
   changes: Record<string, unknown>;
   metadata: Record<string, unknown>;
   timestamp: string; // ISO 8601 date string
+  // Enhanced audit fields (added in Stage 1C)
+  previousState?: Record<string, unknown> | null;
+  newState?: Record<string, unknown> | null;
+  diff?: Record<string, unknown> | null;
+  reason?: string | null;
 }
 
 interface EntityAuditHistoryData {
@@ -92,6 +105,79 @@ export function useEntityAuditHistory(entityType: string, entityId: string, limi
 
   return {
     audits: data?.entityAuditHistory || [],
+    loading,
+    error,
+    refetch,
+  };
+}
+
+// GraphQL query for user audit history
+const GET_USER_AUDIT_HISTORY = gql`
+  query GetUserAuditHistory($limit: Int) {
+    userAuditHistory(limit: $limit) {
+      id
+      entityType
+      entityId
+      operation
+      userId
+      changes
+      metadata
+      timestamp
+      previousState
+      newState
+      diff
+      reason
+    }
+  }
+`;
+
+interface UserAuditHistoryData {
+  userAuditHistory: AuditEntry[];
+}
+
+interface UserAuditHistoryVariables {
+  limit?: number;
+}
+
+/**
+ * Hook to fetch audit history for the currently authenticated user
+ *
+ * @param limit - Maximum number of audit entries to fetch (default: 50, max: 100)
+ * @returns Object with audit entries, loading state, error, and refetch function
+ *
+ * @example
+ * ```tsx
+ * const { audits, loading, error, refetch } = useUserAuditHistory(100);
+ *
+ * if (loading) return <div>Loading audit history...</div>;
+ * if (error) return <div>Error: {error.message}</div>;
+ *
+ * return (
+ *   <div>
+ *     <h2>My Recent Actions</h2>
+ *     <ul>
+ *       {audits.map(audit => (
+ *         <li key={audit.id}>
+ *           {audit.operation} on {audit.entityType} at {new Date(audit.timestamp).toLocaleString()}
+ *         </li>
+ *       ))}
+ *     </ul>
+ *   </div>
+ * );
+ * ```
+ */
+export function useUserAuditHistory(limit: number = 50) {
+  const { data, loading, error, refetch } = useQuery<
+    UserAuditHistoryData,
+    UserAuditHistoryVariables
+  >(GET_USER_AUDIT_HISTORY, {
+    variables: { limit },
+    fetchPolicy: 'cache-and-network', // Always fetch fresh data for audit logs
+    notifyOnNetworkStatusChange: true, // Show loading state during refetches
+  });
+
+  return {
+    audits: data?.userAuditHistory || [],
     loading,
     error,
     refetch,

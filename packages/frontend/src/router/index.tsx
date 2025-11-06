@@ -13,6 +13,7 @@ const MapPage = lazy(() => import('@/pages/MapPage'));
 const FlowViewPage = lazy(() => import('@/pages/FlowViewPage'));
 const TimelinePage = lazy(() => import('@/pages/TimelinePage'));
 const BranchesPage = lazy(() => import('@/pages/BranchesPage'));
+const AuditLogPage = lazy(() => import('@/pages/AuditLogPage'));
 const EntityInspectorDemoPage = lazy(() => import('@/pages/EntityInspectorDemoPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
@@ -100,6 +101,16 @@ export const router = createBrowserRouter([
           <ProtectedRoute>
             <LazyPage>
               <BranchesPage />
+            </LazyPage>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'audit',
+        element: (
+          <ProtectedRoute>
+            <LazyPage>
+              <AuditLogPage />
             </LazyPage>
           </ProtectedRoute>
         ),
