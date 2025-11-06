@@ -78,6 +78,31 @@ function escapeCSVField(value: string): string {
 }
 
 /**
+ * Converts audit log entries to JSON format and triggers browser download.
+ *
+ * JSON includes all fields with full fidelity (no stringification needed).
+ * Output is pretty-printed with 2-space indentation for readability.
+ *
+ * @param entries - Array of audit log entries to export
+ * @param filename - Optional custom filename (default: timestamp-based)
+ */
+export function exportToJSON(entries: AuditEntry[], filename?: string): void {
+  if (entries.length === 0) {
+    console.warn('No audit entries to export');
+    return;
+  }
+
+  // Convert to JSON with pretty-printing (2-space indentation)
+  const jsonContent = JSON.stringify(entries, null, 2);
+
+  // Generate filename with timestamp if not provided
+  const finalFilename = filename || `audit-log-${new Date().toISOString().split('T')[0]}.json`;
+
+  // Trigger browser download
+  downloadFile(jsonContent, finalFilename, 'application/json;charset=utf-8;');
+}
+
+/**
  * Creates a Blob and triggers browser download using URL.createObjectURL.
  *
  * @param content - The file content
@@ -85,8 +110,8 @@ function escapeCSVField(value: string): string {
  * @param mimeType - The MIME type of the file
  */
 function downloadFile(content: string, filename: string, mimeType: string): void {
-  // Create Blob with UTF-8 BOM for Excel compatibility
-  const bom = '\uFEFF'; // UTF-8 BOM
+  // Create Blob with UTF-8 BOM for Excel compatibility (CSV only)
+  const bom = mimeType.startsWith('text/csv') ? '\uFEFF' : ''; // UTF-8 BOM
   const blob = new Blob([bom + content], { type: mimeType });
 
   // Create temporary download link
