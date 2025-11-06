@@ -9,6 +9,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { AuditLogFilters } from '@/components/features/audit/AuditLogFilters';
 import { AuditLogTable } from '@/components/features/audit/AuditLogTable';
+import { ExportButton } from '@/components/features/audit/ExportButton';
 import { Button } from '@/components/ui/button';
 import { useUserAuditHistory } from '@/services/api/hooks/audit';
 import { useCurrentUser } from '@/stores';
@@ -152,8 +153,12 @@ export default function AuditLogPage() {
             </div>
           </div>
 
-          {/* Sort Controls */}
+          {/* Sort Controls and Export Button */}
           <div className="flex items-center gap-2">
+            {/* Export Button */}
+            <ExportButton entries={filteredAudits} disabled={loading} className="mr-2" />
+
+            {/* Sort Controls */}
             <div className="text-xs text-gray-600 font-medium">Sort by:</div>
             <Button variant="outline" size="sm" onClick={handleToggleSortBy} className="capitalize">
               {filters.sortBy}
