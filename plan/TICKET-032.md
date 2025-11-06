@@ -573,4 +573,91 @@ This verification highlights the importance of validating automated code review 
 - ESLint lint: ✅ All packages passed
 - All tasks completed and marked in implementation plan
 
-**Next Steps**: Stage 8B - Add progress indicators and confirmation dialogs for large exports
+**Next Steps**: Stage 8C - Add export cancellation functionality
+
+### Stage 8C Implementation (2025-11-06)
+
+**Status**: ✅ Complete
+
+**Completed**: Export cancellation for long-running "Export All" operations using AbortController.
+
+#### Changes Made:
+
+1. **Enhanced Export Utility** (`packages/frontend/src/utils/audit-export.ts`):
+   - Added `signal?: AbortSignal` parameter to `fetchAllAuditData()` function
+   - Abort checks before starting fetch loop and before each batch
+   - Passes signal through Apollo Client context to abort GraphQL queries
+   - Proper error handling for AbortError
+
+2. **Enhanced ExportButton Component** (`packages/frontend/src/components/features/audit/ExportButton.tsx`):
+   - Added `abortControllerRef` using React `useRef` for mutable abort controller
+   - Implemented "Cancel Export" button that appears during fetching
+   - Progress indicator shows record count during fetch ("Fetched X records")
+   - Fixed function naming conflict: renamed confirmation dialog close handler to `handleCloseConfirmation`
+   - Toast notification for cancellation (info level, not error)
+   - Proper cleanup: AbortController ref set to null in all code paths
+
+#### Key Technical Details:
+
+- **AbortController Pattern**: Created new AbortController before each export, stored in ref
+- **Signal Propagation**: Passed through Apollo Client context to enable query cancellation
+- **Pre-flight and Per-batch Checks**: `signal?.aborted` checked before starting and before each batch for responsive cancellation
+- **Resource Cleanup**: AbortController properly cleaned up in success, error, and cancellation paths
+- **Error Distinction**: Distinguishes between user-initiated cancellation and actual errors
+
+#### Code Quality:
+
+- ✅ TypeScript type-check: Passed (all packages)
+- ✅ ESLint lint: Passed (all packages)
+- ✅ Code Review: **APPROVED** - No critical issues found
+  - Proper resource cleanup in all code paths
+  - Responsive cancellation with immediate abort checks
+  - Good error handling and user feedback
+  - Security: No vulnerabilities, prevents memory leaks
+  - Performance: Ref usage prevents unnecessary re-renders
+- ✅ Pre-commit hooks: All checks passed
+
+**Commit**: 95dae99 - feat(frontend): add export cancellation for audit log exports
+
+**Next Steps**: Stage 8D or later - Continue with remaining stages per plan (permissions, documentation, etc.)
+
+### Stage 8B Implementation (2025-11-06)
+
+**Status**: ✅ Complete
+
+**Completed**: Progress indicators and confirmation dialogs for large audit log exports (>1000 records).
+
+#### Changes Made:
+
+1. **Created ExportConfirmationDialog Component** (`packages/frontend/src/components/features/audit/ExportConfirmationDialog.tsx`):
+   - Confirmation dialog following `LevelChangeConfirmationDialog` pattern
+   - Displays warning for large exports with record count
+   - Shows "more than X entries" for Export All with unknown count vs exact count for filtered exports
+   - Uses `isUnknownCount` prop to handle ambiguous counts honestly
+   - Removed emoji from warning text for consistency with other dialogs
+
+2. **Enhanced ExportButton Component** (`packages/frontend/src/components/features/audit/ExportButton.tsx`):
+   - Integrated confirmation dialog for exports >1000 records
+   - Replaced browser `alert()` calls with Sonner toast notifications
+   - Added success toast: "Audit logs exported as CSV/JSON" with entry count
+   - Added error toast with specific error details
+   - Fixed critical bug: Export All now shows "more than 1,000" instead of misleading fixed count (1,001)
+   - Preserved existing progress indicators (record count during fetch)
+
+#### Key Implementation Details:
+
+- **isUnknownCount Flag**: When Export All is selected, exact count isn't known before fetching, so confirmation shows "more than 1,000 audit log entries" rather than a misleading specific number
+- **Toast Integration**: Replaced all alert() calls with proper toast notifications for better UX
+- **Pattern Consistency**: Dialog follows existing confirmation pattern from LevelChangeConfirmationDialog
+- **Honest UX**: Shows uncertainty honestly rather than displaying arbitrary numbers
+
+#### Code Quality:
+
+- ✅ TypeScript type-check: Passed (all packages)
+- ✅ ESLint lint: Passed (all packages)
+- ✅ Code Review: Critical issue identified and fixed (record count estimation)
+- ✅ Pre-commit hooks: All checks passed
+
+**Commit**: da5f035 - feat(frontend): add progress indicators and confirmation dialogs for large audit exports
+
+**Next Steps**: Stage 8C - Add export cancellation functionality
