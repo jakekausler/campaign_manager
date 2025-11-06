@@ -81,31 +81,64 @@ Interactive diff display and data export:
 
 ---
 
-### [Stages 8-10: Finalization & Polish](./TICKET-032-stages-8-10-finalization.md)
+### [Stage 8: Advanced Export Features](./TICKET-032-stage-8-advanced-export.md)
 
-**Status**: ⏳ Not Started (0 of 10 sub-stages complete)
+**Status**: ✅ Complete (All 4 sub-stages complete)
 
-Advanced export features, permissions, and comprehensive documentation:
+Advanced export functionality with progress indicators and cancellation:
 
-- ⏳ **Stage 8A**: Implement "Export All" Functionality
-- ⏳ **Stage 8B**: Add Progress Indicators and Confirmation Dialogs
-- ⏳ **Stage 8C**: Add Export Cancellation
-- ⏳ **Stage 8D**: Code Review and Commit Advanced Export
-- ⏳ **Stage 9A**: Implement Backend Permission Checks
+- ✅ **Stage 8A**: Implement "Export All" Functionality
+- ✅ **Stage 8B**: Add Progress Indicators and Confirmation Dialogs
+- ✅ **Stage 8C**: Add Export Cancellation
+- ✅ **Stage 8D**: Code Review and Commit Advanced Export
+
+**Key Features**:
+
+- "Export All" option to fetch all matching records beyond pagination
+- Confirmation dialog for large exports (>1000 records)
+- Progress indicators showing fetched record count
+- Export cancellation with AbortController integration
+- Toast notifications for success/error feedback
+- Backend skip parameter validation (0-100,000 limit)
+
+---
+
+### [Stage 9: Permission-Based Access Control](./TICKET-032-stage-9-permissions.md)
+
+**Status**: 🔄 In Progress (1 of 3 sub-stages complete)
+
+Authorization for audit log access with role-based filtering:
+
+- ✅ **Stage 9A**: Implement Backend Permission Checks (commit: b4b567e)
 - ⏳ **Stage 9B**: Implement Frontend Permission UI
 - ⏳ **Stage 9C**: Code Review and Commit Permissions
+
+**Key Features** (Planned):
+
+- Permission checks at GraphQL resolver level (`audit:read`, `audit:export`)
+- Role-based filtering (users see own audits, admins see all)
+- Route guards and UI restrictions based on permissions
+- User-friendly error messages and tooltips
+
+---
+
+### [Stage 10: Documentation and UI Polish](./TICKET-032-stage-10-documentation.md)
+
+**Status**: ⏳ Not Started (0 of 3 sub-stages complete)
+
+Comprehensive documentation and final UI polish:
+
 - ⏳ **Stage 10A**: Write API and Code Documentation
 - ⏳ **Stage 10B**: User Documentation and UI Polish
 - ⏳ **Stage 10C**: Final Review and Commit Documentation
 
 **Key Features** (Planned):
 
-- Large dataset export with progress feedback
-- Confirmation dialogs for exports >1000 records
-- Export cancellation with AbortController
-- Permission checks at GraphQL resolver level
 - Comprehensive feature documentation in `docs/features/audit-system.md`
-- UI tooltips and help text throughout
+- JSDoc comments for AuditService methods
+- Migration guide for service developers
+- UI tooltips throughout audit log interface
+- Help text and responsive design verification
 
 ---
 
@@ -168,20 +201,15 @@ Add optional parameters to existing `AuditService.log()` method:
 
 ### Completed Stages
 
-- ✅ **Stages 1-3**: Full backend infrastructure complete
-- ✅ **Stages 4-5**: Basic UI and filtering complete
-- ✅ **Stages 6A-B**: Diff viewer complete
-- ✅ **Stages 7A-B**: CSV and JSON export complete
-
-### In Progress
-
-- 🔄 **Stage 7C**: Code review and commit for export features
+- ✅ **Stages 1-3**: Full backend infrastructure (7 sub-stages)
+- ✅ **Stages 4-5**: Basic UI and filtering (2 stages)
+- ✅ **Stages 6-7**: Advanced UI features (5 sub-stages)
+- ✅ **Stage 8**: Advanced export features (4 sub-stages)
 
 ### Remaining Work
 
-- ⏳ **Stages 8A-D**: Advanced export features (4 sub-stages)
-- ⏳ **Stages 9A-C**: Permission system (3 sub-stages)
-- ⏳ **Stages 10A-C**: Documentation and polish (3 sub-stages)
+- ⏳ **Stage 9**: Permission system (3 sub-stages)
+- ⏳ **Stage 10**: Documentation and polish (3 sub-stages)
 
 ---
 
@@ -256,11 +284,13 @@ Add optional parameters to existing `AuditService.log()` method:
 
 - [TICKET-032.md](./TICKET-032.md) - Main ticket with acceptance criteria and implementation notes
 - [TICKET-032-gap-analysis.md](./TICKET-032-gap-analysis.md) - Detailed analysis of existing vs required functionality
-- Stages:
+- Stage Documentation:
   - [Stages 1-3: Backend Enhancement](./TICKET-032-stages-1-3-backend.md)
   - [Stages 4-5: Basic UI & Filters](./TICKET-032-stages-4-5-ui.md)
   - [Stages 6-7: Advanced UI Features](./TICKET-032-stages-6-7-advanced-ui.md)
-  - [Stages 8-10: Finalization & Polish](./TICKET-032-stages-8-10-finalization.md)
+  - [Stage 8: Advanced Export Features](./TICKET-032-stage-8-advanced-export.md)
+  - [Stage 9: Permission-Based Access Control](./TICKET-032-stage-9-permissions.md)
+  - [Stage 10: Documentation and UI Polish](./TICKET-032-stage-10-documentation.md)
 
 ---
 
