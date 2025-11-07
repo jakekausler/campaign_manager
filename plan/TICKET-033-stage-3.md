@@ -84,7 +84,7 @@ Entity lists are loaded frequently:
 
 - [x] Run code review (use Code Reviewer subagent - MANDATORY)
 - [x] Address code review feedback (if any exists from previous task)
-- [ ] Commit stage changes with detailed conventional commit message
+- [x] Commit stage changes with detailed conventional commit message
 
 ## Implementation Notes
 
@@ -784,6 +784,40 @@ The code review verified:
 
 Task completed immediately as there are no changes required.
 
+**Task 27: Commit stage changes with detailed conventional commit message**
+
+Created detailed conventional commit for Stage 3 entity list caching implementation.
+
+**Commit message structure:**
+
+- **Type**: feat(api) - New feature in the API package
+- **Summary**: "implement entity list caching with Redis"
+- **Body**: Comprehensive explanation of implementation, security, testing, and performance impact
+- **Footer**: Claude Code attribution
+
+**Commit details:**
+
+- All 26 previous tasks completed successfully
+- 7 files changed: 1383 insertions, 30 deletions
+- New file: `entity-list-cache.integration.test.ts` (328 lines)
+- Modified: settlement/structure services and tests, plan files
+
+**Files committed:**
+
+1. `packages/api/src/graphql/services/settlement.service.ts` - Caching implementation
+2. `packages/api/src/graphql/services/settlement.service.test.ts` - Unit tests
+3. `packages/api/src/graphql/services/structure.service.ts` - Caching implementation
+4. `packages/api/src/graphql/services/structure.service.test.ts` - Unit tests
+5. `packages/api/src/graphql/services/entity-list-cache.integration.test.ts` - Integration tests
+6. `plan/TICKET-033-implementation-plan.md` - Updated stage status
+7. `plan/TICKET-033-stage-3.md` - Complete task documentation
+
+Pre-commit hooks verified:
+
+- ✅ Code formatting (Prettier)
+- ✅ Linting (ESLint)
+- ✅ No errors or warnings
+
 ## Commit Hash
 
-[Added when final commit task is complete]
+f6a853b621f43d2884a0f159c2a4c9cc2d05b9ae
