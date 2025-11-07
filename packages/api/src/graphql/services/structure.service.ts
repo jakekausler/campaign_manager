@@ -501,6 +501,20 @@ export class StructureService {
       },
     });
 
+    // Invalidate computed fields cache since structure data changed
+    // Cache invalidation failures should not block the operation
+    try {
+      const cacheKey = `computed-fields:structure:${id}:${branchId}`;
+      await this.cache.del(cacheKey);
+      this.logger.debug(`Invalidated computed fields cache: ${cacheKey}`);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.warn(
+        `Failed to invalidate computed fields cache for structure ${id}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
     // Invalidate dependency graph cache to trigger rule re-evaluation
     // Cache invalidation failures should not block the operation
     try {

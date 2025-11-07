@@ -59,7 +59,7 @@ When loading 10 settlements with computed fields:
 - [x] Inject CacheService into StructureService constructor
 - [x] Modify `StructureService.getComputedFields()` to check cache before computing
 - [x] Add cache.set() after computing fields in StructureService
-- [ ] Add cache invalidation to `StructureService.update()` method
+- [x] Add cache invalidation to `StructureService.update()` method
 - [ ] Add cache invalidation to `StructureService.setLevel()` method
 - [ ] Add logging for cache hits/misses (debug level)
 
@@ -173,6 +173,17 @@ When loading 10 settlements with computed fields:
 - Debug logging confirms successful cache storage
 - Uses the same cacheKey variable defined at the beginning of the method
 - Pattern matches SettlementService Task 3 implementation exactly
+
+**Task 10: Add cache invalidation to `StructureService.update()` method**
+
+- Added cache invalidation immediately after successful database update and pubSub publish
+- Placement: After entityModified event (line 502), before dependency graph invalidation (line 518)
+- Cache key construction uses branchId parameter: `computed-fields:structure:{id}:{branchId}`
+- Uses `cache.del()` to remove the cached entry
+- Wrapped in try-catch for graceful degradation (cache invalidation failures don't block updates)
+- Failures logged as warnings with error details
+- Successful invalidation logged at debug level
+- Pattern matches SettlementService Task 4 implementation exactly
 
 ## Commit Hash
 
