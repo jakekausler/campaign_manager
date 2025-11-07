@@ -4,6 +4,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { CacheModule } from './common/cache/cache.module';
 import { GraphQLConfigModule } from './graphql/graphql.module';
 import { WebSocketModule } from './websocket/websocket.module';
 
@@ -16,6 +17,8 @@ import { WebSocketModule } from './websocket/websocket.module';
         limit: 10, // Max 10 requests per window for auth endpoints
       },
     ]),
+    // Global cache layer (Redis DB 1)
+    CacheModule,
     AuthModule,
     GraphQLConfigModule,
     WebSocketModule,
