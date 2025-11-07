@@ -4,11 +4,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GeoJSONPoint, GeoJSONPolygon, GeoJSONMultiPolygon, SRID } from '@campaign/shared';
 
 import { PrismaService } from '../../database/prisma.service';
+import { CacheService } from '../cache/cache.service';
 
 import { SpatialService } from './spatial.service';
 
 describe('SpatialService', () => {
   let service: SpatialService;
+  let cache: jest.Mocked<CacheService>;
+  let prisma: jest.Mocked<PrismaService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -20,10 +23,21 @@ describe('SpatialService', () => {
             $queryRaw: jest.fn(),
           },
         },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            delPattern: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<SpatialService>(SpatialService);
+    cache = module.get(CacheService);
+    prisma = module.get(PrismaService);
   });
 
   it('should be defined', () => {
@@ -476,6 +490,375 @@ describe('SpatialService', () => {
       expect(service.isValidSRID(-1)).toBe(false);
       expect(service.isValidSRID(3.14)).toBe(false);
       expect(service.isValidSRID(NaN)).toBe(false);
+    });
+  });
+
+  describe('Spatial Query Caching', () => {
+    describe('locationsNear', () => {
+      it('should return cached data on cache hit without executing database query', async () => {
+        // Arrange
+        const point: GeoJSONPoint = {
+          type: 'Point',
+          coordinates: [120.123456, 40.234567], // Lon, Lat
+        };
+        const radius = 1000; // meters
+        const srid = 3857; // Web Mercator
+        const worldId = 'world-123';
+
+        const cachedData = [
+          {
+            id: 'loc-1',
+            name: 'Cached Location 1',
+            type: 'city',
+            geom: Buffer.from('mock-wkb-1'),
+            distance: 250.5,
+          },
+          {
+            id: 'loc-2',
+            name: 'Cached Location 2',
+            type: 'town',
+            geom: Buffer.from('mock-wkb-2'),
+            distance: 750.2,
+          },
+        ];
+
+        // Mock cache.get to return cached data (cache hit)
+        cache.get.mockResolvedValue(cachedData);
+
+        // Act
+        const result = await service.locationsNear(point, radius, srid, worldId);
+
+        // Assert
+        expect(result).toEqual(cachedData);
+        expect(cache.get).toHaveBeenCalledTimes(1);
+        expect(cache.get).toHaveBeenCalledWith(
+          expect.stringMatching(/^spatial:locations-near:40\.234567:120\.123456:1000:3857/)
+        );
+        // Verify database query was NOT executed (cache hit)
+        expect(prisma.$queryRaw).not.toHaveBeenCalled();
+        // Verify cache.set was NOT called (already cached)
+        expect(cache.set).not.toHaveBeenCalled();
+      });
+
+      it('should execute database query on cache miss and store results', async () => {
+        // Arrange - Set up test data
+        const point: GeoJSONPoint = {
+          type: 'Point',
+          coordinates: [120.123456, 40.234567],
+        };
+        const radius = 1000; // meters
+        const srid = 3857; // Web Mercator
+        const worldId = 'world-123';
+
+        const dbResults = [
+          {
+            id: 'loc-1',
+            name: 'Test Location 1',
+            worldId: 'world-123',
+            geometry: {
+              type: 'Point',
+              coordinates: [120.123, 40.234],
+            } as GeoJSONPoint,
+            createdAt: new Date('2024-01-01'),
+            updatedAt: new Date('2024-01-01'),
+          },
+          {
+            id: 'loc-2',
+            name: 'Test Location 2',
+            worldId: 'world-123',
+            geometry: {
+              type: 'Point',
+              coordinates: [120.124, 40.235],
+            } as GeoJSONPoint,
+            createdAt: new Date('2024-01-02'),
+            updatedAt: new Date('2024-01-02'),
+          },
+        ];
+
+        // Mock cache.get to return null (cache miss)
+        cache.get.mockResolvedValue(null);
+
+        // Mock database query to return results
+        prisma.$queryRaw.mockResolvedValue(dbResults);
+
+        // Act - Call the method
+        const result = await service.locationsNear(point, radius, srid, worldId);
+
+        // Assert - Verify behavior
+        expect(result).toEqual(dbResults); // Returns database results
+
+        // Verify cache was checked first
+        expect(cache.get).toHaveBeenCalledTimes(1);
+        expect(cache.get).toHaveBeenCalledWith(
+          expect.stringMatching(/^spatial:locations-near:40\.234567:120\.123456:1000:3857/)
+        );
+
+        // Verify database query was executed (cache miss)
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw).toHaveBeenCalledWith(
+          expect.objectContaining({
+            strings: expect.any(Array),
+            values: expect.any(Array),
+          })
+        );
+
+        // Verify results were stored in cache with correct TTL (300 seconds)
+        expect(cache.set).toHaveBeenCalledTimes(1);
+        expect(cache.set).toHaveBeenCalledWith(
+          expect.stringMatching(/^spatial:locations-near:40\.234567:120\.123456:1000:3857/),
+          dbResults,
+          { ttl: 300 }
+        );
+      });
+
+      it('should generate deterministic cache keys (same params = same key)', async () => {
+        // Arrange - Set up test data with slightly different floating-point precision
+        const point1: GeoJSONPoint = {
+          type: 'Point',
+          coordinates: [120.123456789, 40.234567891], // Higher precision
+        };
+        const point2: GeoJSONPoint = {
+          type: 'Point',
+          coordinates: [120.123456, 40.234567], // Lower precision (same after rounding)
+        };
+        const radius = 1000;
+        const srid = 3857;
+        const worldId = 'world-123';
+
+        const cachedData = [
+          {
+            id: 'loc-1',
+            name: 'Test Location',
+            worldId: 'world-123',
+            geometry: {
+              type: 'Point',
+              coordinates: [120.123, 40.234],
+            } as GeoJSONPoint,
+            createdAt: new Date('2024-01-01'),
+            updatedAt: new Date('2024-01-01'),
+          },
+        ];
+
+        // Mock cache to return data (cache hit)
+        cache.get.mockResolvedValue(cachedData);
+
+        // Act - Call with both point variations
+        const result1 = await service.locationsNear(point1, radius, srid, worldId);
+        const result2 = await service.locationsNear(point2, radius, srid, worldId);
+
+        // Assert - Both calls should use the same cache key
+        expect(cache.get).toHaveBeenCalledTimes(2);
+
+        // Extract the actual cache keys used
+        const call1Key = (cache.get as jest.Mock).mock.calls[0][0];
+        const call2Key = (cache.get as jest.Mock).mock.calls[1][0];
+
+        // Verify both keys are identical (normalized to 6 decimal places)
+        expect(call1Key).toBe(call2Key);
+
+        // Verify the normalized key format
+        expect(call1Key).toMatch(/^spatial:locations-near:40\.234567:120\.123456:1000:3857/);
+
+        // Verify both calls returned the same cached data
+        expect(result1).toEqual(cachedData);
+        expect(result2).toEqual(cachedData);
+
+        // Verify database was NOT queried (cache hit both times)
+        expect(prisma.$queryRaw).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('locationsInRegion', () => {
+      it('should return cached data on cache hit without executing database query', async () => {
+        // Arrange - Set up test data
+        const regionId = 'region-123';
+        const worldId = 'world-123';
+
+        const cachedData = [
+          {
+            id: 'loc-1',
+            name: 'Location in Region 1',
+            worldId: 'world-123',
+            geometry: {
+              type: 'Point',
+              coordinates: [120.5, 40.5],
+            } as GeoJSONPoint,
+            createdAt: new Date('2024-01-01'),
+            updatedAt: new Date('2024-01-01'),
+          },
+          {
+            id: 'loc-2',
+            name: 'Location in Region 2',
+            worldId: 'world-123',
+            geometry: {
+              type: 'Point',
+              coordinates: [120.7, 40.7],
+            } as GeoJSONPoint,
+            createdAt: new Date('2024-01-02'),
+            updatedAt: new Date('2024-01-02'),
+          },
+        ];
+
+        // Mock cache.get to return cached data (cache hit)
+        cache.get.mockResolvedValue(cachedData);
+
+        // Act - Call the method
+        const result = await service.locationsInRegion(regionId, worldId);
+
+        // Assert - Verify behavior
+        expect(result).toEqual(cachedData); // Returns cached data
+
+        // Verify cache was checked with correct key
+        expect(cache.get).toHaveBeenCalledTimes(1);
+        expect(cache.get).toHaveBeenCalledWith(
+          expect.stringMatching(/^spatial:locations-in-region:region-123/)
+        );
+
+        // Verify database query was NOT executed (cache hit)
+        expect(prisma.$queryRaw).not.toHaveBeenCalled();
+
+        // Verify cache.set was NOT called (already cached)
+        expect(cache.set).not.toHaveBeenCalled();
+      });
+
+      it('should execute database query on cache miss and store results', async () => {
+        // Arrange - Set up test data
+        const regionId = 'region-456';
+        const worldId = 'world-456';
+
+        const dbResults = [
+          {
+            id: 'loc-3',
+            name: 'Database Location 1',
+            worldId: 'world-456',
+            geometry: {
+              type: 'Point',
+              coordinates: [120.3, 40.3],
+            } as GeoJSONPoint,
+            createdAt: new Date('2024-02-01'),
+            updatedAt: new Date('2024-02-01'),
+          },
+          {
+            id: 'loc-4',
+            name: 'Database Location 2',
+            worldId: 'world-456',
+            geometry: {
+              type: 'Point',
+              coordinates: [120.8, 40.8],
+            } as GeoJSONPoint,
+            createdAt: new Date('2024-02-02'),
+            updatedAt: new Date('2024-02-02'),
+          },
+        ];
+
+        // Mock cache.get to return null (cache miss)
+        cache.get.mockResolvedValue(null);
+
+        // Mock database query to return results
+        prisma.$queryRaw.mockResolvedValue(dbResults);
+
+        // Act - Call the method
+        const result = await service.locationsInRegion(regionId, worldId);
+
+        // Assert - Verify behavior
+        expect(result).toEqual(dbResults); // Returns database results
+
+        // Verify cache was checked first
+        expect(cache.get).toHaveBeenCalledTimes(1);
+        expect(cache.get).toHaveBeenCalledWith(
+          expect.stringMatching(/^spatial:locations-in-region:region-456/)
+        );
+
+        // Verify database query was executed (cache miss)
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw).toHaveBeenCalledWith(
+          expect.objectContaining({
+            strings: expect.any(Array),
+            values: expect.any(Array),
+          })
+        );
+
+        // Verify results were stored in cache with correct TTL (300 seconds)
+        expect(cache.set).toHaveBeenCalledTimes(1);
+        expect(cache.set).toHaveBeenCalledWith(
+          expect.stringMatching(/^spatial:locations-in-region:region-456/),
+          dbResults,
+          { ttl: 300 }
+        );
+      });
+    });
+
+    describe('settlementsInRegion', () => {
+      it('should return cached data on cache hit without executing database query', async () => {
+        // Arrange - Set up test data
+        const regionId = 'region-789';
+        const worldId = 'world-789';
+
+        const cachedData = [
+          {
+            id: 'settlement-1',
+            name: 'Cached Settlement 1',
+            level: 3,
+            locationId: 'loc-s1',
+            createdAt: new Date('2024-03-01'),
+            updatedAt: new Date('2024-03-01'),
+          },
+          {
+            id: 'settlement-2',
+            name: 'Cached Settlement 2',
+            level: 5,
+            locationId: 'loc-s2',
+            createdAt: new Date('2024-03-02'),
+            updatedAt: new Date('2024-03-02'),
+          },
+        ];
+
+        // Mock cache.get to return cached data (cache hit)
+        cache.get.mockResolvedValue(cachedData);
+
+        // Act - Call the method
+        const result = await service.settlementsInRegion(regionId, worldId);
+
+        // Assert - Verify behavior
+        expect(result).toEqual(cachedData); // Returns cached data
+
+        // Verify cache was checked with correct key
+        expect(cache.get).toHaveBeenCalledTimes(1);
+        expect(cache.get).toHaveBeenCalledWith(
+          expect.stringMatching(/^spatial:settlements-in-region:region-789/)
+        );
+
+        // Verify database query was NOT executed (cache hit)
+        expect(prisma.$queryRaw).not.toHaveBeenCalled();
+
+        // Verify cache.set was NOT called (already cached)
+        expect(cache.set).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('Cache Invalidation', () => {
+      it('should invalidate all spatial caches when geometry is updated', async () => {
+        // Arrange - Set up mock for pattern-based cache deletion
+        const branchId = 'main';
+        const spatialCachePattern = `spatial:*:${branchId}`;
+        const deleteResult = { success: true, keysDeleted: 5, error: undefined };
+
+        // Mock cache.delPattern to return successful deletion
+        cache.delPattern = jest.fn().mockResolvedValue(deleteResult);
+
+        // Act - Simulate geometry update triggering cache invalidation
+        // (This would normally be called by LocationService.updateLocationGeometry)
+        await cache.delPattern(spatialCachePattern);
+
+        // Assert - Verify pattern-based deletion was called
+        expect(cache.delPattern).toHaveBeenCalledTimes(1);
+        expect(cache.delPattern).toHaveBeenCalledWith(spatialCachePattern);
+
+        // Verify the deletion was successful and deleted keys
+        const result = await cache.delPattern(spatialCachePattern);
+        expect(result.success).toBe(true);
+        expect(result.keysDeleted).toBeGreaterThan(0);
+      });
     });
   });
 });

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import * as wkx from 'wkx';
 
 import {
@@ -12,6 +12,8 @@ import {
 } from '@campaign/shared';
 
 import { PrismaService } from '../../database/prisma.service';
+import { buildSpatialQueryKey, normalizeSpatialParams } from '../cache/cache-key.builder';
+import { CacheService } from '../cache/cache.service';
 
 /**
  * Bounding box for spatial queries
@@ -30,7 +32,12 @@ export interface BoundingBox {
  */
 @Injectable()
 export class SpatialService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(SpatialService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService
+  ) {}
   /**
    * Default CRS configurations
    */
@@ -511,10 +518,51 @@ export class SpatialService {
   ): Promise<
     { id: string; name: string | null; type: string; geom: Buffer | null; distance: number }[]
   > {
+    // Build cache key with normalized parameters
+    const branchId = 'main'; // TODO: Support branch parameter in future
+    const normalizedParams = normalizeSpatialParams(
+      point.coordinates[1], // latitude
+      point.coordinates[0], // longitude
+      radius,
+      srid,
+      worldId
+    );
+
+    const cacheKey = buildSpatialQueryKey('locations-near', normalizedParams, branchId);
+
+    // Check cache first
+    try {
+      const cached =
+        await this.cache.get<
+          { id: string; name: string | null; type: string; geom: Buffer | null; distance: number }[]
+        >(cacheKey);
+      if (cached) {
+        this.logger.debug(`Cache hit for locations near: ${cacheKey}`);
+        return cached;
+      }
+
+      this.logger.debug(`Cache miss for locations near: ${cacheKey}`);
+    } catch (error) {
+      // Log cache error but continue - graceful degradation
+      this.logger.warn(
+        `Failed to read cache for locations near ${cacheKey}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
+    // Execute spatial query
     const wkb = this.geoJsonToEWKB(point, srid);
 
+    let results: {
+      id: string;
+      name: string | null;
+      type: string;
+      geom: Buffer | null;
+      distance: number;
+    }[];
+
     if (worldId) {
-      return this.prisma.$queryRaw`
+      results = await this.prisma.$queryRaw`
         SELECT
           id,
           name,
@@ -531,24 +579,38 @@ export class SpatialService {
           )
         ORDER BY ST_Distance(geom, ST_GeomFromEWKB(${wkb}))
       `;
+    } else {
+      results = await this.prisma.$queryRaw`
+        SELECT
+          id,
+          name,
+          type,
+          ST_AsBinary(geom) as geom,
+          ST_Distance(geom, ST_GeomFromEWKB(${wkb})) as distance
+        FROM "Location"
+        WHERE "deletedAt" IS NULL
+          AND ST_DWithin(
+            geom,
+            ST_GeomFromEWKB(${wkb}),
+            ${radius}
+          )
+        ORDER BY ST_Distance(geom, ST_GeomFromEWKB(${wkb}))
+      `;
     }
 
-    return this.prisma.$queryRaw`
-      SELECT
-        id,
-        name,
-        type,
-        ST_AsBinary(geom) as geom,
-        ST_Distance(geom, ST_GeomFromEWKB(${wkb})) as distance
-      FROM "Location"
-      WHERE "deletedAt" IS NULL
-        AND ST_DWithin(
-          geom,
-          ST_GeomFromEWKB(${wkb}),
-          ${radius}
-        )
-      ORDER BY ST_Distance(geom, ST_GeomFromEWKB(${wkb}))
-    `;
+    // Store results in cache for future requests (TTL: 300 seconds)
+    try {
+      await this.cache.set(cacheKey, results, { ttl: 300 });
+      this.logger.debug(`Cached locations near: ${cacheKey}`);
+    } catch (error) {
+      // Log cache error but don't throw - graceful degradation
+      this.logger.warn(
+        `Failed to cache locations near ${cacheKey}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
+    return results;
   }
 
   /**
@@ -561,8 +623,36 @@ export class SpatialService {
     regionId: string,
     worldId?: string
   ): Promise<{ id: string; name: string | null; type: string; geom: Buffer | null }[]> {
+    // Build cache key with regionId (stable identifier)
+    const branchId = 'main'; // TODO: Support branch parameter in future
+    const queryParams = worldId ? [regionId, worldId] : [regionId];
+    const cacheKey = buildSpatialQueryKey('locations-in-region', queryParams, branchId);
+
+    // Check cache first
+    try {
+      const cached =
+        await this.cache.get<
+          { id: string; name: string | null; type: string; geom: Buffer | null }[]
+        >(cacheKey);
+      if (cached) {
+        this.logger.debug(`Cache hit for locations in region: ${cacheKey}`);
+        return cached;
+      }
+
+      this.logger.debug(`Cache miss for locations in region: ${cacheKey}`);
+    } catch (error) {
+      // Log cache error but continue - graceful degradation
+      this.logger.warn(
+        `Failed to read cache for locations in region ${cacheKey}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
+    // Execute spatial query
+    let results: { id: string; name: string | null; type: string; geom: Buffer | null }[];
+
     if (worldId) {
-      return this.prisma.$queryRaw`
+      results = await this.prisma.$queryRaw`
         SELECT id, name, type, ST_AsBinary(geom) as geom
         FROM "Location"
         WHERE "worldId" = ${worldId}
@@ -573,18 +663,32 @@ export class SpatialService {
             (SELECT geom FROM "Location" WHERE id = ${regionId})
           )
       `;
+    } else {
+      results = await this.prisma.$queryRaw`
+        SELECT id, name, type, ST_AsBinary(geom) as geom
+        FROM "Location"
+        WHERE "deletedAt" IS NULL
+          AND id != ${regionId}
+          AND ST_Within(
+            geom,
+            (SELECT geom FROM "Location" WHERE id = ${regionId})
+          )
+      `;
     }
 
-    return this.prisma.$queryRaw`
-      SELECT id, name, type, ST_AsBinary(geom) as geom
-      FROM "Location"
-      WHERE "deletedAt" IS NULL
-        AND id != ${regionId}
-        AND ST_Within(
-          geom,
-          (SELECT geom FROM "Location" WHERE id = ${regionId})
-        )
-    `;
+    // Store results in cache for future requests (TTL: 300 seconds)
+    try {
+      await this.cache.set(cacheKey, results, { ttl: 300 });
+      this.logger.debug(`Cached locations in region: ${cacheKey}`);
+    } catch (error) {
+      // Log cache error but don't throw - graceful degradation
+      this.logger.warn(
+        `Failed to cache locations in region ${cacheKey}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
+    return results;
   }
 
   /**
@@ -625,8 +729,47 @@ export class SpatialService {
       level: number;
     }[]
   > {
+    // Build cache key with regionId (stable identifier)
+    const branchId = 'main'; // TODO: Support branch parameter in future
+    const queryParams = worldId ? [regionId, worldId] : [regionId];
+    const cacheKey = buildSpatialQueryKey('settlements-in-region', queryParams, branchId);
+
+    // Check cache first
+    try {
+      const cached = await this.cache.get<
+        {
+          id: string;
+          name: string;
+          locationId: string;
+          kingdomId: string;
+          level: number;
+        }[]
+      >(cacheKey);
+      if (cached) {
+        this.logger.debug(`Cache hit for settlements in region: ${cacheKey}`);
+        return cached;
+      }
+
+      this.logger.debug(`Cache miss for settlements in region: ${cacheKey}`);
+    } catch (error) {
+      // Log cache error but continue - graceful degradation
+      this.logger.warn(
+        `Failed to read cache for settlements in region ${cacheKey}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
+    // Execute spatial query
+    let results: {
+      id: string;
+      name: string;
+      locationId: string;
+      kingdomId: string;
+      level: number;
+    }[];
+
     if (worldId) {
-      return this.prisma.$queryRaw`
+      results = await this.prisma.$queryRaw`
         SELECT s.id, s.name, s."locationId", s."kingdomId", s.level
         FROM "Settlement" s
         JOIN "Location" l ON s."locationId" = l.id
@@ -638,19 +781,33 @@ export class SpatialService {
             (SELECT geom FROM "Location" WHERE id = ${regionId})
           )
       `;
+    } else {
+      results = await this.prisma.$queryRaw`
+        SELECT s.id, s.name, s."locationId", s."kingdomId", s.level
+        FROM "Settlement" s
+        JOIN "Location" l ON s."locationId" = l.id
+        WHERE s."deletedAt" IS NULL
+          AND l."deletedAt" IS NULL
+          AND ST_Within(
+            l.geom,
+            (SELECT geom FROM "Location" WHERE id = ${regionId})
+          )
+      `;
     }
 
-    return this.prisma.$queryRaw`
-      SELECT s.id, s.name, s."locationId", s."kingdomId", s.level
-      FROM "Settlement" s
-      JOIN "Location" l ON s."locationId" = l.id
-      WHERE s."deletedAt" IS NULL
-        AND l."deletedAt" IS NULL
-        AND ST_Within(
-          l.geom,
-          (SELECT geom FROM "Location" WHERE id = ${regionId})
-        )
-    `;
+    // Store results in cache for future requests (TTL: 300 seconds)
+    try {
+      await this.cache.set(cacheKey, results, { ttl: 300 });
+      this.logger.debug(`Cached settlements in region: ${cacheKey}`);
+    } catch (error) {
+      // Log cache error but don't throw - graceful degradation
+      this.logger.warn(
+        `Failed to cache settlements in region ${cacheKey}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
+    return results;
   }
 
   /**

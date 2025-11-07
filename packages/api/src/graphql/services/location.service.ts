@@ -3,12 +3,13 @@
  * Handles CRUD operations for Locations with hierarchical cascade delete
  */
 
-import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
 import type { Location as PrismaLocation, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 import type { GeoJSONGeometry } from '@campaign/shared';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { SpatialService } from '../../common/services/spatial.service';
 import { TileCacheService } from '../../common/services/tile-cache.service';
 import { PrismaService } from '../../database/prisma.service';
@@ -30,8 +31,11 @@ export type LocationWithGeometry = PrismaLocation & {
 
 @Injectable()
 export class LocationService {
+  private readonly logger = new Logger(LocationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
     private readonly audit: AuditService,
     private readonly versionService: VersionService,
     private readonly spatialService: SpatialService,
@@ -682,6 +686,22 @@ export class LocationService {
     // Invalidate tile cache for this location's world
     // All map tiles for this world need to be regenerated since geometry changed
     this.tileCacheService.invalidateWorld(location.worldId);
+
+    // Invalidate all spatial query caches for this branch
+    // Geometry changes affect all spatial queries (locations-near, locations-in-region, settlements-in-region)
+    try {
+      const spatialCachePattern = `spatial:*:${branchId}`;
+      const result = await this.cache.delPattern(spatialCachePattern);
+      this.logger.debug(
+        `Invalidated ${result.keysDeleted} spatial cache entries: ${spatialCachePattern}`
+      );
+    } catch (error) {
+      // Log cache error but don't throw - graceful degradation
+      this.logger.warn(
+        `Failed to invalidate spatial cache for branch ${branchId}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
 
     return updated;
   }

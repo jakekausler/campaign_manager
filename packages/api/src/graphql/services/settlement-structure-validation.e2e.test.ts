@@ -18,6 +18,7 @@ import { PrismaClient } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import * as jsonLogic from 'json-logic-js';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import type { EvaluateConditionRequest } from '../../grpc/rules-engine.types';
@@ -243,6 +244,10 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
         StructureContextBuilderService, // Use real implementation
         SettlementOperatorsService,
         StructureOperatorsService,
+        {
+          provide: CacheService,
+          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn(), delPattern: jest.fn() },
+        },
       ],
     }).compile();
 

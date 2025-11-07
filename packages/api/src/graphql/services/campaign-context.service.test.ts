@@ -5,6 +5,7 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { REDIS_CACHE } from '../cache/redis-cache.provider';
 import type { AuthenticatedUser } from '../context/graphql-context';
@@ -74,6 +75,15 @@ describe('CampaignContextService', () => {
           provide: StructureService,
           useValue: {
             findBySettlements: jest.fn(),
+          },
+        },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            delPattern: jest.fn(),
           },
         },
       ],

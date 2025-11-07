@@ -235,6 +235,62 @@ export function buildSpatialQueryKey(
 }
 
 /**
+ * Normalizes spatial query parameters to ensure deterministic cache keys
+ *
+ * Ensures that floating-point coordinates and numeric values are rounded
+ * to a consistent precision, preventing cache key variations due to
+ * floating-point representation differences.
+ *
+ * @param lat - Latitude coordinate
+ * @param lon - Longitude coordinate
+ * @param radius - Radius in meters
+ * @param srid - Spatial reference system ID
+ * @param worldId - Optional world ID to filter locations
+ * @returns Normalized parameter string array for use with buildSpatialQueryKey
+ *
+ * @example
+ * ```typescript
+ * // Same coordinates with different precision generate same key
+ * normalizeSpatialParams(1.234567, 2.345678, 1000, 3857);
+ * // Returns: ['1.234567', '2.345678', '1000', '3857']
+ *
+ * normalizeSpatialParams(1.23456789, 2.34567891, 1000, 3857);
+ * // Returns: ['1.234568', '2.345679', '1000', '3857']
+ *
+ * // With worldId
+ * normalizeSpatialParams(1.234567, 2.345678, 1000, 3857, 'world-123');
+ * // Returns: ['1.234567', '2.345678', '1000', '3857', 'world-123']
+ * ```
+ */
+export function normalizeSpatialParams(
+  lat: number,
+  lon: number,
+  radius: number,
+  srid: number,
+  worldId?: string
+): string[] {
+  // Round coordinates to 6 decimal places (~11cm precision for lat/lon)
+  // This is sufficient for most game mapping while preventing floating-point drift
+  const normalizedLat = lat.toFixed(6);
+  const normalizedLon = lon.toFixed(6);
+
+  // Round radius to integer (meters) - no need for sub-meter precision in cache keys
+  const normalizedRadius = Math.round(radius).toString();
+
+  // SRID is always an integer
+  const normalizedSrid = srid.toString();
+
+  const params = [normalizedLat, normalizedLon, normalizedRadius, normalizedSrid];
+
+  // Add worldId if provided
+  if (worldId) {
+    params.push(worldId);
+  }
+
+  return params;
+}
+
+/**
  * Extracts components from a cache key
  *
  * Parses a cache key back into its constituent parts.

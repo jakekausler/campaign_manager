@@ -555,6 +555,11 @@ export class SettlementService {
       this.logger.error(`Failed to invalidate dependency graph for settlement ${id}:`, error);
     }
 
+    // NOTE: If locationId update support is added in the future, spatial cache invalidation required here:
+    // Settlement location changes affect spatial queries (settlements-in-region)
+    // Invalidate pattern: `spatial:settlements-in-region:*:${branchId}`
+    // Currently, settlement locations are immutable after creation (no locationId in UpdateSettlementInput)
+
     // Publish WebSocket event for real-time updates
     this.websocketPublisher.publishSettlementUpdated(
       createSettlementUpdatedEvent(id, settlementWithKingdom!.kingdom.campaignId, 'update', {

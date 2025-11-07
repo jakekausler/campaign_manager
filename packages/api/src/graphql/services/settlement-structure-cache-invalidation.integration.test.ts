@@ -6,6 +6,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Settlement, Structure, Branch, Kingdom, Prisma } from '@prisma/client';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
@@ -119,6 +120,15 @@ describe('Settlement & Structure Cache Invalidation Integration Tests', () => {
             publishWorldTimeChanged: jest.fn().mockResolvedValue(undefined),
             publishStateInvalidated: jest.fn().mockResolvedValue(undefined),
             publishEvent: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            delPattern: jest.fn(),
           },
         },
         {

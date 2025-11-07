@@ -13,6 +13,7 @@ import type {
   User,
 } from '@prisma/client';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
@@ -63,6 +64,15 @@ describe.skip('SettlementResolver Integration Tests', () => {
           provide: REDIS_PUBSUB,
           useValue: {
             publish: jest.fn(),
+          },
+        },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            delPattern: jest.fn(),
           },
         },
       ],
