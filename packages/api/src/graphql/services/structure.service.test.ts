@@ -5,6 +5,7 @@
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
@@ -22,6 +23,7 @@ describe('StructureService', () => {
   let service: StructureService;
   let prisma: PrismaService;
   let audit: AuditService;
+  let cache: CacheService;
 
   const mockUser: AuthenticatedUser = {
     id: 'user-1',
@@ -80,6 +82,9 @@ describe('StructureService', () => {
             },
             settlement: {
               findFirst: jest.fn(),
+              findMany: jest.fn(),
+            },
+            fieldCondition: {
               findMany: jest.fn(),
             },
           },
@@ -148,12 +153,22 @@ describe('StructureService', () => {
             getCircuitState: jest.fn(),
           },
         },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            delPattern: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<StructureService>(StructureService);
     prisma = module.get<PrismaService>(PrismaService);
     audit = module.get<AuditService>(AuditService);
+    cache = module.get<CacheService>(CacheService);
   });
 
   afterEach(() => {
@@ -650,6 +665,162 @@ describe('StructureService', () => {
       expect(newState.id).toBe(deletedStructure.id);
       // Date gets serialized to ISO string by JSON.parse(JSON.stringify())
       expect(newState.deletedAt).toBe(deletedAt.toISOString());
+    });
+  });
+
+  describe('getComputedFields', () => {
+    describe('cache hit', () => {
+      it('should return cached data without recomputing when cache hit occurs', async () => {
+        // Arrange: Mock cached computed fields data
+        const cachedComputedFields = {
+          defensiveValue: 20,
+          goldProduction: 100,
+          maintenanceCost: 15,
+        };
+
+        // Mock cache.get to return cached data (cache hit)
+        (cache.get as jest.Mock).mockResolvedValue(cachedComputedFields);
+
+        // Act: Call getComputedFields
+        const result = await service.getComputedFields(mockStructure, mockUser);
+
+        // Assert: Should return cached data
+        expect(result).toEqual(cachedComputedFields);
+
+        // Assert: cache.get should be called with correct cache key
+        const expectedCacheKey = `computed-fields:structure:${mockStructure.id}:main`;
+        expect(cache.get).toHaveBeenCalledWith(expectedCacheKey);
+        expect(cache.get).toHaveBeenCalledTimes(1);
+
+        // Assert: Should NOT query database for field conditions (cache hit)
+        expect(prisma.fieldCondition.findMany).not.toHaveBeenCalled();
+
+        // Assert: Should NOT store to cache (already cached)
+        expect(cache.set).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('cache miss', () => {
+      it('should compute fields and store in cache when cache miss occurs', async () => {
+        // Arrange: Mock cache miss (cache.get returns null)
+        (cache.get as jest.Mock).mockResolvedValue(null);
+
+        // Mock no field conditions (simplest case - empty computed fields)
+        (prisma.fieldCondition.findMany as jest.Mock).mockResolvedValue([]);
+
+        // Mock cache.set to resolve successfully
+        (cache.set as jest.Mock).mockResolvedValue(undefined);
+
+        // Act: Call getComputedFields
+        const result = await service.getComputedFields(mockStructure, mockUser);
+
+        // Assert: Should return empty object (no conditions)
+        expect(result).toEqual({});
+
+        // Assert: cache.get should be called with correct cache key
+        const expectedCacheKey = `computed-fields:structure:${mockStructure.id}:main`;
+        expect(cache.get).toHaveBeenCalledWith(expectedCacheKey);
+        expect(cache.get).toHaveBeenCalledTimes(1);
+
+        // Assert: Should query database for field conditions (cache miss)
+        expect(prisma.fieldCondition.findMany).toHaveBeenCalledWith({
+          where: {
+            entityType: 'structure',
+            entityId: mockStructure.id,
+            isActive: true,
+            deletedAt: null,
+          },
+          orderBy: {
+            priority: 'desc',
+          },
+        });
+        expect(prisma.fieldCondition.findMany).toHaveBeenCalledTimes(1);
+
+        // Assert: Should store computed result to cache with correct TTL
+        expect(cache.set).toHaveBeenCalledWith(expectedCacheKey, {}, { ttl: 300 });
+        expect(cache.set).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('cache invalidation', () => {
+      it('should invalidate computed fields cache when structure is updated', async () => {
+        // Arrange: Setup mocks for update operation
+        const updateInput = {
+          name: 'Updated Temple',
+          level: 3,
+        };
+
+        const mockCampaign = {
+          id: 'campaign-1',
+          worldId: 'world-1',
+          ownerId: 'user-1',
+        };
+
+        const mockKingdom = {
+          id: 'kingdom-1',
+          campaignId: 'campaign-1',
+          name: 'Gondor',
+          campaign: mockCampaign,
+        };
+
+        const mockSettlementWithKingdom = {
+          ...mockSettlement,
+          kingdom: mockKingdom,
+        };
+
+        const mockStructureWithSettlement = {
+          ...mockStructure,
+          settlement: mockSettlementWithKingdom,
+        };
+
+        const mockBranch = {
+          id: 'branch-1',
+          campaignId: 'campaign-1',
+          deletedAt: null,
+        };
+
+        const updatedStructure = {
+          ...mockStructure,
+          ...updateInput,
+          version: 2,
+        };
+
+        const branchId = 'branch-1';
+
+        // Mock findById (permission check)
+        (prisma.structure.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockStructure)
+          .mockResolvedValueOnce(mockStructure);
+
+        // Mock findUnique (fetch with settlement for audit)
+        (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
+
+        // Mock branch.findFirst
+        const prismaMock = prisma as unknown as Record<string, unknown>;
+        prismaMock.branch = {
+          findFirst: jest.fn().mockResolvedValue(mockBranch),
+        };
+
+        // Mock $transaction
+        prismaMock.$transaction = jest.fn((callback: (p: unknown) => unknown) => callback(prisma));
+
+        // Mock update operation
+        (prisma.structure.update as jest.Mock).mockResolvedValue(updatedStructure);
+
+        // Mock cache.del to resolve successfully
+        (cache.del as jest.Mock).mockResolvedValue(1);
+
+        // Act: Call update method
+        await service.update('structure-1', updateInput, mockUser, 1, branchId);
+
+        // Assert: cache.del should be called with correct cache key
+        const expectedCacheKey = `computed-fields:structure:${mockStructure.id}:${branchId}`;
+        expect(cache.del).toHaveBeenCalledWith(expectedCacheKey);
+        expect(cache.del).toHaveBeenCalledTimes(1);
+
+        // Assert: Update operation should complete successfully
+        expect(prisma.structure.update).toHaveBeenCalled();
+      });
     });
   });
 });

@@ -961,9 +961,20 @@ export class StructureService {
         },
       });
 
-      // If no conditions, return empty object
+      // If no conditions, cache and return empty object
       if (conditions.length === 0) {
-        return {};
+        const emptyResult = {};
+        try {
+          await this.cache.set(cacheKey, emptyResult, { ttl: 300 });
+          this.logger.debug(`Cached empty computed fields for structure ${structure.id}`);
+        } catch (error) {
+          // Log cache write error but don't prevent returning results
+          this.logger.warn(
+            `Cache write error for structure ${structure.id}`,
+            error instanceof Error ? error.message : undefined
+          );
+        }
+        return emptyResult;
       }
 
       // Get campaign ID for Rules Engine worker request
@@ -1032,7 +1043,7 @@ export class StructureService {
 
             // Store in cache for future requests
             try {
-              await this.cache.set(cacheKey, computedFields, 300);
+              await this.cache.set(cacheKey, computedFields, { ttl: 300 });
               this.logger.debug(`Cached computed fields for structure ${structure.id}`);
             } catch (error) {
               // Log cache write error but don't prevent returning results
@@ -1108,7 +1119,7 @@ export class StructureService {
 
       // Store in cache for future requests
       try {
-        await this.cache.set(cacheKey, computedFields, 300);
+        await this.cache.set(cacheKey, computedFields, { ttl: 300 });
         this.logger.debug(`Cached computed fields for structure ${structure.id}`);
       } catch (error) {
         // Log cache write error but don't prevent returning results

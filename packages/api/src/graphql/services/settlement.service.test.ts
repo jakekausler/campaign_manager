@@ -5,6 +5,7 @@
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
@@ -22,6 +23,7 @@ describe('SettlementService', () => {
   let service: SettlementService;
   let prisma: PrismaService;
   let audit: AuditService;
+  let cache: CacheService;
 
   const mockUser: AuthenticatedUser = {
     id: 'user-1',
@@ -87,6 +89,18 @@ describe('SettlementService', () => {
             structure: {
               updateMany: jest.fn(),
             },
+            fieldCondition: {
+              findMany: jest.fn(),
+            },
+            branch: {
+              findFirst: jest.fn(),
+            },
+            $transaction: jest.fn((callback) =>
+              callback({
+                settlement: { update: jest.fn() },
+                version: { create: jest.fn() },
+              })
+            ),
           },
         },
         {
@@ -153,12 +167,22 @@ describe('SettlementService', () => {
             getCircuitState: jest.fn(),
           },
         },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            delPattern: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<SettlementService>(SettlementService);
     prisma = module.get<PrismaService>(PrismaService);
     audit = module.get<AuditService>(AuditService);
+    cache = module.get<CacheService>(CacheService);
   });
 
   afterEach(() => {
@@ -630,6 +654,138 @@ describe('SettlementService', () => {
       expect(newState.id).toBe(deletedSettlement.id);
       // Date gets serialized to ISO string by JSON.parse(JSON.stringify())
       expect(newState.deletedAt).toBe(deletedAt.toISOString());
+    });
+  });
+
+  describe('getComputedFields', () => {
+    describe('cache hit', () => {
+      it('should return cached data without recomputing when cache hit occurs', async () => {
+        // Arrange: Mock cached computed fields data
+        const cachedComputedFields = {
+          population: 15000,
+          defensiveBonus: 5,
+          taxRate: 0.15,
+        };
+
+        // Mock cache.get to return cached data (cache hit)
+        (cache.get as jest.Mock).mockResolvedValue(cachedComputedFields);
+
+        // Act: Call getComputedFields
+        const result = await service.getComputedFields(mockSettlement, mockUser);
+
+        // Assert: Should return cached data
+        expect(result).toEqual(cachedComputedFields);
+
+        // Assert: cache.get should be called with correct cache key
+        const expectedCacheKey = `computed-fields:settlement:${mockSettlement.id}:main`;
+        expect(cache.get).toHaveBeenCalledWith(expectedCacheKey);
+        expect(cache.get).toHaveBeenCalledTimes(1);
+
+        // Assert: Should NOT query database for field conditions (cache hit)
+        expect(prisma.fieldCondition.findMany).not.toHaveBeenCalled();
+
+        // Assert: Should NOT store to cache (already cached)
+        expect(cache.set).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('cache miss', () => {
+      it('should compute fields and store in cache when cache miss occurs', async () => {
+        // Arrange: Mock cache miss (cache.get returns null)
+        (cache.get as jest.Mock).mockResolvedValue(null);
+
+        // Mock no field conditions (simplest case - empty computed fields)
+        (prisma.fieldCondition.findMany as jest.Mock).mockResolvedValue([]);
+
+        // Mock cache.set to resolve successfully
+        (cache.set as jest.Mock).mockResolvedValue(undefined);
+
+        // Act: Call getComputedFields
+        const result = await service.getComputedFields(mockSettlement, mockUser);
+
+        // Assert: Should return empty object (no conditions)
+        expect(result).toEqual({});
+
+        // Assert: cache.get should be called with correct cache key
+        const expectedCacheKey = `computed-fields:settlement:${mockSettlement.id}:main`;
+        expect(cache.get).toHaveBeenCalledWith(expectedCacheKey);
+        expect(cache.get).toHaveBeenCalledTimes(1);
+
+        // Assert: Should query database for field conditions (cache miss)
+        expect(prisma.fieldCondition.findMany).toHaveBeenCalledWith({
+          where: {
+            entityType: 'settlement',
+            entityId: mockSettlement.id,
+            isActive: true,
+            deletedAt: null,
+          },
+          orderBy: {
+            priority: 'desc',
+          },
+        });
+        expect(prisma.fieldCondition.findMany).toHaveBeenCalledTimes(1);
+
+        // Assert: Should store computed result to cache with correct TTL
+        expect(cache.set).toHaveBeenCalledWith(expectedCacheKey, {}, { ttl: 300 });
+        expect(cache.set).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('cache invalidation', () => {
+      it('should invalidate computed fields cache when settlement is updated', async () => {
+        // Arrange: Setup mocks for update operation
+        const updateInput = {
+          name: 'Updated Minas Tirith',
+          level: 4,
+        };
+
+        const mockSettlementWithKingdom = {
+          ...mockSettlement,
+          kingdom: mockKingdom,
+        };
+
+        const updatedSettlement = {
+          ...mockSettlement,
+          ...updateInput,
+          version: 2,
+        };
+
+        // Mock findById (permission check)
+        (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(mockSettlement);
+
+        // Mock findUnique (fetch with kingdom for audit)
+        (prisma.settlement.findUnique as jest.Mock).mockResolvedValue(mockSettlementWithKingdom);
+
+        // Mock branch.findFirst (branch validation)
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValue({ id: 'main', name: 'main' });
+
+        // Mock $transaction to execute callback and return updated settlement
+        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+          const tx = {
+            settlement: {
+              update: jest.fn().mockResolvedValue(updatedSettlement),
+            },
+            version: {
+              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
+            },
+          };
+          return callback(tx);
+        });
+
+        // Mock cache.del to resolve successfully
+        (cache.del as jest.Mock).mockResolvedValue(1);
+
+        // Act: Call update method
+        await service.update('settlement-1', updateInput, mockUser, 1, 'main');
+
+        // Assert: cache.del should be called with correct cache key
+        const expectedCacheKey = `computed-fields:settlement:${mockSettlement.id}:main`;
+        expect(cache.del).toHaveBeenCalledWith(expectedCacheKey);
+        expect(cache.del).toHaveBeenCalledTimes(1);
+
+        // Assert: Transaction should be called
+        expect(prisma.$transaction).toHaveBeenCalled();
+      });
     });
   });
 });

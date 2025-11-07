@@ -922,9 +922,20 @@ export class SettlementService {
         },
       });
 
-      // If no conditions, return empty object
+      // If no conditions, cache and return empty object
       if (conditions.length === 0) {
-        return {};
+        const emptyResult = {};
+        try {
+          await this.cache.set(cacheKey, emptyResult, { ttl: 300 });
+          this.logger.debug(`Cached empty computed fields for settlement ${settlement.id}`);
+        } catch (error) {
+          // Log cache write error but don't prevent returning results
+          this.logger.warn(
+            `Cache write error for settlement ${settlement.id}`,
+            error instanceof Error ? error.message : undefined
+          );
+        }
+        return emptyResult;
       }
 
       // Get campaign ID for Rules Engine worker request
