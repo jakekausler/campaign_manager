@@ -18,6 +18,7 @@ import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 import { createSettlementUpdatedEvent } from '@campaign/shared';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
@@ -40,6 +41,7 @@ export class SettlementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly cache: CacheService,
     private readonly versionService: VersionService,
     @Inject(forwardRef(() => CampaignContextService))
     private readonly campaignContext: CampaignContextService,
@@ -474,6 +476,20 @@ export class SettlementService {
       },
     });
 
+    // Invalidate computed fields cache since settlement data changed
+    // Cache invalidation failures should not block the operation
+    try {
+      const cacheKey = `computed-fields:settlement:${id}:${branchId}`;
+      await this.cache.del(cacheKey);
+      this.logger.debug(`Invalidated computed fields cache: ${cacheKey}`);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.warn(
+        `Failed to invalidate computed fields cache for settlement ${id}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
     // Invalidate dependency graph cache to trigger rule re-evaluation
     // Cache invalidation failures should not block the operation
     try {
@@ -775,6 +791,22 @@ export class SettlementService {
       include: { kingdom: true },
     });
 
+    // Invalidate computed fields cache since level changed
+    // Cache invalidation failures should not block the operation
+    try {
+      // TODO: Support branch parameter - currently hardcoded to 'main'
+      const branchId = 'main';
+      const cacheKey = `computed-fields:settlement:${id}:${branchId}`;
+      await this.cache.del(cacheKey);
+      this.logger.debug(`Invalidated computed fields cache: ${cacheKey}`);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.warn(
+        `Failed to invalidate computed fields cache for settlement ${id}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
     // Invalidate campaign context cache to reflect level change
     // Cache invalidation failures should not block the operation - cache will expire via TTL
     try {
@@ -852,6 +884,28 @@ export class SettlementService {
     settlement: PrismaSettlement,
     _user: AuthenticatedUser
   ): Promise<Record<string, unknown>> {
+    // TODO: Support branch parameter - currently hardcoded to 'main'
+    const branchId = 'main';
+    const cacheKey = `computed-fields:settlement:${settlement.id}:${branchId}`;
+
+    try {
+      // Check cache first
+      const cached = await this.cache.get<Record<string, unknown>>(cacheKey);
+      if (cached) {
+        this.logger.debug(`Cache hit for computed fields: ${cacheKey}`);
+        return cached;
+      }
+
+      this.logger.debug(`Cache miss for computed fields: ${cacheKey}`);
+    } catch (error) {
+      // Log cache error but continue - graceful degradation
+      this.logger.warn(
+        `Failed to read cache for computed fields ${cacheKey}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
+    // Cache miss - compute fields normally
     try {
       // Fetch all active conditions for this settlement
       // NOTE: This creates an N+1 query problem when called for multiple settlements
@@ -936,6 +990,19 @@ export class SettlementService {
             this.logger.debug(
               `Evaluated ${conditions.length} conditions for settlement ${settlement.id} via Rules Engine worker`
             );
+
+            // Store in cache for future requests (TTL: 300 seconds)
+            try {
+              await this.cache.set(cacheKey, computedFields, { ttl: 300 });
+              this.logger.debug(`Cached computed fields: ${cacheKey}`);
+            } catch (error) {
+              // Log cache error but don't throw - graceful degradation
+              this.logger.warn(
+                `Failed to cache computed fields ${cacheKey}`,
+                error instanceof Error ? error.message : undefined
+              );
+            }
+
             return computedFields;
           }
         } catch (error) {
@@ -998,6 +1065,18 @@ export class SettlementService {
         if (result.success) {
           computedFields[condition.field] = result.value;
         }
+      }
+
+      // Store in cache for future requests (TTL: 300 seconds)
+      try {
+        await this.cache.set(cacheKey, computedFields, { ttl: 300 });
+        this.logger.debug(`Cached computed fields: ${cacheKey}`);
+      } catch (error) {
+        // Log cache error but don't throw - graceful degradation
+        this.logger.warn(
+          `Failed to cache computed fields ${cacheKey}`,
+          error instanceof Error ? error.message : undefined
+        );
       }
 
       return computedFields;
