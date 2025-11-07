@@ -78,7 +78,7 @@ StateVariable change → invalidate entity's computed fields
 | Stage                           | Status      | File                                           |
 | ------------------------------- | ----------- | ---------------------------------------------- |
 | Stage 1: Core Cache Service     | complete    | [TICKET-033-stage-1.md](TICKET-033-stage-1.md) |
-| Stage 2: Computed Fields Cache  | in progress | [TICKET-033-stage-2.md](TICKET-033-stage-2.md) |
+| Stage 2: Computed Fields Cache  | complete    | [TICKET-033-stage-2.md](TICKET-033-stage-2.md) |
 | Stage 3: Entity List Cache      | not started | [TICKET-033-stage-3.md](TICKET-033-stage-3.md) |
 | Stage 4: Spatial Query Cache    | not started | [TICKET-033-stage-4.md](TICKET-033-stage-4.md) |
 | Stage 5: Cascading Invalidation | not started | [TICKET-033-stage-5.md](TICKET-033-stage-5.md) |
@@ -99,3 +99,4 @@ StateVariable change → invalidate entity's computed fields
 [Updated as stages are completed:]
 
 - Stage 1: `f78df73` - Core cache service infrastructure with CacheService, CacheKeyBuilder, and CacheModule
+- Stage 2: `b808d64` - Computed fields caching for Settlement and Structure services with cache invalidation

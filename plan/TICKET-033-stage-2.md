@@ -85,7 +85,7 @@ When loading 10 settlements with computed fields:
 
 - [x] Run code review (use Code Reviewer subagent - MANDATORY)
 - [x] Address code review feedback (if any exists from previous task)
-- [ ] Commit stage changes with detailed conventional commit message
+- [x] Commit stage changes with detailed conventional commit message
 
 ## Implementation Notes
 
@@ -621,6 +621,21 @@ When loading 10 settlements with computed fields:
   - Documentation improvement ticket (cache strategy comments)
   - Monitoring/observability ticket (cache hit rate metrics)
 
+**Task 27: Commit stage changes with detailed conventional commit message**
+
+- All implementation code already committed incrementally during development tasks (best practice)
+- Stage 2 implementation commits:
+  - `ab1bb08` - feat(api): add caching to SettlementService computed fields
+  - `1aee379` - feat(api): inject CacheService into StructureService
+  - `9695776` - feat(api): add cache check to StructureService.getComputedFields()
+  - `1a84cec` - feat(api): add cache storage to StructureService.getComputedFields()
+  - `e82bf7d` - feat(api): add cache invalidation to StructureService.update()
+  - `b808d64` - feat(api): add cache invalidation to StructureService.setLevel()
+- Final implementation commit: `b808d64`
+- Stage 2 complete: Computed fields caching fully implemented for Settlement and Structure services
+- All quality gates passed: tests (1853 passing), type-check, lint, code review
+- Ready for Stage 3 or ticket completion verification
+
 ## Commit Hash
 
-[Added when final commit task is complete]
+`b808d64` - feat(api): add cache invalidation to StructureService.setLevel()
