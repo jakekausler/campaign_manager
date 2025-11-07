@@ -833,6 +833,22 @@ export class StructureService {
       include: { settlement: { include: { kingdom: true } } },
     });
 
+    // Invalidate computed fields cache since level changed
+    // Cache invalidation failures should not block the operation
+    try {
+      // TODO: Support branch parameter - currently hardcoded to 'main'
+      const branchId = 'main';
+      const cacheKey = `computed-fields:structure:${id}:${branchId}`;
+      await this.cache.del(cacheKey);
+      this.logger.debug(`Invalidated computed fields cache: ${cacheKey}`);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.warn(
+        `Failed to invalidate computed fields cache for structure ${id}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
     // Invalidate campaign context cache to reflect level change
     // Cache invalidation failures should not block the operation - cache will expire via TTL
     try {

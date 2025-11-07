@@ -60,7 +60,7 @@ When loading 10 settlements with computed fields:
 - [x] Modify `StructureService.getComputedFields()` to check cache before computing
 - [x] Add cache.set() after computing fields in StructureService
 - [x] Add cache invalidation to `StructureService.update()` method
-- [ ] Add cache invalidation to `StructureService.setLevel()` method
+- [x] Add cache invalidation to `StructureService.setLevel()` method
 - [ ] Add logging for cache hits/misses (debug level)
 
 ### Testing Tasks
@@ -184,6 +184,18 @@ When loading 10 settlements with computed fields:
 - Failures logged as warnings with error details
 - Successful invalidation logged at debug level
 - Pattern matches SettlementService Task 4 implementation exactly
+
+**Task 11: Add cache invalidation to `StructureService.setLevel()` method**
+
+- Added cache invalidation after fetching structure with relations, before campaign context invalidation
+- Method doesn't have `branchId` parameter, so hardcoded to 'main' (consistent with `getComputedFields()`)
+- Added TODO comment for future branch parameter support
+- Cache key construction: `computed-fields:structure:{id}:main`
+- Uses `cache.del()` to remove the cached entry
+- Wrapped in try-catch for graceful degradation
+- Failures logged as warnings, successes at debug level
+- Placement groups cache invalidation operations together (before campaign context invalidation)
+- Pattern matches SettlementService Task 5 implementation exactly
 
 ## Commit Hash
 
