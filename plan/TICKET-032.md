@@ -32,16 +32,16 @@ Implement comprehensive audit logging system that tracks all mutations with acto
 
 ## Acceptance Criteria
 
-- [ ] All mutations create audit entries
-- [ ] Settlement mutations create audit records
-- [ ] Structure mutations create audit records
-- [ ] Audit includes actor, timestamp, diff
-- [ ] Can query audit log
-- [ ] Can filter audit log by Settlement operations
-- [ ] Can filter audit log by Structure operations
-- [ ] UI shows audit history
-- [ ] Can filter and search audit log
-- [ ] Can export audit log
+- [x] All mutations create audit entries (pre-existing: 22+ services already integrated)
+- [x] Settlement mutations create audit records (pre-existing: verified in Stage 1 research)
+- [x] Structure mutations create audit records (pre-existing: verified in Stage 1 research)
+- [x] Audit includes actor, timestamp, diff (enhanced in Stages 1A-1E with new fields)
+- [x] Can query audit log (enhanced in Stage 3 with advanced filtering)
+- [x] Can filter audit log by Settlement operations (Stage 3: operation type filtering)
+- [x] Can filter audit log by Structure operations (Stage 3: operation type filtering)
+- [x] UI shows audit history (Stage 4: AuditLogPage with table component)
+- [x] Can filter and search audit log (Stage 5: filters, sorting, pagination, search)
+- [x] Can export audit log (Stages 7-8: CSV/JSON export with advanced features)
 
 ## Dependencies
 
