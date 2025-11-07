@@ -187,36 +187,53 @@ After creating and committing the implementation plan, **STOP** and wait for fur
 
 ## IMPLEMENTATION
 
-You are now working at **task-level granularity**, not stage-level. This means:
+**🚨 CRITICAL: ONE TASK AT A TIME 🚨**
 
-- Work on the **single task** identified by task-navigator
-- Mark that task as complete when done
+You are now working at **task-level granularity**, NOT stage-level.
+
+**THIS MEANS:**
+
+- Work on **EXACTLY ONE TASK** - the single task identified by task-navigator
+- Complete **ONLY THAT ONE TASK** - do NOT proceed to the next task
+- Mark that **ONE TASK** as complete when done
 - Update stage status in main plan if needed (first task → "in progress", last task → "complete")
-- **STOP** after completing the task
-- User will run `/next_task` again for the next task
+- **STOP IMMEDIATELY** after completing **THAT ONE TASK**
+- User will run `/next_task` again to get the next task
+
+**DO NOT:**
+
+- ❌ Work on multiple tasks in one context
+- ❌ Move to the next task automatically
+- ❌ Complete an entire stage at once
+- ❌ Skip ahead to later tasks
+
+**EACH TASK = ONE CONTEXT. ONE CONTEXT = ONE TASK.**
 
 ### Task Execution Guidelines
+
+**REMINDER: You are working on ONE TASK ONLY. Do not proceed to any other tasks.**
 
 1. **Read the context**: Review both the main plan and the stage file to understand:
    - Overall architecture considerations
    - Stage-specific context
-   - The specific task you're working on
+   - **The ONE SPECIFIC TASK you're working on** (and ONLY that task)
    - How it fits into the larger stage
 
-2. **Execute the task**: Follow best practices:
+2. **Execute THE ONE TASK**: Follow best practices:
    - Write clean, maintainable code
    - Add comments where necessary
    - Use TDD when appropriate (write test tasks before implementation)
    - **Delegate research to Explore subagent** to save context
+   - **DO NOT start working on the next task**
 
-3. **Mark the task complete**: Update the checkbox in the stage file from `- [ ]` to `- [x]`
+3. **Mark THE ONE TASK complete**: Update the checkbox in the stage file from `- [ ]` to `- [x]`
 
 4. **Update status if needed**:
    - If this was the **first task** in a stage: Update stage status to "in progress" in main plan
    - If this was the **last task** in a stage: Update stage status to "complete" in main plan
    - Add commit hash to stage file if this was the final commit task
 
-5. **STOP**: Do not proceed to the next task
+5. **STOP IMMEDIATELY**: Do not proceed to the next task. The user will run `/next_task` again.
 
 ### Context Management
 
@@ -470,9 +487,19 @@ Throughout task execution:
 
 ## Summary
 
-- **Work at task-level** - One task per execution
+**🚨 CRITICAL RULES 🚨**
+
+1. **ONE TASK PER CONTEXT** - Work on EXACTLY ONE task, then STOP
+2. **NEVER AUTO-ADVANCE** - User runs `/next_task` to get the next task
+3. **TASK-LEVEL GRANULARITY** - Do NOT complete entire stages at once
+
+**Standard Operating Procedure:**
+
+- **Work at task-level** - One task per execution, NO EXCEPTIONS
 - **Use subagents** - Delegate research, testing, fixing, and review
 - **Update files** - Keep stage file and main plan synchronized
 - **STOP after each task** - Let user drive progress with `/next_task`
 - **Quality gates** - Tests, linting, and code review in every code stage
 - **Document as you go** - Implementation notes in both files
+
+**Remember: ONE TASK = ONE CONTEXT. Then STOP and wait for `/next_task`.**
