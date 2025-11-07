@@ -57,7 +57,7 @@ When loading 10 settlements with computed fields:
 - [x] Add cache invalidation to `SettlementService.setLevel()` method
 - [x] Add cache invalidation to `SettlementService.updateSettlementAndStructures()` method
 - [x] Inject CacheService into StructureService constructor
-- [ ] Modify `StructureService.getComputedFields()` to check cache before computing
+- [x] Modify `StructureService.getComputedFields()` to check cache before computing
 - [ ] Add cache.set() after computing fields in StructureService
 - [ ] Add cache invalidation to `StructureService.update()` method
 - [ ] Add cache invalidation to `StructureService.setLevel()` method
@@ -151,6 +151,17 @@ When loading 10 settlements with computed fields:
 - Placed after `audit` service to maintain logical grouping, matching SettlementService pattern
 - Used simple injection without `@Inject()` decorator since CacheService is `@Injectable()`
 - Import placed in the same location relative to other imports as in SettlementService for consistency
+
+**Task 8: Modify `StructureService.getComputedFields()` to check cache before computing**
+
+- Added cache check at the beginning of the method, inside the main try block
+- Cache key format: `computed-fields:structure:{structureId}:{branchId}`
+- Currently using hardcoded `branchId = 'main'` (TODO: support branch parameter)
+- On cache hit: Log debug message and return cached value immediately
+- On cache miss: Log debug message and proceed with normal computation
+- Wrapped cache.get() in try-catch for graceful degradation (cache failures don't break functionality)
+- Cache read errors are logged as warnings but don't prevent normal operation
+- Pattern matches SettlementService implementation exactly for consistency
 
 ## Commit Hash
 

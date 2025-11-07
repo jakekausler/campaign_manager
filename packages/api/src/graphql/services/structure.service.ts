@@ -897,6 +897,25 @@ export class StructureService {
     _user: AuthenticatedUser
   ): Promise<Record<string, unknown>> {
     try {
+      // Check cache first
+      const branchId = 'main'; // TODO: Support branch parameter
+      const cacheKey = `computed-fields:structure:${structure.id}:${branchId}`;
+
+      try {
+        const cached = await this.cache.get<Record<string, unknown>>(cacheKey);
+        if (cached !== null) {
+          this.logger.debug(`Cache hit for structure ${structure.id} computed fields`);
+          return cached;
+        }
+        this.logger.debug(`Cache miss for structure ${structure.id} computed fields`);
+      } catch (error) {
+        // Log cache read error but continue with computation
+        this.logger.warn(
+          `Cache read error for structure ${structure.id}`,
+          error instanceof Error ? error.message : undefined
+        );
+      }
+
       // Fetch all active conditions for this structure
       // NOTE: This creates an N+1 query problem when called for multiple structures
       // Should be optimized with DataLoader in future iteration
