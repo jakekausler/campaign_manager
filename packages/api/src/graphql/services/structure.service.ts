@@ -999,6 +999,19 @@ export class StructureService {
             this.logger.debug(
               `Evaluated ${conditions.length} conditions for structure ${structure.id} via Rules Engine worker`
             );
+
+            // Store in cache for future requests
+            try {
+              await this.cache.set(cacheKey, computedFields, 300);
+              this.logger.debug(`Cached computed fields for structure ${structure.id}`);
+            } catch (error) {
+              // Log cache write error but don't prevent returning results
+              this.logger.warn(
+                `Cache write error for structure ${structure.id}`,
+                error instanceof Error ? error.message : undefined
+              );
+            }
+
             return computedFields;
           }
         } catch (error) {
@@ -1061,6 +1074,18 @@ export class StructureService {
         if (result.success) {
           computedFields[condition.field] = result.value;
         }
+      }
+
+      // Store in cache for future requests
+      try {
+        await this.cache.set(cacheKey, computedFields, 300);
+        this.logger.debug(`Cached computed fields for structure ${structure.id}`);
+      } catch (error) {
+        // Log cache write error but don't prevent returning results
+        this.logger.warn(
+          `Cache write error for structure ${structure.id}`,
+          error instanceof Error ? error.message : undefined
+        );
       }
 
       return computedFields;

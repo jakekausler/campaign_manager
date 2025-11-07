@@ -58,7 +58,7 @@ When loading 10 settlements with computed fields:
 - [x] Add cache invalidation to `SettlementService.updateSettlementAndStructures()` method
 - [x] Inject CacheService into StructureService constructor
 - [x] Modify `StructureService.getComputedFields()` to check cache before computing
-- [ ] Add cache.set() after computing fields in StructureService
+- [x] Add cache.set() after computing fields in StructureService
 - [ ] Add cache invalidation to `StructureService.update()` method
 - [ ] Add cache invalidation to `StructureService.setLevel()` method
 - [ ] Add logging for cache hits/misses (debug level)
@@ -162,6 +162,17 @@ When loading 10 settlements with computed fields:
 - Wrapped cache.get() in try-catch for graceful degradation (cache failures don't break functionality)
 - Cache read errors are logged as warnings but don't prevent normal operation
 - Pattern matches SettlementService implementation exactly for consistency
+
+**Task 9: Add cache.set() after computing fields in StructureService**
+
+- Added cache.set() calls in both execution paths (Rules Engine worker and local evaluation)
+- TTL set to 300 seconds (5 minutes) as specified in stage context
+- Placement: Immediately after computing fields, before return statement in both paths
+- Both cache writes wrapped in try-catch for graceful degradation
+- Cache write failures are logged as warnings but don't prevent returning results
+- Debug logging confirms successful cache storage
+- Uses the same cacheKey variable defined at the beginning of the method
+- Pattern matches SettlementService Task 3 implementation exactly
 
 ## Commit Hash
 
