@@ -224,6 +224,61 @@ describe('SettlementService', () => {
         NotFoundException
       );
     });
+
+    describe('cache behavior', () => {
+      it('should return cached data without querying database when cache hit occurs', async () => {
+        // Arrange: Mock cache hit
+        const cachedSettlements = [mockSettlement];
+        (cache.get as jest.Mock).mockResolvedValue(cachedSettlements);
+
+        // Act: Call findByKingdom
+        const result = await service.findByKingdom('kingdom-1', mockUser);
+
+        // Assert: Should return cached data
+        expect(result).toEqual(cachedSettlements);
+        expect(cache.get).toHaveBeenCalledWith('settlements:kingdom:kingdom-1:main');
+
+        // Assert: Should NOT query database (cache hit)
+        expect(prisma.kingdom.findFirst).not.toHaveBeenCalled();
+        expect(prisma.settlement.findMany).not.toHaveBeenCalled();
+
+        // Assert: Should NOT call cache.set (data already cached)
+        expect(cache.set).not.toHaveBeenCalled();
+      });
+
+      it('should query database and store in cache when cache miss occurs', async () => {
+        // Arrange: Mock cache miss and database queries
+        (cache.get as jest.Mock).mockResolvedValue(null);
+        (prisma.kingdom.findFirst as jest.Mock).mockResolvedValue(mockKingdom);
+        (prisma.settlement.findMany as jest.Mock).mockResolvedValue([mockSettlement]);
+
+        // Act: Call findByKingdom
+        const result = await service.findByKingdom('kingdom-1', mockUser);
+
+        // Assert: Should return data from database
+        expect(result).toEqual([mockSettlement]);
+        expect(cache.get).toHaveBeenCalledWith('settlements:kingdom:kingdom-1:main');
+
+        // Assert: Should query database (cache miss)
+        expect(prisma.kingdom.findFirst).toHaveBeenCalled();
+        expect(prisma.settlement.findMany).toHaveBeenCalledWith({
+          where: {
+            kingdomId: 'kingdom-1',
+            deletedAt: null,
+          },
+          orderBy: {
+            name: 'asc',
+          },
+        });
+
+        // Assert: Should store in cache with 10 minute TTL
+        expect(cache.set).toHaveBeenCalledWith(
+          'settlements:kingdom:kingdom-1:main',
+          [mockSettlement],
+          { ttl: 600 }
+        );
+      });
+    });
   });
 
   describe('create', () => {
@@ -304,6 +359,27 @@ describe('SettlementService', () => {
       (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(mockSettlement); // existing settlement
 
       await expect(service.create(input, mockUser)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should invalidate kingdom settlement list cache when creating a settlement', async () => {
+      // Arrange: Setup input and mocks
+      const input = {
+        name: 'Minas Tirith',
+        kingdomId: 'kingdom-1',
+        locationId: 'location-1',
+        level: 3,
+      };
+
+      (prisma.kingdom.findFirst as jest.Mock).mockResolvedValue(mockKingdom);
+      (prisma.location.findFirst as jest.Mock).mockResolvedValue(mockLocation);
+      (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.settlement.create as jest.Mock).mockResolvedValue(mockSettlement);
+
+      // Act: Create settlement
+      await service.create(input, mockUser);
+
+      // Assert: Should invalidate the kingdom's settlement list cache
+      expect(cache.del).toHaveBeenCalledWith('settlements:kingdom:kingdom-1:main');
     });
   });
 
@@ -431,6 +507,24 @@ describe('SettlementService', () => {
       (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(null);
 
       await expect(service.delete('nonexistent', mockUser)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should invalidate kingdom settlement list cache when deleting a settlement', async () => {
+      (prisma.settlement.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockSettlement)
+        .mockResolvedValueOnce(mockSettlement);
+      (prisma.settlement.findUnique as jest.Mock).mockResolvedValue({
+        ...mockSettlement,
+        kingdom: mockKingdom,
+      });
+      (prisma.settlement.update as jest.Mock).mockResolvedValue({
+        ...mockSettlement,
+        deletedAt: new Date(),
+      });
+
+      await service.delete('settlement-1', mockUser);
+
+      expect(cache.del).toHaveBeenCalledWith('settlements:kingdom:kingdom-1:main');
     });
   });
 

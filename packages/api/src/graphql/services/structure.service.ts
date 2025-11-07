@@ -93,6 +93,26 @@ export class StructureService {
     settlementId: string,
     user: AuthenticatedUser
   ): Promise<PrismaStructure[]> {
+    // Check cache first
+    // TODO: Support branch parameter - currently hardcoded to 'main'
+    const branchId = 'main';
+    const cacheKey = `structures:settlement:${settlementId}:${branchId}`;
+
+    try {
+      const cached = await this.cache.get<PrismaStructure[]>(cacheKey);
+      if (cached !== null) {
+        this.logger.debug(`Cache hit for settlement ${settlementId} structure list`);
+        return cached;
+      }
+      this.logger.debug(`Cache miss for settlement ${settlementId} structure list`);
+    } catch (error) {
+      // Log cache read error but continue with database query
+      this.logger.warn(
+        `Cache read error for settlement ${settlementId} structure list`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
     // First verify user has access to this settlement
     const settlement = await this.prisma.settlement.findFirst({
       where: {
@@ -121,7 +141,7 @@ export class StructureService {
       throw new NotFoundException(`Settlement with ID ${settlementId} not found`);
     }
 
-    return this.prisma.structure.findMany({
+    const structures = await this.prisma.structure.findMany({
       where: {
         settlementId,
         deletedAt: null,
@@ -130,6 +150,20 @@ export class StructureService {
         name: 'asc',
       },
     });
+
+    // Store in cache for future requests
+    try {
+      await this.cache.set(cacheKey, structures, { ttl: 600 });
+      this.logger.debug(`Cached structure list for settlement ${settlementId}`);
+    } catch (error) {
+      // Log cache write error but don't prevent returning results
+      this.logger.warn(
+        `Cache write error for settlement ${settlementId} structure list`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
+    return structures;
   }
 
   /**
@@ -337,6 +371,22 @@ export class StructureService {
         }
       )
     );
+
+    // Invalidate settlement's structure list cache
+    // Cache invalidation failures should not block the operation
+    try {
+      // TODO: Support branch parameter - currently hardcoded to 'main'
+      const branchId = 'main';
+      const cacheKey = `structures:settlement:${input.settlementId}:${branchId}`;
+      await this.cache.del(cacheKey);
+      this.logger.debug(`Invalidated structure list cache: ${cacheKey}`);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.warn(
+        `Failed to invalidate structure list cache for settlement ${input.settlementId}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
 
     return structure;
   }
@@ -635,6 +685,22 @@ export class StructureService {
       )
     );
 
+    // Invalidate settlement's structure list cache
+    // Cache invalidation failures should not block the operation
+    try {
+      // TODO: Support branch parameter - currently hardcoded to 'main'
+      const branchId = 'main';
+      const cacheKey = `structures:settlement:${structure.settlementId}:${branchId}`;
+      await this.cache.del(cacheKey);
+      this.logger.debug(`Invalidated structure list cache: ${cacheKey}`);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.warn(
+        `Failed to invalidate structure list cache for settlement ${structure.settlementId}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
     return deleted;
   }
 
@@ -688,6 +754,22 @@ export class StructureService {
 
     // Create audit entry
     await this.audit.log('structure', id, 'ARCHIVE', user.id, { archivedAt });
+
+    // Invalidate settlement's structure list cache
+    // Cache invalidation failures should not block the operation
+    try {
+      // TODO: Support branch parameter - currently hardcoded to 'main'
+      const branchId = 'main';
+      const cacheKey = `structures:settlement:${structure.settlementId}:${branchId}`;
+      await this.cache.del(cacheKey);
+      this.logger.debug(`Invalidated structure list cache: ${cacheKey}`);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.warn(
+        `Failed to invalidate structure list cache for settlement ${structure.settlementId}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
 
     return archived;
   }

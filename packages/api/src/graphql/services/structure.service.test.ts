@@ -195,6 +195,7 @@ describe('StructureService', () => {
 
   describe('findBySettlement', () => {
     it('should return structures for a settlement', async () => {
+      (cache.get as jest.Mock).mockResolvedValue(null); // Cache miss
       (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(mockSettlement);
       (prisma.structure.findMany as jest.Mock).mockResolvedValue([mockStructure]);
 
@@ -204,11 +205,47 @@ describe('StructureService', () => {
     });
 
     it('should throw NotFoundException if settlement not found', async () => {
+      (cache.get as jest.Mock).mockResolvedValue(null); // Cache miss
       (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(null);
 
       await expect(service.findBySettlement('nonexistent', mockUser)).rejects.toThrow(
         NotFoundException
       );
+    });
+
+    describe('cache behavior', () => {
+      it('should return cached data without querying database when cache hit occurs', async () => {
+        (cache.get as jest.Mock).mockResolvedValue([mockStructure]);
+
+        const result = await service.findBySettlement('settlement-1', mockUser);
+
+        expect(result).toEqual([mockStructure]);
+        expect(cache.get).toHaveBeenCalledWith('structures:settlement:settlement-1:main');
+        expect(prisma.settlement.findFirst).not.toHaveBeenCalled();
+        expect(prisma.structure.findMany).not.toHaveBeenCalled();
+        expect(cache.set).not.toHaveBeenCalled();
+      });
+
+      it('should query database and store in cache when cache miss occurs', async () => {
+        (cache.get as jest.Mock).mockResolvedValue(null);
+        (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(mockSettlement);
+        (prisma.structure.findMany as jest.Mock).mockResolvedValue([mockStructure]);
+
+        const result = await service.findBySettlement('settlement-1', mockUser);
+
+        expect(result).toEqual([mockStructure]);
+        expect(cache.get).toHaveBeenCalledWith('structures:settlement:settlement-1:main');
+        expect(prisma.settlement.findFirst).toHaveBeenCalled();
+        expect(prisma.structure.findMany).toHaveBeenCalledWith({
+          where: { settlementId: 'settlement-1', deletedAt: null },
+          orderBy: { name: 'asc' },
+        });
+        expect(cache.set).toHaveBeenCalledWith(
+          'structures:settlement:settlement-1:main',
+          [mockStructure],
+          { ttl: 600 }
+        );
+      });
     });
   });
 
@@ -290,6 +327,22 @@ describe('StructureService', () => {
       (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(null);
 
       await expect(service.create(input, mockUser)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should invalidate settlement structure list cache when creating a structure', async () => {
+      const input = {
+        name: 'Temple of Gondor',
+        settlementId: 'settlement-1',
+        type: 'temple',
+        level: 2,
+      };
+
+      (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(mockSettlement);
+      (prisma.structure.create as jest.Mock).mockResolvedValue(mockStructure);
+
+      await service.create(input, mockUser);
+
+      expect(cache.del).toHaveBeenCalledWith('structures:settlement:settlement-1:main');
     });
   });
 
@@ -409,6 +462,24 @@ describe('StructureService', () => {
       (prisma.structure.findFirst as jest.Mock).mockResolvedValue(null);
 
       await expect(service.delete('nonexistent', mockUser)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should invalidate settlement structure list cache when deleting a structure', async () => {
+      (prisma.structure.findFirst as jest.Mock)
+        .mockResolvedValueOnce(mockStructure)
+        .mockResolvedValueOnce(mockStructure);
+      (prisma.structure.findUnique as jest.Mock).mockResolvedValue({
+        ...mockStructure,
+        settlement: mockSettlement,
+      });
+      (prisma.structure.update as jest.Mock).mockResolvedValue({
+        ...mockStructure,
+        deletedAt: new Date(),
+      });
+
+      await service.delete('structure-1', mockUser);
+
+      expect(cache.del).toHaveBeenCalledWith('structures:settlement:settlement-1:main');
     });
   });
 

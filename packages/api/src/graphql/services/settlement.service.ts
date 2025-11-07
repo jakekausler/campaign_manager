@@ -86,6 +86,28 @@ export class SettlementService {
    * Find settlements by kingdom
    */
   async findByKingdom(kingdomId: string, user: AuthenticatedUser): Promise<PrismaSettlement[]> {
+    // TODO: Support branch parameter - currently hardcoded to 'main'
+    const branchId = 'main';
+    const cacheKey = `settlements:kingdom:${kingdomId}:${branchId}`;
+
+    // Check cache first
+    try {
+      const cached = await this.cache.get<PrismaSettlement[]>(cacheKey);
+      if (cached) {
+        this.logger.debug(`Cache hit for settlement list: ${cacheKey}`);
+        return cached;
+      }
+
+      this.logger.debug(`Cache miss for settlement list: ${cacheKey}`);
+    } catch (error) {
+      // Log cache error but continue - graceful degradation
+      this.logger.warn(
+        `Failed to read cache for settlement list ${cacheKey}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
+    // Cache miss - query database
     // First verify user has access to this kingdom
     const kingdom = await this.prisma.kingdom.findFirst({
       where: {
@@ -111,7 +133,7 @@ export class SettlementService {
       throw new NotFoundException(`Kingdom with ID ${kingdomId} not found`);
     }
 
-    return this.prisma.settlement.findMany({
+    const settlements = await this.prisma.settlement.findMany({
       where: {
         kingdomId,
         deletedAt: null,
@@ -120,6 +142,20 @@ export class SettlementService {
         name: 'asc',
       },
     });
+
+    // Store in cache for future requests (TTL: 600 seconds)
+    try {
+      await this.cache.set(cacheKey, settlements, { ttl: 600 });
+      this.logger.debug(`Cached settlement list: ${cacheKey}`);
+    } catch (error) {
+      // Log cache error but don't throw - graceful degradation
+      this.logger.warn(
+        `Failed to cache settlement list ${cacheKey}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
+    return settlements;
   }
 
   /**
@@ -318,6 +354,22 @@ export class SettlementService {
         source: 'api',
       })
     );
+
+    // Invalidate kingdom's settlement list cache since a new settlement was created
+    // Cache invalidation failures should not block the operation
+    try {
+      // TODO: Support branch parameter - currently hardcoded to 'main'
+      const branchId = 'main';
+      const cacheKey = `settlements:kingdom:${input.kingdomId}:${branchId}`;
+      await this.cache.del(cacheKey);
+      this.logger.debug(`Invalidated settlement list cache: ${cacheKey}`);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.warn(
+        `Failed to invalidate settlement list cache for kingdom ${input.kingdomId}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
 
     return settlement;
   }
@@ -600,6 +652,22 @@ export class SettlementService {
       })
     );
 
+    // Invalidate kingdom's settlement list cache since a settlement was deleted
+    // Cache invalidation failures should not block the operation
+    try {
+      // TODO: Support branch parameter - currently hardcoded to 'main'
+      const branchId = 'main';
+      const cacheKey = `settlements:kingdom:${settlement.kingdomId}:${branchId}`;
+      await this.cache.del(cacheKey);
+      this.logger.debug(`Invalidated settlement list cache: ${cacheKey}`);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.warn(
+        `Failed to invalidate settlement list cache for kingdom ${settlement.kingdomId}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
+
     return deleted;
   }
 
@@ -652,6 +720,22 @@ export class SettlementService {
 
     // Create audit entry
     await this.audit.log('settlement', id, 'ARCHIVE', user.id, { archivedAt });
+
+    // Invalidate kingdom's settlement list cache since a settlement was archived
+    // Cache invalidation failures should not block the operation
+    try {
+      // TODO: Support branch parameter - currently hardcoded to 'main'
+      const branchId = 'main';
+      const cacheKey = `settlements:kingdom:${settlement.kingdomId}:${branchId}`;
+      await this.cache.del(cacheKey);
+      this.logger.debug(`Invalidated settlement list cache: ${cacheKey}`);
+    } catch (error) {
+      // Log but don't throw - cache invalidation is optional
+      this.logger.warn(
+        `Failed to invalidate settlement list cache for kingdom ${settlement.kingdomId}`,
+        error instanceof Error ? error.message : undefined
+      );
+    }
 
     return archived;
   }
