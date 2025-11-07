@@ -56,7 +56,7 @@ When loading 10 settlements with computed fields:
 - [x] Add cache invalidation to `SettlementService.update()` method
 - [x] Add cache invalidation to `SettlementService.setLevel()` method
 - [x] Add cache invalidation to `SettlementService.updateSettlementAndStructures()` method
-- [ ] Inject CacheService into StructureService constructor
+- [x] Inject CacheService into StructureService constructor
 - [ ] Modify `StructureService.getComputedFields()` to check cache before computing
 - [ ] Add cache.set() after computing fields in StructureService
 - [ ] Add cache invalidation to `StructureService.update()` method
@@ -143,6 +143,14 @@ When loading 10 settlements with computed fields:
 - This appears to be a planning error - the method was referenced but never created
 - All other settlement mutation methods (`update()`, `setLevel()`, `delete()`, `archive()`, `restore()`, `create()`) already have cache invalidation implemented where appropriate
 - No action needed - marking task as complete with this note
+
+**Task 7: Inject CacheService into StructureService constructor**
+
+- Added CacheService import from `../../common/cache/cache.service`
+- Injected as `private readonly cache: CacheService` in constructor
+- Placed after `audit` service to maintain logical grouping, matching SettlementService pattern
+- Used simple injection without `@Inject()` decorator since CacheService is `@Injectable()`
+- Import placed in the same location relative to other imports as in SettlementService for consistency
 
 ## Commit Hash
 

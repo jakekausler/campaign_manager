@@ -18,6 +18,7 @@ import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 import { createStructureUpdatedEvent } from '@campaign/shared';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
@@ -40,6 +41,7 @@ export class StructureService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly cache: CacheService,
     private readonly versionService: VersionService,
     @Inject(forwardRef(() => CampaignContextService))
     private readonly campaignContext: CampaignContextService,
