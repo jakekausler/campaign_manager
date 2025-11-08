@@ -75,14 +75,14 @@ StateVariable change → invalidate entity's computed fields
 
 ## Implementation Stages
 
-| Stage                           | Status      | File                                           |
-| ------------------------------- | ----------- | ---------------------------------------------- |
-| Stage 1: Core Cache Service     | complete    | [TICKET-033-stage-1.md](TICKET-033-stage-1.md) |
-| Stage 2: Computed Fields Cache  | complete    | [TICKET-033-stage-2.md](TICKET-033-stage-2.md) |
-| Stage 3: Entity List Cache      | complete    | [TICKET-033-stage-3.md](TICKET-033-stage-3.md) |
-| Stage 4: Spatial Query Cache    | complete    | [TICKET-033-stage-4.md](TICKET-033-stage-4.md) |
-| Stage 5: Cascading Invalidation | complete    | [TICKET-033-stage-5.md](TICKET-033-stage-5.md) |
-| Stage 6: Monitoring & Stats     | in progress | [TICKET-033-stage-6.md](TICKET-033-stage-6.md) |
+| Stage                           | Status   | File                                           |
+| ------------------------------- | -------- | ---------------------------------------------- |
+| Stage 1: Core Cache Service     | complete | [TICKET-033-stage-1.md](TICKET-033-stage-1.md) |
+| Stage 2: Computed Fields Cache  | complete | [TICKET-033-stage-2.md](TICKET-033-stage-2.md) |
+| Stage 3: Entity List Cache      | complete | [TICKET-033-stage-3.md](TICKET-033-stage-3.md) |
+| Stage 4: Spatial Query Cache    | complete | [TICKET-033-stage-4.md](TICKET-033-stage-4.md) |
+| Stage 5: Cascading Invalidation | complete | [TICKET-033-stage-5.md](TICKET-033-stage-5.md) |
+| Stage 6: Monitoring & Stats     | complete | [TICKET-033-stage-6.md](TICKET-033-stage-6.md) |
 
 **Status Values:**
 
@@ -103,3 +103,4 @@ StateVariable change → invalidate entity's computed fields
 - Stage 3: `f6a853b` - Entity list caching for settlements by kingdom and structures by settlement with invalidation
 - Stage 4: `3dc73b6` - Spatial query caching for locationsNear, locationsInRegion, settlementsInRegion with pattern-based invalidation
 - Stage 5: `0e07136` - Cascading cache invalidation for maintaining data consistency across cache hierarchy
+- Stage 6: `ce4ff84` - Cache monitoring and statistics system with CacheStatsService, health checks, and GraphQL API
