@@ -9,6 +9,7 @@ import type { StateVariable as PrismaStateVariable } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
@@ -35,6 +36,7 @@ export class StateVariableService {
     private readonly evaluationService: VariableEvaluationService,
     private readonly versionService: VersionService,
     private readonly dependencyGraphService: DependencyGraphService,
+    private readonly cacheService: CacheService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
@@ -100,6 +102,13 @@ export class StateVariableService {
           variable.scopeId
         );
         this.dependencyGraphService.invalidateGraph(campaignId);
+
+        // Invalidate entity's computed fields cache (settlements and structures have computed fields)
+        if (variable.scope === VariableScope.SETTLEMENT) {
+          await this.cacheService.del(`computed-fields:settlement:${variable.scopeId}:main`);
+        } else if (variable.scope === VariableScope.STRUCTURE) {
+          await this.cacheService.del(`computed-fields:structure:${variable.scopeId}:main`);
+        }
 
         // Publish Redis event for Rules Engine worker
         await this.pubSub.publish('variable.created', {
@@ -388,6 +397,13 @@ export class StateVariableService {
         );
         this.dependencyGraphService.invalidateGraph(campaignId);
 
+        // Invalidate entity's computed fields cache (settlements and structures have computed fields)
+        if (updated.scope === VariableScope.SETTLEMENT) {
+          await this.cacheService.del(`computed-fields:settlement:${updated.scopeId}:main`);
+        } else if (updated.scope === VariableScope.STRUCTURE) {
+          await this.cacheService.del(`computed-fields:structure:${updated.scopeId}:main`);
+        }
+
         // Publish Redis event for Rules Engine worker
         await this.pubSub.publish('variable.updated', {
           variableId: updated.id,
@@ -431,6 +447,13 @@ export class StateVariableService {
           deleted.scopeId
         );
         this.dependencyGraphService.invalidateGraph(campaignId);
+
+        // Invalidate entity's computed fields cache (settlements and structures have computed fields)
+        if (deleted.scope === VariableScope.SETTLEMENT) {
+          await this.cacheService.del(`computed-fields:settlement:${deleted.scopeId}:main`);
+        } else if (deleted.scope === VariableScope.STRUCTURE) {
+          await this.cacheService.del(`computed-fields:structure:${deleted.scopeId}:main`);
+        }
 
         // Publish Redis event for Rules Engine worker
         await this.pubSub.publish('variable.deleted', {
