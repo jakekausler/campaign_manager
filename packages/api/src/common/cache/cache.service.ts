@@ -3,6 +3,7 @@ import { Redis } from 'ioredis';
 
 import { REDIS_CACHE } from '../../graphql/cache/redis-cache.provider';
 
+import { CacheStatsService } from './cache-stats.service';
 import { CacheOptions, CacheStats, CacheDeleteResult } from './cache.types';
 
 /**
@@ -48,7 +49,10 @@ export class CacheService {
     enabled: false,
   };
 
-  constructor(@Inject(REDIS_CACHE) private readonly redis: Redis) {
+  constructor(
+    @Inject(REDIS_CACHE) private readonly redis: Redis,
+    private readonly cacheStatsService: CacheStatsService
+  ) {
     // Load configuration from environment variables
     this.defaultTtl = parseInt(process.env.CACHE_DEFAULT_TTL || '300', 10);
     this.metricsEnabled = process.env.CACHE_METRICS_ENABLED !== 'false';
@@ -70,6 +74,7 @@ export class CacheService {
    * - Value cannot be parsed
    *
    * @param key - Cache key
+   * @param options - Cache options (trackMetrics)
    * @returns Parsed value or null
    *
    * @example
@@ -80,21 +85,29 @@ export class CacheService {
    * } else {
    *   // Fetch from database
    * }
+   *
+   * // Exclude from metrics (e.g., health checks)
+   * const ping = await cache.get<string>('health-check:ping', { trackMetrics: false });
    * ```
    */
-  async get<T>(key: string): Promise<T | null> {
+  async get<T>(key: string, options: CacheOptions = {}): Promise<T | null> {
+    const trackMetrics = options.trackMetrics !== false; // Default true
     try {
       const value = await this.redis.get(key);
 
       if (value === null) {
-        this.incrementMisses();
+        if (trackMetrics) {
+          this.incrementMisses(key);
+        }
         if (this.loggingEnabled) {
           this.logger.debug(`Cache MISS: ${key}`);
         }
         return null;
       }
 
-      this.incrementHits();
+      if (trackMetrics) {
+        this.incrementHits(key);
+      }
       if (this.loggingEnabled) {
         this.logger.debug(`Cache HIT: ${key}`);
       }
@@ -103,7 +116,9 @@ export class CacheService {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Cache get failed for key "${key}": ${message}`);
-      this.incrementMisses(); // Count as miss for accurate hit rate
+      if (trackMetrics) {
+        this.incrementMisses(key); // Count as miss for accurate hit rate
+      }
       return null;
     }
   }
@@ -128,14 +143,18 @@ export class CacheService {
    * ```
    */
   async set<T>(key: string, value: T, options: CacheOptions = {}): Promise<void> {
+    const trackMetrics = options.trackMetrics !== false; // Default true
+
     try {
       const ttl = options.ttl ?? this.defaultTtl;
       const serialized = JSON.stringify(value);
 
       await this.redis.setex(key, ttl, serialized);
 
-      if (this.metricsEnabled) {
+      if (this.metricsEnabled && trackMetrics) {
         this.stats.sets++;
+        const cacheType = this.extractCacheType(key);
+        this.cacheStatsService.recordSet(cacheType);
       }
 
       if (this.loggingEnabled || options.enableLogging) {
@@ -154,19 +173,27 @@ export class CacheService {
    * Uses graceful degradation - failures are logged but don't throw.
    *
    * @param key - Cache key to delete
+   * @param options - Cache options (trackMetrics)
    * @returns Number of keys deleted (0 or 1)
    *
    * @example
    * ```typescript
    * await cache.del('computed-fields:settlement:123:main');
+   *
+   * // Exclude from metrics (e.g., health checks)
+   * await cache.del('health-check:ping', { trackMetrics: false });
    * ```
    */
-  async del(key: string): Promise<number> {
+  async del(key: string, options: CacheOptions = {}): Promise<number> {
+    const trackMetrics = options.trackMetrics !== false; // Default true
+
     try {
       const count = await this.redis.del(key);
 
-      if (this.metricsEnabled) {
+      if (this.metricsEnabled && trackMetrics) {
         this.stats.deletes++;
+        const cacheType = this.extractCacheType(key);
+        this.cacheStatsService.recordInvalidation(cacheType);
       }
 
       if (this.loggingEnabled) {
@@ -192,7 +219,11 @@ export class CacheService {
    * Uses SCAN for safe iteration (doesn't block Redis).
    * Uses graceful degradation - returns success=false on errors.
    *
-   * @param pattern - Redis pattern with wildcards (* and ?)
+   * Note: The pattern is automatically prefixed with 'cache:' to match
+   * the keyPrefix configuration in Redis. Keys returned by SCAN include
+   * this prefix, so they must be stripped before calling del().
+   *
+   * @param pattern - Redis pattern with wildcards (* and ?) - do NOT include 'cache:' prefix
    * @returns Result with success status, keys deleted count, and optional error
    *
    * @example
@@ -210,19 +241,37 @@ export class CacheService {
       let keysDeleted = 0;
       let cursor = '0';
 
+      // Get the keyPrefix from Redis client options (e.g., 'cache:')
+      // SCAN's MATCH parameter doesn't use keyPrefix automatically, so we add it manually
+      const keyPrefix = this.redis.options.keyPrefix || '';
+      const prefixedPattern = keyPrefix ? `${keyPrefix}${pattern}` : pattern;
+
       // Use SCAN to iterate without blocking Redis
       do {
-        const [nextCursor, keys] = await this.redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        const [nextCursor, keys] = await this.redis.scan(
+          cursor,
+          'MATCH',
+          prefixedPattern,
+          'COUNT',
+          100
+        );
         cursor = nextCursor;
 
         if (keys.length > 0) {
-          const deleted = await this.redis.del(...keys);
+          // Keys returned by SCAN include the keyPrefix, but redis.del() will add it again
+          // So strip the prefix before calling del()
+          const keysWithoutPrefix = keyPrefix
+            ? keys.map((key) => key.replace(new RegExp(`^${keyPrefix}`), ''))
+            : keys;
+          const deleted = await this.redis.del(...keysWithoutPrefix);
           keysDeleted += deleted;
         }
       } while (cursor !== '0');
 
       if (this.metricsEnabled) {
         this.stats.patternDeletes++;
+        const cacheType = this.extractCacheType(pattern);
+        this.cacheStatsService.recordCascadeInvalidation(cacheType, keysDeleted);
       }
 
       if (this.loggingEnabled) {
@@ -547,12 +596,28 @@ export class CacheService {
   }
 
   /**
+   * Extract cache type from cache key.
+   * Cache keys follow the pattern: {prefix}:{entityType}:{entityId}:{branchId}
+   * The prefix is the cache type (e.g., 'computed-fields', 'settlements', 'spatial')
+   * @private
+   */
+  private extractCacheType(key: string): string {
+    const firstColonIndex = key.indexOf(':');
+    if (firstColonIndex === -1) {
+      return 'unknown';
+    }
+    return key.substring(0, firstColonIndex);
+  }
+
+  /**
    * Increment hit counter and update hit rate.
    * @private
    */
-  private incrementHits(): void {
+  private incrementHits(key: string): void {
     if (this.metricsEnabled) {
       this.stats.hits++;
+      const cacheType = this.extractCacheType(key);
+      this.cacheStatsService.recordHit(cacheType);
     }
   }
 
@@ -560,9 +625,11 @@ export class CacheService {
    * Increment miss counter and update hit rate.
    * @private
    */
-  private incrementMisses(): void {
+  private incrementMisses(key: string): void {
     if (this.metricsEnabled) {
       this.stats.misses++;
+      const cacheType = this.extractCacheType(key);
+      this.cacheStatsService.recordMiss(cacheType);
     }
   }
 }

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { createRedisCache, REDIS_CACHE } from '../../graphql/cache/redis-cache.provider';
 
+import { CacheStatsService } from './cache-stats.service';
 import { CacheService } from './cache.service';
 
 // Re-export REDIS_CACHE token for external use (e.g., integration tests)
@@ -62,10 +63,14 @@ export { REDIS_CACHE };
     },
     // Cache service
     CacheService,
+    // Cache statistics service
+    CacheStatsService,
   ],
   exports: [
     // Export CacheService for use by other modules
     CacheService,
+    // Export CacheStatsService for use by other modules (health checks, resolvers)
+    CacheStatsService,
     // Export REDIS_CACHE token for tests that need direct Redis access
     REDIS_CACHE,
   ],
