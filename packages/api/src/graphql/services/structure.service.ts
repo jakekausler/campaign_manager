@@ -372,18 +372,16 @@ export class StructureService {
       )
     );
 
-    // Invalidate settlement's structure list cache
+    // Invalidate structure cache cascade (structure computed fields, parent settlement, structure list)
     // Cache invalidation failures should not block the operation
     try {
       // TODO: Support branch parameter - currently hardcoded to 'main'
       const branchId = 'main';
-      const cacheKey = `structures:settlement:${input.settlementId}:${branchId}`;
-      await this.cache.del(cacheKey);
-      this.logger.debug(`Invalidated structure list cache: ${cacheKey}`);
+      await this.cache.invalidateStructureCascade(structure.id, input.settlementId, branchId);
     } catch (error) {
       // Log but don't throw - cache invalidation is optional
       this.logger.warn(
-        `Failed to invalidate structure list cache for settlement ${input.settlementId}`,
+        `Failed to invalidate structure cascade cache for structure ${structure.id}`,
         error instanceof Error ? error.message : undefined
       );
     }
@@ -551,16 +549,18 @@ export class StructureService {
       },
     });
 
-    // Invalidate computed fields cache since structure data changed
+    // Invalidate structure cache cascade (structure computed fields, parent settlement, structure list)
     // Cache invalidation failures should not block the operation
     try {
-      const cacheKey = `computed-fields:structure:${id}:${branchId}`;
-      await this.cache.del(cacheKey);
-      this.logger.debug(`Invalidated computed fields cache: ${cacheKey}`);
+      await this.cache.invalidateStructureCascade(
+        id,
+        structureWithRelations!.settlementId,
+        branchId
+      );
     } catch (error) {
       // Log but don't throw - cache invalidation is optional
       this.logger.warn(
-        `Failed to invalidate computed fields cache for structure ${id}`,
+        `Failed to invalidate structure cascade cache for structure ${id}`,
         error instanceof Error ? error.message : undefined
       );
     }
@@ -685,18 +685,16 @@ export class StructureService {
       )
     );
 
-    // Invalidate settlement's structure list cache
+    // Invalidate structure cache cascade (structure computed fields, parent settlement, structure list)
     // Cache invalidation failures should not block the operation
     try {
       // TODO: Support branch parameter - currently hardcoded to 'main'
       const branchId = 'main';
-      const cacheKey = `structures:settlement:${structure.settlementId}:${branchId}`;
-      await this.cache.del(cacheKey);
-      this.logger.debug(`Invalidated structure list cache: ${cacheKey}`);
+      await this.cache.invalidateStructureCascade(id, structure.settlementId, branchId);
     } catch (error) {
       // Log but don't throw - cache invalidation is optional
       this.logger.warn(
-        `Failed to invalidate structure list cache for settlement ${structure.settlementId}`,
+        `Failed to invalidate structure cascade cache for structure ${id}`,
         error instanceof Error ? error.message : undefined
       );
     }
@@ -755,18 +753,16 @@ export class StructureService {
     // Create audit entry
     await this.audit.log('structure', id, 'ARCHIVE', user.id, { archivedAt });
 
-    // Invalidate settlement's structure list cache
+    // Invalidate structure cache cascade (structure computed fields, parent settlement, structure list)
     // Cache invalidation failures should not block the operation
     try {
       // TODO: Support branch parameter - currently hardcoded to 'main'
       const branchId = 'main';
-      const cacheKey = `structures:settlement:${structure.settlementId}:${branchId}`;
-      await this.cache.del(cacheKey);
-      this.logger.debug(`Invalidated structure list cache: ${cacheKey}`);
+      await this.cache.invalidateStructureCascade(id, structure.settlementId, branchId);
     } catch (error) {
       // Log but don't throw - cache invalidation is optional
       this.logger.warn(
-        `Failed to invalidate structure list cache for settlement ${structure.settlementId}`,
+        `Failed to invalidate structure cascade cache for structure ${id}`,
         error instanceof Error ? error.message : undefined
       );
     }
@@ -915,18 +911,20 @@ export class StructureService {
       include: { settlement: { include: { kingdom: true } } },
     });
 
-    // Invalidate computed fields cache since level changed
+    // Invalidate structure cache cascade (structure computed fields, parent settlement, structure list)
     // Cache invalidation failures should not block the operation
     try {
       // TODO: Support branch parameter - currently hardcoded to 'main'
       const branchId = 'main';
-      const cacheKey = `computed-fields:structure:${id}:${branchId}`;
-      await this.cache.del(cacheKey);
-      this.logger.debug(`Invalidated computed fields cache: ${cacheKey}`);
+      await this.cache.invalidateStructureCascade(
+        id,
+        structureWithRelations!.settlementId,
+        branchId
+      );
     } catch (error) {
       // Log but don't throw - cache invalidation is optional
       this.logger.warn(
-        `Failed to invalidate computed fields cache for structure ${id}`,
+        `Failed to invalidate structure cascade cache for structure ${id}`,
         error instanceof Error ? error.message : undefined
       );
     }

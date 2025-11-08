@@ -2,10 +2,11 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import Redis from 'ioredis';
 
+import type { GeoJSONPoint, GeoJSONPolygon } from '@campaign/shared';
+
 import { PrismaService } from '../../database/prisma.service';
 import { REDIS_CACHE } from '../cache/cache.module';
 import { CacheService } from '../cache/cache.service';
-import type { GeoJSONPoint, GeoJSONPolygon } from '../types/geojson.types';
 
 import { SpatialService } from './spatial.service';
 

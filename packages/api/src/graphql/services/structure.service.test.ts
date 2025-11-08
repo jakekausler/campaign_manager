@@ -160,6 +160,7 @@ describe('StructureService', () => {
             set: jest.fn(),
             del: jest.fn(),
             delPattern: jest.fn(),
+            invalidateStructureCascade: jest.fn(),
           },
         },
       ],
@@ -890,6 +891,218 @@ describe('StructureService', () => {
         expect(cache.del).toHaveBeenCalledTimes(1);
 
         // Assert: Update operation should complete successfully
+        expect(prisma.structure.update).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Cache Invalidation - Cascade', () => {
+    describe('Structure update invalidates structure + parent settlement', () => {
+      const updateInput = {
+        name: 'Updated Structure Name',
+      };
+
+      const mockStructure = {
+        id: 'structure-1',
+        settlementId: 'settlement-1',
+        type: 'temple',
+        name: 'Old Structure',
+        level: 2,
+        version: 1,
+        variables: {},
+        variableSchemas: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        archivedAt: null,
+      };
+
+      const mockStructureWithSettlement = {
+        ...mockStructure,
+        settlement: {
+          id: 'settlement-1',
+          name: 'Test Settlement',
+          kingdomId: 'kingdom-1',
+          kingdom: {
+            id: 'kingdom-1',
+            name: 'Test Kingdom',
+            campaignId: 'campaign-1',
+          },
+        },
+      };
+
+      const updatedStructure = {
+        ...mockStructure,
+        name: 'Updated Structure Name',
+        version: 2,
+      };
+
+      const branchId = 'main';
+
+      beforeEach(() => {
+        // Setup Prisma mocks for update operation
+        (prisma.structure.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockStructure)
+          .mockResolvedValueOnce(mockStructure);
+        (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValue({ id: 'main', name: 'main' });
+
+        // Mock transaction
+        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+          const tx = {
+            structure: {
+              update: jest.fn().mockResolvedValue(updatedStructure),
+            },
+            version: {
+              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
+            },
+          };
+          return callback(tx);
+        });
+      });
+
+      it('should call invalidateStructureCascade when structure is updated', async () => {
+        // Mock cascade invalidation success
+        (cache.invalidateStructureCascade as jest.Mock).mockResolvedValue({
+          success: true,
+          keysDeleted: 42,
+        });
+
+        // Act: Call update method
+        await service.update('structure-1', updateInput, mockUser, 1, branchId);
+
+        // Assert: invalidateStructureCascade should be called with correct parameters
+        expect(cache.invalidateStructureCascade).toHaveBeenCalledWith(
+          'structure-1',
+          'settlement-1',
+          branchId
+        );
+        expect(cache.invalidateStructureCascade).toHaveBeenCalledTimes(1);
+
+        // Assert: Update operation should complete successfully
+        expect(prisma.structure.update).toHaveBeenCalled();
+      });
+
+      it('should handle cascade invalidation failures gracefully on update', async () => {
+        // Mock cascade invalidation failure (Redis connection error)
+        (cache.invalidateStructureCascade as jest.Mock).mockResolvedValue({
+          success: false,
+          keysDeleted: 0,
+          error: 'Redis connection error',
+        });
+
+        // Act: Call update method - should NOT throw despite cache failure
+        await service.update('structure-1', updateInput, mockUser, 1, branchId);
+
+        // Assert: invalidateStructureCascade was called
+        expect(cache.invalidateStructureCascade).toHaveBeenCalledWith(
+          'structure-1',
+          'settlement-1',
+          branchId
+        );
+
+        // Assert: Update operation should complete successfully despite cache failure
+        expect(prisma.structure.update).toHaveBeenCalled();
+      });
+
+      it('should call invalidateStructureCascade when structure level is changed', async () => {
+        const newLevel = 3;
+
+        // Setup Prisma mocks for setLevel operation
+        (prisma.structure.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockStructure)
+          .mockResolvedValueOnce(mockStructure);
+        (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValue({ id: 'main', name: 'main' });
+
+        const structureAtNewLevel = {
+          ...mockStructure,
+          level: newLevel,
+          version: 2,
+        };
+
+        // Mock transaction
+        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+          const tx = {
+            structure: {
+              update: jest.fn().mockResolvedValue(structureAtNewLevel),
+            },
+            version: {
+              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
+            },
+          };
+          return callback(tx);
+        });
+
+        // Mock cascade invalidation success
+        (cache.invalidateStructureCascade as jest.Mock).mockResolvedValue({
+          success: true,
+          keysDeleted: 42,
+        });
+
+        // Act: Call setLevel method
+        await service.setLevel('structure-1', newLevel, mockUser);
+
+        // Assert: invalidateStructureCascade should be called with correct parameters
+        // Note: setLevel currently hardcodes branchId to 'main'
+        expect(cache.invalidateStructureCascade).toHaveBeenCalledWith(
+          'structure-1',
+          'settlement-1',
+          'main'
+        );
+        expect(cache.invalidateStructureCascade).toHaveBeenCalledTimes(1);
+
+        // Assert: SetLevel operation should complete successfully
+        expect(prisma.structure.update).toHaveBeenCalled();
+      });
+
+      it('should handle cascade invalidation failures gracefully on setLevel', async () => {
+        const newLevel = 3;
+
+        // Setup Prisma mocks for setLevel operation
+        (prisma.structure.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockStructure)
+          .mockResolvedValueOnce(mockStructure);
+        (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValue({ id: 'main', name: 'main' });
+
+        const structureAtNewLevel = {
+          ...mockStructure,
+          level: newLevel,
+          version: 2,
+        };
+
+        // Mock transaction
+        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+          const tx = {
+            structure: {
+              update: jest.fn().mockResolvedValue(structureAtNewLevel),
+            },
+            version: {
+              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
+            },
+          };
+          return callback(tx);
+        });
+
+        // Mock cascade invalidation failure (Redis connection error)
+        (cache.invalidateStructureCascade as jest.Mock).mockResolvedValue({
+          success: false,
+          keysDeleted: 0,
+          error: 'Redis connection error',
+        });
+
+        // Act: Call setLevel method - should NOT throw despite cache failure
+        await service.setLevel('structure-1', newLevel, mockUser);
+
+        // Assert: invalidateStructureCascade was called
+        expect(cache.invalidateStructureCascade).toHaveBeenCalledWith(
+          'structure-1',
+          'settlement-1',
+          'main'
+        );
+
+        // Assert: SetLevel operation should complete successfully despite cache failure
         expect(prisma.structure.update).toHaveBeenCalled();
       });
     });

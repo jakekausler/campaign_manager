@@ -528,16 +528,14 @@ export class SettlementService {
       },
     });
 
-    // Invalidate computed fields cache since settlement data changed
+    // Invalidate settlement cache cascade (computed fields, structures list, child structures, spatial)
     // Cache invalidation failures should not block the operation
     try {
-      const cacheKey = `computed-fields:settlement:${id}:${branchId}`;
-      await this.cache.del(cacheKey);
-      this.logger.debug(`Invalidated computed fields cache: ${cacheKey}`);
+      await this.cache.invalidateSettlementCascade(id, branchId);
     } catch (error) {
       // Log but don't throw - cache invalidation is optional
       this.logger.warn(
-        `Failed to invalidate computed fields cache for settlement ${id}`,
+        `Failed to invalidate settlement cascade cache for settlement ${id}`,
         error instanceof Error ? error.message : undefined
       );
     }
@@ -880,18 +878,16 @@ export class SettlementService {
       include: { kingdom: true },
     });
 
-    // Invalidate computed fields cache since level changed
+    // Invalidate settlement cache cascade (computed fields, structures list, child structures, spatial)
     // Cache invalidation failures should not block the operation
     try {
       // TODO: Support branch parameter - currently hardcoded to 'main'
       const branchId = 'main';
-      const cacheKey = `computed-fields:settlement:${id}:${branchId}`;
-      await this.cache.del(cacheKey);
-      this.logger.debug(`Invalidated computed fields cache: ${cacheKey}`);
+      await this.cache.invalidateSettlementCascade(id, branchId);
     } catch (error) {
       // Log but don't throw - cache invalidation is optional
       this.logger.warn(
-        `Failed to invalidate computed fields cache for settlement ${id}`,
+        `Failed to invalidate settlement cascade cache for settlement ${id}`,
         error instanceof Error ? error.message : undefined
       );
     }

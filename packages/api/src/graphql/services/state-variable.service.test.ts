@@ -6,6 +6,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
@@ -30,6 +31,7 @@ describe('StateVariableService', () => {
   let prisma: PrismaService;
   let audit: AuditService;
   let evaluationService: VariableEvaluationService;
+  let cacheService: CacheService;
 
   const mockUser: AuthenticatedUser = {
     id: 'user-123',
@@ -131,6 +133,15 @@ describe('StateVariableService', () => {
           },
         },
         {
+          provide: CacheService,
+          useValue: {
+            del: jest.fn(),
+            delPattern: jest.fn(),
+            get: jest.fn(),
+            set: jest.fn(),
+          },
+        },
+        {
           provide: 'REDIS_PUBSUB',
           useValue: {
             publish: jest.fn(),
@@ -145,6 +156,7 @@ describe('StateVariableService', () => {
     prisma = module.get<PrismaService>(PrismaService);
     audit = module.get<AuditService>(AuditService);
     evaluationService = module.get<VariableEvaluationService>(VariableEvaluationService);
+    cacheService = module.get<CacheService>(CacheService);
   });
 
   afterEach(() => {
@@ -1046,6 +1058,239 @@ describe('StateVariableService', () => {
           })
         );
       }
+    });
+  });
+
+  describe('Cache Invalidation', () => {
+    describe('StateVariable changes invalidate entity computed fields', () => {
+      it('should invalidate settlement computed fields when StateVariable is created for Settlement scope', async () => {
+        const createInput: CreateStateVariableInput = {
+          scope: VariableScope.SETTLEMENT,
+          scopeId: 'settlement-123',
+          key: 'population',
+          value: 5000,
+          type: VariableType.INTEGER,
+        };
+
+        // Mock scope verification
+        jest
+          .spyOn(prisma.settlement, 'findFirst')
+          .mockResolvedValue({ id: 'settlement-123' } as never);
+
+        // Mock variable creation
+        jest.spyOn(prisma.stateVariable, 'create').mockResolvedValue(mockVariable as never);
+
+        // Mock cache deletion
+        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+
+        await service.create(createInput, mockUser);
+
+        // Verify cache invalidation was called with correct key
+        expect(cacheService.del).toHaveBeenCalledWith(
+          'computed-fields:settlement:settlement-123:main'
+        );
+        expect(cacheService.del).toHaveBeenCalledTimes(1);
+      });
+
+      it('should invalidate structure computed fields when StateVariable is created for Structure scope', async () => {
+        const structureVariable = {
+          ...mockVariable,
+          scope: VariableScope.STRUCTURE,
+          scopeId: 'structure-123',
+        };
+
+        const createInput: CreateStateVariableInput = {
+          scope: VariableScope.STRUCTURE,
+          scopeId: 'structure-123',
+          key: 'defense_rating',
+          value: 8,
+          type: VariableType.INTEGER,
+        };
+
+        // Mock scope verification
+        jest
+          .spyOn(prisma.structure, 'findFirst')
+          .mockResolvedValue({ id: 'structure-123' } as never);
+
+        // Mock variable creation
+        jest.spyOn(prisma.stateVariable, 'create').mockResolvedValue(structureVariable as never);
+
+        // Mock cache deletion
+        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+
+        await service.create(createInput, mockUser);
+
+        // Verify cache invalidation was called with correct key
+        expect(cacheService.del).toHaveBeenCalledWith(
+          'computed-fields:structure:structure-123:main'
+        );
+        expect(cacheService.del).toHaveBeenCalledTimes(1);
+      });
+
+      it('should NOT invalidate cache when StateVariable is created for non-entity scopes', async () => {
+        const campaignVariable = {
+          ...mockVariable,
+          scope: VariableScope.CAMPAIGN,
+          scopeId: 'campaign-123',
+        };
+
+        const createInput: CreateStateVariableInput = {
+          scope: VariableScope.CAMPAIGN,
+          scopeId: 'campaign-123',
+          key: 'current_season',
+          value: 'summer',
+          type: VariableType.STRING,
+        };
+
+        // Mock scope verification
+        jest.spyOn(prisma.campaign, 'findFirst').mockResolvedValue({ id: 'campaign-123' } as never);
+
+        // Mock variable creation
+        jest.spyOn(prisma.stateVariable, 'create').mockResolvedValue(campaignVariable as never);
+
+        // Mock cache deletion
+        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+
+        await service.create(createInput, mockUser);
+
+        // Verify cache invalidation was NOT called (Campaign scope has no computed fields)
+        expect(cacheService.del).not.toHaveBeenCalled();
+      });
+
+      it('should invalidate settlement computed fields when StateVariable is updated', async () => {
+        const updateInput: UpdateStateVariableInput = {
+          id: 'var-123',
+          value: 6000,
+          version: 1,
+        };
+
+        // Mock variable lookup
+        jest.spyOn(prisma.stateVariable, 'findUnique').mockResolvedValue(mockVariable as never);
+
+        // Mock variable update
+        const updatedVariable = { ...mockVariable, value: 6000, version: 2 };
+        jest.spyOn(prisma.stateVariable, 'update').mockResolvedValue(updatedVariable as never);
+
+        // Mock cache deletion
+        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+
+        await service.update(updateInput, mockUser);
+
+        // Verify cache invalidation was called with correct key
+        expect(cacheService.del).toHaveBeenCalledWith(
+          'computed-fields:settlement:settlement-123:main'
+        );
+        expect(cacheService.del).toHaveBeenCalledTimes(1);
+      });
+
+      it('should invalidate structure computed fields when StateVariable is updated', async () => {
+        const structureVariable = {
+          ...mockVariable,
+          scope: VariableScope.STRUCTURE,
+          scopeId: 'structure-123',
+        };
+
+        const updateInput: UpdateStateVariableInput = {
+          id: 'var-123',
+          value: 10,
+          version: 1,
+        };
+
+        // Mock variable lookup
+        jest
+          .spyOn(prisma.stateVariable, 'findUnique')
+          .mockResolvedValue(structureVariable as never);
+
+        // Mock variable update
+        const updatedVariable = { ...structureVariable, value: 10, version: 2 };
+        jest.spyOn(prisma.stateVariable, 'update').mockResolvedValue(updatedVariable as never);
+
+        // Mock cache deletion
+        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+
+        await service.update(updateInput, mockUser);
+
+        // Verify cache invalidation was called with correct key
+        expect(cacheService.del).toHaveBeenCalledWith(
+          'computed-fields:structure:structure-123:main'
+        );
+        expect(cacheService.del).toHaveBeenCalledTimes(1);
+      });
+
+      it('should invalidate settlement computed fields when StateVariable is deleted', async () => {
+        // Mock variable lookup
+        jest.spyOn(prisma.stateVariable, 'findUnique').mockResolvedValue(mockVariable as never);
+
+        // Mock soft delete
+        const deletedVariable = { ...mockVariable, deletedAt: new Date() };
+        jest.spyOn(prisma.stateVariable, 'update').mockResolvedValue(deletedVariable as never);
+
+        // Mock cache deletion
+        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+
+        await service.delete('var-123', 1, mockUser);
+
+        // Verify cache invalidation was called with correct key
+        expect(cacheService.del).toHaveBeenCalledWith(
+          'computed-fields:settlement:settlement-123:main'
+        );
+        expect(cacheService.del).toHaveBeenCalledTimes(1);
+      });
+
+      it('should invalidate structure computed fields when StateVariable is deleted', async () => {
+        const structureVariable = {
+          ...mockVariable,
+          scope: VariableScope.STRUCTURE,
+          scopeId: 'structure-123',
+        };
+
+        // Mock variable lookup
+        jest
+          .spyOn(prisma.stateVariable, 'findUnique')
+          .mockResolvedValue(structureVariable as never);
+
+        // Mock soft delete
+        const deletedVariable = { ...structureVariable, deletedAt: new Date() };
+        jest.spyOn(prisma.stateVariable, 'update').mockResolvedValue(deletedVariable as never);
+
+        // Mock cache deletion
+        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+
+        await service.delete('var-123', 1, mockUser);
+
+        // Verify cache invalidation was called with correct key
+        expect(cacheService.del).toHaveBeenCalledWith(
+          'computed-fields:structure:structure-123:main'
+        );
+        expect(cacheService.del).toHaveBeenCalledTimes(1);
+      });
+
+      it('should handle cache invalidation failures gracefully', async () => {
+        const createInput: CreateStateVariableInput = {
+          scope: VariableScope.SETTLEMENT,
+          scopeId: 'settlement-123',
+          key: 'population',
+          value: 5000,
+          type: VariableType.INTEGER,
+        };
+
+        // Mock scope verification
+        jest
+          .spyOn(prisma.settlement, 'findFirst')
+          .mockResolvedValue({ id: 'settlement-123' } as never);
+
+        // Mock variable creation
+        jest.spyOn(prisma.stateVariable, 'create').mockResolvedValue(mockVariable as never);
+
+        // Mock cache deletion failure (should not throw)
+        jest.spyOn(cacheService, 'del').mockRejectedValue(new Error('Redis connection error'));
+
+        // Should not throw even if cache fails
+        const result = await service.create(createInput, mockUser);
+
+        expect(result).toEqual(mockVariable);
+        expect(cacheService.del).toHaveBeenCalled();
+      });
     });
   });
 });

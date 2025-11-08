@@ -246,7 +246,22 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
         StructureOperatorsService,
         {
           provide: CacheService,
-          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn(), delPattern: jest.fn() },
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            delPattern: jest.fn(),
+            invalidatePattern: jest.fn().mockResolvedValue({ success: true, keysDeleted: 0 }),
+            invalidateCampaignComputedFields: jest
+              .fn()
+              .mockResolvedValue({ success: true, keysDeleted: 0 }),
+            invalidateSettlementCascade: jest
+              .fn()
+              .mockResolvedValue({ success: true, keysDeleted: 0 }),
+            invalidateStructureCascade: jest
+              .fn()
+              .mockResolvedValue({ success: true, keysDeleted: 0 }),
+          },
         },
       ],
     }).compile();

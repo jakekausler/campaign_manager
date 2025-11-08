@@ -4,6 +4,9 @@ import { createRedisCache, REDIS_CACHE } from '../../graphql/cache/redis-cache.p
 
 import { CacheService } from './cache.service';
 
+// Re-export REDIS_CACHE token for external use (e.g., integration tests)
+export { REDIS_CACHE };
+
 /**
  * Cache Module
  *
@@ -63,6 +66,8 @@ import { CacheService } from './cache.service';
   exports: [
     // Export CacheService for use by other modules
     CacheService,
+    // Export REDIS_CACHE token for tests that need direct Redis access
+    REDIS_CACHE,
   ],
 })
 export class CacheModule {}

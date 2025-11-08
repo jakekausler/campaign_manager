@@ -7,6 +7,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { FieldCondition as PrismaFieldCondition, Prisma } from '@prisma/client';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
@@ -29,6 +30,7 @@ describe('ConditionService', () => {
   let prisma: PrismaService;
   let audit: AuditService;
   let evaluationService: ConditionEvaluationService;
+  let cacheService: CacheService;
 
   const mockUser: AuthenticatedUser = {
     id: 'user-1',
@@ -105,7 +107,20 @@ describe('ConditionService', () => {
         {
           provide: DependencyGraphService,
           useValue: {
-            invalidateCache: jest.fn(),
+            invalidateGraph: jest.fn(),
+          },
+        },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            delPattern: jest.fn(),
+            invalidatePattern: jest.fn(),
+            invalidateCampaignComputedFields: jest.fn(),
+            invalidateSettlementCascade: jest.fn(),
+            invalidateStructureCascade: jest.fn(),
           },
         },
         {
@@ -121,6 +136,7 @@ describe('ConditionService', () => {
     prisma = module.get<PrismaService>(PrismaService);
     audit = module.get<AuditService>(AuditService);
     evaluationService = module.get<ConditionEvaluationService>(ConditionEvaluationService);
+    cacheService = module.get<CacheService>(CacheService);
   });
 
   afterEach(() => {
@@ -765,6 +781,135 @@ describe('ConditionService', () => {
       const orderBy: FieldConditionOrderByInput = {};
       const result = service['buildOrderBy'](orderBy);
       expect(result).toEqual({ priority: 'desc' });
+    });
+  });
+
+  describe('Cache Invalidation', () => {
+    describe('FieldCondition changes invalidate all computed fields', () => {
+      const createInput: CreateFieldConditionInput = {
+        entityType: 'Settlement',
+        entityId: 'settlement-1',
+        field: 'is_trade_hub',
+        expression: { '>=': [{ var: 'settlement.population' }, 5000] },
+        description: 'Check if settlement is a trade hub',
+        priority: 0,
+      };
+
+      beforeEach(() => {
+        // Mock successful validation and entity lookup
+        (evaluationService.validateExpression as jest.Mock).mockReturnValue({
+          valid: true,
+          isValid: true,
+          errors: [],
+        });
+        (prisma.settlement.findFirst as jest.Mock).mockResolvedValue({
+          id: 'settlement-1',
+          campaignId: 'campaign-1',
+        });
+      });
+
+      it('should invalidate all computed fields when FieldCondition is created', async () => {
+        // Mock condition creation
+        (prisma.fieldCondition.create as jest.Mock).mockResolvedValue(mockCondition);
+
+        // Mock cache invalidation success
+        (cacheService.invalidateCampaignComputedFields as jest.Mock).mockResolvedValue({
+          success: true,
+          keysDeleted: 42,
+        });
+
+        await service.create(createInput, mockUser);
+
+        // Verify cache invalidation was called with correct parameters
+        expect(cacheService.invalidateCampaignComputedFields).toHaveBeenCalledWith(
+          'campaign-1',
+          'main'
+        );
+        expect(cacheService.invalidateCampaignComputedFields).toHaveBeenCalledTimes(1);
+      });
+
+      it('should invalidate all computed fields when FieldCondition is updated', async () => {
+        // Mock condition lookup
+        (prisma.fieldCondition.findUnique as jest.Mock).mockResolvedValue(mockCondition);
+
+        // Mock settlement lookup for campaignId
+        (prisma.settlement.findFirst as jest.Mock).mockResolvedValue({
+          id: 'settlement-1',
+          campaignId: 'campaign-1',
+        });
+
+        // Mock condition update
+        const updatedCondition = { ...mockCondition, version: 2 };
+        (prisma.fieldCondition.update as jest.Mock).mockResolvedValue(updatedCondition);
+
+        // Mock cache invalidation success
+        (cacheService.invalidateCampaignComputedFields as jest.Mock).mockResolvedValue({
+          success: true,
+          keysDeleted: 42,
+        });
+
+        const updateInput: UpdateFieldConditionInput = {
+          expression: { '>=': [{ var: 'settlement.population' }, 10000] },
+          expectedVersion: 1,
+        };
+
+        await service.update('condition-1', updateInput, mockUser);
+
+        // Verify cache invalidation was called with correct parameters
+        expect(cacheService.invalidateCampaignComputedFields).toHaveBeenCalledWith(
+          'campaign-1',
+          'main'
+        );
+        expect(cacheService.invalidateCampaignComputedFields).toHaveBeenCalledTimes(1);
+      });
+
+      it('should invalidate all computed fields when FieldCondition is deleted', async () => {
+        // Mock condition lookup
+        (prisma.fieldCondition.findUnique as jest.Mock).mockResolvedValue(mockCondition);
+
+        // Mock settlement lookup for campaignId
+        (prisma.settlement.findFirst as jest.Mock).mockResolvedValue({
+          id: 'settlement-1',
+          campaignId: 'campaign-1',
+        });
+
+        // Mock soft delete
+        const deletedCondition = { ...mockCondition, deletedAt: new Date() };
+        (prisma.fieldCondition.update as jest.Mock).mockResolvedValue(deletedCondition);
+
+        // Mock cache invalidation success
+        (cacheService.invalidateCampaignComputedFields as jest.Mock).mockResolvedValue({
+          success: true,
+          keysDeleted: 42,
+        });
+
+        await service.delete('condition-1', mockUser);
+
+        // Verify cache invalidation was called with correct parameters
+        expect(cacheService.invalidateCampaignComputedFields).toHaveBeenCalledWith(
+          'campaign-1',
+          'main'
+        );
+        expect(cacheService.invalidateCampaignComputedFields).toHaveBeenCalledTimes(1);
+      });
+
+      it('should handle graceful degradation when cache invalidation fails', async () => {
+        // Mock condition creation
+        (prisma.fieldCondition.create as jest.Mock).mockResolvedValue(mockCondition);
+
+        // Mock cache invalidation failure
+        (cacheService.invalidateCampaignComputedFields as jest.Mock).mockResolvedValue({
+          success: false,
+          keysDeleted: 0,
+          error: 'Redis connection error',
+        });
+
+        // Create should still succeed even if cache invalidation fails
+        const result = await service.create(createInput, mockUser);
+
+        expect(result).toEqual(mockCondition);
+        expect(cacheService.invalidateCampaignComputedFields).toHaveBeenCalled();
+      });
     });
   });
 });

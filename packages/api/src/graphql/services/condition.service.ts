@@ -8,6 +8,7 @@ import { Injectable, NotFoundException, BadRequestException, Inject } from '@nes
 import type { FieldCondition as PrismaFieldCondition, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
@@ -32,6 +33,7 @@ export class ConditionService {
     private readonly audit: AuditService,
     private readonly evaluationService: ConditionEvaluationService,
     private readonly dependencyGraphService: DependencyGraphService,
+    private readonly cacheService: CacheService,
     @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub
   ) {}
 
@@ -81,6 +83,9 @@ export class ConditionService {
     const campaignId = await this.getCampaignIdForCondition(condition);
     if (campaignId) {
       this.dependencyGraphService.invalidateGraph(campaignId);
+
+      // Invalidate all computed fields in campaign (FieldCondition changes affect all entities)
+      await this.cacheService.invalidateCampaignComputedFields(campaignId, 'main');
 
       // Publish Redis event for Rules Engine worker
       await this.pubSub.publish('condition.created', {
@@ -292,6 +297,9 @@ export class ConditionService {
     if (campaignId) {
       this.dependencyGraphService.invalidateGraph(campaignId);
 
+      // Invalidate all computed fields in campaign (FieldCondition changes affect all entities)
+      await this.cacheService.invalidateCampaignComputedFields(campaignId, 'main');
+
       // Publish Redis event for Rules Engine worker
       await this.pubSub.publish('condition.updated', {
         conditionId: updated.id,
@@ -328,6 +336,9 @@ export class ConditionService {
     const campaignId = await this.getCampaignIdForCondition(deleted);
     if (campaignId) {
       this.dependencyGraphService.invalidateGraph(campaignId);
+
+      // Invalidate all computed fields in campaign (FieldCondition changes affect all entities)
+      await this.cacheService.invalidateCampaignComputedFields(campaignId, 'main');
 
       // Publish Redis event for Rules Engine worker
       await this.pubSub.publish('condition.deleted', {

@@ -174,6 +174,7 @@ describe('SettlementService', () => {
             set: jest.fn(),
             del: jest.fn(),
             delPattern: jest.fn(),
+            invalidateSettlementCascade: jest.fn(),
           },
         },
       ],
@@ -879,6 +880,184 @@ describe('SettlementService', () => {
 
         // Assert: Transaction should be called
         expect(prisma.$transaction).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Cache Invalidation - Cascade', () => {
+    describe('Settlement update invalidates settlement + structures cascade', () => {
+      const updateInput = {
+        name: 'Updated Settlement Name',
+      };
+
+      const mockSettlement = {
+        id: 'settlement-1',
+        name: 'Old Settlement',
+        kingdomId: 'kingdom-1',
+        version: 1,
+      };
+
+      const mockSettlementWithKingdom = {
+        ...mockSettlement,
+        kingdom: {
+          id: 'kingdom-1',
+          name: 'Test Kingdom',
+          campaignId: 'campaign-1',
+        },
+      };
+
+      const updatedSettlement = {
+        ...mockSettlement,
+        name: 'Updated Settlement Name',
+        version: 2,
+      };
+
+      beforeEach(() => {
+        // Setup Prisma mocks for update operation
+        (prisma.settlement.findUnique as jest.Mock).mockResolvedValue(mockSettlementWithKingdom);
+        (prisma.branch.findFirst as jest.Mock).mockResolvedValue({ id: 'main', name: 'main' });
+
+        // Mock transaction
+        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+          const tx = {
+            settlement: {
+              update: jest.fn().mockResolvedValue(updatedSettlement),
+            },
+            version: {
+              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
+            },
+          };
+          return callback(tx);
+        });
+      });
+
+      it('should call invalidateSettlementCascade when settlement is updated', async () => {
+        // Mock cascade invalidation success
+        (cache.invalidateSettlementCascade as jest.Mock).mockResolvedValue({
+          success: true,
+          keysDeleted: 42,
+        });
+
+        await service.update('settlement-1', updateInput, mockUser, 1, 'main');
+
+        // Verify cascade invalidation was called with correct parameters
+        expect(cache.invalidateSettlementCascade).toHaveBeenCalledWith('settlement-1', 'main');
+        expect(cache.invalidateSettlementCascade).toHaveBeenCalledTimes(1);
+      });
+
+      it('should handle cascade invalidation failures gracefully on update', async () => {
+        // Mock cascade invalidation failure
+        (cache.invalidateSettlementCascade as jest.Mock).mockRejectedValue(
+          new Error('Redis connection error')
+        );
+
+        // Update should still succeed even if cache fails
+        const result = await service.update('settlement-1', updateInput, mockUser, 1, 'main');
+
+        expect(result).toEqual(updatedSettlement);
+        expect(cache.invalidateSettlementCascade).toHaveBeenCalled();
+      });
+
+      it('should call invalidateSettlementCascade when settlement level is changed', async () => {
+        const mockSettlementForLevel = {
+          id: 'settlement-1',
+          name: 'Test Settlement',
+          level: 1,
+          kingdomId: 'kingdom-1',
+          version: 1,
+        };
+
+        const updatedSettlementLevel = {
+          ...mockSettlementForLevel,
+          level: 2,
+          version: 2,
+        };
+
+        // Mock for setLevel operation
+        (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(mockSettlementForLevel);
+        (prisma.settlement.findUnique as jest.Mock).mockResolvedValue({
+          ...mockSettlementForLevel,
+          kingdom: {
+            id: 'kingdom-1',
+            name: 'Test Kingdom',
+            campaignId: 'campaign-1',
+          },
+        });
+
+        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+          const tx = {
+            settlement: {
+              update: jest.fn().mockResolvedValue(updatedSettlementLevel),
+            },
+            version: {
+              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
+            },
+          };
+          return callback(tx);
+        });
+
+        // Mock cascade invalidation success
+        (cache.invalidateSettlementCascade as jest.Mock).mockResolvedValue({
+          success: true,
+          keysDeleted: 42,
+        });
+
+        await service.setLevel('settlement-1', 2, mockUser);
+
+        // Verify cascade invalidation was called with correct parameters
+        // Note: setLevel currently hardcodes branchId to 'main'
+        expect(cache.invalidateSettlementCascade).toHaveBeenCalledWith('settlement-1', 'main');
+        expect(cache.invalidateSettlementCascade).toHaveBeenCalledTimes(1);
+      });
+
+      it('should handle cascade invalidation failures gracefully on setLevel', async () => {
+        const mockSettlementForLevel = {
+          id: 'settlement-1',
+          name: 'Test Settlement',
+          level: 1,
+          kingdomId: 'kingdom-1',
+          version: 1,
+        };
+
+        const updatedSettlementLevel = {
+          ...mockSettlementForLevel,
+          level: 2,
+          version: 2,
+        };
+
+        // Mock for setLevel operation
+        (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(mockSettlementForLevel);
+        (prisma.settlement.findUnique as jest.Mock).mockResolvedValue({
+          ...mockSettlementForLevel,
+          kingdom: {
+            id: 'kingdom-1',
+            name: 'Test Kingdom',
+            campaignId: 'campaign-1',
+          },
+        });
+
+        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
+          const tx = {
+            settlement: {
+              update: jest.fn().mockResolvedValue(updatedSettlementLevel),
+            },
+            version: {
+              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
+            },
+          };
+          return callback(tx);
+        });
+
+        // Mock cascade invalidation failure
+        (cache.invalidateSettlementCascade as jest.Mock).mockRejectedValue(
+          new Error('Redis connection error')
+        );
+
+        // setLevel should still succeed even if cache fails
+        const result = await service.setLevel('settlement-1', 2, mockUser);
+
+        expect(result).toEqual(updatedSettlementLevel);
+        expect(cache.invalidateSettlementCascade).toHaveBeenCalled();
       });
     });
   });

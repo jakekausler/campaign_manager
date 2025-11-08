@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { PrismaClient } from '@prisma/client';
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
 
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { VariableScope } from '../types/state-variable.type';
@@ -93,6 +94,25 @@ describe('StateVariableService - Versioning Integration', () => {
           provide: DependencyGraphService,
           useValue: {
             invalidateGraph: jest.fn(),
+          },
+        },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            delPattern: jest.fn(),
+            invalidatePattern: jest.fn().mockResolvedValue({ success: true, keysDeleted: 0 }),
+            invalidateCampaignComputedFields: jest
+              .fn()
+              .mockResolvedValue({ success: true, keysDeleted: 0 }),
+            invalidateSettlementCascade: jest
+              .fn()
+              .mockResolvedValue({ success: true, keysDeleted: 0 }),
+            invalidateStructureCascade: jest
+              .fn()
+              .mockResolvedValue({ success: true, keysDeleted: 0 }),
           },
         },
         {
