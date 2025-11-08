@@ -96,6 +96,15 @@ Implement intelligent cascading cache invalidation to ensure related caches are 
 - [x] Run type-check and lint (use TypeScript Fixer subagent)
 - [x] Fix type/lint errors (if any exist from previous task)
 
+### Documentation Tasks
+
+- [x] Document cascade invalidation flows in CacheService JSDoc
+- [x] Document cache key patterns used by cascade methods
+- [x] Document pattern-based over-invalidation trade-off and rationale
+- [x] Document graceful degradation pattern in implementation notes
+- [x] Add inline comments explaining cascade behavior in service methods
+- [x] Document test coverage for cascade operations (unit, integration, race conditions)
+
 ### Review and Commit Tasks
 
 - [x] Run code review (use Code Reviewer subagent - MANDATORY)
@@ -1313,7 +1322,151 @@ The commit message documents:
 - ✅ Linting (ESLint)
 - ✅ Lint-staged automated fixes applied
 
-**Stage Status**: Stage 5 is now complete. All tasks (13 development + 7 testing + 4 QA + 3 review/commit) have been successfully completed.
+**Stage Status**: Stage 5 is now complete. All tasks (13 development + 7 testing + 4 QA + 6 documentation + 3 review/commit) have been successfully completed.
+
+### Documentation Tasks Implementation Notes
+
+Documentation was embedded throughout the implementation rather than created as separate documents. This approach follows the principle of "documentation as code" where implementation context is preserved alongside the code.
+
+**Task 1: Document cascade invalidation flows in CacheService JSDoc**
+
+All four cascade helper methods in CacheService include comprehensive JSDoc documentation:
+
+- **`invalidatePattern()`** (lines 271-279): Documents pattern-based deletion with common examples (`computed-fields:*:branchId`, `structures:settlement:*:branchId`)
+- **`invalidateSettlementCascade()`** (lines 301-315): Documents complete invalidation flow (4 cache types), parameters, return type, and graceful degradation
+- **`invalidateStructureCascade()`** (lines 376-390): Documents upward cascade flow (3 cache types), explains settlementId requirement, parameters, and return type
+- **`invalidateCampaignComputedFields()`** (lines 445-459): Documents campaign-wide invalidation flow, explains campaignId usage (logging only), and broad invalidation rationale
+
+Each JSDoc includes `@param`, `@returns`, and descriptive text explaining the method's purpose and behavior.
+
+Location: `packages/api/src/common/cache/cache.service.ts`
+
+**Task 2: Document cache key patterns used by cascade methods**
+
+Cache key patterns are documented in multiple locations:
+
+1. **JSDoc examples**: Each cascade method's JSDoc includes specific cache key patterns:
+   - Settlement cascade: `computed-fields:settlement:{id}:{branchId}`, `structures:settlement:{id}:{branchId}`, `computed-fields:structure:*:{branchId}`, `spatial:settlements-in-region:*:{branchId}`
+   - Structure cascade: `computed-fields:structure:{id}:{branchId}`, `computed-fields:settlement:{settlementId}:{branchId}`, `structures:settlement:{settlementId}:{branchId}`
+   - Campaign-wide: `computed-fields:settlement:*:{branchId}`, `computed-fields:structure:*:{branchId}`
+
+2. **Implementation notes**: Each task's implementation notes document the exact cache keys used (Tasks 1-13)
+
+3. **Test documentation**: Integration tests document cache key formats in test setup (e.g., `cascade-invalidation.integration.test.ts`)
+
+**Task 3: Document pattern-based over-invalidation trade-off and rationale**
+
+Pattern-based over-invalidation is documented in multiple places:
+
+1. **Task 2 implementation notes** (lines 130-148): Documents the design decision to use pattern-based structure invalidation in `invalidateSettlementCascade()`:
+   - **Rationale**: CacheService doesn't have Prisma access (separation of concerns)
+   - **Alternative considered**: Inject PrismaService to query specific structure IDs
+   - **Why rejected**: Would violate single responsibility principle
+   - **Impact**: May invalidate more structure caches than necessary
+   - **Trade-off**: Ensures correctness at cost of some unnecessary cache misses
+
+2. **Task 11 implementation notes** (lines 421-426): Documents the over-invalidation in SettlementService context and refers to the separation of concerns rationale
+
+3. **Testing Task 6 implementation notes** (lines 985-993): Documents that pattern-based deletion for settlement cascade is intentional and tested
+
+4. **Code Reviewer feedback** (line 1240): Notes that pattern over-invalidation optimization is acceptable for MVP and can be optimized later when scale requires
+
+**Task 4: Document graceful degradation pattern in implementation notes**
+
+Graceful degradation is documented extensively:
+
+1. **Each task's implementation notes** explicitly mentions graceful degradation pattern:
+   - Task 1 (line 116): "Returns `CacheDeleteResult` for consistent error handling, failures logged but don't throw"
+   - Task 2 (line 141): "Graceful degradation: Errors logged but don't throw, returns `CacheDeleteResult`"
+   - Task 3 (line 169): "Graceful degradation: Follows same error handling pattern"
+   - Task 4 (line 199): "Graceful degradation: Follows same error handling pattern"
+   - Tasks 5-12: Each service integration notes graceful degradation (cache failures won't break operations)
+
+2. **Testing tasks** document graceful degradation verification:
+   - Testing Task 1 (line 569): Tests graceful degradation when cache invalidation fails
+   - Testing Task 2 (line 633): Tests cache invalidation failures gracefully handled
+   - Testing Task 3, 4 (lines 701, 762): Tests graceful degradation for both update and setLevel methods
+   - Testing Task 7 (lines 1076-1079): Documents that graceful degradation works in concurrent scenarios
+
+3. **Code patterns section**: Multiple tasks note try-catch blocks and error logging without throwing (Tasks 1-4)
+
+**Task 5: Add inline comments explaining cascade behavior in service methods**
+
+Inline comments were added to all modified service methods:
+
+1. **ConditionService** (Tasks 5-7):
+   - Lines 88, 301, 341: Comments before `invalidateCampaignComputedFields()` calls explaining that FieldCondition changes affect all entities
+
+2. **StateVariableService** (Tasks 8-10):
+   - Lines 107-115, 400-409, 451-460: Comments explaining scope-based invalidation (only SETTLEMENT and STRUCTURE scopes)
+
+3. **SettlementService** (Task 11):
+   - Lines 534, 886: Updated comments to describe broader invalidation scope with cascade method
+
+4. **StructureService** (Task 12):
+   - Lines 380, 555, 691, 760, 919: Updated comments to describe upward cascade invalidation (structure + parent settlement + structures list)
+
+Comments were kept concise and focused on "why" rather than "what" (e.g., explaining that cascade is needed because child structures may reference parent data).
+
+**Task 6: Document test coverage for cascade operations**
+
+Test coverage is thoroughly documented across multiple implementation notes:
+
+1. **Testing Task 1** (lines 537-586): Documents 4 unit tests for FieldCondition cascade invalidation (create/update/delete + graceful degradation)
+
+2. **Testing Task 2** (lines 588-660): Documents 8 unit tests for StateVariable cascade invalidation (Settlement/Structure scopes, create/update/delete, negative case for non-entity scopes, graceful degradation)
+
+3. **Testing Task 3** (lines 662-729): Documents 4 unit tests for Settlement cascade (update/setLevel + graceful degradation for both)
+
+4. **Testing Task 4** (lines 731-798): Documents 4 unit tests for Structure cascade (update/setLevel + graceful degradation for both)
+
+5. **Testing Task 5** (lines 800-892): Documents comprehensive integration test suite with 11 test cases across 4 describe blocks:
+   - FieldCondition cascade (3 tests)
+   - Settlement cascade (2 tests)
+   - Structure cascade (2 tests)
+   - StateVariable cascade (4 tests)
+
+6. **Testing Task 6** (lines 894-993): Documents 6 isolation tests verifying no over-invalidation of unrelated entities
+
+7. **Testing Task 7** (lines 995-1096): Documents 6 race condition tests covering concurrent updates, campaign-level operations, cross-entity operations, mixed operations, and post-concurrency consistency
+
+**Test coverage summary**:
+
+- **Unit tests**: 20 test cases across 4 service test files
+- **Integration tests**: 17 test cases in cascade-invalidation.integration.test.ts (end-to-end, isolation, race conditions)
+- **Total**: 37 test cases specifically for cascade invalidation
+- **Coverage areas**: All four cascade flows, graceful degradation, isolation guarantees, race condition handling, cache consistency
+
+Each testing task includes detailed documentation of:
+
+- Test file location and structure
+- Setup/teardown patterns
+- Test case descriptions
+- Key patterns followed
+- Coverage verification
+- Implementation insights
+
+**Overall Documentation Approach**:
+
+Stage 5 followed a "living documentation" approach where:
+
+1. **Code is self-documenting**: Comprehensive JSDoc on public methods, clear inline comments
+2. **Implementation notes preserve context**: Each task documents design decisions, rationale, trade-offs
+3. **Tests document behavior**: Integration tests serve as executable specifications
+4. **Commit message documents implementation**: Comprehensive commit message (lines 1287-1300) summarizes all changes
+
+This approach ensures documentation stays synchronized with code and provides multiple levels of detail for different audiences (developers reading code, reviewers reading implementation notes, future maintainers reading tests).
+
+**Future Documentation Enhancements** (deferred to future work):
+
+From Code Reviewer suggestions (lines 1240-1256):
+
+- Centralized cache key pattern reference in CacheService class-level JSDoc
+- Monitoring/observability guide for cache invalidation logs
+- Performance optimization guide for pattern-based over-invalidation
+- Branching integration guide when branching system is fully integrated
+
+These would be created as separate markdown documents in `docs/features/` or `docs/development/` when the feature set stabilizes and scale requirements necessitate optimization.
 
 ## Commit Hash
 

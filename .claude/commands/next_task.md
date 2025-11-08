@@ -131,6 +131,16 @@ Each stage file should follow this structure:
 - [ ] Run type-check and lint (use TypeScript Fixer subagent)
 - [ ] Fix type/lint errors (if any exist from previous task)
 
+### Documentation Tasks
+
+[Include this section for stages that create significant new patterns, features, or changes that should be documented]
+
+- [ ] Update CLAUDE.md if new development patterns or conventions were established
+- [ ] Create/update memory files for significant architectural decisions or patterns
+- [ ] Create/update feature documentation in docs/features/ for new user-facing features
+- [ ] Update README.md if user-facing setup/usage instructions changed
+- [ ] Document any new environment variables in .env.example (if not already done in dev tasks)
+
 ### Review and Commit Tasks
 
 [Only include this section for stages that involve code changes]
