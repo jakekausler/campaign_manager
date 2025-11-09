@@ -792,10 +792,10 @@ async function main() {
     data: {
       kingdomId: kingdomVarisia.id,
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Whistledown', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       name: 'Whistledown',
       level: 2,
       variables: {
@@ -968,10 +968,10 @@ async function main() {
     data: {
       kingdomId: kingdomCheliax.id,
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Westcrown', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       name: 'Westcrown',
       level: 4,
       variables: {
@@ -1029,10 +1029,10 @@ async function main() {
     data: {
       kingdomId: kingdomCheliax.id,
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Egorian', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       name: 'Egorian',
       level: 5,
       variables: {
@@ -1090,10 +1090,10 @@ async function main() {
     data: {
       kingdomId: kingdomCheliax.id,
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Corentyn', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       name: 'Corentyn',
       level: 3,
       variables: {
@@ -1152,10 +1152,10 @@ async function main() {
     data: {
       kingdomId: kingdomOsirion.id,
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Sothis', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       name: 'Sothis',
       level: 5,
       variables: {
@@ -1213,10 +1213,10 @@ async function main() {
     data: {
       kingdomId: kingdomOsirion.id,
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Wati', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       name: 'Wati',
       level: 3,
       variables: {
@@ -1276,28 +1276,28 @@ async function main() {
   console.log('Creating structures across settlements...');
 
   // Fetch all settlements to get their IDs
-  const sandpointSettlement = await prisma.settlement.findFirst({
+  const sandpointSettlement = await prisma.settlement.findFirstOrThrow({
     where: { name: 'Sandpoint', kingdomId: kingdomVarisia.id },
   });
-  const magnimarSettlement = await prisma.settlement.findFirst({
+  const magnimarSettlement = await prisma.settlement.findFirstOrThrow({
     where: { name: 'Magnimar', kingdomId: kingdomVarisia.id },
   });
-  const korvosaSettlement = await prisma.settlement.findFirst({
+  const korvosaSettlement = await prisma.settlement.findFirstOrThrow({
     where: { name: 'Korvosa', kingdomId: kingdomVarisia.id },
   });
-  const westcrownSettlement = await prisma.settlement.findFirst({
+  const westcrownSettlement = await prisma.settlement.findFirstOrThrow({
     where: { name: 'Westcrown', kingdomId: kingdomCheliax.id },
   });
-  const egorianSettlement = await prisma.settlement.findFirst({
+  const egorianSettlement = await prisma.settlement.findFirstOrThrow({
     where: { name: 'Egorian', kingdomId: kingdomCheliax.id },
   });
-  const corentynSettlement = await prisma.settlement.findFirst({
+  const corentynSettlement = await prisma.settlement.findFirstOrThrow({
     where: { name: 'Corentyn', kingdomId: kingdomCheliax.id },
   });
-  const sothisSettlement = await prisma.settlement.findFirst({
+  const sothisSettlement = await prisma.settlement.findFirstOrThrow({
     where: { name: 'Sothis', kingdomId: kingdomOsirion.id },
   });
-  const watiSettlement = await prisma.settlement.findFirst({
+  const watiSettlement = await prisma.settlement.findFirstOrThrow({
     where: { name: 'Wati', kingdomId: kingdomOsirion.id },
   });
 
@@ -1309,7 +1309,7 @@ async function main() {
   // Sandpoint structures (level 1 settlement - 2 structures)
   await prisma.structure.create({
     data: {
-      settlementId: sandpointSettlement?.id as string,
+      settlementId: sandpointSettlement.id,
       type: 'temple',
       name: 'Cathedral of Desna',
       level: 1,
@@ -1342,7 +1342,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: sandpointSettlement?.id as string,
+      settlementId: sandpointSettlement.id,
       type: 'inn',
       name: 'The Rusty Dragon',
       level: 1,
@@ -1374,13 +1374,13 @@ async function main() {
   });
 
   // Whistledown structures (level 2 settlement - 2 structures)
-  const whistledownSettlement = await prisma.settlement.findFirst({
+  const whistledownSettlement = await prisma.settlement.findFirstOrThrow({
     where: { name: 'Whistledown', kingdomId: kingdomVarisia.id },
   });
 
   await prisma.structure.create({
     data: {
-      settlementId: whistledownSettlement?.id as string,
+      settlementId: whistledownSettlement.id,
       type: 'workshop',
       name: 'Cogwhisper Inventors Guild',
       level: 2,
@@ -1413,7 +1413,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: whistledownSettlement?.id as string,
+      settlementId: whistledownSettlement.id,
       type: 'market',
       name: "Tinker's Bazaar",
       level: 2,
@@ -1447,7 +1447,7 @@ async function main() {
   // Magnimar structures (level 4 settlement - 3 structures)
   await prisma.structure.create({
     data: {
-      settlementId: magnimarSettlement?.id as string,
+      settlementId: magnimarSettlement.id,
       type: 'market',
       name: 'The Bazaar of Sails',
       level: 4,
@@ -1480,7 +1480,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: magnimarSettlement?.id as string,
+      settlementId: magnimarSettlement.id,
       type: 'library',
       name: "The Founder's Archive",
       level: 3,
@@ -1514,7 +1514,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: magnimarSettlement?.id as string,
+      settlementId: magnimarSettlement.id,
       type: 'guild_hall',
       name: 'Seafarers Guild Hall',
       level: 4,
@@ -1547,7 +1547,7 @@ async function main() {
   // Korvosa structures (level 5 settlement - 4 structures)
   await prisma.structure.create({
     data: {
-      settlementId: korvosaSettlement?.id as string,
+      settlementId: korvosaSettlement.id,
       type: 'barracks',
       name: 'Citadel Volshyenek',
       level: 5,
@@ -1580,7 +1580,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: korvosaSettlement?.id as string,
+      settlementId: korvosaSettlement.id,
       type: 'courthouse',
       name: 'The Archcourt',
       level: 4,
@@ -1614,7 +1614,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: korvosaSettlement?.id as string,
+      settlementId: korvosaSettlement.id,
       type: 'academy',
       name: 'Acadamae',
       level: 5,
@@ -1647,7 +1647,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: korvosaSettlement?.id as string,
+      settlementId: korvosaSettlement.id,
       type: 'tower',
       name: 'Castle Korvosa',
       level: 5,
@@ -1682,7 +1682,7 @@ async function main() {
   // Westcrown structures (level 4 settlement - 3 structures)
   await prisma.structure.create({
     data: {
-      settlementId: westcrownSettlement?.id as string,
+      settlementId: westcrownSettlement.id,
       type: 'temple',
       name: 'Basilica of Aroden',
       level: 4,
@@ -1715,7 +1715,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: westcrownSettlement?.id as string,
+      settlementId: westcrownSettlement.id,
       type: 'theater',
       name: 'Nightshade Theater',
       level: 3,
@@ -1749,7 +1749,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: westcrownSettlement?.id as string,
+      settlementId: westcrownSettlement.id,
       type: 'dock',
       name: 'Delvehaven Docks',
       level: 4,
@@ -1783,7 +1783,7 @@ async function main() {
   // Egorian structures (level 5 settlement - 4 structures)
   await prisma.structure.create({
     data: {
-      settlementId: egorianSettlement?.id as string,
+      settlementId: egorianSettlement.id,
       type: 'tower',
       name: 'Imperial Palace',
       level: 5,
@@ -1817,7 +1817,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: egorianSettlement?.id as string,
+      settlementId: egorianSettlement.id,
       type: 'temple',
       name: 'Cathedral of Asmodeus',
       level: 5,
@@ -1850,7 +1850,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: egorianSettlement?.id as string,
+      settlementId: egorianSettlement.id,
       type: 'academy',
       name: 'Imperial Academy of Binding',
       level: 5,
@@ -1883,7 +1883,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: egorianSettlement?.id as string,
+      settlementId: egorianSettlement.id,
       type: 'barracks',
       name: 'Hellknight Citadel',
       level: 5,
@@ -1917,7 +1917,7 @@ async function main() {
   // Corentyn structures (level 3 settlement - 2 structures)
   await prisma.structure.create({
     data: {
-      settlementId: corentynSettlement?.id as string,
+      settlementId: corentynSettlement.id,
       type: 'dock',
       name: 'Naval Shipyard',
       level: 3,
@@ -1950,7 +1950,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: corentynSettlement?.id as string,
+      settlementId: corentynSettlement.id,
       type: 'smithy',
       name: 'The Anvil and Anchor',
       level: 2,
@@ -1984,7 +1984,7 @@ async function main() {
   // Sothis structures (level 5 settlement - 4 structures)
   await prisma.structure.create({
     data: {
-      settlementId: sothisSettlement?.id as string,
+      settlementId: sothisSettlement.id,
       type: 'tower',
       name: 'Black Dome',
       level: 5,
@@ -2018,7 +2018,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: sothisSettlement?.id as string,
+      settlementId: sothisSettlement.id,
       type: 'library',
       name: 'The Occularium',
       level: 5,
@@ -2052,7 +2052,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: sothisSettlement?.id as string,
+      settlementId: sothisSettlement.id,
       type: 'market',
       name: 'Grand Bazaar of Sothis',
       level: 5,
@@ -2085,7 +2085,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: sothisSettlement?.id as string,
+      settlementId: sothisSettlement.id,
       type: 'temple',
       name: 'Temple of the Eternal Sun',
       level: 4,
@@ -2119,7 +2119,7 @@ async function main() {
   // Wati structures (level 3 settlement - 3 structures)
   await prisma.structure.create({
     data: {
-      settlementId: watiSettlement?.id as string,
+      settlementId: watiSettlement.id,
       type: 'library',
       name: 'Necropolis Archive',
       level: 3,
@@ -2153,7 +2153,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: watiSettlement?.id as string,
+      settlementId: watiSettlement.id,
       type: 'monastery',
       name: 'Monastery of the Forgotten Pharaoh',
       level: 2,
@@ -2186,7 +2186,7 @@ async function main() {
 
   await prisma.structure.create({
     data: {
-      settlementId: watiSettlement?.id as string,
+      settlementId: watiSettlement.id,
       type: 'market',
       name: 'The Living Quarter Market',
       level: 3,
@@ -2423,10 +2423,10 @@ async function main() {
       description:
         'The Order of the Rack conducts a formal inspection of the Hellknight Citadel garrison, testing combat readiness and loyalty to House Thrune.',
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Egorian', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       scheduledAt: new Date('4707-08-12T08:00:00Z'), // Arodus 12, 4707 AR
     },
   });
@@ -2609,10 +2609,10 @@ async function main() {
       description:
         'After months of construction, Delvehaven Docks completes expansion with 10 new berths and improved warehousing facilities.',
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Westcrown', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       scheduledAt: new Date('4707-05-20T10:00:00Z'), // Desnus 20, 4707 AR
     },
   });
@@ -2749,10 +2749,10 @@ async function main() {
       description:
         'The Cogwhisper Inventors Guild successfully creates a self-winding perpetual motion clockwork, earning a prestigious patent.',
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Whistledown', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       scheduledAt: new Date('4707-12-10T14:00:00Z'), // Kuthona 10, 4707 AR
     },
   });
@@ -2799,10 +2799,10 @@ async function main() {
       description:
         'A touring troupe attempts to perform at the cursed Nightshade Theater, only to have the show interrupted by spectral apparitions.',
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Westcrown', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       scheduledAt: new Date('4707-10-31T19:00:00Z'), // Lamashan 31, 4707 AR (Halloween equivalent)
     },
   });
@@ -2849,10 +2849,10 @@ async function main() {
       description:
         'The Chelish Navy awards The Anvil and Anchor a major contract to forge anchor chains and ship fittings for 10 new warships.',
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Corentyn', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       scheduledAt: new Date('4707-03-05T09:00:00Z'), // Pharast 5, 4707 AR
     },
   });
@@ -2947,10 +2947,10 @@ async function main() {
       description:
         'Monks at the Monastery of the Forgotten Pharaoh uncover scrolls detailing lost Osirian martial arts, attracting students from across the kingdom.',
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Wati', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       scheduledAt: new Date('4707-08-28T06:00:00Z'), // Arodus 28, 4707 AR
     },
   });
@@ -3205,10 +3205,10 @@ async function main() {
     data: {
       campaignId: campaign.id,
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'The Storval Stairs', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       name: 'Chimera Hunting Contract',
       description:
         'A deadly chimera has been terrorizing travelers near the Storval Stairs. Track the beast through mountainous terrain and claim the bounty.',
@@ -3229,10 +3229,10 @@ async function main() {
     data: {
       campaignId: campaign.id,
       locationId: (
-        await prisma.location.findFirst({
+        await prisma.location.findFirstOrThrow({
           where: { name: 'Thistletop', worldId: world.id },
         })
-      )?.id as string,
+      ).id,
       name: 'Thistletop Goblin Fortress Raid',
       description:
         'Raid the Thistletop goblin fortress and confront their warchief Ripnugget. The fortress is heavily defended with traps and a bugbear mercenary.',

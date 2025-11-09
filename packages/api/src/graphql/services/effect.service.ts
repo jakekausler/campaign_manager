@@ -393,6 +393,7 @@ export class EffectService {
       }
 
       default:
+        this.logger.warn(`Unknown entity type for campaign lookup: ${effect.entityType}`);
         return null;
     }
   }
