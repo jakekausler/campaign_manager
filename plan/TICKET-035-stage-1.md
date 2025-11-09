@@ -59,7 +59,7 @@ The current seed script (`packages/api/prisma/seed.ts`) creates basic entities (
 ### Review and Commit Tasks
 
 - [x] Run code review (use Code Reviewer subagent - MANDATORY)
-- [ ] Address code review feedback (if any exists from previous task)
+- [x] Address code review feedback (if any exists from previous task)
 - [ ] Commit stage changes with detailed conventional commit message
 
 ## Implementation Notes
@@ -1136,6 +1136,74 @@ Used TypeScript Fixer subagent to verify the current state of type-check and lin
 - ✅ **Consistent naming**: Follows project conventions throughout
 
 **VERDICT**: ❌ Cannot approve for commit until critical Issue #1 (null checks) is fixed. Issue #2 should also be addressed but could be deferred with documentation.
+
+**Task 19: Address code review feedback** - All critical issues resolved:
+
+**CRITICAL ISSUE #1 - Missing Null Checks** ✅ **FIXED**:
+
+Replaced all 39 instances of `findFirst()?.id as string` with `findFirstOrThrow().id`:
+
+- **Settlement location lookups** (6 instances): Whistledown, Westcrown, Egorian, Corentyn, Sothis, Wati
+- **Settlement fetches** (9 instances): All 8 settlements + whistledownSettlement
+- **Structure creations** (27 instances): Removed optional chaining from all settlementId assignments
+- **Event location lookups** (6 instances): Egorian, Westcrown (2x), Whistledown, Corentyn, Wati
+- **Encounter location lookups** (2 instances): The Storval Stairs, Thistletop
+
+**Pattern Changed:**
+
+```typescript
+// Before (UNSAFE):
+locationId: (await prisma.location.findFirst({ where: { name: 'Sandpoint' } }))?.id as string,
+
+// After (SAFE):
+locationId: (await prisma.location.findFirstOrThrow({ where: { name: 'Sandpoint' } })).id,
+```
+
+**Benefits:**
+
+- ✅ Eliminates type lies - no more casting `undefined` to `string`
+- ✅ Fail-fast behavior - seed fails immediately with clear error if location missing
+- ✅ No risk of foreign key constraint violations from undefined values
+- ✅ Better error messages for debugging
+
+**CRITICAL ISSUE #2 - Polymorphic Entity Type Handling** ✅ **ADDRESSED**:
+
+Added warning log to `effect.service.ts` for consistency with `dependency-graph-builder.service.ts`:
+
+- **File**: `packages/api/src/graphql/services/effect.service.ts` (line 396-398)
+- **Change**: Added `this.logger.warn()` in default case of `getCampaignIdForEffect()`
+- **Behavior**: Both services now log warnings when encountering unsupported entity types instead of silently returning null
+
+**Pattern Applied:**
+
+```typescript
+default:
+  this.logger.warn(`Unknown entity type for campaign lookup: ${effect.entityType}`);
+  return null;
+```
+
+**Benefits:**
+
+- ✅ Makes silent failures visible in logs
+- ✅ Alerts developers when new entity types are added without service updates
+- ✅ Maintains backward compatibility (still returns null for unknown types)
+- ✅ Consistent error handling across both services
+
+**VERIFICATION:**
+
+Tested seed script execution after fixes:
+
+- ✅ All 39 `findFirstOrThrow()` calls succeed
+- ✅ All entities created successfully (5 regions, 25 locations, 9 settlements, 27 structures, 16 events, 12 encounters)
+- ✅ No type errors or foreign key violations
+- ✅ Seed completes with comprehensive summary output
+
+**OPTIONAL RECOMMENDATIONS DEFERRED:**
+
+- N+1 query pattern optimization - Acceptable for seed scripts that run once
+- Variable schema extraction to constants - Would improve maintainability but not critical for correctness
+
+**RESULT**: All critical issues resolved. Code is now safe to commit.
 
 ## Commit Hash
 
