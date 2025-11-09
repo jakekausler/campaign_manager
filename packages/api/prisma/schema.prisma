@@ -427,9 +427,7 @@ model Encounter {
   archivedAt  DateTime?
 
   // Relations
-  conditions Condition[]
-  effects    Effect[]
-  links      Link[]      @relation("EncounterLinks")
+  // Note: conditions, effects, and links relations removed - use polymorphic query with entityType='encounter'
 
   @@index([campaignId])
   @@index([locationId])
@@ -459,9 +457,7 @@ model Event {
   archivedAt  DateTime?
 
   // Relations
-  conditions Condition[]
-  effects    Effect[]
-  links      Link[]      @relation("EventLinks")
+  // Note: conditions, effects, and links relations removed - use polymorphic query with entityType='event'
 
   @@index([campaignId])
   @@index([locationId])
@@ -519,16 +515,16 @@ model Condition {
   name        String
   description String?
   expression  Json // JSONLogic expression
-  entityType  String // "encounter", "event"
-  entityId    String
+  entityType  String // "encounter", "event" - determines which entity this condition belongs to
+  entityId    String // ID of the encounter or event (polymorphic, no FK constraint)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  // Polymorphic relations (entityType determines which is used)
-  encounter Encounter? @relation(fields: [entityId], references: [id], map: "Condition_encounter_fkey")
-  event     Event?     @relation(fields: [entityId], references: [id], map: "Condition_event_fkey")
+  // Note: Polymorphic relationships without FK constraints
+  // Application code enforces referential integrity based on entityType
+  // No @relation directives = no foreign key constraints in database
 
   @@index([entityType, entityId])
   @@index([deletedAt])
@@ -547,8 +543,8 @@ model Effect {
   description String?
   effectType  String // "modify_variable", "trigger_event", "create_entity", etc.
   payload     Json // Effect-specific data
-  entityType  String // "encounter", "event"
-  entityId    String
+  entityType  String // "encounter", "event" - determines which entity this effect belongs to
+  entityId    String // ID of the encounter or event (polymorphic, no FK constraint)
   timing      EffectTiming @default(ON_RESOLVE) // When to execute this effect
   priority    Int          @default(0) // Execution order within timing phase
   isActive    Boolean      @default(true)
@@ -557,9 +553,9 @@ model Effect {
   updatedAt   DateTime     @updatedAt
   deletedAt   DateTime?
 
-  // Polymorphic relations (entityType determines which is used)
-  encounter Encounter? @relation(fields: [entityId], references: [id], map: "Effect_encounter_fkey")
-  event     Event?     @relation(fields: [entityId], references: [id], map: "Effect_event_fkey")
+  // Note: Polymorphic relationships without FK constraints
+  // Application code enforces referential integrity based on entityType
+  // No @relation directives = no foreign key constraints in database
 
   // Relations
   executions EffectExecution[]
@@ -634,18 +630,18 @@ model FieldCondition {
 model Link {
   id          String    @id @default(cuid())
   sourceType  String // "encounter", "event"
-  sourceId    String
+  sourceId    String // ID of the source encounter or event (polymorphic, no FK constraint)
   targetType  String // "encounter", "event"
-  targetId    String
+  targetId    String // ID of the target encounter or event (polymorphic, no FK constraint)
   linkType    String // "prerequisite", "blocks", "triggers", "related"
   description String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  // Polymorphic relations for source (sourceType determines which is used)
-  sourceEncounter Encounter? @relation("EncounterLinks", fields: [sourceId], references: [id], map: "Link_sourceEncounter_fkey")
-  sourceEvent     Event?     @relation("EventLinks", fields: [sourceId], references: [id], map: "Link_sourceEvent_fkey")
+  // Note: Polymorphic relationships without FK constraints
+  // Application code enforces referential integrity based on sourceType and targetType
+  // No @relation directives = no foreign key constraints in database
 
   @@unique([sourceType, sourceId, targetType, targetId, linkType])
   @@index([sourceType, sourceId])
