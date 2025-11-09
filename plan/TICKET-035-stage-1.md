@@ -60,7 +60,7 @@ The current seed script (`packages/api/prisma/seed.ts`) creates basic entities (
 
 - [x] Run code review (use Code Reviewer subagent - MANDATORY)
 - [x] Address code review feedback (if any exists from previous task)
-- [ ] Commit stage changes with detailed conventional commit message
+- [x] Commit stage changes with detailed conventional commit message
 
 ## Implementation Notes
 
@@ -1207,4 +1207,10 @@ Tested seed script execution after fixes:
 
 ## Commit Hash
 
-_Added when final commit task is complete_
+**Main Seed Data Enhancement:**
+
+- `31c63d9` - Added comprehensive seed data (regions, locations, settlements, structures, events, encounters, branches) + verification scripts
+
+**Critical Fixes:**
+
+- `f0d9a52` - Resolved null-safety issues and improved polymorphic error handling
