@@ -895,6 +895,123 @@ Use the TypeScript Fixer subagent - never fix manually.
 2. Restart dev server
 3. Clear browser cache
 
+## Docker Deployment
+
+The frontend includes a multi-stage Dockerfile for production deployment with Nginx serving static assets.
+
+### Building the Docker Image
+
+```bash
+# From project root
+docker build -t campaign-frontend -f packages/frontend/Dockerfile .
+```
+
+The Dockerfile uses a multi-stage build:
+
+1. **Builder stage**: Installs dependencies and builds the production bundle with Vite
+2. **Production stage**: Nginx serves static files with gzip compression and security headers
+
+### Running with Docker Compose
+
+The frontend is included in the root `docker-compose.yml` configuration:
+
+```bash
+# Start all services (development mode)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+# Start all services (production mode)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+# Start only frontend and API
+docker compose up frontend api
+```
+
+### Environment Variables for Docker
+
+The docker-compose configuration handles environment variable injection via `.env.local` file in project root.
+
+**Key Variables:**
+
+- `VITE_API_URL` - GraphQL endpoint (e.g., `http://api:9264/graphql`)
+- `VITE_API_WS_URL` - WebSocket endpoint (e.g., `ws://api:9264/graphql`)
+- `VITE_PORT` - Frontend port (default: 9263)
+- `VITE_APP_NAME` - Application name
+- `VITE_ENVIRONMENT` - Current environment (development/staging/production)
+
+**Exposed Ports:**
+
+- `9263` - Nginx HTTP server serving React app
+
+**Health Checks:**
+
+The container includes a health check that verifies Nginx is serving content:
+
+```yaml
+healthcheck:
+  test: ['CMD', 'curl', '-f', 'http://localhost:9263/']
+  interval: 30s
+  timeout: 3s
+  retries: 3
+  start_period: 10s
+```
+
+**Nginx Configuration:**
+
+The production container uses a custom Nginx configuration with:
+
+- Gzip compression for text assets
+- Cache headers for static assets (1 year for hashed files)
+- SPA routing fallback (all routes serve index.html)
+- Security headers (X-Frame-Options, X-Content-Type-Options)
+- Access and error logging
+
+### Production Build Optimization
+
+The Vite build includes:
+
+- Code splitting with React.lazy() for routes
+- Tree-shaking to remove unused code
+- Minification and compression
+- CSS extraction and minification
+- Asset hashing for cache busting
+- Source maps (configurable)
+
+## Related Documentation
+
+- **Project Documentation**:
+  - [Root README](../../README.md) - Project overview and setup guide
+  - [CLAUDE.md](../../CLAUDE.md) - Development guidelines and workflow
+  - [Frontend Development Guide](../../docs/development/frontend-guide.md) - Comprehensive frontend development guide
+
+- **Feature Documentation** (in `../../docs/features/`):
+  - [Map Editing Tools](../../docs/features/map-editing-tools.md) - Interactive map with GeoJSON layers
+  - [Flow View](../../docs/features/flow-view.md) - Dependency graph visualization
+  - [Timeline View](../../docs/features/timeline-view.md) - Event and encounter timeline
+  - [Entity Inspector](../../docs/features/entity-inspector.md) - Entity inspection drawer
+  - [Event & Encounter Resolution](../../docs/features/event-encounter-resolution.md) - Resolution workflow
+  - [Cross-View Selection](../../docs/features/cross-view-selection.md) - Synchronized selection
+  - [World Time System](../../docs/features/world-time-system.md) - Campaign time tracking
+  - [Condition System](../../docs/features/condition-system.md) - Dynamic computed fields
+  - [Dependency Graph System](../../docs/features/dependency-graph-system.md) - Relationship tracking
+  - [Effect System](../../docs/features/effect-system.md) - World state mutations
+  - [Branching System](../../docs/features/branching-system.md) - Alternate timeline branches
+  - [Real-time Updates](../../docs/features/realtime-updates.md) - WebSocket integration
+
+- **Package Documentation**:
+  - [API Package](../api/README.md) - Backend GraphQL API
+  - [Shared Package](../shared/README.md) - Shared types and utilities
+  - [Rules Engine](../rules-engine/README.md) - Condition evaluation worker
+  - [Scheduler](../scheduler/README.md) - Time-based operations worker
+
+- **Internal Documentation** (in this package):
+  - [API Client README](src/services/api/README.md) - GraphQL client and hooks
+  - [Store README](src/stores/README.md) - Zustand state management
+  - [Config README](src/config/README.md) - Environment configuration
+  - [Router README](src/router/README.md) - React Router setup
+  - [Testing README](src/__tests__/README.md) - Test setup and patterns
+  - [Map Feature README](src/components/features/map/README.md) - Map component documentation
+  - [Entity Inspector README](src/components/features/entity-inspector/README.md) - Inspector component documentation
+
 ## Contributing
 
 Follow the TDD workflow:

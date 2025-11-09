@@ -696,12 +696,30 @@ Recommended metrics to monitor:
 
 ---
 
-## Additional Resources
+## Related Documentation
 
-- **NestJS Documentation**: https://docs.nestjs.com
-- **Bull Documentation**: https://github.com/OptimalBits/bull
-- **Prometheus Metrics**: https://prometheus.io/docs/introduction/overview/
-- **Winston Logging**: https://github.com/winstonjs/winston
+- **Project Documentation**:
+  - [Root README](../../README.md) - Project overview and setup guide
+  - [CLAUDE.md](../../CLAUDE.md) - Development guidelines and workflow
+  - [Scheduler Feature Documentation](../../docs/features/scheduler-service.md) - Detailed scheduler architecture
+
+- **Package Documentation**:
+  - [API Package](../api/README.md) - Backend GraphQL API
+  - [Frontend Package](../frontend/README.md) - React frontend application
+  - [Rules Engine](../rules-engine/README.md) - Condition evaluation worker
+  - [Shared Package](../shared/README.md) - Shared types and utilities
+
+- **Feature Documentation** (in `../../docs/features/`):
+  - [World Time System](../../docs/features/world-time-system.md) - Time tracking and progression
+  - [Effect System](../../docs/features/effect-system.md) - State mutations via JSON Patch
+  - [Event & Encounter Resolution](../../docs/features/event-encounter-resolution.md) - Event lifecycle
+  - [Condition System](../../docs/features/condition-system.md) - JSONLogic conditions
+
+- **External Documentation**:
+  - [NestJS Documentation](https://docs.nestjs.com) - Framework reference
+  - [Bull Documentation](https://github.com/OptimalBits/bull) - Job queue library
+  - [Prometheus Metrics](https://prometheus.io/docs/introduction/overview/) - Metrics format
+  - [Winston Logging](https://github.com/winstonjs/winston) - Logging library
 
 ## License
 

@@ -463,6 +463,31 @@ See `TICKET-015-implementation-plan.md` in the `plan/` directory for the full im
 
 ## Related Documentation
 
-- [Project CLAUDE.md](../../CLAUDE.md) - Development guidelines
-- [TICKET-015](../../plan/TICKET-015.md) - Ticket description
-- [Implementation Plan](../../plan/TICKET-015-implementation-plan.md) - Staged implementation plan
+- **Project Documentation**:
+  - [Root README](../../README.md) - Project overview and setup guide
+  - [CLAUDE.md](../../CLAUDE.md) - Development guidelines and workflow
+  - [Rules Engine Feature Documentation](../../docs/features/rules-engine-worker.md) - Detailed architecture and design
+
+- **Feature Documentation** (in `../../docs/features/`):
+  - [Condition System](../../docs/features/condition-system.md) - JSONLogic condition evaluation patterns
+  - [Effect System](../../docs/features/effect-system.md) - State mutations triggered by conditions
+  - [Event & Encounter Resolution](../../docs/features/event-encounter-resolution.md) - Event lifecycle integration
+  - [Dependency Graph System](../../docs/features/dependency-graph-system.md) - Conditional dependency evaluation
+
+- **Development Documentation** (in `../../docs/development/`):
+  - [Subagent Guide](../../docs/development/subagent-guide.md) - Development workflow and agents
+
+- **Package Documentation**:
+  - [API Package](../api/README.md) - Backend GraphQL API (gRPC client)
+  - [Frontend Package](../frontend/README.md) - React frontend application
+  - [Scheduler Package](../scheduler/README.md) - Time-based operations worker
+  - [Shared Package](../shared/README.md) - Shared types and utilities
+
+- **Planning Documentation**:
+  - [TICKET-015](../../plan/TICKET-015.md) - Original ticket description
+  - [Implementation Plan](../../plan/TICKET-015-implementation-plan.md) - Staged implementation history
+
+- **External Documentation**:
+  - [JSONLogic Documentation](https://jsonlogic.com/) - Condition expression syntax
+  - [gRPC Node Documentation](https://grpc.io/docs/languages/node/) - gRPC protocol and implementation
+  - [NestJS Documentation](https://docs.nestjs.com/) - Framework reference
