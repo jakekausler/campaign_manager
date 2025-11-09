@@ -1205,6 +1205,34 @@ Tested seed script execution after fixes:
 
 **RESULT**: All critical issues resolved. Code is now safe to commit.
 
+**Task 20: Commit stage changes with detailed conventional commit message** - Stage 1 work already committed in two parts:
+
+1. **Commit `31c63d9`** (Main Enhancements):
+   - 3,427 lines added to seed.ts with comprehensive demo data
+   - 5 regions with PostGIS polygon geometries
+   - 25 locations with PostGIS point geometries
+   - 9 settlements (levels 1-5) + 27 structures (levels 1-5)
+   - 16 events with JSONLogic conditions and JSON Patch effects
+   - 12 encounters with 11 dependency links
+   - 3 alternate timeline branches
+   - 4 verification scripts (relationships, typed variables, JSONLogic, JSON Patch)
+   - Service updates for polymorphic entity handling
+   - Migration to remove polymorphic FK constraints
+
+2. **Commit `f0d9a52`** (Critical Fixes):
+   - Fixed 39 instances of unsafe `findFirst()?.id as string` pattern
+   - Replaced with `findFirstOrThrow().id` for fail-fast behavior
+   - Added warning logs for unsupported entity types in effect.service.ts
+   - Eliminates type lies and FK constraint violation risks
+
+3. **Commit `3c244e0`** (Plan Documentation):
+   - Marked all Stage 1 tasks as complete
+   - Updated stage status to "complete" in main plan
+   - Added commit hashes to both stage file and main plan
+   - Documented comprehensive summary of completed work
+
+**Result**: Stage 1 is now fully complete with all code committed, plan files updated, and ready to proceed to Stage 2 (Package READMEs).
+
 ## Commit Hash
 
 **Main Seed Data Enhancement:**
