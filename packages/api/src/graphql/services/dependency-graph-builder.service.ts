@@ -75,23 +75,12 @@ export class DependencyGraphBuilderService {
 
       // Query all active Effects for this campaign
       // Effects are attached to encounters or events, which belong to campaigns
+      // Note: Cannot use include since polymorphic relations have no FK constraints
       const effects = await this.prisma.effect.findMany({
         where: {
           isActive: true,
           deletedAt: null,
           effectType: 'patch', // Only patch-type effects write to variables
-        },
-        include: {
-          encounter: {
-            select: {
-              campaignId: true,
-            },
-          },
-          event: {
-            select: {
-              campaignId: true,
-            },
-          },
         },
       });
 
@@ -194,7 +183,11 @@ export class DependencyGraphBuilderService {
         }
 
         // Only include effects that belong to the campaign
-        const effectCampaignId = effect.encounter?.campaignId || effect.event?.campaignId;
+        // Must query entity manually since polymorphic relations have no FK constraints
+        const effectCampaignId = await this.getCampaignIdForEntity(
+          effect.entityType,
+          effect.entityId
+        );
         if (effectCampaignId !== campaignId) {
           continue; // Skip effects from other campaigns
         }
@@ -410,20 +403,9 @@ export class DependencyGraphBuilderService {
 
     try {
       // Fetch the effect
+      // Note: Cannot use include since polymorphic relations have no FK constraints
       const effect = await this.prisma.effect.findUnique({
         where: { id: effectId },
-        include: {
-          encounter: {
-            select: {
-              campaignId: true,
-            },
-          },
-          event: {
-            select: {
-              campaignId: true,
-            },
-          },
-        },
       });
 
       if (!effect) {
@@ -549,5 +531,43 @@ export class DependencyGraphBuilderService {
       }
     }
     return null;
+  }
+
+  /**
+   * Get campaign ID for an entity based on entityType and entityId
+   * Handles polymorphic relationship lookup without FK constraints
+   *
+   * @param entityType - Type of entity (e.g., 'encounter', 'event')
+   * @param entityId - ID of the entity
+   * @returns Campaign ID or null if not found
+   * @private
+   */
+  private async getCampaignIdForEntity(
+    entityType: string,
+    entityId: string
+  ): Promise<string | null> {
+    const entityTypeLower = entityType.toLowerCase();
+
+    switch (entityTypeLower) {
+      case 'encounter': {
+        const encounter = await this.prisma.encounter.findUnique({
+          where: { id: entityId },
+          select: { campaignId: true },
+        });
+        return encounter?.campaignId ?? null;
+      }
+
+      case 'event': {
+        const event = await this.prisma.event.findUnique({
+          where: { id: entityId },
+          select: { campaignId: true },
+        });
+        return event?.campaignId ?? null;
+      }
+
+      default:
+        this.logger.warn(`Unknown entity type for campaign lookup: ${entityType}`);
+        return null;
+    }
   }
 }

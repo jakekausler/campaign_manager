@@ -124,11 +124,11 @@ export async function createLocationWithGeometry(
       ${name || null},
       ${description || null},
       ${parentLocationId || null},
-      ST_GeomFromText(${wkt}, ${SPATIAL_SRID}),
+      ST_GeomFromText(${wkt}, ${SPATIAL_SRID}::integer),
       NOW(),
       NOW()
     )
-    RETURNING *;
+    RETURNING id, "worldId", type, name, description, "parentLocationId", ST_AsText(geom) as geom, "createdAt", "updatedAt";
   `;
 
   return result[0];

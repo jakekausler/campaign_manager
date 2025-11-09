@@ -154,51 +154,34 @@ export class EffectService {
       }
     }
 
-    // Add campaign access filter if user provided (prevents N+1 query problem)
-    if (user) {
-      const campaignAccessFilter = {
-        deletedAt: null,
-        OR: [
-          { ownerId: user.id },
-          {
-            memberships: {
-              some: {
-                userId: user.id,
-              },
-            },
-          },
-        ],
-      };
-
-      // Build OR clause for each entity type to include campaign access filtering
-      prismaWhere.OR = [
-        {
-          entityType: 'encounter',
-          encounter: {
-            deletedAt: null,
-            campaign: campaignAccessFilter,
-          },
-        },
-        {
-          entityType: 'event',
-          event: {
-            deletedAt: null,
-            campaign: campaignAccessFilter,
-          },
-        },
-      ];
-    }
+    // Note: Campaign access filtering removed since polymorphic relations have no FK constraints
+    // Effects are now filtered by manual campaign lookup in application code
+    // For large result sets, consider adding campaign filtering at query time via manual joins
 
     // Build order by clause
     const prismaOrderBy = orderBy ? this.buildOrderBy(orderBy) : { priority: 'asc' as const };
 
-    // Query effects with campaign access filtering built into the query
+    // Query effects
     const effects = await this.prisma.effect.findMany({
       where: prismaWhere,
       orderBy: prismaOrderBy,
       skip,
       take,
     });
+
+    // Filter by campaign access if user provided
+    if (user) {
+      const accessibleEffects = [];
+      for (const effect of effects) {
+        try {
+          await this.verifyEntityAccess(effect.entityType, effect.entityId, user);
+          accessibleEffects.push(effect);
+        } catch {
+          // User doesn't have access to this effect's entity, skip it
+        }
+      }
+      return accessibleEffects;
+    }
 
     return effects;
   }
