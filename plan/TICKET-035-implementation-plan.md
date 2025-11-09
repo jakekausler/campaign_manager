@@ -46,7 +46,7 @@ The documentation will provide both user-facing guides (getting started, feature
 | Stage                            | Status      | File                                           |
 | -------------------------------- | ----------- | ---------------------------------------------- |
 | Stage 1: Seed Data Enhancement   | complete    | [TICKET-035-stage-1.md](TICKET-035-stage-1.md) |
-| Stage 2: Package READMEs         | in progress | [TICKET-035-stage-2.md](TICKET-035-stage-2.md) |
+| Stage 2: Package READMEs         | complete    | [TICKET-035-stage-2.md](TICKET-035-stage-2.md) |
 | Stage 3: User Documentation      | not started | [TICKET-035-stage-3.md](TICKET-035-stage-3.md) |
 | Stage 4: Developer Documentation | not started | [TICKET-035-stage-4.md](TICKET-035-stage-4.md) |
 | Stage 5: API Documentation       | not started | [TICKET-035-stage-5.md](TICKET-035-stage-5.md) |
@@ -81,7 +81,7 @@ The documentation will provide both user-facing guides (getting started, feature
 _Updated as stages are completed:_
 
 - Stage 1: `31c63d9`, `f0d9a52` - Comprehensive seed data with regions, settlements, structures, events, encounters, branches + verification scripts + null-safety fixes
-- Stage 2: `<commit-hash>` - [Brief description]
+- Stage 2: `43f55b2` - Package READMEs with comprehensive documentation linking
 - Stage 3: `<commit-hash>` - [Brief description]
 - Stage 4: `<commit-hash>` - [Brief description]
 - Stage 5: `<commit-hash>` - [Brief description]
