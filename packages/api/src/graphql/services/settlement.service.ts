@@ -969,12 +969,18 @@ export class SettlementService {
    * @param id - Settlement unique identifier (UUID)
    * @param level - New level (1-20)
    * @param user - Authenticated user (must have owner/GM role)
+   * @param branchId - Branch ID for cache invalidation (defaults to 'main')
    * @returns Updated settlement entity
    * @throws {NotFoundException} If settlement not found
    * @throws {ForbiddenException} If user lacks permission
    * @throws {BadRequestException} If level is out of valid range (1-20)
    */
-  async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaSettlement> {
+  async setLevel(
+    id: string,
+    level: number,
+    user: AuthenticatedUser,
+    branchId: string = 'main'
+  ): Promise<PrismaSettlement> {
     // Validate level range before processing
     LevelValidator.validateLevel(level, 'settlement');
 
@@ -1039,8 +1045,6 @@ export class SettlementService {
     // Invalidate settlement cache cascade (computed fields, structures list, child structures, spatial)
     // Cache invalidation failures should not block the operation
     try {
-      // TODO: Support branch parameter - currently hardcoded to 'main'
-      const branchId = 'main';
       await this.cache.invalidateSettlementCascade(id, branchId);
     } catch (error) {
       // Log but don't throw - cache invalidation is optional

@@ -97,6 +97,7 @@ export class ConditionService {
    * @param input - Condition creation parameters including entity type, optional entity ID, field name,
    *                JSONLogic expression, optional description, and optional priority (defaults to 0)
    * @param user - Authenticated user creating the condition (must have campaign access for instance-level)
+   * @param branchId - Branch ID for cache invalidation (defaults to 'main')
    * @returns Promise resolving to the created field condition
    * @throws {BadRequestException} If JSONLogic expression validation fails
    * @throws {NotFoundException} If entity does not exist or user lacks access (for instance-level conditions)
@@ -110,11 +111,12 @@ export class ConditionService {
    *   expression: { '>': [{ 'var': 'treasury' }, 10000] },
    *   description: 'Kingdom has sufficient treasury',
    *   priority: 10
-   * }, user);
+   * }, user, 'main');
    */
   async create(
     input: CreateFieldConditionInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser,
+    branchId: string = 'main'
   ): Promise<PrismaFieldCondition> {
     // Validate expression before creating
     const validationResult = this.evaluationService.validateExpression(
@@ -156,13 +158,13 @@ export class ConditionService {
       this.dependencyGraphService.invalidateGraph(campaignId);
 
       // Invalidate all computed fields in campaign (FieldCondition changes affect all entities)
-      await this.cacheService.invalidateCampaignComputedFields(campaignId, 'main');
+      await this.cacheService.invalidateCampaignComputedFields(campaignId, branchId);
 
       // Publish Redis event for Rules Engine worker
       await this.pubSub.publish('condition.created', {
         conditionId: condition.id,
         campaignId,
-        branchId: 'main',
+        branchId,
       });
     }
 
@@ -366,6 +368,7 @@ export class ConditionService {
    * @param id - Unique identifier of the condition to update
    * @param input - Update data with expectedVersion for optimistic locking and optional fields to update
    * @param user - Authenticated user performing the update (must have campaign access)
+   * @param branchId - Branch ID for cache invalidation (defaults to 'main')
    * @returns Promise resolving to the updated field condition with incremented version
    * @throws {NotFoundException} If condition does not exist or user lacks access
    * @throws {OptimisticLockException} If expectedVersion doesn't match current version (concurrent modification)
@@ -377,13 +380,14 @@ export class ConditionService {
    *   expectedVersion: 5,
    *   priority: 20,
    *   isActive: false
-   * }, user);
+   * }, user, 'main');
    * console.log(`Version incremented to ${updated.version}`);
    */
   async update(
     id: string,
     input: UpdateFieldConditionInput,
-    user: AuthenticatedUser
+    user: AuthenticatedUser,
+    branchId: string = 'main'
   ): Promise<PrismaFieldCondition> {
     // Fetch existing condition
     const condition = await this.findById(id, user);
@@ -446,13 +450,13 @@ export class ConditionService {
       this.dependencyGraphService.invalidateGraph(campaignId);
 
       // Invalidate all computed fields in campaign (FieldCondition changes affect all entities)
-      await this.cacheService.invalidateCampaignComputedFields(campaignId, 'main');
+      await this.cacheService.invalidateCampaignComputedFields(campaignId, branchId);
 
       // Publish Redis event for Rules Engine worker
       await this.pubSub.publish('condition.updated', {
         conditionId: updated.id,
         campaignId,
-        branchId: 'main',
+        branchId,
       });
     }
 
@@ -468,14 +472,19 @@ export class ConditionService {
    *
    * @param id - Unique identifier of the condition to delete
    * @param user - Authenticated user performing the deletion (must have campaign access)
+   * @param branchId - Branch ID for cache invalidation (defaults to 'main')
    * @returns Promise resolving to the soft-deleted field condition with deletedAt timestamp
    * @throws {NotFoundException} If condition does not exist or user lacks access
    *
    * @example
-   * const deleted = await delete('cond-123', user);
+   * const deleted = await delete('cond-123', user, 'main');
    * console.log(`Condition deleted at ${deleted.deletedAt}`);
    */
-  async delete(id: string, user: AuthenticatedUser): Promise<PrismaFieldCondition> {
+  async delete(
+    id: string,
+    user: AuthenticatedUser,
+    branchId: string = 'main'
+  ): Promise<PrismaFieldCondition> {
     // Verify condition exists and user has access
     const condition = await this.findById(id, user);
     if (!condition) {
@@ -499,13 +508,13 @@ export class ConditionService {
       this.dependencyGraphService.invalidateGraph(campaignId);
 
       // Invalidate all computed fields in campaign (FieldCondition changes affect all entities)
-      await this.cacheService.invalidateCampaignComputedFields(campaignId, 'main');
+      await this.cacheService.invalidateCampaignComputedFields(campaignId, branchId);
 
       // Publish Redis event for Rules Engine worker
       await this.pubSub.publish('condition.deleted', {
         conditionId: deleted.id,
         campaignId,
-        branchId: 'main',
+        branchId,
       });
     }
 

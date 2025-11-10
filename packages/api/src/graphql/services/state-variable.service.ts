@@ -541,17 +541,22 @@ export class StateVariableService {
         this.dependencyGraphService.invalidateGraph(campaignId);
 
         // Invalidate entity's computed fields cache (settlements and structures have computed fields)
+        const effectiveBranchId = branchId ?? 'main';
         if (updated.scope === VariableScope.SETTLEMENT) {
-          await this.cacheService.del(`computed-fields:settlement:${updated.scopeId}:main`);
+          await this.cacheService.del(
+            `computed-fields:settlement:${updated.scopeId}:${effectiveBranchId}`
+          );
         } else if (updated.scope === VariableScope.STRUCTURE) {
-          await this.cacheService.del(`computed-fields:structure:${updated.scopeId}:main`);
+          await this.cacheService.del(
+            `computed-fields:structure:${updated.scopeId}:${effectiveBranchId}`
+          );
         }
 
         // Publish Redis event for Rules Engine worker
         await this.pubSub.publish('variable.updated', {
           variableId: updated.id,
           campaignId,
-          branchId: 'main',
+          branchId: effectiveBranchId,
         });
       } catch {
         // If we can't get campaign ID (e.g., location scope), skip invalidation

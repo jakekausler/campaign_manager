@@ -335,7 +335,8 @@ describe('Cascade Invalidation Integration Tests', () => {
           field: 'newField',
           expression: { '==': [2, 2] },
         },
-        mockUser
+        mockUser,
+        branchId
       );
 
       // Assert: Both settlement and structure computed field caches should be invalidated
@@ -358,7 +359,8 @@ describe('Cascade Invalidation Integration Tests', () => {
           expression: { '==': [3, 3] },
           expectedVersion: 1,
         },
-        mockUser
+        mockUser,
+        branchId
       );
 
       // Assert: Both caches should be invalidated
@@ -375,7 +377,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(structureCacheKey, { testField: 'value2' }, { ttl: 300 });
 
       // Act: Delete FieldCondition
-      await conditionService.delete(fieldConditionId, mockUser);
+      await conditionService.delete(fieldConditionId, mockUser, branchId);
 
       // Assert: Both caches should be invalidated
       expect(await redis.get(cacheKey(settlementCacheKey))).toBeNull();
@@ -427,7 +429,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(structureComputedKey, { parentLevel: 1 }, { ttl: 300 });
 
       // Act: Change settlement level
-      await settlementService.setLevel(settlementId, 2, mockUser);
+      await settlementService.setLevel(settlementId, 2, mockUser, branchId);
 
       // Assert: Related caches should be invalidated
       expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
@@ -820,7 +822,8 @@ describe('Cascade Invalidation Integration Tests', () => {
           field: 'newField',
           expression: { '==': [1, 1] },
         },
-        mockUser
+        mockUser,
+        branchId
       );
 
       // Assert: ALL computed field caches should be invalidated (this is correct, not over-invalidation)
@@ -902,7 +905,8 @@ describe('Cascade Invalidation Integration Tests', () => {
             field: 'field1',
             expression: { '==': [1, 1] },
           },
-          mockUser
+          mockUser,
+          branchId
         ),
         conditionService.create(
           {
@@ -911,7 +915,8 @@ describe('Cascade Invalidation Integration Tests', () => {
             field: 'field2',
             expression: { '==': [2, 2] },
           },
-          mockUser
+          mockUser,
+          branchId
         ),
         conditionService.create(
           {
@@ -920,7 +925,8 @@ describe('Cascade Invalidation Integration Tests', () => {
             field: 'field3',
             expression: { '==': [3, 3] },
           },
-          mockUser
+          mockUser,
+          branchId
         ),
       ];
 
