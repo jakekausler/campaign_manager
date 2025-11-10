@@ -1,31 +1,14 @@
 /**
- * SKIPPED: Circular Dependency Issue in Test Module Setup
+ * Cascade Invalidation Integration Tests
  *
- * This integration test is temporarily skipped due to a circular dependency
- * causing infinite recursion during NestJS TestingModule.createTestingModule().
- *
- * Root Cause:
- * CampaignContextService uses forwardRef() to inject PartyService and KingdomService,
- * but the circular dependency between CampaignContextService, SettlementService,
- * StructureService, PartyService, and KingdomService cannot be resolved during
- * test module compilation, resulting in:
- * "RangeError: Maximum call stack size exceeded" in InstanceWrapper.getInstanceByContextId()
- *
- * This test attempts to create a full testing module with all real services,
- * which exposes the circular dependency that needs architectural resolution.
- *
- * Resolution Options:
- * 1. Refactor services to remove circular dependencies (preferred long-term solution)
- * 2. Mock the circular dependencies instead of using real services in test
- * 3. Use lazy injection or event-driven patterns to break dependency cycles
- *
- * TODO: Refactor to use proper mocking strategy or resolve circular dependencies
- * TODO: Re-enable test once architectural issue is resolved
- *
- * Original Test Purpose:
  * These integration tests verify end-to-end cascade invalidation behavior
  * with real entities and Redis. They test that when entities are mutated,
  * the appropriate caches are invalidated throughout the cascade hierarchy.
+ *
+ * Note: This test uses mocking for services that have circular dependencies
+ * (CampaignContextService, PartyService, KingdomService) to avoid stack overflow
+ * during NestJS module initialization. The services under test (ConditionService,
+ * SettlementService, StructureService, StateVariableService) are real instances.
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -36,6 +19,9 @@ import { CacheModule } from '../../common/cache/cache.module';
 import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
+import { ExpressionCache } from '../../rules/cache/expression-cache';
+import { ExpressionParserService } from '../../rules/expression-parser.service';
+import { OperatorRegistry } from '../../rules/operator-registry';
 import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
@@ -45,12 +31,14 @@ import { AuditService } from './audit.service';
 import { CampaignContextService } from './campaign-context.service';
 import { ConditionEvaluationService } from './condition-evaluation.service';
 import { ConditionService } from './condition.service';
+import { DependencyGraphBuilderService } from './dependency-graph-builder.service';
 import { DependencyGraphService } from './dependency-graph.service';
 import { KingdomService } from './kingdom.service';
 import { PartyService } from './party.service';
 import { SettlementService } from './settlement.service';
 import { StateVariableService } from './state-variable.service';
 import { StructureService } from './structure.service';
+import { VariableEvaluationService } from './variable-evaluation.service';
 import { VersionService } from './version.service';
 
 /**
@@ -88,8 +76,12 @@ describe('Cascade Invalidation Integration Tests', () => {
     role: 'user',
   };
 
+  // Helper function to build cache key with prefix (matching CacheService behavior)
+  const cacheKey = (key: string) => `cache:${key}`;
+
   beforeAll(async () => {
-    // Create test module with real services
+    // Create test module with real services for ConditionService, SettlementService,
+    // StructureService, StateVariableService, and mocks for circular dependencies
     module = await Test.createTestingModule({
       imports: [CacheModule],
       providers: [
@@ -100,11 +92,54 @@ describe('Cascade Invalidation Integration Tests', () => {
         StateVariableService,
         VersionService,
         AuditService,
-        CampaignContextService,
         ConditionEvaluationService,
         DependencyGraphService,
-        PartyService,
-        KingdomService,
+        DependencyGraphBuilderService,
+        VariableEvaluationService,
+        ExpressionParserService,
+        OperatorRegistry,
+        ExpressionCache,
+        // Mock CampaignContextService to break circular dependency
+        {
+          provide: CampaignContextService,
+          useValue: {
+            getCampaignContext: jest.fn().mockResolvedValue({
+              parties: [],
+              kingdoms: [],
+              settlements: [],
+              structures: [],
+            }),
+            invalidateContext: jest.fn().mockResolvedValue(undefined),
+            invalidateContextForEntity: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        // Mock PartyService to break circular dependency
+        {
+          provide: PartyService,
+          useValue: {
+            findById: jest.fn(),
+            findByCampaign: jest.fn().mockResolvedValue([]),
+            create: jest.fn(),
+            delete: jest.fn(),
+            archive: jest.fn(),
+            restore: jest.fn(),
+            calculateAverageLevel: jest.fn(),
+            setLevel: jest.fn(),
+          },
+        },
+        // Mock KingdomService to break circular dependency
+        {
+          provide: KingdomService,
+          useValue: {
+            findById: jest.fn(),
+            findByCampaign: jest.fn().mockResolvedValue([]),
+            create: jest.fn(),
+            delete: jest.fn(),
+            archive: jest.fn(),
+            restore: jest.fn(),
+            setLevel: jest.fn(),
+          },
+        },
         {
           provide: RulesEngineClientService,
           useValue: {
@@ -245,13 +280,29 @@ describe('Cascade Invalidation Integration Tests', () => {
 
   afterEach(async () => {
     // Clean up in reverse dependency order
-    await prisma.structure.deleteMany({ where: { id: structureId } });
-    await prisma.settlement.deleteMany({ where: { id: settlementId } });
+    // Delete state variables first (they reference various entities)
+    await prisma.stateVariable.deleteMany({ where: { createdBy: userId } });
+    // Delete structures
+    await prisma.structure.deleteMany({ where: { settlementId } });
+    // Delete settlements
+    await prisma.settlement.deleteMany({ where: { kingdomId } });
+    // Delete kingdoms
     await prisma.kingdom.deleteMany({ where: { id: kingdomId } });
+    // Delete field conditions
     await prisma.fieldCondition.deleteMany({ where: { id: fieldConditionId } });
+    // Delete versions before branches
+    await prisma.version.deleteMany({ where: { branchId } });
+    // Delete branches
     await prisma.branch.deleteMany({ where: { id: branchId } });
+    // Delete campaigns
     await prisma.campaign.deleteMany({ where: { id: campaignId } });
+    // Delete locations before worlds
+    await prisma.location.deleteMany({ where: { worldId } });
+    // Delete worlds
     await prisma.world.deleteMany({ where: { id: worldId } });
+    // Delete audit records before users
+    await prisma.audit.deleteMany({ where: { userId } });
+    // Delete users last
     await prisma.user.deleteMany({ where: { id: userId } });
 
     await redis.flushdb();
@@ -273,8 +324,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(structureCacheKey, { testField: 'value2' }, { ttl: 300 });
 
       // Verify caches are populated
-      expect(await redis.get(settlementCacheKey)).toBeTruthy();
-      expect(await redis.get(structureCacheKey)).toBeTruthy();
+      expect(await redis.get(cacheKey(settlementCacheKey))).toBeTruthy();
+      expect(await redis.get(cacheKey(structureCacheKey))).toBeTruthy();
 
       // Act: Create new FieldCondition
       await conditionService.create(
@@ -288,8 +339,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: Both settlement and structure computed field caches should be invalidated
-      expect(await redis.get(settlementCacheKey)).toBeNull();
-      expect(await redis.get(structureCacheKey)).toBeNull();
+      expect(await redis.get(cacheKey(settlementCacheKey))).toBeNull();
+      expect(await redis.get(cacheKey(structureCacheKey))).toBeNull();
     });
 
     it('should invalidate all computed fields when FieldCondition is updated', async () => {
@@ -311,8 +362,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: Both caches should be invalidated
-      expect(await redis.get(settlementCacheKey)).toBeNull();
-      expect(await redis.get(structureCacheKey)).toBeNull();
+      expect(await redis.get(cacheKey(settlementCacheKey))).toBeNull();
+      expect(await redis.get(cacheKey(structureCacheKey))).toBeNull();
     });
 
     it('should invalidate all computed fields when FieldCondition is deleted', async () => {
@@ -327,8 +378,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       await conditionService.delete(fieldConditionId, mockUser);
 
       // Assert: Both caches should be invalidated
-      expect(await redis.get(settlementCacheKey)).toBeNull();
-      expect(await redis.get(structureCacheKey)).toBeNull();
+      expect(await redis.get(cacheKey(settlementCacheKey))).toBeNull();
+      expect(await redis.get(cacheKey(structureCacheKey))).toBeNull();
     });
   });
 
@@ -346,10 +397,10 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(spatialKey, [{ id: settlementId }], { ttl: 300 });
 
       // Verify all caches are populated
-      expect(await redis.get(settlementComputedKey)).toBeTruthy();
-      expect(await redis.get(structureComputedKey)).toBeTruthy();
-      expect(await redis.get(structuresListKey)).toBeTruthy();
-      expect(await redis.get(spatialKey)).toBeTruthy();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeTruthy();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeTruthy();
+      expect(await redis.get(cacheKey(structuresListKey))).toBeTruthy();
+      expect(await redis.get(cacheKey(spatialKey))).toBeTruthy();
 
       // Act: Update settlement
       await settlementService.update(
@@ -361,10 +412,10 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: All related caches should be invalidated
-      expect(await redis.get(settlementComputedKey)).toBeNull();
-      expect(await redis.get(structureComputedKey)).toBeNull();
-      expect(await redis.get(structuresListKey)).toBeNull();
-      expect(await redis.get(spatialKey)).toBeNull();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeNull();
+      expect(await redis.get(cacheKey(structuresListKey))).toBeNull();
+      expect(await redis.get(cacheKey(spatialKey))).toBeNull();
     });
 
     it('should cascade invalidation when settlement level changes', async () => {
@@ -379,8 +430,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       await settlementService.setLevel(settlementId, 2, mockUser);
 
       // Assert: Related caches should be invalidated
-      expect(await redis.get(settlementComputedKey)).toBeNull();
-      expect(await redis.get(structureComputedKey)).toBeNull();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeNull();
     });
   });
 
@@ -396,9 +447,9 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(structuresListKey, [{ id: structureId }], { ttl: 600 });
 
       // Verify all caches are populated
-      expect(await redis.get(structureComputedKey)).toBeTruthy();
-      expect(await redis.get(settlementComputedKey)).toBeTruthy();
-      expect(await redis.get(structuresListKey)).toBeTruthy();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeTruthy();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeTruthy();
+      expect(await redis.get(cacheKey(structuresListKey))).toBeTruthy();
 
       // Act: Update structure
       await structureService.update(
@@ -410,9 +461,9 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: Structure, parent settlement, and structures list caches should be invalidated
-      expect(await redis.get(structureComputedKey)).toBeNull();
-      expect(await redis.get(settlementComputedKey)).toBeNull();
-      expect(await redis.get(structuresListKey)).toBeNull();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeNull();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
+      expect(await redis.get(cacheKey(structuresListKey))).toBeNull();
     });
 
     it('should cascade invalidation when structure level changes', async () => {
@@ -427,8 +478,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       await structureService.setLevel(structureId, 3, mockUser);
 
       // Assert: Both caches should be invalidated
-      expect(await redis.get(structureComputedKey)).toBeNull();
-      expect(await redis.get(settlementComputedKey)).toBeNull();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeNull();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
     });
   });
 
@@ -439,7 +490,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(settlementComputedKey, { population: 1000 }, { ttl: 300 });
 
       // Verify cache is populated
-      expect(await redis.get(settlementComputedKey)).toBeTruthy();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeTruthy();
 
       // Act: Create StateVariable for settlement
       await stateVariableService.create(
@@ -454,7 +505,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: Settlement computed fields cache should be invalidated
-      expect(await redis.get(settlementComputedKey)).toBeNull();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
     });
 
     it('should invalidate structure computed fields when StateVariable is created', async () => {
@@ -463,7 +514,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(structureComputedKey, { capacity: 100 }, { ttl: 300 });
 
       // Verify cache is populated
-      expect(await redis.get(structureComputedKey)).toBeTruthy();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeTruthy();
 
       // Act: Create StateVariable for structure
       await stateVariableService.create(
@@ -478,7 +529,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: Structure computed fields cache should be invalidated
-      expect(await redis.get(structureComputedKey)).toBeNull();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeNull();
     });
 
     it('should invalidate entity computed fields when StateVariable is updated', async () => {
@@ -501,7 +552,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await stateVariableService.update(stateVar.id, { value: 10000 }, mockUser, '1');
 
       // Assert: Settlement computed fields cache should be invalidated
-      expect(await redis.get(settlementComputedKey)).toBeNull();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
 
       // Cleanup
       await prisma.stateVariable.delete({ where: { id: stateVar.id } });
@@ -527,7 +578,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await stateVariableService.delete(stateVar.id, mockUser);
 
       // Assert: Structure computed fields cache should be invalidated
-      expect(await redis.get(structureComputedKey)).toBeNull();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeNull();
     });
   });
 
@@ -580,8 +631,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(unrelatedSettlementKey, { field2: 'value2' }, { ttl: 300 });
 
       // Verify both caches are populated
-      expect(await redis.get(targetSettlementKey)).toBeTruthy();
-      expect(await redis.get(unrelatedSettlementKey)).toBeTruthy();
+      expect(await redis.get(cacheKey(targetSettlementKey))).toBeTruthy();
+      expect(await redis.get(cacheKey(unrelatedSettlementKey))).toBeTruthy();
 
       // Act: Update target settlement (not the unrelated one)
       await settlementService.update(
@@ -593,11 +644,11 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: Target settlement cache should be invalidated
-      expect(await redis.get(targetSettlementKey)).toBeNull();
+      expect(await redis.get(cacheKey(targetSettlementKey))).toBeNull();
 
       // Assert: Unrelated settlement cache should remain intact
-      expect(await redis.get(unrelatedSettlementKey)).toBeTruthy();
-      const unrelatedCache = await redis.get(unrelatedSettlementKey);
+      expect(await redis.get(cacheKey(unrelatedSettlementKey))).toBeTruthy();
+      const unrelatedCache = await redis.get(cacheKey(unrelatedSettlementKey));
       expect(JSON.parse(unrelatedCache!)).toEqual({ field2: 'value2' });
     });
 
@@ -610,8 +661,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(unrelatedStructureKey, { field2: 'value2' }, { ttl: 300 });
 
       // Verify both caches are populated
-      expect(await redis.get(targetStructureKey)).toBeTruthy();
-      expect(await redis.get(unrelatedStructureKey)).toBeTruthy();
+      expect(await redis.get(cacheKey(targetStructureKey))).toBeTruthy();
+      expect(await redis.get(cacheKey(unrelatedStructureKey))).toBeTruthy();
 
       // Act: Update target structure (not the unrelated one)
       await structureService.update(
@@ -623,11 +674,11 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: Target structure cache should be invalidated
-      expect(await redis.get(targetStructureKey)).toBeNull();
+      expect(await redis.get(cacheKey(targetStructureKey))).toBeNull();
 
       // Assert: Unrelated structure cache should remain intact
-      expect(await redis.get(unrelatedStructureKey)).toBeTruthy();
-      const unrelatedCache = await redis.get(unrelatedStructureKey);
+      expect(await redis.get(cacheKey(unrelatedStructureKey))).toBeTruthy();
+      const unrelatedCache = await redis.get(cacheKey(unrelatedStructureKey));
       expect(JSON.parse(unrelatedCache!)).toEqual({ field2: 'value2' });
     });
 
@@ -651,12 +702,12 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: Structure and its parent settlement caches should be invalidated
-      expect(await redis.get(targetStructureKey)).toBeNull();
-      expect(await redis.get(parentSettlementKey)).toBeNull();
+      expect(await redis.get(cacheKey(targetStructureKey))).toBeNull();
+      expect(await redis.get(cacheKey(parentSettlementKey))).toBeNull();
 
       // Assert: Unrelated settlement cache should remain intact
-      expect(await redis.get(unrelatedSettlementKey)).toBeTruthy();
-      const unrelatedCache = await redis.get(unrelatedSettlementKey);
+      expect(await redis.get(cacheKey(unrelatedSettlementKey))).toBeTruthy();
+      const unrelatedCache = await redis.get(cacheKey(unrelatedSettlementKey));
       expect(JSON.parse(unrelatedCache!)).toEqual({ field3: 'value3' });
     });
 
@@ -687,11 +738,11 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: Target structure cache should be invalidated
-      expect(await redis.get(targetStructureKey)).toBeNull();
+      expect(await redis.get(cacheKey(targetStructureKey))).toBeNull();
 
       // Assert: Sibling structure cache should remain intact (no cascade to siblings)
-      expect(await redis.get(siblingStructureKey)).toBeTruthy();
-      const siblingCache = await redis.get(siblingStructureKey);
+      expect(await redis.get(cacheKey(siblingStructureKey))).toBeTruthy();
+      const siblingCache = await redis.get(cacheKey(siblingStructureKey));
       expect(JSON.parse(siblingCache!)).toEqual({ field2: 'value2' });
 
       // Cleanup
@@ -733,11 +784,11 @@ describe('Cascade Invalidation Integration Tests', () => {
       await stateVariableService.update(targetStateVar.id, { value: 1500 }, mockUser, 'main');
 
       // Assert: Target settlement cache should be invalidated
-      expect(await redis.get(targetSettlementKey)).toBeNull();
+      expect(await redis.get(cacheKey(targetSettlementKey))).toBeNull();
 
       // Assert: Unrelated settlement cache should remain intact
-      expect(await redis.get(unrelatedSettlementKey)).toBeTruthy();
-      const unrelatedCache = await redis.get(unrelatedSettlementKey);
+      expect(await redis.get(cacheKey(unrelatedSettlementKey))).toBeTruthy();
+      const unrelatedCache = await redis.get(cacheKey(unrelatedSettlementKey));
       expect(JSON.parse(unrelatedCache!)).toEqual({ population: 2000 });
 
       // Cleanup
@@ -773,10 +824,10 @@ describe('Cascade Invalidation Integration Tests', () => {
       );
 
       // Assert: ALL computed field caches should be invalidated (this is correct, not over-invalidation)
-      expect(await redis.get(targetSettlementKey)).toBeNull();
-      expect(await redis.get(unrelatedSettlementKey)).toBeNull();
-      expect(await redis.get(targetStructureKey)).toBeNull();
-      expect(await redis.get(unrelatedStructureKey)).toBeNull();
+      expect(await redis.get(cacheKey(targetSettlementKey))).toBeNull();
+      expect(await redis.get(cacheKey(unrelatedSettlementKey))).toBeNull();
+      expect(await redis.get(cacheKey(targetStructureKey))).toBeNull();
+      expect(await redis.get(cacheKey(unrelatedStructureKey))).toBeNull();
     });
   });
 
@@ -805,7 +856,7 @@ describe('Cascade Invalidation Integration Tests', () => {
 
       // Cache should be invalidated (may be null or contain latest value)
       // The key point is that the system doesn't deadlock or throw unhandled errors
-      const cacheValue = await redis.get(settlementComputedKey);
+      const cacheValue = await redis.get(cacheKey(settlementComputedKey));
       // Either invalidated (null) or contains a fresh value from the last update
       expect(cacheValue === null || cacheValue !== null).toBe(true);
     });
@@ -830,7 +881,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       expect(successfulUpdates.length).toBeGreaterThan(0);
 
       // System should remain stable (no deadlocks or unhandled errors)
-      const cacheValue = await redis.get(structureComputedKey);
+      const cacheValue = await redis.get(cacheKey(structureComputedKey));
       expect(cacheValue === null || cacheValue !== null).toBe(true);
     });
 
@@ -881,8 +932,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       expect(successfulCreates.length).toBe(3);
 
       // All caches should be invalidated by the campaign-level invalidation
-      expect(await redis.get(settlementComputedKey)).toBeNull();
-      expect(await redis.get(structureComputedKey)).toBeNull();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeNull();
     });
 
     it('should handle concurrent StateVariable updates to different entities gracefully', async () => {
@@ -932,8 +983,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       expect(successfulUpdates.length).toBeGreaterThan(0);
 
       // Both entity caches should be invalidated
-      expect(await redis.get(settlementComputedKey)).toBeNull();
-      expect(await redis.get(structureComputedKey)).toBeNull();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
+      expect(await redis.get(cacheKey(structureComputedKey))).toBeNull();
 
       // Cleanup
       await prisma.stateVariable.deleteMany({
@@ -1008,9 +1059,9 @@ describe('Cascade Invalidation Integration Tests', () => {
 
       // All caches should eventually be invalidated (multiple overlapping invalidations)
       // The final state should be consistent (all invalidated)
-      expect(await redis.get(settlementComputedKey)).toBeNull();
-      expect(await redis.get(structure1ComputedKey)).toBeNull();
-      expect(await redis.get(structure2ComputedKey)).toBeNull();
+      expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
+      expect(await redis.get(cacheKey(structure1ComputedKey))).toBeNull();
+      expect(await redis.get(cacheKey(structure2ComputedKey))).toBeNull();
 
       // Cleanup
       await prisma.structure.delete({ where: { id: siblingStructure.id } });
@@ -1035,12 +1086,12 @@ describe('Cascade Invalidation Integration Tests', () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Assert: Cache should be in a consistent state (invalidated)
-      const cacheValue = await redis.get(settlementComputedKey);
+      const cacheValue = await redis.get(cacheKey(settlementComputedKey));
       expect(cacheValue).toBeNull();
 
       // Verify we can successfully populate cache again after the storm
       await cacheService.set(settlementComputedKey, { value: 'after-storm' }, { ttl: 300 });
-      const newCacheValue = await redis.get(settlementComputedKey);
+      const newCacheValue = await redis.get(cacheKey(settlementComputedKey));
       expect(JSON.parse(newCacheValue!)).toEqual({ value: 'after-storm' });
     });
   });
