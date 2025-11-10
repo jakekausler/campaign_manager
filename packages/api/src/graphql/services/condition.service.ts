@@ -1,7 +1,19 @@
 /**
- * Condition Service
- * Business logic for FieldCondition CRUD operations
- * Handles JSONLogic expression validation, entity authorization, and condition evaluation
+ * @fileoverview Condition Service
+ *
+ * Manages field condition CRUD operations, JSONLogic expression validation, and computed field evaluation.
+ * Handles both type-level conditions (applying to all entities of a type) and instance-level conditions
+ * (applying to specific entity instances). Integrates with cache invalidation, dependency tracking, and
+ * real-time updates via Redis pub/sub.
+ *
+ * Key responsibilities:
+ * - Field condition lifecycle (create, read, update, delete)
+ * - JSONLogic expression validation and evaluation
+ * - Entity access authorization and campaign membership verification
+ * - Cache invalidation for dependency graphs and computed fields
+ * - Real-time event publishing for Rules Engine worker synchronization
+ *
+ * @module graphql/services
  */
 
 import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
@@ -26,6 +38,40 @@ import { AuditService } from './audit.service';
 import { ConditionEvaluationService } from './condition-evaluation.service';
 import { DependencyGraphService } from './dependency-graph.service';
 
+/**
+ * Service for managing field conditions and computed field evaluation.
+ *
+ * Handles CRUD operations for field conditions with JSONLogic expressions. Supports both type-level
+ * conditions (entityId = null, applies to all entities) and instance-level conditions (specific entityId).
+ *
+ * Features:
+ * - JSONLogic expression validation using ConditionEvaluationService
+ * - Entity access authorization (campaign membership checks)
+ * - Optimistic locking for concurrent update protection (version field)
+ * - Audit logging for all CRUD operations
+ * - Cache invalidation for dependency graphs and computed fields
+ * - Redis pub/sub events for Rules Engine worker synchronization
+ *
+ * @example
+ * // Create type-level condition for all Kingdoms
+ * const condition = await conditionService.create({
+ *   entityType: 'KINGDOM',
+ *   entityId: null,
+ *   field: 'isProsperous',
+ *   expression: { 'and': [{ '>': [{ 'var': 'treasury' }, 10000] }, { '==': [{ 'var': 'stability' }, 'HIGH'] }] },
+ *   priority: 10
+ * }, user);
+ *
+ * @example
+ * // Create instance-level condition for specific Kingdom
+ * const condition = await conditionService.create({
+ *   entityType: 'KINGDOM',
+ *   entityId: 'kingdom-123',
+ *   field: 'hasSpecialEvent',
+ *   expression: { '==': [{ 'var': 'location' }, 'Waterdeep'] },
+ *   priority: 5
+ * }, user);
+ */
 @Injectable()
 export class ConditionService {
   constructor(
@@ -38,8 +84,33 @@ export class ConditionService {
   ) {}
 
   /**
-   * Create a new field condition
-   * Validates expression and verifies user has access to the entity
+   * Creates a new field condition with JSONLogic expression.
+   *
+   * Validates the JSONLogic expression structure before creation. For instance-level conditions
+   * (when entityId is provided), verifies the user has access to the entity through campaign
+   * membership. After creation, invalidates dependency graph cache and publishes Redis event
+   * for Rules Engine worker synchronization.
+   *
+   * Type-level conditions (entityId = null) apply to all entities of the specified type.
+   * Instance-level conditions (entityId provided) apply only to that specific entity.
+   *
+   * @param input - Condition creation parameters including entity type, optional entity ID, field name,
+   *                JSONLogic expression, optional description, and optional priority (defaults to 0)
+   * @param user - Authenticated user creating the condition (must have campaign access for instance-level)
+   * @returns Promise resolving to the created field condition
+   * @throws {BadRequestException} If JSONLogic expression validation fails
+   * @throws {NotFoundException} If entity does not exist or user lacks access (for instance-level conditions)
+   *
+   * @example
+   * // Type-level condition: Kingdoms are prosperous if treasury > 10000
+   * const condition = await create({
+   *   entityType: 'KINGDOM',
+   *   entityId: null,
+   *   field: 'isProsperous',
+   *   expression: { '>': [{ 'var': 'treasury' }, 10000] },
+   *   description: 'Kingdom has sufficient treasury',
+   *   priority: 10
+   * }, user);
    */
   async create(
     input: CreateFieldConditionInput,
@@ -99,8 +170,21 @@ export class ConditionService {
   }
 
   /**
-   * Find condition by ID
-   * Ensures user has access to the related entity
+   * Finds a field condition by ID with access control.
+   *
+   * Retrieves a single field condition, excluding soft-deleted records. For instance-level conditions,
+   * verifies the user has campaign access to the entity. Returns null if the condition doesn't exist,
+   * is deleted, or user lacks access.
+   *
+   * @param id - Unique identifier of the field condition
+   * @param user - Authenticated user requesting the condition
+   * @returns Promise resolving to the condition if found and accessible, null otherwise
+   *
+   * @example
+   * const condition = await findById('cond-123', user);
+   * if (condition) {
+   *   console.log(`Found condition for ${condition.entityType}.${condition.field}`);
+   * }
    */
   async findById(id: string, user: AuthenticatedUser): Promise<PrismaFieldCondition | null> {
     const condition = await this.prisma.fieldCondition.findUnique({
@@ -126,7 +210,26 @@ export class ConditionService {
   }
 
   /**
-   * Find many conditions with filtering, sorting, and pagination
+   * Finds multiple field conditions with filtering, sorting, and pagination.
+   *
+   * Supports flexible querying with optional filters for entity type, entity ID, field name,
+   * active status, creator, and date ranges. Results are sorted by priority (descending) by default.
+   * When a user is provided, filters results to only conditions the user can access through
+   * campaign membership. Type-level conditions are accessible to all authenticated users.
+   *
+   * @param where - Optional filter criteria (entityType, entityId, field, isActive, createdBy, date ranges, includeDeleted)
+   * @param orderBy - Optional sort configuration (field and order direction, defaults to priority DESC)
+   * @param skip - Optional number of records to skip for pagination
+   * @param take - Optional maximum number of records to return
+   * @param user - Optional authenticated user for access filtering (omit for admin queries)
+   * @returns Promise resolving to array of matching field conditions
+   *
+   * @example
+   * // Find active conditions for Kingdom entity type
+   * const conditions = await findMany({
+   *   entityType: 'KINGDOM',
+   *   isActive: true
+   * }, { field: 'PRIORITY', order: 'DESC' }, 0, 10, user);
    */
   async findMany(
     where?: FieldConditionWhereInput,
@@ -194,8 +297,29 @@ export class ConditionService {
   }
 
   /**
-   * Find conditions for a specific entity and field
-   * Returns conditions in priority order (DESC)
+   * Finds active conditions for a specific entity type and optional field.
+   *
+   * Retrieves all active, non-deleted conditions matching the entity type and optional entity ID.
+   * If field is specified, filters to conditions for that field only. Results are sorted by
+   * priority in descending order (higher priority first). For instance-level queries, verifies
+   * user has campaign access to the entity.
+   *
+   * Used by the Rules Engine to fetch applicable conditions when evaluating computed fields.
+   *
+   * @param entityType - Entity type (e.g., 'KINGDOM', 'SETTLEMENT', 'CHARACTER')
+   * @param entityId - Optional entity ID for instance-level conditions, null for type-level
+   * @param field - Optional field name to filter conditions (null/undefined returns all fields)
+   * @param user - Authenticated user (access verified for instance-level conditions)
+   * @returns Promise resolving to array of conditions sorted by priority descending
+   * @throws {NotFoundException} If entity does not exist or user lacks access (when entityId provided)
+   *
+   * @example
+   * // Get all conditions for a specific Kingdom's 'isProsperous' field
+   * const conditions = await findForEntity('KINGDOM', 'kingdom-123', 'isProsperous', user);
+   *
+   * @example
+   * // Get all type-level conditions for Kingdoms
+   * const typeConditions = await findForEntity('KINGDOM', null, null, user);
    */
   async findForEntity(
     entityType: string,
@@ -229,8 +353,32 @@ export class ConditionService {
   }
 
   /**
-   * Update an existing field condition
-   * Uses optimistic locking to prevent race conditions
+   * Updates an existing field condition with optimistic locking.
+   *
+   * Supports partial updates to expression, description, isActive status, and priority.
+   * Uses version-based optimistic locking to prevent concurrent update conflicts. Validates
+   * JSONLogic expression if changed. After update, invalidates caches and publishes Redis
+   * event for Rules Engine synchronization.
+   *
+   * The version field is automatically incremented on each update. Clients must provide the
+   * expected version in the input to ensure they're updating the latest version.
+   *
+   * @param id - Unique identifier of the condition to update
+   * @param input - Update data with expectedVersion for optimistic locking and optional fields to update
+   * @param user - Authenticated user performing the update (must have campaign access)
+   * @returns Promise resolving to the updated field condition with incremented version
+   * @throws {NotFoundException} If condition does not exist or user lacks access
+   * @throws {OptimisticLockException} If expectedVersion doesn't match current version (concurrent modification)
+   * @throws {BadRequestException} If updated expression fails JSONLogic validation
+   *
+   * @example
+   * // Update condition priority and status
+   * const updated = await update('cond-123', {
+   *   expectedVersion: 5,
+   *   priority: 20,
+   *   isActive: false
+   * }, user);
+   * console.log(`Version incremented to ${updated.version}`);
    */
   async update(
     id: string,
@@ -312,7 +460,20 @@ export class ConditionService {
   }
 
   /**
-   * Soft delete a field condition
+   * Soft deletes a field condition by setting deletedAt timestamp.
+   *
+   * Marks the condition as deleted without removing it from the database, preserving audit history.
+   * Deleted conditions are excluded from queries by default. After deletion, invalidates caches
+   * and publishes Redis event for Rules Engine synchronization.
+   *
+   * @param id - Unique identifier of the condition to delete
+   * @param user - Authenticated user performing the deletion (must have campaign access)
+   * @returns Promise resolving to the soft-deleted field condition with deletedAt timestamp
+   * @throws {NotFoundException} If condition does not exist or user lacks access
+   *
+   * @example
+   * const deleted = await delete('cond-123', user);
+   * console.log(`Condition deleted at ${deleted.deletedAt}`);
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaFieldCondition> {
     // Verify condition exists and user has access
@@ -352,7 +513,25 @@ export class ConditionService {
   }
 
   /**
-   * Toggle active status of a condition
+   * Toggles the active status of a field condition.
+   *
+   * Enables or disables a condition without deleting it. Inactive conditions (isActive = false)
+   * are excluded from evaluation by the Rules Engine but remain in the database for potential
+   * re-activation. Creates an audit log entry for the status change.
+   *
+   * @param id - Unique identifier of the condition to toggle
+   * @param isActive - New active status (true to activate, false to deactivate)
+   * @param user - Authenticated user performing the toggle (must have campaign access)
+   * @returns Promise resolving to the updated field condition with new isActive status
+   * @throws {NotFoundException} If condition does not exist or user lacks access
+   *
+   * @example
+   * // Temporarily disable a condition
+   * const deactivated = await toggleActive('cond-123', false, user);
+   *
+   * @example
+   * // Re-enable a previously disabled condition
+   * const activated = await toggleActive('cond-123', true, user);
    */
   async toggleActive(
     id: string,
@@ -378,8 +557,26 @@ export class ConditionService {
   }
 
   /**
-   * Evaluate a condition with provided context
-   * Returns evaluation result with trace for debugging
+   * Evaluates a field condition with provided context data.
+   *
+   * Executes the condition's JSONLogic expression against the provided context object.
+   * Returns both the evaluation result and a detailed execution trace for debugging.
+   * Useful for testing conditions or understanding why a computed field has a particular value.
+   *
+   * @param id - Unique identifier of the condition to evaluate
+   * @param context - Context object containing variables referenced in the JSONLogic expression
+   * @param user - Authenticated user performing the evaluation (must have campaign access)
+   * @returns Promise resolving to evaluation result with value and execution trace
+   * @throws {NotFoundException} If condition does not exist or user lacks access
+   *
+   * @example
+   * // Evaluate a Kingdom prosperity condition
+   * const result = await evaluateCondition('cond-123', {
+   *   treasury: 15000,
+   *   stability: 'HIGH',
+   *   population: 50000
+   * }, user);
+   * console.log(`Result: ${result.value}, Trace: ${JSON.stringify(result.trace)}`);
    */
   async evaluateCondition(
     id: string,
@@ -400,12 +597,18 @@ export class ConditionService {
   }
 
   /**
-   * Verify user has access to an entity
-   * Checks entity exists and user has campaign access
-   */
-  /**
-   * Get campaign ID for a condition (for dependency graph cache invalidation)
-   * Returns null for type-level conditions (entityId is null)
+   * Gets the campaign ID for a field condition to enable cache invalidation.
+   *
+   * Determines which campaign a condition belongs to by traversing entity relationships.
+   * Type-level conditions (entityId = null) don't belong to a specific campaign and return null.
+   * Instance-level conditions are traced through their entity hierarchy to find the campaign.
+   *
+   * Supported entity types: SETTLEMENT, STRUCTURE, KINGDOM, PARTY, CHARACTER
+   *
+   * @param condition - Field condition to determine campaign ID for
+   * @returns Promise resolving to campaign ID if found, null for type-level conditions or unsupported types
+   *
+   * @private
    */
   private async getCampaignIdForCondition(condition: PrismaFieldCondition): Promise<string | null> {
     // Type-level conditions (no entityId) don't belong to a specific campaign
@@ -462,6 +665,24 @@ export class ConditionService {
     }
   }
 
+  /**
+   * Verifies user has access to an entity through campaign membership.
+   *
+   * Checks that the entity exists, is not soft-deleted, and the user is either the campaign owner
+   * or a campaign member. Access is determined by traversing the entity hierarchy to find the
+   * related campaign and checking user membership.
+   *
+   * Supported entity types: SETTLEMENT, STRUCTURE, KINGDOM, PARTY, CHARACTER
+   *
+   * @param entityType - Type of entity to verify access for (case-insensitive)
+   * @param entityId - Unique identifier of the entity
+   * @param user - Authenticated user to verify access for
+   * @returns Promise resolving when access is verified (void)
+   * @throws {NotFoundException} If entity doesn't exist, is deleted, or user lacks campaign access
+   * @throws {BadRequestException} If entity type is not supported
+   *
+   * @private
+   */
   private async verifyEntityAccess(
     entityType: string,
     entityId: string,
@@ -617,7 +838,17 @@ export class ConditionService {
   }
 
   /**
-   * Build Prisma order by clause from GraphQL input
+   * Builds a Prisma order by clause from GraphQL input.
+   *
+   * Converts GraphQL enum-based sort field and order direction into Prisma's order by format.
+   * Defaults to priority descending if no order is specified.
+   *
+   * Supported sort fields: ENTITY_TYPE, FIELD, PRIORITY, CREATED_AT, UPDATED_AT
+   *
+   * @param orderBy - GraphQL order by input with field and order direction
+   * @returns Prisma order by configuration object
+   *
+   * @private
    */
   private buildOrderBy(
     orderBy: FieldConditionOrderByInput

@@ -20,6 +20,65 @@ export class AuditResolver {
     private readonly permissionsService: PermissionsService
   ) {}
 
+  /**
+   * Retrieves audit log history for a specific entity.
+   *
+   * Returns chronological audit entries showing all operations performed on an entity,
+   * including complete before/after state snapshots and field-level diffs. Supports
+   * advanced filtering by operation type, date range, and custom sorting.
+   *
+   * **Authorization:**
+   * - User must be a member of the campaign containing the entity
+   * - User must have `audit:read` permission (OWNER or GM roles)
+   *
+   * **Supported Entity Types:** Settlement, Structure, Character, Event, Encounter
+   *
+   * **Performance Notes:**
+   * - Results are limited to 100 records maximum (enforced cap)
+   * - Date range filtering recommended for large audit histories
+   * - Includes campaign membership verification query
+   *
+   * @param user - The authenticated user requesting audit history
+   * @param entityType - Type of entity (must be in allowed whitelist)
+   * @param entityId - Unique identifier of the entity
+   * @param limit - Maximum number of records to return (default: 50, max: 100)
+   * @param operations - Filter by operation types (e.g., ['create', 'update'])
+   * @param startDate - Filter entries on or after this date
+   * @param endDate - Filter entries on or before this date
+   * @param sortBy - Field to sort by ('timestamp', 'operation', 'entityType')
+   * @param sortOrder - Sort direction ('asc' or 'desc', default: 'desc')
+   *
+   * @returns Array of audit entries sorted by specified criteria
+   *
+   * @throws {Error} If entityType is not in the allowed whitelist
+   * @throws {UnauthorizedException} If user is not a campaign member or lacks audit:read permission
+   *
+   * @see {@link PermissionsService.hasPermission} for permission checking logic
+   * @see docs/features/audit-log.md for audit log system overview
+   *
+   * @example
+   * ```graphql
+   * query {
+   *   entityAuditHistory(
+   *     entityType: "Settlement"
+   *     entityId: "settlement-123"
+   *     limit: 20
+   *     operations: ["update", "archive"]
+   *     startDate: "2024-01-01T00:00:00Z"
+   *     sortBy: "timestamp"
+   *     sortOrder: "desc"
+   *   ) {
+   *     timestamp
+   *     operation
+   *     userId
+   *     changes
+   *     previousState
+   *     newState
+   *     diff
+   *   }
+   * }
+   * ```
+   */
   @Query(() => [Audit], {
     description: 'Get audit history for an entity with advanced filtering',
   })
@@ -173,6 +232,67 @@ export class AuditResolver {
     }));
   }
 
+  /**
+   * Retrieves audit log history for a specific user's activities.
+   *
+   * Returns all operations performed by a user across all campaigns they have access to.
+   * Useful for reviewing a user's activity timeline, compliance auditing, and
+   * investigating changes. Supports pagination, filtering, and custom sorting.
+   *
+   * **Authorization:**
+   * - Users can only view their own audit history (user.id === userId)
+   * - User must have `audit:read` permission in at least one campaign (OWNER or GM role)
+   *
+   * **Performance Notes:**
+   * - Supports cursor-based pagination with skip/limit
+   * - Skip parameter limited to 100,000 to prevent abuse
+   * - Results capped at 100 records per request
+   *
+   * **Security:**
+   * - TODO: Add admin role support for viewing other users' histories
+   * - Currently restricted to self-viewing only
+   *
+   * @param user - The authenticated user requesting audit history
+   * @param userId - ID of user whose history to retrieve (must match authenticated user)
+   * @param limit - Maximum number of records to return (default: 50, max: 100)
+   * @param skip - Number of records to skip for pagination (default: 0, max: 100,000)
+   * @param operations - Filter by operation types (e.g., ['create', 'delete'])
+   * @param entityTypes - Filter by entity types (e.g., ['Settlement', 'Event'])
+   * @param startDate - Filter entries on or after this date
+   * @param endDate - Filter entries on or before this date
+   * @param sortBy - Field to sort by ('timestamp', 'operation', 'entityType')
+   * @param sortOrder - Sort direction ('asc' or 'desc', default: 'desc')
+   *
+   * @returns Array of audit entries for the user's activities
+   *
+   * @throws {UnauthorizedException} If userId doesn't match authenticated user
+   * @throws {UnauthorizedException} If user lacks audit:read permission in any campaign
+   * @throws {Error} If skip parameter is outside valid range (0-100,000)
+   *
+   * @see {@link PermissionsService} for permission checking details
+   * @see docs/api/queries.md#audit-queries for usage examples
+   *
+   * @example
+   * ```graphql
+   * query {
+   *   userAuditHistory(
+   *     userId: "user-123"
+   *     limit: 50
+   *     skip: 0
+   *     entityTypes: ["Settlement", "Event"]
+   *     startDate: "2024-01-01T00:00:00Z"
+   *     sortBy: "timestamp"
+   *     sortOrder: "desc"
+   *   ) {
+   *     timestamp
+   *     operation
+   *     entityType
+   *     entityId
+   *     changes
+   *   }
+   * }
+   * ```
+   */
   @Query(() => [Audit], {
     description: 'Get recent audit entries for a user with advanced filtering',
   })

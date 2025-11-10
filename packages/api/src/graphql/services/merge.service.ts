@@ -1,3 +1,32 @@
+/**
+ * @fileoverview Merge Service - Handles branch merges with 3-way merge algorithm
+ *
+ * This service provides comprehensive merge operations for the branching system, including:
+ * - 3-way merge with automatic conflict detection and resolution
+ * - Cherry-picking individual versions between branches
+ * - Common ancestor finding for merge base determination
+ * - Conflict detection and manual conflict resolution
+ * - Merge history tracking and audit logging
+ *
+ * The service implements a true 3-way merge algorithm similar to Git, comparing:
+ * - Base version (from common ancestor at divergence point)
+ * - Source version (from branch being merged)
+ * - Target version (from branch being merged into)
+ *
+ * Key Features:
+ * - Automatic resolution when only one branch changed a property
+ * - Conflict detection when both branches modified the same property
+ * - Manual conflict resolution with validation
+ * - Atomic merge operations with transaction support
+ * - Cherry-pick support for selective change application
+ * - Comprehensive audit logging and merge history
+ *
+ * @see BranchService For branch hierarchy management
+ * @see VersionService For version resolution and creation
+ * @see ConflictDetector For deep property-level conflict detection
+ * @see AuditService For audit logging
+ */
+
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { Branch as PrismaBranch, Version } from '@prisma/client';
@@ -130,11 +159,67 @@ export interface ExecuteMergeParams {
 /**
  * Service for handling branch merges with 3-way merge algorithm
  * and conflict detection/resolution.
+ *
+ * This service orchestrates complex merge operations between branches in the version control system.
+ * It implements a true 3-way merge algorithm (similar to Git) that compares changes in both branches
+ * against their common ancestor to intelligently detect and resolve conflicts.
+ *
+ * Architecture:
+ * - Uses ConflictDetector for deep property-level conflict analysis
+ * - Leverages BranchService for branch hierarchy traversal
+ * - Uses VersionService for version resolution and creation
+ * - Integrates with AuditService for comprehensive audit logging
+ * - All merge operations are atomic via database transactions
+ *
+ * Merge Algorithm:
+ * 1. Find common ancestor branch (merge base)
+ * 2. Determine divergence point where branches split
+ * 3. For each entity, resolve three versions (base, source, target)
+ * 4. Compare versions to detect conflicts:
+ *    - Only source changed → auto-resolve to source
+ *    - Only target changed → auto-resolve to target
+ *    - Both changed → conflict requiring manual resolution
+ *    - Neither changed → keep base value
+ * 5. Apply manual conflict resolutions if provided
+ * 6. Create new versions in target branch
+ * 7. Record merge history and audit logs
+ *
+ * @example
+ * ```typescript
+ * // Execute a merge with conflict resolution
+ * const result = await mergeService.executeMerge({
+ *   sourceBranchId: 'branch-123',
+ *   targetBranchId: 'branch-456',
+ *   commonAncestorId: 'branch-main',
+ *   worldTime: new Date('2024-01-15T10:00:00Z'),
+ *   resolutions: [
+ *     {
+ *       entityType: 'settlement',
+ *       entityId: 'settlement-1',
+ *       path: 'population',
+ *       resolvedValue: '{"value": 5000}'
+ *     }
+ *   ],
+ *   user: authenticatedUser
+ * });
+ * ```
+ *
+ * @see BranchService For branch hierarchy operations
+ * @see VersionService For version management
+ * @see ConflictDetector For conflict detection logic
  */
 @Injectable()
 export class MergeService {
   private readonly conflictDetector: ConflictDetector;
 
+  /**
+   * Creates a new MergeService instance.
+   *
+   * @param branchService - Service for branch operations and ancestry traversal
+   * @param versionService - Service for version resolution and creation
+   * @param prisma - Prisma client for database operations
+   * @param audit - Service for audit logging
+   */
   constructor(
     private readonly branchService: BranchService,
     private readonly versionService: VersionService,
@@ -149,13 +234,32 @@ export class MergeService {
    * Uses the 3-way merge algorithm to identify the most recent common ancestor
    * in the branch hierarchy.
    *
+   * This is a critical operation for 3-way merges, as the common ancestor represents
+   * the "base" state that both branches diverged from. The algorithm walks backwards
+   * through the branch ancestry to find the most recent shared ancestor.
+   *
    * Algorithm:
    * 1. Get full ancestry chain for both branches (root to branch)
-   * 2. Find the last (most recent) common branch in both chains
+   * 2. Build a set of source branch ancestor IDs for O(1) lookup
+   * 3. Walk backwards through target ancestry to find most recent common ancestor
+   * 4. Return the first ancestor found in both chains (most recent)
    *
-   * @param sourceBranchId - ID of the source branch
-   * @param targetBranchId - ID of the target branch
-   * @returns The common ancestor branch, or null if no common ancestor exists
+   * Time Complexity: O(n + m) where n and m are the depths of the two branches
+   * Space Complexity: O(n) for the source ancestry set
+   *
+   * @example
+   * ```typescript
+   * const ancestor = await mergeService.findCommonAncestor('feature-1', 'feature-2');
+   * if (ancestor) {
+   *   console.log(`Common ancestor: ${ancestor.name}`);
+   * } else {
+   *   console.log('Branches have no common history');
+   * }
+   * ```
+   *
+   * @param sourceBranchId - ID of the source branch to merge from
+   * @param targetBranchId - ID of the target branch to merge into
+   * @returns The common ancestor branch, or null if branches have no common history
    */
   async findCommonAncestor(
     sourceBranchId: string,
@@ -187,15 +291,30 @@ export class MergeService {
    * This is the point in time where the source and target branches diverged from
    * the common ancestor.
    *
-   * Algorithm:
-   * 1. Find which branch(es) are direct descendants of the common ancestor
-   * 2. Use the divergedAt time from the descendant branch(es)
-   * 3. If both branches diverged from the common ancestor, use the earlier divergence time
+   * The divergence time is critical for accurate 3-way merges because it determines
+   * what state should be considered the "base" version. Using the wrong time could
+   * result in incorrect conflict detection or data loss.
    *
-   * @param sourceBranchId - ID of source branch
-   * @param targetBranchId - ID of target branch
+   * Algorithm:
+   * 1. Fetch source and target branch metadata
+   * 2. Get ancestry chains to find which branches diverged from the base
+   * 3. Find the branch in each ancestry that has baseBranchId as its parent
+   * 4. Extract the divergedAt time from those branches
+   * 5. Special cases:
+   *    - If one branch IS the common ancestor, use the other's divergence time
+   *    - If both diverged from the base, use the earlier divergence time
+   *
+   * Edge Cases:
+   * - Source branch is the common ancestor (fast-forward merge)
+   * - Target branch is the common ancestor (already merged)
+   * - Both branches diverged at different times
+   * - Invalid branch hierarchy (throws BadRequestException)
+   *
+   * @param sourceBranchId - ID of source branch to merge from
+   * @param targetBranchId - ID of target branch to merge into
    * @param baseBranchId - ID of common ancestor branch
    * @returns The divergence time to use for resolving the base version
+   * @throws {BadRequestException} If divergence time cannot be determined (invalid hierarchy)
    */
   private async findDivergenceTime(
     sourceBranchId: string,
@@ -261,20 +380,48 @@ export class MergeService {
 
   /**
    * Retrieve the three versions needed for a 3-way merge:
-   * - base: version from common ancestor
-   * - source: version from source branch
-   * - target: version from target branch
+   * - base: version from common ancestor at divergence point
+   * - source: version from source branch at worldTime
+   * - target: version from target branch at worldTime
    *
    * Any of these may be null if the entity doesn't exist in that branch
-   * at the given world time.
+   * at the given world time. This is normal and expected (e.g., entity
+   * created in one branch but not the other).
    *
-   * @param entityType - Type of entity (e.g., "settlement", "structure")
-   * @param entityId - ID of the entity
-   * @param sourceBranchId - ID of source branch
-   * @param targetBranchId - ID of target branch
+   * Algorithm:
+   * 1. Determine the divergence point using findDivergenceTime()
+   * 2. Resolve base version at the divergence time (when branches split)
+   * 3. Resolve source and target versions at the provided world time
+   * 4. Return all three versions for conflict detection
+   *
+   * Null Version Scenarios:
+   * - Base null, source/target non-null: Entity created after divergence
+   * - Base non-null, source null: Entity deleted in source branch
+   * - Base non-null, target null: Entity deleted in target branch
+   * - All null: Entity doesn't exist (should be filtered out)
+   *
+   * @example
+   * ```typescript
+   * const versions = await mergeService.getEntityVersionsForMerge(
+   *   'settlement',
+   *   'settlement-123',
+   *   'feature-branch',
+   *   'main',
+   *   'common-ancestor',
+   *   new Date('2024-01-15T10:00:00Z')
+   * );
+   * // versions.base: state at divergence
+   * // versions.source: current state in feature-branch
+   * // versions.target: current state in main
+   * ```
+   *
+   * @param entityType - Type of entity (e.g., "settlement", "structure", "event")
+   * @param entityId - Unique ID of the entity
+   * @param sourceBranchId - ID of source branch to merge from
+   * @param targetBranchId - ID of target branch to merge into
    * @param baseBranchId - ID of common ancestor branch
-   * @param worldTime - World time at which to resolve versions
-   * @returns Object containing base, source, and target versions
+   * @param worldTime - World time at which to resolve source and target versions
+   * @returns Object containing base, source, and target versions (any may be null)
    */
   async getEntityVersionsForMerge(
     entityType: string,
@@ -307,16 +454,40 @@ export class MergeService {
    * Compare three versions to detect changes in source and target branches
    * relative to the common ancestor.
    *
-   * This is the core of the 3-way merge algorithm:
-   * - If only source changed: auto-resolve to source value
-   * - If only target changed: auto-resolve to target value
-   * - If both changed: conflict requiring manual resolution
-   * - If neither changed: keep base value
+   * This is the core of the 3-way merge algorithm. It performs a deep comparison
+   * of all properties across the three versions, automatically resolving changes
+   * where possible and detecting conflicts where both branches modified the same property.
    *
-   * @param basePayload - Payload from common ancestor
-   * @param sourcePayload - Payload from source branch
-   * @param targetPayload - Payload from target branch
-   * @returns MergeResult with auto-resolved payload or conflicts
+   * Merge Resolution Logic:
+   * - If only source changed: auto-resolve to source value (accept incoming changes)
+   * - If only target changed: auto-resolve to target value (keep existing changes)
+   * - If both changed differently: conflict requiring manual resolution
+   * - If both changed to same value: auto-resolve (both branches agree)
+   * - If neither changed: keep base value (no changes needed)
+   *
+   * The ConflictDetector performs deep property-level analysis, handling:
+   * - Nested object properties
+   * - Array modifications
+   * - Property deletions
+   * - Property additions
+   * - Type changes
+   *
+   * @example
+   * ```typescript
+   * const result = mergeService.compareVersions(
+   *   { name: "Waterdeep", population: 1000 },  // base
+   *   { name: "Waterdeep", population: 1500 },  // source changed population
+   *   { name: "Waterdeep City", population: 1000 }  // target changed name
+   * );
+   * // result.success: true (both changes can be merged)
+   * // result.mergedPayload: { name: "Waterdeep City", population: 1500 }
+   * // result.conflicts: [] (no conflicts)
+   * ```
+   *
+   * @param basePayload - Payload from common ancestor at divergence point
+   * @param sourcePayload - Payload from source branch at merge time
+   * @param targetPayload - Payload from target branch at merge time
+   * @returns MergeResult with auto-resolved payload or conflicts requiring resolution
    */
   compareVersions(
     basePayload: Record<string, unknown> | null,
@@ -346,7 +517,14 @@ export class MergeService {
   }
 
   /**
-   * Generate a human-readable description of a conflict
+   * Generate a human-readable description of a conflict for UI display.
+   *
+   * Creates user-friendly descriptions that explain what type of conflict occurred
+   * and which properties are affected. These descriptions are used in the GraphQL API
+   * to help users understand and resolve conflicts.
+   *
+   * @param conflict - The conflict to describe
+   * @returns Human-readable description of the conflict
    */
   private generateConflictDescription(conflict: MergeConflict): string {
     const { path, type } = conflict;
@@ -366,7 +544,14 @@ export class MergeService {
   }
 
   /**
-   * Generate a suggested resolution for a conflict (if applicable)
+   * Generate a suggested resolution for a conflict (if applicable).
+   *
+   * Provides intelligent suggestions for resolving certain types of conflicts based
+   * on the conflict type and values. Not all conflicts have automatic suggestions,
+   * as many require human judgment.
+   *
+   * @param conflict - The conflict to generate a suggestion for
+   * @returns Suggested resolution strategy, or undefined if no suggestion available
    */
   private generateConflictSuggestion(conflict: MergeConflict): string | undefined {
     const { type } = conflict;
@@ -386,21 +571,59 @@ export class MergeService {
   /**
    * Execute a merge operation, creating new versions in the target branch.
    *
-   * This method uses a two-pass approach for efficiency and correctness:
-   * PASS 1: Analyze all entities, detect conflicts, collect merge data
-   * PASS 2: After validation, create versions atomically
+   * This is the main entry point for performing a complete branch merge. It implements
+   * a two-pass algorithm that ensures all conflicts are resolved before making any
+   * database changes, providing strong consistency guarantees.
    *
-   * Steps:
-   * 1. Discovers all entities that exist in source or target branches
-   * 2. For each entity, performs 3-way merge to detect conflicts (no DB writes)
-   * 3. Validates ALL conflicts have resolutions before any DB writes
-   * 4. Creates new versions in target branch for all affected entities
-   * 5. Records merge history and audit log entries
+   * Two-Pass Algorithm:
+   * PASS 1 (Analysis):
+   * - Discover all entities that exist in source or target branches
+   * - For each entity, perform 3-way merge to detect conflicts
+   * - Collect all conflicts and merge data
+   * - NO database writes occur in this pass
    *
-   * The entire operation is wrapped in a database transaction for atomicity.
+   * PASS 2 (Execution):
+   * - Validate ALL conflicts have resolutions
+   * - Create new versions in target branch atomically
+   * - Record merge history
+   * - Create audit log entries
    *
-   * @param params - Merge execution parameters
+   * The entire operation is wrapped in a database transaction for atomicity. If any
+   * step fails or conflicts remain unresolved, the entire operation rolls back.
+   *
+   * Validation:
+   * - Validates commonAncestorId is the actual common ancestor
+   * - Validates all conflicts have resolutions before any DB writes
+   * - Skips entities with no changes (payload identical to target)
+   * - Skips entities that don't exist in any branch
+   *
+   * @example
+   * ```typescript
+   * const result = await mergeService.executeMerge({
+   *   sourceBranchId: 'feature-123',
+   *   targetBranchId: 'main',
+   *   commonAncestorId: 'main',
+   *   worldTime: new Date('2024-01-15T10:00:00Z'),
+   *   resolutions: [
+   *     {
+   *       entityType: 'settlement',
+   *       entityId: 'settlement-1',
+   *       path: 'population',
+   *       resolvedValue: '5000'
+   *     }
+   *   ],
+   *   user: authenticatedUser
+   * });
+   * // result.success: true
+   * // result.versionsCreated: 5
+   * // result.mergedEntityIds: ['settlement:1', 'structure:2', ...]
+   * ```
+   *
+   * @param params - Merge execution parameters including branches, resolutions, and user
    * @returns Result with success status, versions created count, and merged entity IDs
+   * @throws {BadRequestException} If branches have no common ancestor
+   * @throws {BadRequestException} If provided commonAncestorId is invalid
+   * @throws {BadRequestException} If unresolved conflicts remain
    */
   async executeMerge(params: ExecuteMergeParams): Promise<ExecuteMergeResult> {
     const { sourceBranchId, targetBranchId, commonAncestorId, worldTime, resolutions, user } =
@@ -591,6 +814,25 @@ export class MergeService {
   /**
    * Discover all entities that exist in either source or target branch at the given world time.
    * This includes entities that may have been deleted in one branch but still exist in the other.
+   *
+   * The discovery process finds ALL entities that need to be considered for the merge, including:
+   * - Entities that exist in both branches (may have changes)
+   * - Entities that exist only in source (new in source, or deleted in target)
+   * - Entities that exist only in target (new in target, or deleted in source)
+   *
+   * This comprehensive discovery ensures that deletions are properly handled during the merge.
+   *
+   * Algorithm:
+   * 1. Query all versions in source branch valid at worldTime
+   * 2. Query all versions in target branch valid at worldTime
+   * 3. Combine and deduplicate by entityType:entityId
+   * 4. Return unique list of entities to consider for merge
+   *
+   * @param sourceBranchId - ID of source branch
+   * @param targetBranchId - ID of target branch
+   * @param worldTime - World time at which to discover entities
+   * @param tx - Prisma transaction client for consistent reads
+   * @returns Array of unique entity identifiers that need merge consideration
    */
   private async discoverEntitiesForMerge(
     sourceBranchId: string,
@@ -638,6 +880,24 @@ export class MergeService {
   /**
    * Apply manual conflict resolutions to a payload.
    * Each resolution specifies a JSON path and the resolved value to use.
+   *
+   * This method takes a payload and applies user-provided conflict resolutions to it,
+   * modifying the values at the specified paths. The resolved values are provided as
+   * JSON strings and are parsed before being applied.
+   *
+   * Algorithm:
+   * 1. Build a resolution map for quick lookup by path
+   * 2. Filter resolutions for the current entity (by type and ID)
+   * 3. For each conflict, apply the corresponding resolution if provided
+   * 4. Parse JSON string values before setting them
+   * 5. Return the modified payload
+   *
+   * @param payload - The base payload to apply resolutions to
+   * @param conflicts - List of conflicts for this entity
+   * @param resolutions - User-provided conflict resolutions
+   * @param entityType - Type of entity being resolved
+   * @param entityId - ID of entity being resolved
+   * @returns New payload with conflict resolutions applied
    */
   private applyConflictResolutions(
     payload: Record<string, unknown>,
@@ -672,7 +932,21 @@ export class MergeService {
   }
 
   /**
-   * Set a value at a nested path in an object (e.g., "resources.gold" = 100)
+   * Set a value at a nested path in an object (e.g., "resources.gold" = 100).
+   *
+   * This utility method supports setting deeply nested properties using dot notation.
+   * It creates intermediate objects as needed if they don't exist.
+   *
+   * @example
+   * ```typescript
+   * const obj = {};
+   * setValueAtPath(obj, "resources.gold", 100);
+   * // obj is now { resources: { gold: 100 } }
+   * ```
+   *
+   * @param obj - The object to modify
+   * @param path - Dot-separated path to the property (e.g., "settlement.resources.gold")
+   * @param value - The value to set at the specified path
    */
   private setValueAtPath(obj: Record<string, unknown>, path: string, value: unknown): void {
     const parts = path.split('.');
@@ -692,6 +966,21 @@ export class MergeService {
 
   /**
    * Find conflicts that have not been resolved by the provided resolutions.
+   *
+   * This validation method checks that every conflict has a corresponding resolution
+   * in the provided resolutions array. This ensures that all conflicts are explicitly
+   * handled before proceeding with the merge.
+   *
+   * Algorithm:
+   * 1. Build a set of resolution keys for O(1) lookup
+   * 2. For each conflict, check if a matching resolution exists
+   * 3. Return list of conflicts without resolutions
+   *
+   * Resolution keys are formatted as: "entityType:entityId:path"
+   *
+   * @param allConflicts - All conflicts discovered across all entities
+   * @param resolutions - User-provided conflict resolutions
+   * @returns Array of conflicts that do not have corresponding resolutions
    */
   private findUnresolvedConflicts(
     allConflicts: Array<{ entityType: string; entityId: string; conflicts: MergeConflict[] }>,
@@ -731,11 +1020,50 @@ export class MergeService {
    * Similar to `git cherry-pick`, this allows selectively applying specific changes
    * between branches without merging the entire branch history.
    *
+   * Algorithm:
+   * 1. Validate source version exists
+   * 2. Validate target branch exists
+   * 3. Decompress source version payload
+   * 4. Resolve target version at source version's world time
+   * 5. If target version exists:
+   *    - Perform 2-way conflict detection (no common ancestor)
+   *    - Apply resolutions if provided
+   *    - Return conflict info if unresolved
+   * 6. If no conflicts or target doesn't exist:
+   *    - Create new version in target branch
+   *    - Record audit log
+   * 7. Return success result with created version
+   *
+   * Conflict Detection for Cherry-Pick:
+   * Unlike 3-way merge, cherry-pick uses an empty base (no common ancestor), so any
+   * property that differs between source and target is considered a conflict.
+   *
+   * @example
+   * ```typescript
+   * // Cherry-pick a specific version
+   * const result = await mergeService.cherryPickVersion(
+   *   'version-abc-123',
+   *   'main',
+   *   authenticatedUser,
+   *   [] // No resolutions - will return conflicts if any
+   * );
+   *
+   * if (result.hasConflict) {
+   *   // Handle conflicts - retry with resolutions
+   * } else {
+   *   // Version successfully cherry-picked
+   *   console.log(`Created version: ${result.versionCreated.id}`);
+   * }
+   * ```
+   *
    * @param sourceVersionId - ID of the version to cherry-pick
    * @param targetBranchId - ID of the branch to apply the version to
    * @param user - User performing the cherry-pick operation
    * @param resolutions - Optional conflict resolutions (required if conflicts exist)
    * @returns Result indicating success, conflicts, and created version
+   * @throws {NotFoundException} If source version does not exist
+   * @throws {BadRequestException} If target branch does not exist
+   * @throws {BadRequestException} If conflicts remain unresolved when resolutions provided
    */
   async cherryPickVersion(
     sourceVersionId: string,

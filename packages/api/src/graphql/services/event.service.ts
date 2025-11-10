@@ -1,6 +1,30 @@
 /**
- * Event Service
- * Handles CRUD operations for Events (no cascade delete per requirements)
+ * @fileoverview Event Service - Event CRUD operations and completion workflow
+ *
+ * Provides comprehensive event management including CRUD operations, completion workflow,
+ * expiration handling, timeline management, and historical state queries.
+ *
+ * Key Features:
+ * - Event CRUD with campaign access control
+ * - 3-phase completion workflow (PRE/ON_RESOLVE/POST effects)
+ * - Automatic expiration for overdue events (used by scheduler)
+ * - Timeline queries with filtering by campaign/location
+ * - Historical state queries (time-travel via version history)
+ * - Optimistic locking for concurrent updates
+ * - Real-time entity modification notifications
+ * - Soft delete (preserves audit trail)
+ * - Archive/restore functionality
+ *
+ * Completion vs Expiration:
+ * - complete(): Full 3-phase workflow with effect execution (user-initiated)
+ * - expire(): Simple completion without effects (scheduler-initiated)
+ *
+ * Variables:
+ * - Events support custom JSON variables (input.variables)
+ * - Variables tracked in event.variables field
+ * - Can be referenced in conditions and effects
+ *
+ * @module services/event
  */
 
 import {
@@ -28,6 +52,27 @@ import {
 import { VersionService, type CreateVersionInput } from './version.service';
 import { WorldTimeService } from './world-time.service';
 
+/**
+ * Service for managing events in campaigns.
+ *
+ * Events represent time-based occurrences in the campaign world that can trigger
+ * effects and state changes. They support scheduling, completion workflows,
+ * automatic expiration, and historical state queries.
+ *
+ * Architecture:
+ * - Uses optimistic locking (version field) for concurrent updates
+ * - Integrates with EffectExecutionService for 3-phase completion
+ * - Integrates with WorldTimeService for timeline management
+ * - Integrates with VersionService for historical state tracking
+ * - Publishes real-time notifications via Redis PubSub
+ * - Creates audit entries for all modifications
+ *
+ * Authorization:
+ * - All operations require campaign access (owner or member)
+ * - Campaign access verified via checkCampaignAccess helper
+ *
+ * @class EventService
+ */
 @Injectable()
 export class EventService {
   constructor(
@@ -40,8 +85,16 @@ export class EventService {
   ) {}
 
   /**
-   * Find event by ID
-   * Requires campaign access
+   * Find an event by ID.
+   *
+   * Retrieves a single non-deleted event by ID. Verifies the authenticated user
+   * has access to the event's campaign (owner or member).
+   *
+   * @param id - The event ID to find
+   * @param user - Authenticated user for campaign access verification
+   * @returns Event object if found and user has access, null if not found
+   * @throws NotFoundException - If event's campaign doesn't exist
+   * @throws ForbiddenException - If user lacks access to the event's campaign
    */
   async findById(id: string, user: AuthenticatedUser): Promise<PrismaEvent | null> {
     const event = await this.prisma.event.findFirst({
@@ -59,7 +112,16 @@ export class EventService {
   }
 
   /**
-   * Find all events in a campaign (non-deleted, non-archived)
+   * Find all events in a campaign.
+   *
+   * Retrieves all non-deleted, non-archived events for the specified campaign,
+   * ordered by scheduledAt timestamp (ascending). Verifies user has campaign access.
+   *
+   * @param campaignId - Campaign ID to query events for
+   * @param user - Authenticated user for campaign access verification
+   * @returns Array of events ordered by scheduledAt (earliest first)
+   * @throws NotFoundException - If campaign doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
    */
   async findByCampaignId(campaignId: string, user: AuthenticatedUser): Promise<PrismaEvent[]> {
     await this.checkCampaignAccess(campaignId, user);
@@ -77,7 +139,17 @@ export class EventService {
   }
 
   /**
-   * Find all events at a location (non-deleted, non-archived)
+   * Find all events at a specific location.
+   *
+   * Retrieves all non-deleted, non-archived events for the specified location,
+   * ordered by scheduledAt timestamp (ascending). Verifies user has campaign access
+   * via the first event's campaign.
+   *
+   * @param locationId - Location ID to query events for
+   * @param user - Authenticated user for campaign access verification
+   * @returns Array of events at the location ordered by scheduledAt (earliest first)
+   * @throws NotFoundException - If campaign doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
    */
   async findByLocationId(locationId: string, user: AuthenticatedUser): Promise<PrismaEvent[]> {
     // Find events at this location
@@ -101,7 +173,22 @@ export class EventService {
   }
 
   /**
-   * Create a new event
+   * Create a new event.
+   *
+   * Creates an event with the provided input data. Validates campaign access and
+   * location belongs to same world as campaign (if provided). Creates audit entry
+   * for the creation operation.
+   *
+   * Variables:
+   * - Input can include custom variables (input.variables) as JSON object
+   * - Defaults to empty object {} if not provided
+   *
+   * @param input - Event creation data including campaignId, name, description, eventType, scheduledAt, locationId, variables
+   * @param user - Authenticated user for campaign access verification and audit
+   * @returns Newly created event
+   * @throws NotFoundException - If campaign or location doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
+   * @throws BadRequestException - If location doesn't belong to same world as campaign
    */
   async create(input: CreateEventInput, user: AuthenticatedUser): Promise<PrismaEvent> {
     // Verify campaign exists and user has access
@@ -139,7 +226,37 @@ export class EventService {
   }
 
   /**
-   * Update an event with optimistic locking and versioning
+   * Update an event with optimistic locking and versioning.
+   *
+   * Updates event fields specified in input. Uses optimistic locking to detect
+   * concurrent modifications. Creates version snapshot in specified branch for
+   * historical state tracking. Publishes real-time notification for concurrent
+   * edit detection.
+   *
+   * Optimistic Locking:
+   * - Verifies expectedVersion matches current version
+   * - Throws OptimisticLockException if mismatch (concurrent update detected)
+   * - Increments version on successful update
+   *
+   * Automatic Timestamps:
+   * - If marking as completed (isCompleted: true) and no occurredAt provided,
+   *   automatically sets occurredAt to current time
+   *
+   * Variables:
+   * - Can update event variables via input.variables
+   * - Variables are replaced entirely (not merged)
+   *
+   * @param id - Event ID to update
+   * @param input - Partial update data (only specified fields are updated)
+   * @param user - Authenticated user for campaign access verification and audit
+   * @param expectedVersion - Expected current version for optimistic locking
+   * @param branchId - Branch ID for version snapshot
+   * @param worldTime - World time for version snapshot (defaults to current real time)
+   * @returns Updated event with incremented version
+   * @throws NotFoundException - If event, campaign, or branch doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
+   * @throws OptimisticLockException - If expectedVersion doesn't match current version
+   * @throws BadRequestException - If branchId doesn't belong to event's campaign or location invalid
    */
   async update(
     id: string,
@@ -258,8 +375,17 @@ export class EventService {
   }
 
   /**
-   * Soft delete an event
-   * Does NOT cascade (per requirements - keep audit trail)
+   * Soft delete an event.
+   *
+   * Marks event as deleted by setting deletedAt timestamp. Does NOT cascade delete
+   * to related entities (preserves audit trail per requirements). Creates audit entry
+   * for the deletion operation.
+   *
+   * @param id - Event ID to delete
+   * @param user - Authenticated user for campaign access verification and audit
+   * @returns Soft-deleted event with deletedAt timestamp set
+   * @throws NotFoundException - If event or campaign doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaEvent> {
     // Verify event exists and user has access
@@ -283,7 +409,17 @@ export class EventService {
   }
 
   /**
-   * Archive an event
+   * Archive an event.
+   *
+   * Marks event as archived by setting archivedAt timestamp. Archived events are
+   * excluded from normal queries but can be restored. Creates audit entry for the
+   * archive operation.
+   *
+   * @param id - Event ID to archive
+   * @param user - Authenticated user for campaign access verification and audit
+   * @returns Archived event with archivedAt timestamp set
+   * @throws NotFoundException - If event or campaign doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
    */
   async archive(id: string, user: AuthenticatedUser): Promise<PrismaEvent> {
     // Verify event exists and user has access
@@ -306,7 +442,17 @@ export class EventService {
   }
 
   /**
-   * Restore an archived event
+   * Restore an archived event.
+   *
+   * Clears the archivedAt timestamp to restore event to normal query results.
+   * Can restore events regardless of current archivedAt state. Creates audit entry
+   * for the restore operation.
+   *
+   * @param id - Event ID to restore
+   * @param user - Authenticated user for campaign access verification and audit
+   * @returns Restored event with archivedAt cleared (null)
+   * @throws NotFoundException - If event or campaign doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
    */
   async restore(id: string, user: AuthenticatedUser): Promise<PrismaEvent> {
     const event = await this.prisma.event.findFirst({
@@ -331,8 +477,17 @@ export class EventService {
   }
 
   /**
-   * Check if user has access to campaign
-   * Private helper method
+   * Check if user has access to campaign.
+   *
+   * Private helper method to verify campaign exists and user has access as either
+   * owner or member. Used by all public methods for authorization.
+   *
+   * @param campaignId - Campaign ID to check access for
+   * @param user - Authenticated user to verify access
+   * @returns Promise that resolves if access granted
+   * @throws NotFoundException - If campaign doesn't exist or is deleted
+   * @throws ForbiddenException - If user is neither owner nor member
+   * @private
    */
   private async checkCampaignAccess(campaignId: string, user: AuthenticatedUser): Promise<void> {
     const campaign = await this.prisma.campaign.findFirst({
@@ -355,8 +510,17 @@ export class EventService {
   }
 
   /**
-   * Validate that location exists and belongs to same world as campaign
-   * Private helper method
+   * Validate that location exists and belongs to same world as campaign.
+   *
+   * Private helper method to ensure location-campaign consistency. Events can only
+   * be associated with locations that exist in the same world as the campaign.
+   *
+   * @param campaignId - Campaign ID to validate against
+   * @param locationId - Location ID to validate
+   * @returns Promise that resolves if location is valid
+   * @throws NotFoundException - If location doesn't exist or is deleted
+   * @throws Error - If location belongs to different world than campaign
+   * @private
    */
   private async validateLocation(campaignId: string, locationId: string): Promise<void> {
     const campaign = await this.prisma.campaign.findUnique({
@@ -379,19 +543,42 @@ export class EventService {
   }
 
   /**
-   * Complete an event with 3-phase effect execution
+   * Complete an event with 3-phase effect execution.
    *
-   * This method executes the complete event completion workflow:
-   * 1. Execute PRE effects (before completion)
-   * 2. Mark event as completed (isCompleted = true, occurredAt = now)
-   * 3. Execute ON_RESOLVE effects (during completion)
-   * 4. Execute POST effects (after completion)
+   * Executes the complete event completion workflow with effect execution across
+   * three distinct phases. This is the primary method for user-initiated event
+   * completion (vs expire() which is used by the scheduler).
    *
-   * Failed effects are logged but don't prevent completion.
+   * Workflow:
+   * 1. Verify event exists and user has access
+   * 2. Check event is not already completed
+   * 3. Execute PRE effects (before completion)
+   * 4. Mark event as completed (isCompleted = true, occurredAt = now)
+   * 5. Create audit entry and publish real-time notification
+   * 6. Execute ON_RESOLVE effects (during completion)
+   * 7. Execute POST effects (after completion)
    *
-   * @param id - Event ID
-   * @param user - User context for authorization and audit
-   * @returns Summary of all effect executions across all phases
+   * Effect Execution:
+   * - PRE: Effects executed before event completion
+   * - ON_RESOLVE: Effects executed during event completion
+   * - POST: Effects executed after event completion
+   * - All phases use skipEntityUpdate=true (only create execution records)
+   * - Failed effects are logged but don't prevent completion
+   *
+   * Completion vs Expiration:
+   * - complete(): Full 3-phase workflow with effect execution (this method)
+   * - expire(): Simple completion without effects (scheduler-initiated)
+   *
+   * Variables:
+   * - Event variables available to effects via entity context
+   * - Can be used in effect conditions and operations
+   *
+   * @param id - Event ID to complete
+   * @param user - Authenticated user for campaign access verification and audit
+   * @returns Object containing completed event and effect summaries for all three phases
+   * @throws NotFoundException - If event or campaign doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
+   * @throws BadRequestException - If event is already completed
    */
   async complete(
     id: string,
@@ -487,13 +674,34 @@ export class EventService {
   }
 
   /**
-   * Find overdue events for a campaign
-   * Events are overdue if scheduledAt < (currentWorldTime - gracePeriod) AND not completed
+   * Find overdue events for a campaign.
+   *
+   * Identifies events that are past their scheduled time but not yet completed.
+   * Uses campaign's world time to determine overdue status. Typically used by the
+   * scheduler service to identify events that need automatic expiration.
+   *
+   * Overdue Criteria:
+   * - scheduledAt < (currentWorldTime - gracePeriod)
+   * - isCompleted = false
+   * - deletedAt = null (not deleted)
+   * - archivedAt = null (not archived)
+   *
+   * Grace Period:
+   * - Default: 5 minutes (300000ms)
+   * - Allows slight delays before marking as overdue
+   * - Prevents premature expiration
+   *
+   * World Time Integration:
+   * - Uses WorldTimeService to get current campaign world time
+   * - Returns empty array if no world time is set
+   * - Cutoff time = currentWorldTime - gracePeriod
    *
    * @param campaignId - Campaign ID to check for overdue events
-   * @param user - User context for authorization
-   * @param gracePeriodMs - Grace period in milliseconds to allow before marking events as overdue (default: 300000ms = 5 minutes)
-   * @returns Array of overdue events ordered by scheduledAt (ascending)
+   * @param user - Authenticated user for campaign access verification
+   * @param gracePeriodMs - Grace period in milliseconds before marking as overdue (default: 300000ms = 5 minutes)
+   * @returns Array of overdue events ordered by scheduledAt (earliest first)
+   * @throws NotFoundException - If campaign doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
    */
   async findOverdueEvents(
     campaignId: string,
@@ -532,13 +740,40 @@ export class EventService {
   }
 
   /**
-   * Expire an event by marking it as completed
-   * Simpler than complete() - only marks as completed without executing effects
-   * Used by scheduler service for automatic expiration
+   * Expire an event by marking it as completed without executing effects.
    *
-   * @param id - Event ID
-   * @param user - User context for authorization and audit
-   * @returns Expired event
+   * Simpler alternative to complete() that only marks the event as completed without
+   * executing any effects. Designed for automatic expiration by the scheduler service
+   * when events become overdue.
+   *
+   * Workflow:
+   * 1. Verify event exists and user has access
+   * 2. Check event is not already completed
+   * 3. Get current world time for occurredAt timestamp
+   * 4. Mark event as completed with optimistic locking
+   * 5. Create audit entry (with expiredBy: 'scheduler' metadata)
+   * 6. Publish real-time notification
+   *
+   * Completion vs Expiration:
+   * - complete(): Full 3-phase workflow with effect execution (user-initiated)
+   * - expire(): Simple completion without effects (this method, scheduler-initiated)
+   *
+   * Optimistic Locking:
+   * - Uses version field to prevent concurrent updates
+   * - Throws OptimisticLockException if version mismatch (Prisma P2025 error)
+   * - Ensures atomic completion
+   *
+   * Audit Metadata:
+   * - Includes expiredBy: 'scheduler' to distinguish from user completion
+   * - Records occurredAt timestamp from world time
+   *
+   * @param id - Event ID to expire
+   * @param user - Authenticated user for campaign access verification and audit
+   * @returns Expired event with isCompleted=true and occurredAt set
+   * @throws NotFoundException - If event or campaign doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
+   * @throws BadRequestException - If event is already completed
+   * @throws OptimisticLockException - If concurrent update detected (version mismatch)
    */
   async expire(id: string, user: AuthenticatedUser): Promise<PrismaEvent> {
     // Verify event exists and user has access
@@ -607,8 +842,30 @@ export class EventService {
   }
 
   /**
-   * Get event state as it existed at a specific point in world-time
-   * Supports time-travel queries for version history
+   * Get event state as it existed at a specific point in world-time.
+   *
+   * Enables time-travel queries by retrieving historical event state from version
+   * history. Useful for viewing past states, debugging, and analyzing state changes
+   * over time.
+   *
+   * Version History:
+   * - Uses VersionService to resolve historical snapshots
+   * - Looks up version valid at the specified world-time
+   * - Returns decompressed payload as Event object
+   *
+   * Workflow:
+   * 1. Verify user has access to the event
+   * 2. Resolve version at specified world-time in specified branch
+   * 3. Decompress version payload
+   * 4. Return historical state as Event object
+   *
+   * @param id - Event ID to query historical state for
+   * @param branchId - Branch ID to query version history from
+   * @param worldTime - World-time timestamp to retrieve state at
+   * @param user - Authenticated user for campaign access verification
+   * @returns Historical event state at the specified world-time, or null if not found or no version exists
+   * @throws NotFoundException - If event or campaign doesn't exist
+   * @throws ForbiddenException - If user lacks access to the campaign
    */
   async getEventAsOf(
     id: string,

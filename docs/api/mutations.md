@@ -12,6 +12,7 @@ This document provides a comprehensive reference for all GraphQL mutations avail
 - [Gameplay Entities](#gameplay-entities)
 - [Dynamic Variables & Conditions](#dynamic-variables--conditions)
 - [Advanced Features](#advanced-features)
+- [Complex Operation Examples](#complex-operation-examples)
 - [Error Handling](#error-handling)
 - [Best Practices](#best-practices)
 
@@ -2233,6 +2234,1126 @@ Optimistic locking failures provide conflict details:
     }
   ],
   "data": null
+}
+```
+
+---
+
+## Complex Operation Examples
+
+This section provides comprehensive end-to-end examples for the most complex operations: **branching** (alternate timelines), **merging** (3-way merge with conflict resolution), and **effects** (JSON Patch state mutations).
+
+### Complete Branching Workflow
+
+This example demonstrates creating an alternate timeline branch where a key event outcome changes.
+
+**Scenario:** The party successfully prevents a goblin raid during the Swallowtail Festival. Create a branch to explore what happens if the raid wasn't prevented.
+
+#### Step 1: Query Current State
+
+First, query the current state to understand what needs to diverge:
+
+```graphql
+query CurrentCampaignState {
+  campaign(id: "campaign-varisia") {
+    id
+    name
+    currentBranch {
+      id
+      name
+    }
+    worldTime {
+      currentTime
+    }
+  }
+
+  event(id: "event-swallowtail-festival") {
+    id
+    name
+    completedAt
+    resolutionData
+  }
+
+  settlement(id: "settlement-sandpoint", branchId: "main") {
+    id
+    name
+    variables
+    level
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "campaign": {
+      "id": "campaign-varisia",
+      "name": "Rise of the Runelords",
+      "currentBranch": {
+        "id": "branch-main",
+        "name": "main"
+      },
+      "worldTime": {
+        "currentTime": "4707-09-25T14:00:00Z"
+      }
+    },
+    "event": {
+      "id": "event-swallowtail-festival",
+      "name": "Swallowtail Festival",
+      "completedAt": "4707-09-23T12:30:00Z",
+      "resolutionData": {
+        "outcome": "success",
+        "raidPrevented": true,
+        "casualtiesAvoided": 12
+      }
+    },
+    "settlement": {
+      "id": "settlement-sandpoint",
+      "name": "Sandpoint",
+      "variables": {
+        "morale": 85,
+        "prosperity": 72,
+        "defense": 45
+      },
+      "level": 3
+    }
+  }
+}
+```
+
+#### Step 2: Fork the Branch
+
+Create a new branch that diverges at the moment just before the raid prevention:
+
+```graphql
+mutation CreateAlternateBranch($input: ForkBranchInput!) {
+  forkBranch(input: $input) {
+    newBranchId
+    copiedVersions
+    divergedAt
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "input": {
+    "sourceBranchId": "branch-main",
+    "name": "Goblin Raid Success",
+    "description": "Alternate timeline where the goblin raid succeeded and casualties occurred",
+    "worldTime": "4707-09-23T10:00:00Z",
+    "copyHistory": true,
+    "metadata": {
+      "scenarioType": "failure",
+      "divergenceReason": "goblin_raid_success"
+    }
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "forkBranch": {
+      "newBranchId": "branch-raid-success",
+      "copiedVersions": 127,
+      "divergedAt": "4707-09-23T10:00:00Z"
+    }
+  }
+}
+```
+
+#### Step 3: Update Event Outcome in New Branch
+
+Modify the event outcome in the new branch:
+
+```graphql
+mutation ChangeEventOutcome($id: ID!, $input: UpdateEventInput!) {
+  updateEvent(id: $id, input: $input) {
+    id
+    name
+    completedAt
+    resolutionData
+    version
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "id": "event-swallowtail-festival",
+  "input": {
+    "branchId": "branch-raid-success",
+    "expectedVersion": 1,
+    "worldTime": "4707-09-23T12:30:00Z",
+    "resolutionData": {
+      "outcome": "failure",
+      "raidPrevented": false,
+      "casualties": 12,
+      "buildingsDamaged": 3,
+      "stolen": {
+        "gold": 500,
+        "supplies": ["healing_potions", "weapons"]
+      }
+    }
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "updateEvent": {
+      "id": "event-swallowtail-festival",
+      "name": "Swallowtail Festival",
+      "completedAt": "4707-09-23T12:30:00Z",
+      "resolutionData": {
+        "outcome": "failure",
+        "raidPrevented": false,
+        "casualties": 12,
+        "buildingsDamaged": 3,
+        "stolen": {
+          "gold": 500,
+          "supplies": ["healing_potions", "weapons"]
+        }
+      },
+      "version": 2
+    }
+  }
+}
+```
+
+#### Step 4: Apply Effects in New Branch
+
+Apply effects to reflect the raid's impact on settlement state:
+
+```graphql
+mutation ApplyRaidImpact($input: ExecuteEffectsForEntityInput!) {
+  executeEffectsForEntity(input: $input) {
+    entityType
+    entityId
+    effectsApplied
+    totalPatches
+    finalState
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "input": {
+    "entityType": "Settlement",
+    "entityId": "settlement-sandpoint",
+    "branchId": "branch-raid-success",
+    "effectIds": [
+      "effect-goblin-morale-impact",
+      "effect-goblin-prosperity-impact",
+      "effect-goblin-defense-impact"
+    ],
+    "context": {
+      "casualties": 12,
+      "buildingsDamaged": 3,
+      "currentMorale": 85,
+      "currentProsperity": 72,
+      "currentDefense": 45
+    }
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "executeEffectsForEntity": {
+      "entityType": "Settlement",
+      "entityId": "settlement-sandpoint",
+      "effectsApplied": 3,
+      "totalPatches": 6,
+      "finalState": {
+        "variables": {
+          "morale": 60,
+          "prosperity": 58,
+          "defense": 52,
+          "lastAttackDate": "4707-09-23",
+          "raidCasualties": 12,
+          "damageLevel": "moderate"
+        },
+        "level": 3,
+        "name": "Sandpoint"
+      }
+    }
+  }
+}
+```
+
+#### Step 5: Query Both Timelines
+
+Compare the two timelines:
+
+```graphql
+query CompareBranches {
+  mainTimeline: settlement(id: "settlement-sandpoint", branchId: "branch-main") {
+    id
+    name
+    variables
+    branch {
+      id
+      name
+    }
+  }
+
+  alternateTimeline: settlement(id: "settlement-sandpoint", branchId: "branch-raid-success") {
+    id
+    name
+    variables
+    branch {
+      id
+      name
+    }
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "mainTimeline": {
+      "id": "settlement-sandpoint",
+      "name": "Sandpoint",
+      "variables": {
+        "morale": 85,
+        "prosperity": 72,
+        "defense": 45
+      },
+      "branch": {
+        "id": "branch-main",
+        "name": "main"
+      }
+    },
+    "alternateTimeline": {
+      "id": "settlement-sandpoint",
+      "name": "Sandpoint",
+      "variables": {
+        "morale": 60,
+        "prosperity": 58,
+        "defense": 52,
+        "lastAttackDate": "4707-09-23",
+        "raidCasualties": 12,
+        "damageLevel": "moderate"
+      },
+      "branch": {
+        "id": "branch-raid-success",
+        "name": "Goblin Raid Success"
+      }
+    }
+  }
+}
+```
+
+---
+
+### Complete Merging Workflow with Conflict Resolution
+
+This example demonstrates merging changes from a branch back to main, including detecting and resolving conflicts.
+
+**Scenario:** After exploring the "Goblin Raid Success" branch, the GM wants to merge some changes back to main (e.g., improved defenses) while preserving main timeline's morale.
+
+#### Step 1: Preview the Merge
+
+First, preview the merge to identify conflicts:
+
+```graphql
+query PreviewMerge($input: PreviewMergeInput!) {
+  previewMerge(input: $input) {
+    conflicts {
+      entityType
+      entityId
+      field
+      baseValue
+      sourceValue
+      targetValue
+      conflictType
+    }
+    entitiesAffected
+    predictedChanges {
+      entityType
+      entityId
+      changedFields
+    }
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "input": {
+    "sourceBranchId": "branch-raid-success",
+    "targetBranchId": "branch-main",
+    "worldTime": "4707-09-25T14:00:00Z"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "previewMerge": {
+      "conflicts": [
+        {
+          "entityType": "Settlement",
+          "entityId": "settlement-sandpoint",
+          "field": "variables.morale",
+          "baseValue": 85,
+          "sourceValue": 60,
+          "targetValue": 85,
+          "conflictType": "BOTH_MODIFIED"
+        },
+        {
+          "entityType": "Settlement",
+          "entityId": "settlement-sandpoint",
+          "field": "variables.prosperity",
+          "baseValue": 72,
+          "sourceValue": 58,
+          "targetValue": 75,
+          "conflictType": "BOTH_MODIFIED"
+        },
+        {
+          "entityType": "Settlement",
+          "entityId": "settlement-sandpoint",
+          "field": "variables.defense",
+          "baseValue": 45,
+          "sourceValue": 52,
+          "targetValue": 45,
+          "conflictType": "SOURCE_MODIFIED"
+        }
+      ],
+      "entitiesAffected": 5,
+      "predictedChanges": [
+        {
+          "entityType": "Settlement",
+          "entityId": "settlement-sandpoint",
+          "changedFields": ["variables.morale", "variables.prosperity", "variables.defense"]
+        },
+        {
+          "entityType": "Event",
+          "entityId": "event-defense-improvements",
+          "changedFields": ["resolutionData"]
+        }
+      ]
+    }
+  }
+}
+```
+
+#### Step 2: Execute Merge with Conflict Resolution
+
+Resolve conflicts by choosing which values to keep:
+
+```graphql
+mutation MergeBranchesWithResolution($input: ExecuteMergeInput!) {
+  executeMerge(input: $input) {
+    mergeId
+    success
+    conflicts {
+      entityType
+      entityId
+      field
+      baseValue
+      sourceValue
+      targetValue
+    }
+    versionsCreated
+    entitiesMerged
+    mergeHistory {
+      id
+      createdAt
+      mergedBy {
+        id
+        username
+      }
+    }
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "input": {
+    "sourceBranchId": "branch-raid-success",
+    "targetBranchId": "branch-main",
+    "worldTime": "4707-09-25T14:00:00Z",
+    "resolutions": [
+      {
+        "entityType": "Settlement",
+        "entityId": "settlement-sandpoint",
+        "field": "variables.morale",
+        "resolvedValue": 85,
+        "resolution": "ACCEPT_TARGET",
+        "reason": "Keep main timeline's positive morale"
+      },
+      {
+        "entityType": "Settlement",
+        "entityId": "settlement-sandpoint",
+        "field": "variables.prosperity",
+        "resolvedValue": 75,
+        "resolution": "ACCEPT_TARGET",
+        "reason": "Main timeline prosperity is better"
+      },
+      {
+        "entityType": "Settlement",
+        "entityId": "settlement-sandpoint",
+        "field": "variables.defense",
+        "resolvedValue": 52,
+        "resolution": "ACCEPT_SOURCE",
+        "reason": "Merge improved defense from alternate timeline"
+      }
+    ],
+    "metadata": {
+      "mergeReason": "Incorporate defense improvements from alternate scenario",
+      "reviewedBy": "gm-user-123"
+    }
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "executeMerge": {
+      "mergeId": "merge-raid-to-main",
+      "success": true,
+      "conflicts": [],
+      "versionsCreated": 8,
+      "entitiesMerged": 5,
+      "mergeHistory": {
+        "id": "merge-history-456",
+        "createdAt": "2024-01-15T14:30:00Z",
+        "mergedBy": {
+          "id": "user-gm-001",
+          "username": "GameMaster"
+        }
+      }
+    }
+  }
+}
+```
+
+#### Step 3: Verify Merged State
+
+Query the merged state to confirm the resolution:
+
+```graphql
+query VerifyMergedState {
+  settlement(id: "settlement-sandpoint", branchId: "branch-main") {
+    id
+    name
+    variables
+    version
+    updatedAt
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "settlement": {
+      "id": "settlement-sandpoint",
+      "name": "Sandpoint",
+      "variables": {
+        "morale": 85,
+        "prosperity": 75,
+        "defense": 52,
+        "lastDefenseUpgrade": "4707-09-25"
+      },
+      "version": 9,
+      "updatedAt": "2024-01-15T14:30:00Z"
+    }
+  }
+}
+```
+
+#### Step 4: Cherry-Pick Specific Changes (Optional)
+
+If you only want specific changes, use cherry-pick instead of full merge:
+
+```graphql
+mutation CherryPickDefenseUpgrade($input: CherryPickVersionInput!) {
+  cherryPickVersion(input: $input) {
+    id
+    branchId
+    entityType
+    entityId
+    version
+    snapshot
+    createdAt
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "input": {
+    "sourceBranchId": "branch-raid-success",
+    "targetBranchId": "branch-main",
+    "entityType": "Settlement",
+    "entityId": "settlement-sandpoint",
+    "sourceVersion": 4,
+    "worldTime": "4707-09-25T14:00:00Z",
+    "metadata": {
+      "reason": "Apply only defense improvements without other changes"
+    }
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "cherryPickVersion": {
+      "id": "version-settlement-sandpoint-10",
+      "branchId": "branch-main",
+      "entityType": "Settlement",
+      "entityId": "settlement-sandpoint",
+      "version": 10,
+      "snapshot": {
+        "id": "settlement-sandpoint",
+        "name": "Sandpoint",
+        "variables": {
+          "morale": 85,
+          "prosperity": 75,
+          "defense": 52
+        },
+        "level": 3
+      },
+      "createdAt": "2024-01-15T14:35:00Z"
+    }
+  }
+}
+```
+
+---
+
+### Complete Effect Execution Workflow
+
+This example demonstrates creating, testing, and applying complex JSON Patch effects that mutate world state.
+
+**Scenario:** Create an effect that represents a festival boosting settlement morale, prosperity, and marking the festival date, then apply it to multiple settlements.
+
+#### Step 1: Create the Effect
+
+Define a reusable effect with JSON Patch operations:
+
+```graphql
+mutation CreateFestivalEffect($input: CreateEffectInput!) {
+  createEffect(input: $input) {
+    id
+    campaignId
+    name
+    description
+    effectType
+    patches
+    priority
+    isActive
+    createdAt
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "input": {
+    "campaignId": "campaign-varisia",
+    "name": "Swallowtail Festival Success",
+    "description": "Boosts settlement morale and prosperity after a successful festival, with diminishing returns based on current prosperity",
+    "effectType": "settlement_modifier",
+    "patches": [
+      {
+        "op": "replace",
+        "path": "/variables/morale",
+        "value": {
+          "$min": [
+            100,
+            {
+              "$add": [{ "var": "variables.morale" }, 15]
+            }
+          ]
+        }
+      },
+      {
+        "op": "replace",
+        "path": "/variables/prosperity",
+        "value": {
+          "$min": [
+            100,
+            {
+              "$add": [
+                { "var": "variables.prosperity" },
+                {
+                  "$subtract": [
+                    10,
+                    {
+                      "$divide": [{ "var": "variables.prosperity" }, 20]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "op": "add",
+        "path": "/variables/lastFestivalDate",
+        "value": { "var": "festivalDate" }
+      },
+      {
+        "op": "add",
+        "path": "/variables/festivalCount",
+        "value": {
+          "$add": [
+            {
+              "$or": [{ "var": "variables.festivalCount" }, 0]
+            },
+            1
+          ]
+        }
+      }
+    ],
+    "priority": 100,
+    "metadata": {
+      "category": "event_outcome",
+      "duration": "instant",
+      "tags": ["festival", "morale", "prosperity"]
+    }
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "createEffect": {
+      "id": "effect-festival-success",
+      "campaignId": "campaign-varisia",
+      "name": "Swallowtail Festival Success",
+      "description": "Boosts settlement morale and prosperity after a successful festival, with diminishing returns based on current prosperity",
+      "effectType": "settlement_modifier",
+      "patches": [
+        {
+          "op": "replace",
+          "path": "/variables/morale",
+          "value": {
+            "$min": [100, { "$add": [{ "var": "variables.morale" }, 15] }]
+          }
+        },
+        {
+          "op": "replace",
+          "path": "/variables/prosperity",
+          "value": {
+            "$min": [
+              100,
+              {
+                "$add": [
+                  { "var": "variables.prosperity" },
+                  { "$subtract": [10, { "$divide": [{ "var": "variables.prosperity" }, 20] }] }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "add",
+          "path": "/variables/lastFestivalDate",
+          "value": { "var": "festivalDate" }
+        },
+        {
+          "op": "add",
+          "path": "/variables/festivalCount",
+          "value": {
+            "$add": [{ "$or": [{ "var": "variables.festivalCount" }, 0] }, 1]
+          }
+        }
+      ],
+      "priority": 100,
+      "isActive": true,
+      "createdAt": "2024-01-15T10:00:00Z"
+    }
+  }
+}
+```
+
+#### Step 2: Dry-Run Test the Effect
+
+Test the effect without applying it to see what changes would occur:
+
+```graphql
+mutation TestFestivalEffect($input: ExecuteEffectInput!) {
+  executeEffect(input: $input) {
+    success
+    appliedPatches
+    result
+    errors
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "input": {
+    "effectId": "effect-festival-success",
+    "targetEntityType": "Settlement",
+    "targetEntityId": "settlement-sandpoint",
+    "branchId": "branch-main",
+    "context": {
+      "festivalDate": "4707-09-23"
+    },
+    "dryRun": true
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "executeEffect": {
+      "success": true,
+      "appliedPatches": [
+        {
+          "op": "replace",
+          "path": "/variables/morale",
+          "value": 100
+        },
+        {
+          "op": "replace",
+          "path": "/variables/prosperity",
+          "value": 78
+        },
+        {
+          "op": "add",
+          "path": "/variables/lastFestivalDate",
+          "value": "4707-09-23"
+        },
+        {
+          "op": "add",
+          "path": "/variables/festivalCount",
+          "value": 1
+        }
+      ],
+      "result": {
+        "id": "settlement-sandpoint",
+        "name": "Sandpoint",
+        "variables": {
+          "morale": 100,
+          "prosperity": 78,
+          "defense": 45,
+          "lastFestivalDate": "4707-09-23",
+          "festivalCount": 1
+        },
+        "level": 3
+      },
+      "errors": null
+    }
+  }
+}
+```
+
+#### Step 3: Apply Effect to Target Settlement
+
+Apply the effect for real:
+
+```graphql
+mutation ApplyFestivalEffect($input: ExecuteEffectInput!) {
+  executeEffect(input: $input) {
+    success
+    appliedPatches
+    result
+    errors
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "input": {
+    "effectId": "effect-festival-success",
+    "targetEntityType": "Settlement",
+    "targetEntityId": "settlement-sandpoint",
+    "branchId": "branch-main",
+    "worldTime": "4707-09-23T18:00:00Z",
+    "context": {
+      "festivalDate": "4707-09-23"
+    },
+    "dryRun": false
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "executeEffect": {
+      "success": true,
+      "appliedPatches": [
+        {
+          "op": "replace",
+          "path": "/variables/morale",
+          "value": 100
+        },
+        {
+          "op": "replace",
+          "path": "/variables/prosperity",
+          "value": 78
+        },
+        {
+          "op": "add",
+          "path": "/variables/lastFestivalDate",
+          "value": "4707-09-23"
+        },
+        {
+          "op": "add",
+          "path": "/variables/festivalCount",
+          "value": 1
+        }
+      ],
+      "result": {
+        "id": "settlement-sandpoint",
+        "name": "Sandpoint",
+        "variables": {
+          "morale": 100,
+          "prosperity": 78,
+          "defense": 45,
+          "lastFestivalDate": "4707-09-23",
+          "festivalCount": 1
+        },
+        "level": 3,
+        "version": 5,
+        "updatedAt": "2024-01-15T10:15:00Z"
+      },
+      "errors": null
+    }
+  }
+}
+```
+
+#### Step 4: Batch Apply to Multiple Settlements
+
+Apply the same effect to multiple settlements using `executeEffectsForEntity`:
+
+```graphql
+mutation ApplyRegionalFestivalBoost($magnimar: ExecuteEffectInput!, $korvosa: ExecuteEffectInput!) {
+  magnimar: executeEffect(input: $magnimar) {
+    success
+    result
+  }
+
+  korvosa: executeEffect(input: $korvosa) {
+    success
+    result
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "magnimar": {
+    "effectId": "effect-festival-success",
+    "targetEntityType": "Settlement",
+    "targetEntityId": "settlement-magnimar",
+    "branchId": "branch-main",
+    "worldTime": "4707-09-23T18:00:00Z",
+    "context": {
+      "festivalDate": "4707-09-23"
+    },
+    "dryRun": false
+  },
+  "korvosa": {
+    "effectId": "effect-festival-success",
+    "targetEntityType": "Settlement",
+    "targetEntityId": "settlement-korvosa",
+    "branchId": "branch-main",
+    "worldTime": "4707-09-23T18:00:00Z",
+    "context": {
+      "festivalDate": "4707-09-23"
+    },
+    "dryRun": false
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "magnimar": {
+      "success": true,
+      "result": {
+        "id": "settlement-magnimar",
+        "name": "Magnimar",
+        "variables": {
+          "morale": 93,
+          "prosperity": 84,
+          "lastFestivalDate": "4707-09-23",
+          "festivalCount": 3
+        }
+      }
+    },
+    "korvosa": {
+      "success": true,
+      "result": {
+        "id": "settlement-korvosa",
+        "name": "Korvosa",
+        "variables": {
+          "morale": 88,
+          "prosperity": 90,
+          "lastFestivalDate": "4707-09-23",
+          "festivalCount": 2
+        }
+      }
+    }
+  }
+}
+```
+
+#### Step 5: Chain Multiple Effects
+
+Apply multiple effects in sequence for complex state changes:
+
+```graphql
+mutation ApplyEventEffectsChain($input: ExecuteEffectsForEntityInput!) {
+  executeEffectsForEntity(input: $input) {
+    entityType
+    entityId
+    effectsApplied
+    totalPatches
+    finalState
+    executionOrder {
+      effectId
+      effectName
+      priority
+      patchesApplied
+    }
+  }
+}
+```
+
+**Variables:**
+
+```json
+{
+  "input": {
+    "entityType": "Settlement",
+    "entityId": "settlement-sandpoint",
+    "branchId": "branch-main",
+    "worldTime": "4707-09-23T20:00:00Z",
+    "effectIds": [
+      "effect-festival-success",
+      "effect-trade-route-established",
+      "effect-diplomatic-relations-improved"
+    ],
+    "context": {
+      "festivalDate": "4707-09-23",
+      "tradePartner": "Magnimar",
+      "diplomacyTarget": "Shoanti Tribes",
+      "relationshipLevel": "friendly"
+    }
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "executeEffectsForEntity": {
+      "entityType": "Settlement",
+      "entityId": "settlement-sandpoint",
+      "effectsApplied": 3,
+      "totalPatches": 11,
+      "finalState": {
+        "id": "settlement-sandpoint",
+        "name": "Sandpoint",
+        "variables": {
+          "morale": 100,
+          "prosperity": 85,
+          "defense": 45,
+          "diplomacy": 62,
+          "lastFestivalDate": "4707-09-23",
+          "festivalCount": 1,
+          "tradeRoutes": ["Magnimar"],
+          "allies": ["Shoanti Tribes"]
+        },
+        "level": 3,
+        "version": 8
+      },
+      "executionOrder": [
+        {
+          "effectId": "effect-diplomatic-relations-improved",
+          "effectName": "Diplomatic Relations Improved",
+          "priority": 150,
+          "patchesApplied": 2
+        },
+        {
+          "effectId": "effect-festival-success",
+          "effectName": "Swallowtail Festival Success",
+          "priority": 100,
+          "patchesApplied": 4
+        },
+        {
+          "effectId": "effect-trade-route-established",
+          "effectName": "Trade Route Established",
+          "priority": 75,
+          "patchesApplied": 5
+        }
+      ]
+    }
+  }
 }
 ```
 

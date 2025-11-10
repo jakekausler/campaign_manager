@@ -1,6 +1,32 @@
 /**
  * Location Service
- * Handles CRUD operations for Locations with hierarchical cascade delete
+ *
+ * Provides comprehensive CRUD operations for geographic location entities with advanced features:
+ * - PostGIS geometry management (Point, Polygon, MultiPolygon)
+ * - Parent-child hierarchical relationships with circular reference prevention
+ * - Cascade delete operations for location hierarchies
+ * - Optimistic locking with version control
+ * - Temporal versioning for time-travel queries
+ * - GeoJSON geometry validation and EWKB conversion
+ * - Spatial cache and tile cache invalidation
+ * - Real-time entity modification events via Redis PubSub
+ * - Audit trail logging for all operations
+ *
+ * Key Features:
+ * - Geometry Storage: PostGIS geometry fields stored as EWKB with configurable SRID
+ * - Hierarchical Structure: Parent-child relationships with cascade delete and cycle detection
+ * - Version Control: Atomic updates with optimistic locking and temporal snapshots
+ * - Spatial Operations: GeoJSON validation, SRID transformation, spatial query support
+ * - Cache Invalidation: Automatic invalidation of tile cache and spatial query caches
+ * - Real-time Updates: WebSocket notifications for concurrent edit detection
+ *
+ * Database Schema:
+ * - Location table with PostGIS geometry column (Unsupported type in Prisma)
+ * - Raw SQL queries required for geometry read/write operations
+ * - ST_AsBinary/ST_GeomFromEWKB for geometry serialization
+ *
+ * @class
+ * @injectable
  */
 
 import { Injectable, Logger, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
@@ -44,9 +70,20 @@ export class LocationService {
   ) {}
 
   /**
-   * Find location by ID
-   * Locations are world-scoped (no campaign-specific access control for now)
+   * Find location by ID with geometry field.
+   *
+   * Retrieves a single location with its PostGIS geometry field using raw SQL.
+   * Locations are world-scoped with no campaign-specific access control.
+   * Only returns non-deleted locations.
+   *
    * Uses raw SQL with ST_AsBinary to properly retrieve PostGIS geometry field
+   * since Prisma doesn't support the Unsupported("geometry") type directly.
+   *
+   * @param id - The location ID to find
+   * @returns Location with geometry as Buffer, or null if not found or deleted
+   *
+   * @see LocationWithGeometry type for structure with geom field
+   * @see ST_AsBinary for PostGIS geometry serialization
    */
   async findById(id: string): Promise<LocationWithGeometry | null> {
     const locations = await this.prisma.$queryRaw<
@@ -86,7 +123,13 @@ export class LocationService {
   }
 
   /**
-   * Find all locations in a world (non-deleted, non-archived)
+   * Find all locations in a world.
+   *
+   * Retrieves all non-deleted, non-archived locations for a specific world,
+   * sorted alphabetically by name. Does not include geometry field.
+   *
+   * @param worldId - The world ID to filter locations
+   * @returns Array of locations (without geometry field)
    */
   async findByWorldId(worldId: string): Promise<PrismaLocation[]> {
     return this.prisma.location.findMany({
@@ -102,7 +145,13 @@ export class LocationService {
   }
 
   /**
-   * Find child locations for a parent location
+   * Find child locations for a parent location.
+   *
+   * Retrieves all direct child locations (one level deep) for a given parent,
+   * sorted alphabetically by name. Only returns non-deleted, non-archived locations.
+   *
+   * @param parentLocationId - The parent location ID
+   * @returns Array of child locations (without geometry field)
    */
   async findChildren(parentLocationId: string): Promise<PrismaLocation[]> {
     return this.prisma.location.findMany({
@@ -118,16 +167,32 @@ export class LocationService {
   }
 
   /**
-   * Find locations by parent ID (alias for findChildren)
+   * Find locations by parent ID.
+   *
+   * Alias for findChildren() - retrieves all direct child locations for a parent.
+   *
+   * @param parentLocationId - The parent location ID
+   * @returns Array of child locations (without geometry field)
+   * @see findChildren
    */
   async findByParentId(parentLocationId: string): Promise<PrismaLocation[]> {
     return this.findChildren(parentLocationId);
   }
 
   /**
-   * Batch load locations by IDs
-   * Used by DataLoader to prevent N+1 query problems
-   * Returns locations in same order as input IDs
+   * Batch load locations by IDs with geometry.
+   *
+   * Efficiently loads multiple locations in a single query with geometry fields.
+   * Used by DataLoader to prevent N+1 query problems in GraphQL field resolvers.
+   * Returns locations in the same order as input IDs, with null for missing locations.
+   *
+   * Uses raw SQL with ST_AsBinary to retrieve PostGIS geometry fields.
+   *
+   * @param locationIds - Array of location IDs to load
+   * @returns Array of locations (or null) in same order as input IDs
+   *
+   * @see DataLoader pattern for batch loading
+   * @see LocationWithGeometry for return type with geom field
    */
   async findByIds(locationIds: readonly string[]): Promise<(LocationWithGeometry | null)[]> {
     if (locationIds.length === 0) {
@@ -174,7 +239,29 @@ export class LocationService {
   }
 
   /**
-   * Create a new location
+   * Create a new location.
+   *
+   * Creates a new geographic location entity with validation of world and parent location.
+   * Automatically creates an audit log entry and invalidates tile cache for the world.
+   *
+   * Validation:
+   * - Verifies world exists and is not deleted
+   * - Verifies parent location exists and belongs to same world (if provided)
+   * - Prevents cross-world parent-child relationships
+   *
+   * Side Effects:
+   * - Creates audit log entry for CREATE action
+   * - Invalidates tile cache for the world (new location appears on map)
+   *
+   * @param input - Location creation data (worldId, type, name, description, parentLocationId)
+   * @param user - Authenticated user creating the location
+   * @returns Newly created location (without geometry field)
+   * @throws NotFoundException - If world or parent location not found
+   * @throws Error - If parent location belongs to different world
+   *
+   * @see CreateLocationInput for input structure
+   * @see AuditService.log for audit trail
+   * @see TileCacheService.invalidateWorld for cache invalidation
    */
   async create(input: CreateLocationInput, user: AuthenticatedUser): Promise<PrismaLocation> {
     // Verify world exists
@@ -227,7 +314,46 @@ export class LocationService {
   }
 
   /**
-   * Update a location with optimistic locking and versioning
+   * Update a location with optimistic locking and versioning.
+   *
+   * Updates location metadata (type, name, description, parentLocationId) with atomic
+   * optimistic locking to prevent concurrent update conflicts. Creates a version snapshot
+   * for temporal queries. Does not update geometry (use updateLocationGeometry instead).
+   *
+   * Validation:
+   * - Verifies location exists and is not deleted
+   * - Verifies branch exists and belongs to campaign in location's world
+   * - Checks optimistic lock (version matches expectedVersion)
+   * - Validates parent location exists and belongs to same world (if changing)
+   * - Prevents self-parenting (location cannot be its own parent)
+   * - Detects circular references in parent-child hierarchy
+   *
+   * Transaction:
+   * - Atomically updates location with incremented version
+   * - Creates version snapshot for temporal queries
+   *
+   * Side Effects:
+   * - Increments version number
+   * - Creates version snapshot in Version table
+   * - Creates audit log entry for UPDATE action
+   * - Publishes entityModified event via Redis PubSub
+   * - Invalidates tile cache for the world
+   *
+   * @param id - Location ID to update
+   * @param input - Update data (type, name, description, parentLocationId)
+   * @param user - Authenticated user making the update
+   * @param expectedVersion - Expected version for optimistic locking
+   * @param branchId - Branch ID for versioning
+   * @param worldTime - World time for version snapshot (defaults to current time)
+   * @returns Updated location with incremented version
+   * @throws NotFoundException - If location, branch, or parent location not found
+   * @throws OptimisticLockException - If version mismatch (concurrent update detected)
+   * @throws BadRequestException - If branch doesn't belong to campaign in location's world
+   * @throws Error - If parent location validation fails or circular reference detected
+   *
+   * @see OptimisticLockException for concurrent update handling
+   * @see VersionService.createVersion for version snapshots
+   * @see checkCircularReference for cycle detection
    */
   async update(
     id: string,
@@ -364,8 +490,28 @@ export class LocationService {
   }
 
   /**
-   * Soft delete a location
-   * Cascades soft delete to all child locations (recursively)
+   * Soft delete a location with cascade.
+   *
+   * Marks a location and all its descendant locations as deleted (sets deletedAt timestamp).
+   * Recursively cascades the delete operation down the entire location hierarchy tree.
+   *
+   * Delete Behavior:
+   * - Sets deletedAt timestamp on target location
+   * - Recursively deletes all child locations (and their children, etc.)
+   * - Preserves data for potential recovery (soft delete)
+   * - Does not affect parent location
+   *
+   * Side Effects:
+   * - Creates audit log entry for DELETE action
+   * - Invalidates tile cache for the world (location disappears from map)
+   *
+   * @param id - Location ID to delete
+   * @param user - Authenticated user performing the deletion
+   * @returns Deleted location with deletedAt timestamp set
+   * @throws NotFoundException - If location not found or already deleted
+   *
+   * @see cascadeDeleteChildren for recursive deletion logic
+   * @see archive for non-cascading soft delete alternative
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaLocation> {
     // Verify location exists
@@ -395,8 +541,27 @@ export class LocationService {
   }
 
   /**
-   * Archive a location
-   * Does not cascade to children
+   * Archive a location without cascade.
+   *
+   * Marks a location as archived (sets archivedAt timestamp) without affecting children.
+   * Archived locations are excluded from normal queries but can be restored later.
+   *
+   * Archive Behavior:
+   * - Sets archivedAt timestamp on target location only
+   * - Does NOT cascade to child locations
+   * - Location remains in database and can be restored
+   * - Different from delete (which cascades to children)
+   *
+   * Side Effects:
+   * - Creates audit log entry for ARCHIVE action
+   *
+   * @param id - Location ID to archive
+   * @param user - Authenticated user performing the archival
+   * @returns Archived location with archivedAt timestamp set
+   * @throws NotFoundException - If location not found
+   *
+   * @see restore for un-archiving locations
+   * @see delete for cascading soft delete alternative
    */
   async archive(id: string, user: AuthenticatedUser): Promise<PrismaLocation> {
     // Verify location exists
@@ -419,7 +584,25 @@ export class LocationService {
   }
 
   /**
-   * Restore an archived location
+   * Restore an archived location.
+   *
+   * Removes the archivedAt timestamp to restore a previously archived location.
+   * Allows locations to be temporarily removed from queries and later restored.
+   *
+   * Restore Behavior:
+   * - Clears archivedAt timestamp (sets to null)
+   * - Location becomes visible in normal queries again
+   * - Works on archived locations only (not deleted locations)
+   *
+   * Side Effects:
+   * - Creates audit log entry for RESTORE action
+   *
+   * @param id - Location ID to restore
+   * @param user - Authenticated user performing the restoration
+   * @returns Restored location with archivedAt set to null
+   * @throws NotFoundException - If location not found
+   *
+   * @see archive for archiving locations
    */
   async restore(id: string, user: AuthenticatedUser): Promise<PrismaLocation> {
     const location = await this.prisma.location.findFirst({
@@ -442,8 +625,23 @@ export class LocationService {
   }
 
   /**
-   * Recursively cascade delete to all child locations
-   * Private helper method
+   * Recursively cascade delete to all child locations.
+   *
+   * Private helper method that recursively soft-deletes all descendant locations
+   * in the location hierarchy tree. Uses depth-first traversal to delete children
+   * before parents at each level.
+   *
+   * Algorithm:
+   * 1. Find all direct children of parentId
+   * 2. For each child, recursively delete its children first (depth-first)
+   * 3. Delete all direct children with updateMany
+   *
+   * @param parentId - Parent location ID whose children should be deleted
+   * @param deletedAt - Timestamp to set for deletedAt field
+   * @returns Promise that resolves when cascade is complete
+   *
+   * @private
+   * @see delete for public interface
    */
   private async cascadeDeleteChildren(parentId: string, deletedAt: Date): Promise<void> {
     // Find all direct children
@@ -471,8 +669,24 @@ export class LocationService {
   }
 
   /**
-   * Check if setting a parent would create a circular reference
-   * Private helper method
+   * Check if setting a parent would create a circular reference.
+   *
+   * Private helper method that detects circular references in the location hierarchy
+   * by traversing up the ancestor chain from newParentId to ensure locationId is not
+   * in the chain. Prevents creating cycles like: A -> B -> C -> A.
+   *
+   * Algorithm:
+   * 1. Start with newParentId and track visited locations
+   * 2. Traverse up the parent chain (follow parentLocationId)
+   * 3. If locationId is found in the chain, circular reference detected
+   * 4. Stop when reaching a location with no parent (top of hierarchy)
+   *
+   * @param locationId - Location that would get a new parent
+   * @param newParentId - Proposed new parent location ID
+   * @returns True if circular reference would be created, false otherwise
+   *
+   * @private
+   * @see update for usage in parent validation
    */
   private async checkCircularReference(locationId: string, newParentId: string): Promise<boolean> {
     let currentId: string | null = newParentId;
@@ -498,8 +712,25 @@ export class LocationService {
   }
 
   /**
-   * Get location state as it existed at a specific point in world-time
-   * Supports time-travel queries for version history
+   * Get location state as it existed at a specific point in world-time.
+   *
+   * Retrieves the historical state of a location by resolving the version snapshot
+   * that was valid at the specified world-time. Enables time-travel queries for
+   * viewing how locations changed over campaign time.
+   *
+   * Time-Travel Query:
+   * - Queries Version table for snapshot valid at worldTime
+   * - Uses validFrom/validTo temporal range matching
+   * - Returns decompressed historical payload
+   * - Supports branching (alternate timelines)
+   *
+   * @param id - Location ID to query
+   * @param branchId - Branch ID for version resolution
+   * @param worldTime - Point in world-time to query (campaign time, not real time)
+   * @returns Historical location state or null if no version found
+   *
+   * @see VersionService.resolveVersion for version resolution logic
+   * @see VersionService.decompressVersion for payload decompression
    */
   async getLocationAsOf(
     id: string,
@@ -526,16 +757,59 @@ export class LocationService {
   }
 
   /**
-   * Update location geometry with GeoJSON data
-   * Creates a new entity version with geometry update
-   * @param id Location ID
-   * @param geoJson GeoJSON geometry (Point, Polygon, MultiPolygon)
-   * @param user Authenticated user making the change
-   * @param expectedVersion Expected version for optimistic locking
-   * @param branchId Branch ID for versioning
-   * @param srid Optional SRID (defaults to campaign's SRID or Web Mercator 3857)
-   * @param worldTime Optional world time for version (defaults to current time)
-   * @returns Updated location with new geometry
+   * Update location geometry with GeoJSON data.
+   *
+   * Updates the PostGIS geometry field for a location with atomic optimistic locking.
+   * Validates GeoJSON, converts to EWKB format, and creates a version snapshot.
+   * This is the primary method for setting/updating location spatial data on the map.
+   *
+   * Validation:
+   * - Verifies location exists and is not deleted
+   * - Verifies branch exists and belongs to campaign in location's world
+   * - Validates GeoJSON geometry structure and coordinates
+   * - Checks optimistic lock (version matches expectedVersion)
+   *
+   * Geometry Processing:
+   * - Validates GeoJSON using SpatialService (topology, coordinate format)
+   * - Determines SRID: provided > campaign default > Web Mercator (3857)
+   * - Converts GeoJSON to EWKB (Extended Well-Known Binary with SRID)
+   * - Uses PostGIS ST_GeomFromEWKB for database storage
+   *
+   * Transaction:
+   * - Atomically updates geometry with raw SQL (Prisma doesn't support geometry type)
+   * - Increments version in same UPDATE (optimistic lock check in WHERE clause)
+   * - Fetches updated location with ST_AsBinary
+   * - Creates version snapshot with geometry included
+   *
+   * Side Effects:
+   * - Increments version number
+   * - Creates version snapshot in Version table with geometry
+   * - Creates audit log entry for UPDATE action
+   * - Publishes entityModified event via Redis PubSub
+   * - Invalidates tile cache for the world (map tiles need regeneration)
+   * - Invalidates all spatial query caches for the branch (geometry affects queries)
+   *
+   * Cache Invalidation:
+   * - Tile cache: All tiles for world regenerated with new geometry
+   * - Spatial cache: Pattern match `spatial:*:{branchId}` to clear related queries
+   *   (locations-near, locations-in-region, settlements-in-region)
+   *
+   * @param id - Location ID to update
+   * @param geoJson - GeoJSON geometry (Point, Polygon, MultiPolygon)
+   * @param user - Authenticated user making the change
+   * @param expectedVersion - Expected version for optimistic locking
+   * @param branchId - Branch ID for versioning
+   * @param srid - Optional SRID (defaults to campaign's SRID or Web Mercator 3857)
+   * @param worldTime - World time for version snapshot (defaults to current time)
+   * @returns Updated location with new geometry as Buffer
+   * @throws NotFoundException - If location or branch not found
+   * @throws BadRequestException - If GeoJSON validation fails or branch doesn't belong to world
+   * @throws OptimisticLockException - If version mismatch (concurrent update detected)
+   *
+   * @see SpatialService.validateGeometry for GeoJSON validation
+   * @see SpatialService.geoJsonToEWKB for geometry conversion
+   * @see OptimisticLockException for concurrent update handling
+   * @see update for metadata updates (without geometry)
    */
   async updateLocationGeometry(
     id: string,

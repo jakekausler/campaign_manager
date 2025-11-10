@@ -1,7 +1,37 @@
 /**
- * Settlement Service
- * Business logic for Settlement operations
- * Implements CRUD with soft delete, archive, and cascade delete to Structures
+ * @file Settlement Service
+ *
+ * Provides business logic for settlement entity operations in tabletop RPG campaigns.
+ * Settlements represent populated areas within kingdoms (cities, towns, villages, etc.)
+ * and serve as containers for structures. They can be leveled, archived, and soft-deleted.
+ *
+ * Key Features:
+ * - CRUD operations with role-based authorization (owner/GM)
+ * - Soft delete with cascade to structures
+ * - Archive/restore without cascading
+ * - Level progression with validation (1-20)
+ * - Custom variables with schema validation
+ * - Computed fields via JSONLogic conditions
+ * - Time-travel queries for version history
+ * - Optimistic locking for concurrent edit detection
+ * - WebSocket notifications for real-time updates
+ * - Multi-layer caching with graceful degradation
+ * - Integration with Rules Engine worker for high-performance condition evaluation
+ *
+ * Relationships:
+ * - Belongs to: Kingdom (parent entity)
+ * - Has one: Location (geographic position)
+ * - Has many: Structures (buildings, improvements, etc.)
+ * - Has many: FieldConditions (computed fields)
+ * - Has many: EntityVersions (version history)
+ *
+ * Caching Strategy:
+ * - Settlement lists by kingdom: 600s TTL
+ * - Computed fields: 300s TTL
+ * - Cascade invalidation on updates (computed fields, structures, spatial)
+ * - Graceful degradation on cache failures
+ *
+ * @module services/settlement
  */
 
 import {
@@ -34,6 +64,13 @@ import { DependencyGraphService } from './dependency-graph.service';
 import { LevelValidator } from './level-validator';
 import { VersionService, type CreateVersionInput } from './version.service';
 
+/**
+ * Settlement service
+ *
+ * Manages settlement entities with full support for CRUD operations, versioning,
+ * computed fields, and real-time updates. Settlements represent populated areas
+ * within kingdoms and serve as containers for structures.
+ */
 @Injectable()
 export class SettlementService {
   private readonly logger = new Logger(SettlementService.name);
@@ -53,8 +90,14 @@ export class SettlementService {
   ) {}
 
   /**
-   * Find settlement by ID
-   * Ensures user has access to the kingdom
+   * Find settlement by ID with authorization check
+   *
+   * Retrieves a single settlement by its unique identifier. Verifies that the authenticated
+   * user has access to the kingdom's campaign (either as owner or member).
+   *
+   * @param id - Settlement unique identifier (UUID)
+   * @param user - Authenticated user making the request
+   * @returns Settlement entity if found and authorized, null otherwise
    */
   async findById(id: string, user: AuthenticatedUser): Promise<PrismaSettlement | null> {
     const settlement = await this.prisma.settlement.findFirst({
@@ -83,7 +126,16 @@ export class SettlementService {
   }
 
   /**
-   * Find settlements by kingdom
+   * Find all settlements belonging to a kingdom with caching
+   *
+   * Retrieves all non-deleted settlements for a specific kingdom with authorization check.
+   * Results are cached for 600 seconds to optimize performance for frequently accessed kingdoms.
+   * Cache failures degrade gracefully without blocking the operation.
+   *
+   * @param kingdomId - Kingdom unique identifier (UUID)
+   * @param user - Authenticated user (must have access to kingdom's campaign)
+   * @returns Array of settlements ordered by name (ascending)
+   * @throws {NotFoundException} If kingdom not found or user lacks access
    */
   async findByKingdom(kingdomId: string, user: AuthenticatedUser): Promise<PrismaSettlement[]> {
     // TODO: Support branch parameter - currently hardcoded to 'main'
@@ -211,8 +263,14 @@ export class SettlementService {
   }
 
   /**
-   * Find settlement by location ID
-   * Returns the settlement at a specific location (if any)
+   * Find settlement by location ID (no authorization)
+   *
+   * Retrieves the settlement occupying a specific location. Used for location uniqueness
+   * validation during settlement creation. No authorization check - this is a utility
+   * method called by authorized operations.
+   *
+   * @param locationId - Location unique identifier (UUID)
+   * @returns Settlement at the location, or null if location is unoccupied
    */
   async findByLocationId(locationId: string): Promise<PrismaSettlement | null> {
     return this.prisma.settlement.findFirst({
@@ -263,8 +321,29 @@ export class SettlementService {
   }
 
   /**
-   * Create a new settlement
-   * Only owner or GM can create settlements
+   * Create a new settlement with validation and real-time notifications
+   *
+   * Creates a settlement entity within a kingdom at a specified location. Performs
+   * comprehensive validation including authorization, location existence/availability,
+   * and world consistency. Publishes WebSocket event and invalidates relevant caches.
+   *
+   * Validations:
+   * - User has owner/GM role in kingdom's campaign
+   * - Location exists in same world as kingdom
+   * - Location is not already occupied by another settlement
+   * - Level is within valid range (1-20)
+   *
+   * @param input - Settlement creation data
+   * @param input.kingdomId - Parent kingdom UUID
+   * @param input.locationId - Geographic location UUID
+   * @param input.name - Settlement name
+   * @param input.level - Settlement level (1-20, defaults to 1)
+   * @param input.variables - Custom variables as JSON object
+   * @param input.variableSchemas - Variable schemas as JSON array
+   * @param user - Authenticated user (must have owner/GM role)
+   * @returns Created settlement entity
+   * @throws {ForbiddenException} If user lacks permission or location is occupied
+   * @throws {NotFoundException} If kingdom or location not found
    */
   async create(input: CreateSettlementInput, user: AuthenticatedUser): Promise<PrismaSettlement> {
     // Verify user has access to create settlements in this kingdom
@@ -375,8 +454,39 @@ export class SettlementService {
   }
 
   /**
-   * Update a settlement with optimistic locking and versioning
-   * Only owner or GM can update
+   * Update settlement with optimistic locking, versioning, and cache invalidation
+   *
+   * Updates a settlement entity with concurrent edit detection via optimistic locking.
+   * Creates a version snapshot in the specified branch at the given world-time. Invalidates
+   * multiple cache layers and publishes real-time update events.
+   *
+   * Validations:
+   * - Settlement exists and user has access
+   * - Branch belongs to settlement's campaign
+   * - Version matches expected (optimistic lock)
+   * - User has owner/GM role
+   *
+   * Cache Invalidation:
+   * - Settlement computed fields
+   * - Structures list
+   * - Child structures
+   * - Dependency graph (triggers rule re-evaluation)
+   *
+   * @param id - Settlement unique identifier (UUID)
+   * @param input - Partial update data
+   * @param input.name - New settlement name (optional)
+   * @param input.level - New settlement level (optional)
+   * @param input.variables - New variables JSON (optional)
+   * @param input.variableSchemas - New variable schemas JSON (optional)
+   * @param user - Authenticated user (must have owner/GM role)
+   * @param expectedVersion - Current version for optimistic locking
+   * @param branchId - Branch to create version snapshot in
+   * @param worldTime - World timestamp for version validity (defaults to now)
+   * @returns Updated settlement entity
+   * @throws {NotFoundException} If settlement not found
+   * @throws {BadRequestException} If branch not found or invalid
+   * @throws {ForbiddenException} If user lacks permission
+   * @throws {OptimisticLockException} If version mismatch (concurrent edit detected)
    */
   async update(
     id: string,
@@ -571,9 +681,21 @@ export class SettlementService {
   }
 
   /**
-   * Soft delete a settlement
-   * Cascades to Structures
-   * Only owner or GM can delete
+   * Soft delete settlement with cascade to structures
+   *
+   * Marks a settlement as deleted without physical removal. Cascades deletion to all
+   * child structures. Publishes WebSocket event and invalidates kingdom settlement cache.
+   * Soft-deleted entities are excluded from queries but preserved for audit/recovery.
+   *
+   * Cascade Behavior:
+   * - All structures in settlement are soft-deleted
+   * - Deletion timestamp is propagated to children
+   *
+   * @param id - Settlement unique identifier (UUID)
+   * @param user - Authenticated user (must have owner/GM role)
+   * @returns Soft-deleted settlement entity with deletedAt timestamp
+   * @throws {NotFoundException} If settlement not found
+   * @throws {ForbiddenException} If user lacks permission
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaSettlement> {
     // Verify settlement exists and user has access
@@ -675,9 +797,20 @@ export class SettlementService {
   }
 
   /**
-   * Archive a settlement
-   * Does not cascade to structures
-   * Only owner or GM can archive
+   * Archive settlement without cascade
+   *
+   * Marks a settlement as archived for organizational purposes. Unlike soft delete,
+   * archiving does NOT cascade to child structures. Archived entities can be filtered
+   * in queries but remain fully functional. Invalidates kingdom settlement cache.
+   *
+   * Use Case: Temporarily hide settlements from main views without deleting them or
+   * affecting their structures (e.g., seasonal settlements, historical records).
+   *
+   * @param id - Settlement unique identifier (UUID)
+   * @param user - Authenticated user (must have owner/GM role)
+   * @returns Archived settlement entity with archivedAt timestamp
+   * @throws {NotFoundException} If settlement not found
+   * @throws {ForbiddenException} If user lacks permission
    */
   async archive(id: string, user: AuthenticatedUser): Promise<PrismaSettlement> {
     // Verify settlement exists and user has access
@@ -744,8 +877,16 @@ export class SettlementService {
   }
 
   /**
-   * Restore an archived settlement
-   * Only owner or GM can restore
+   * Restore archived settlement
+   *
+   * Removes archive flag from a settlement, making it visible in standard queries again.
+   * This operation finds the settlement even if archived (unlike standard findById).
+   *
+   * @param id - Settlement unique identifier (UUID)
+   * @param user - Authenticated user (must have owner/GM role)
+   * @returns Restored settlement entity with archivedAt set to null
+   * @throws {NotFoundException} If settlement not found
+   * @throws {ForbiddenException} If user lacks permission
    */
   async restore(id: string, user: AuthenticatedUser): Promise<PrismaSettlement> {
     // Find settlement even if archived
@@ -813,8 +954,25 @@ export class SettlementService {
   }
 
   /**
-   * Set settlement level
-   * Only owner or GM can set level
+   * Set settlement level with validation and cache invalidation
+   *
+   * Updates a settlement's level with comprehensive cache invalidation to ensure
+   * computed fields, dependency graphs, and campaign context reflect the change.
+   * Publishes real-time update event for concurrent edit detection.
+   *
+   * Level changes can affect:
+   * - Computed fields (conditions may reference level)
+   * - Dependency graph (rule re-evaluation needed)
+   * - Campaign context (settlement capabilities)
+   * - Child structures (parent level constraints)
+   *
+   * @param id - Settlement unique identifier (UUID)
+   * @param level - New level (1-20)
+   * @param user - Authenticated user (must have owner/GM role)
+   * @returns Updated settlement entity
+   * @throws {NotFoundException} If settlement not found
+   * @throws {ForbiddenException} If user lacks permission
+   * @throws {BadRequestException} If level is out of valid range (1-20)
    */
   async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaSettlement> {
     // Validate level range before processing
@@ -922,8 +1080,23 @@ export class SettlementService {
   }
 
   /**
-   * Get settlement state as it existed at a specific point in world-time
-   * Supports time-travel queries for version history
+   * Get settlement state at specific world-time (time-travel query)
+   *
+   * Retrieves historical settlement state as it existed at a specific point in campaign
+   * world-time. Uses version history to reconstruct past state. Supports branching
+   * scenarios where different timelines may have divergent histories.
+   *
+   * Use Cases:
+   * - View settlement before major updates
+   * - Compare settlement state across timeline branches
+   * - Audit historical changes
+   * - Implement "rewind" functionality
+   *
+   * @param id - Settlement unique identifier (UUID)
+   * @param branchId - Branch to query version from
+   * @param worldTime - World timestamp to retrieve state for
+   * @param user - Authenticated user (must have access to settlement)
+   * @returns Settlement state at specified time, or null if not found/no version exists
    */
   async getSettlementAsOf(
     id: string,
@@ -951,19 +1124,42 @@ export class SettlementService {
   }
 
   /**
-   * Get computed fields for a settlement by evaluating all active conditions
-   * Returns a map of field names to their computed values
+   * Get computed fields by evaluating JSONLogic conditions
    *
-   * NOTE: Authorization is assumed to be performed by the caller (GraphQL resolver)
+   * Evaluates all active field conditions for the settlement to compute dynamic field
+   * values. Attempts to use Rules Engine worker for high-performance evaluation, falling
+   * back to local evaluation if worker unavailable. Results are cached for 300 seconds.
    *
-   * TODO (Performance): Implement DataLoader pattern to avoid N+1 queries when
-   * resolving computed fields for multiple settlements in a batch.
+   * Evaluation Strategy:
+   * - Primary: Rules Engine worker (gRPC) for parallel evaluation with dependency ordering
+   * - Fallback: Local evaluation (sequential) if worker unavailable
+   * - Caching: 300s TTL with graceful degradation on cache failures
    *
-   * TODO (Performance): Evaluate conditions in parallel using Promise.all
-   * instead of sequential await in loop.
+   * Condition Priority:
+   * - Conditions ordered by priority DESC (highest first)
+   * - First condition for each field wins
+   * - Equal priorities have undefined ordering
    *
-   * TODO (Feature): Consider supporting type-level conditions (entityId: null)
-   * that apply to all settlements of this type.
+   * Context Building:
+   * - Settlement entity data (id, name, level, etc.)
+   * - Custom variables from settlement.variables
+   * - State variables from scope (settlement-specific)
+   * - Related entity data via campaign context
+   *
+   * Performance Notes:
+   * - N+1 query issue: Fetches conditions per settlement (needs DataLoader)
+   * - Sequential evaluation: Local fallback could be parallelized
+   * - Cache invalidation: Triggered by updates to settlement or related entities
+   *
+   * @param settlement - Settlement entity to compute fields for
+   * @param _user - Authenticated user (authorization assumed at resolver level)
+   * @returns Map of field names to computed values (empty object on error)
+   *
+   * @example
+   * ```typescript
+   * const computed = await settlementService.getComputedFields(settlement, user);
+   * // { populationDensity: 450, defensiveRating: 85, taxRevenue: 1200 }
+   * ```
    */
   async getComputedFields(
     settlement: PrismaSettlement,

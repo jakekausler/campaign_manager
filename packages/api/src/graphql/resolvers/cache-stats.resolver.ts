@@ -13,6 +13,43 @@ import { CacheStats } from '../types/cache-stats.type';
 export class CacheStatsResolver {
   constructor(private readonly cacheStatsService: CacheStatsService) {}
 
+  /**
+   * Retrieves comprehensive cache performance statistics.
+   *
+   * Provides Redis cache metrics including hit/miss rates, memory usage,
+   * time saved estimates, and per-type breakdowns (computed fields, settlements,
+   * structures, spatial). This endpoint is restricted to admin users only for
+   * security and performance monitoring purposes.
+   *
+   * **Authorization:** Admin role required (enforced by both decorator and explicit check)
+   *
+   * **Side Effects:**
+   * - Queries Redis for memory info (INFO MEMORY command)
+   * - Scans Redis keys to count by type (SCAN command)
+   *
+   * @param user - The authenticated admin user
+   * @returns Aggregated cache statistics with performance metrics
+   *
+   * @throws {ForbiddenException} If user is not an admin
+   *
+   * @see {@link CacheStatsService.getStats} for in-memory stats aggregation
+   * @see {@link CacheStatsService.getRedisMemoryInfo} for Redis memory details
+   * @see {@link CacheStatsService.estimateTimeSaved} for performance calculations
+   *
+   * @example
+   * ```graphql
+   * query {
+   *   getCacheStats {
+   *     totalHits
+   *     totalMisses
+   *     hitRate
+   *     estimatedTimeSavedMs
+   *     computedFields { hits misses hitRate }
+   *     memoryInfo { usedMemoryMb peakMemoryMb }
+   *   }
+   * }
+   * ```
+   */
   @Query(() => CacheStats, {
     description:
       'Get cache statistics including hit/miss rates, memory usage, and performance metrics (admin-only)',

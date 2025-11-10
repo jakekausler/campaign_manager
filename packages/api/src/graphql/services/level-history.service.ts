@@ -1,7 +1,36 @@
+/**
+ * @fileoverview Level History Service
+ *
+ * Service for tracking and querying historical level changes across all entity types
+ * (parties, kingdoms, settlements, structures) using the audit system. Provides efficient
+ * querying of level progression history with optimized batch queries to avoid N+1 problems.
+ *
+ * Key features:
+ * - Extracts level changes from audit logs
+ * - Supports multiple level fields (level, manualLevelOverride, averageLevel)
+ * - Provides chronological and reverse-chronological ordering
+ * - Campaign-wide level progression tracking
+ * - Efficient batch queries for multiple entities
+ *
+ * @module services/level-history
+ */
+
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service';
 
+/**
+ * Represents a single level change event for an entity
+ *
+ * @interface LevelChangeRecord
+ * @property {string} entityType - Type of entity (party, kingdom, settlement, structure)
+ * @property {string} entityId - Unique identifier of the entity
+ * @property {number | null} oldLevel - Previous level value (null for initial level)
+ * @property {number} newLevel - New level value after the change
+ * @property {string} changedBy - User ID who made the change
+ * @property {Date} changedAt - Timestamp when the change occurred
+ * @property {string} [reason] - Optional reason for the level change
+ */
 export interface LevelChangeRecord {
   entityType: 'party' | 'kingdom' | 'settlement' | 'structure';
   entityId: string;
@@ -12,10 +41,21 @@ export interface LevelChangeRecord {
   reason?: string;
 }
 
+/**
+ * Supported entity types for level tracking
+ *
+ * @typedef {('party' | 'kingdom' | 'settlement' | 'structure')} EntityType
+ */
 export type EntityType = 'party' | 'kingdom' | 'settlement' | 'structure';
 
 /**
  * Type definition for audit changes JSON
+ * Represents the possible level-related fields in audit change records
+ *
+ * @interface AuditChanges
+ * @property {number} [level] - Direct level value (parties, kingdoms)
+ * @property {number | null} [manualLevelOverride] - Manual override level
+ * @property {number} [averageLevel] - Computed average level
  */
 type AuditChanges = {
   level?: number;
@@ -26,25 +66,69 @@ type AuditChanges = {
 
 /**
  * Type guard to validate audit changes structure
+ *
+ * @param {unknown} value - Value to check
+ * @returns {value is AuditChanges} True if value is a valid AuditChanges object
  */
 function isAuditChanges(value: unknown): value is AuditChanges {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
- * Service for tracking and querying level history across all entity types.
- * Uses the existing Audit system to store level change records.
+ * Service for tracking and querying level history across all entity types
+ *
+ * This service leverages the existing audit system to track historical level changes
+ * for parties, kingdoms, settlements, and structures. It provides efficient querying
+ * by using optimized batch queries and in-memory processing to avoid N+1 problems.
+ *
+ * The service handles multiple level field names across different entity types:
+ * - `level`: Direct level value (parties, kingdoms)
+ * - `manualLevelOverride`: Manual override level
+ * - `averageLevel`: Computed average level
+ *
+ * @class LevelHistoryService
+ * @example
+ * ```typescript
+ * // Get level history for a specific party
+ * const history = await levelHistoryService.getLevelHistory('party', 'party-123');
+ *
+ * // Get campaign-wide level history
+ * const campaignHistory = await levelHistoryService.getCampaignLevelHistory('campaign-456');
+ * ```
  */
 @Injectable()
 export class LevelHistoryService {
+  /**
+   * Creates an instance of LevelHistoryService
+   *
+   * @param {PrismaService} prisma - Prisma database service for querying audit logs
+   */
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Get level history for a specific entity
-   * Returns chronological list of level changes from audit logs
+   * Retrieves the complete level history for a specific entity
    *
-   * Performance: Fetches all audits in a single query and processes in memory
-   * to avoid N+1 query problems.
+   * Fetches all CREATE and UPDATE audit entries for the specified entity and extracts
+   * level changes over time. The method processes audits chronologically to build a
+   * complete timeline of level progression, then returns results in reverse chronological
+   * order (most recent first).
+   *
+   * Performance optimization: Fetches all audits in a single query and processes in memory
+   * to avoid N+1 query problems. The query includes user data for each change.
+   *
+   * @param {EntityType} entityType - Type of entity (party, kingdom, settlement, structure)
+   * @param {string} entityId - Unique identifier of the entity
+   * @returns {Promise<LevelChangeRecord[]>} Array of level change records, most recent first
+   *
+   * @example
+   * ```typescript
+   * const partyHistory = await getLevelHistory('party', 'party-123');
+   * // Returns: [
+   * //   { entityType: 'party', entityId: 'party-123', oldLevel: 4, newLevel: 5, ... },
+   * //   { entityType: 'party', entityId: 'party-123', oldLevel: 3, newLevel: 4, ... },
+   * //   { entityType: 'party', entityId: 'party-123', oldLevel: null, newLevel: 3, ... }
+   * // ]
+   * ```
    */
   async getLevelHistory(entityType: EntityType, entityId: string): Promise<LevelChangeRecord[]> {
     // Fetch all audit entries for this entity (CREATE and UPDATE operations)
@@ -110,11 +194,36 @@ export class LevelHistoryService {
   }
 
   /**
-   * Get level history for all entities in a campaign
-   * Useful for campaign-wide level progression tracking
+   * Retrieves level history for all entities across an entire campaign
    *
-   * Performance: Fetches all entities and their audits efficiently using
-   * parallel queries and batching.
+   * Fetches level change history for all parties, kingdoms, settlements, and structures
+   * within a campaign. This method provides a comprehensive view of level progression
+   * across all entity types, useful for campaign analytics and overview displays.
+   *
+   * The method uses highly optimized queries:
+   * 1. Fetches all entity IDs in parallel (4 concurrent queries)
+   * 2. Fetches all audit entries in a single batched query using OR conditions
+   * 3. Groups audits by entity and processes in memory
+   * 4. Returns combined results sorted by timestamp (most recent first)
+   *
+   * Performance characteristics:
+   * - O(1) database queries regardless of entity count (5 total: 4 for IDs, 1 for audits)
+   * - Memory efficient: processes audits in streaming fashion
+   * - Handles large campaigns efficiently with proper indexing
+   *
+   * @param {string} campaignId - Unique identifier of the campaign
+   * @returns {Promise<LevelChangeRecord[]>} Combined array of all level changes, most recent first
+   *
+   * @example
+   * ```typescript
+   * const campaignHistory = await getCampaignLevelHistory('campaign-456');
+   * // Returns: [
+   * //   { entityType: 'party', entityId: 'party-1', oldLevel: 5, newLevel: 6, ... },
+   * //   { entityType: 'kingdom', entityId: 'kingdom-1', oldLevel: 3, newLevel: 4, ... },
+   * //   { entityType: 'settlement', entityId: 'settlement-1', oldLevel: 2, newLevel: 3, ... },
+   * //   // ... all level changes across all entities, sorted by timestamp
+   * // ]
+   * ```
    */
   async getCampaignLevelHistory(campaignId: string): Promise<LevelChangeRecord[]> {
     // Get all entity IDs for this campaign in parallel

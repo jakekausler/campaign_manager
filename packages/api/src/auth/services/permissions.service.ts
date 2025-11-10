@@ -1,8 +1,28 @@
+/**
+ * @fileoverview Permissions service for managing role-based access control (RBAC)
+ * within campaigns. Provides permission checking logic for all campaign entities
+ * and operations.
+ *
+ * This service implements a hierarchical permission system:
+ * - OWNER: Full access including deletion and member management
+ * - GM: Read/write access to all campaign content
+ * - PLAYER: Read access plus own character editing
+ * - VIEWER: Read-only access to public content
+ *
+ * @module auth/services/permissions
+ */
+
 import { Injectable } from '@nestjs/common';
 import { CampaignRole } from '@prisma/client';
 
 import { CampaignMembershipService } from './campaign-membership.service';
 
+/**
+ * Enumeration of all available permissions in the system.
+ * Permissions are scoped by resource type and operation (read/write/delete).
+ *
+ * @enum {string}
+ */
 export enum Permission {
   // Campaign permissions
   CAMPAIGN_READ = 'campaign:read',
@@ -41,7 +61,13 @@ export enum Permission {
   AUDIT_EXPORT = 'audit:export',
 }
 
-// Define permissions for each role
+/**
+ * Maps campaign roles to their allowed permissions.
+ * Defines the complete permission set for each role level.
+ *
+ * @const
+ * @type {Record<CampaignRole, Permission[]>}
+ */
 const ROLE_PERMISSIONS: Record<CampaignRole, Permission[]> = {
   [CampaignRole.OWNER]: [
     // Full access to everything
@@ -104,12 +130,43 @@ const ROLE_PERMISSIONS: Record<CampaignRole, Permission[]> = {
   ],
 };
 
+/**
+ * Service for managing role-based access control (RBAC) within campaigns.
+ *
+ * Provides methods to check user permissions based on their campaign role.
+ * Supports both individual permission checks and bulk permission validation.
+ * All permission checks are campaign-scoped and require valid membership.
+ *
+ * @class PermissionsService
+ * @injectable
+ */
 @Injectable()
 export class PermissionsService {
+  /**
+   * Creates an instance of PermissionsService.
+   *
+   * @param {CampaignMembershipService} campaignMembershipService - Service for retrieving user roles in campaigns
+   */
   constructor(private campaignMembershipService: CampaignMembershipService) {}
 
   /**
-   * Get all permissions for a user in a campaign
+   * Retrieves all permissions granted to a user within a specific campaign.
+   *
+   * Returns the complete set of permissions based on the user's role in the campaign.
+   * If the user is not a member of the campaign, returns an empty array.
+   *
+   * @param {string} campaignId - UUID of the campaign
+   * @param {string} userId - UUID of the user
+   * @returns {Promise<Permission[]>} Array of permissions granted to the user
+   *
+   * @example
+   * ```typescript
+   * const permissions = await permissionsService.getUserPermissions(
+   *   'campaign-123',
+   *   'user-456'
+   * );
+   * console.log(permissions); // [Permission.CAMPAIGN_READ, Permission.CHARACTER_READ, ...]
+   * ```
    */
   async getUserPermissions(campaignId: string, userId: string): Promise<Permission[]> {
     const role = await this.campaignMembershipService.getUserRole(campaignId, userId);
@@ -121,7 +178,27 @@ export class PermissionsService {
   }
 
   /**
-   * Check if user has a specific permission in a campaign
+   * Checks if a user has a specific permission within a campaign.
+   *
+   * Verifies that the user's role grants them the requested permission.
+   * Returns false if the user is not a member or lacks the permission.
+   *
+   * @param {string} campaignId - UUID of the campaign
+   * @param {string} userId - UUID of the user
+   * @param {Permission} permission - The permission to check
+   * @returns {Promise<boolean>} True if user has the permission, false otherwise
+   *
+   * @example
+   * ```typescript
+   * const canWrite = await permissionsService.hasPermission(
+   *   'campaign-123',
+   *   'user-456',
+   *   Permission.CAMPAIGN_WRITE
+   * );
+   * if (!canWrite) {
+   *   throw new ForbiddenException('Cannot modify campaign');
+   * }
+   * ```
    */
   async hasPermission(
     campaignId: string,
@@ -133,7 +210,24 @@ export class PermissionsService {
   }
 
   /**
-   * Check if user has all of the specified permissions in a campaign
+   * Checks if a user has all of the specified permissions within a campaign.
+   *
+   * Validates that the user's role grants every permission in the provided array.
+   * Useful for operations that require multiple permissions simultaneously.
+   *
+   * @param {string} campaignId - UUID of the campaign
+   * @param {string} userId - UUID of the user
+   * @param {Permission[]} permissions - Array of permissions to check
+   * @returns {Promise<boolean>} True if user has all permissions, false if missing any
+   *
+   * @example
+   * ```typescript
+   * const canManageCampaign = await permissionsService.hasAllPermissions(
+   *   'campaign-123',
+   *   'user-456',
+   *   [Permission.CAMPAIGN_WRITE, Permission.CAMPAIGN_MANAGE_MEMBERS]
+   * );
+   * ```
    */
   async hasAllPermissions(
     campaignId: string,
@@ -145,7 +239,24 @@ export class PermissionsService {
   }
 
   /**
-   * Check if user has any of the specified permissions in a campaign
+   * Checks if a user has at least one of the specified permissions within a campaign.
+   *
+   * Returns true if the user's role grants any permission in the provided array.
+   * Useful for operations that can be performed with alternative permissions.
+   *
+   * @param {string} campaignId - UUID of the campaign
+   * @param {string} userId - UUID of the user
+   * @param {Permission[]} permissions - Array of permissions to check
+   * @returns {Promise<boolean>} True if user has any of the permissions, false if none
+   *
+   * @example
+   * ```typescript
+   * const canViewContent = await permissionsService.hasAnyPermission(
+   *   'campaign-123',
+   *   'user-456',
+   *   [Permission.CAMPAIGN_READ, Permission.EVENT_READ]
+   * );
+   * ```
    */
   async hasAnyPermission(
     campaignId: string,
@@ -157,7 +268,31 @@ export class PermissionsService {
   }
 
   /**
-   * Check if user can edit their own character
+   * Checks if a user can edit their own character.
+   *
+   * **NOTE:** This is a placeholder implementation that always returns true.
+   * Full implementation requires character ownership validation and will be
+   * completed when the character module is implemented.
+   *
+   * The final implementation should:
+   * 1. Verify the character exists and belongs to the user
+   * 2. Check if the user has CHARACTER_WRITE permission in the campaign
+   * 3. Validate the campaign membership is active
+   *
+   * @param {string} _characterId - UUID of the character (unused in placeholder)
+   * @param {string} _userId - UUID of the user (unused in placeholder)
+   * @returns {Promise<boolean>} Always returns true (placeholder behavior)
+   *
+   * @todo Implement full character ownership check when character module is available
+   *
+   * @example
+   * ```typescript
+   * const canEdit = await permissionsService.canEditOwnCharacter(
+   *   'character-123',
+   *   'user-456'
+   * );
+   * // Currently always returns true
+   * ```
    */
   async canEditOwnCharacter(_characterId: string, _userId: string): Promise<boolean> {
     // This would need to check if the character belongs to the user

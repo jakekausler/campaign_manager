@@ -27,7 +27,20 @@ export class DependencyGraphResolver {
   // ============= Query Resolvers =============
 
   /**
-   * Get the complete dependency graph for a campaign/branch
+   * Retrieves the complete dependency graph for a campaign and branch.
+   *
+   * Returns all nodes (variables, conditions, effects, entities), their edges (dependency relationships),
+   * and statistics about the graph structure. The graph represents the flow of data and dependencies
+   * between computed fields, conditions, and world state.
+   *
+   * **Authorization:** Authenticated user with campaign access required
+   *
+   * @param campaignId - Campaign identifier
+   * @param branchId - Branch identifier (defaults to 'main')
+   * @param user - Authenticated user requesting the graph
+   * @returns Complete dependency graph with nodes, edges, statistics, and metadata
+   *
+   * @see {@link DependencyGraphService.getGraph} for graph building and caching logic
    */
   @Query(() => DependencyGraphResult, {
     description:
@@ -67,7 +80,21 @@ export class DependencyGraphResolver {
   }
 
   /**
-   * Get all nodes that a specific node depends on (upstream dependencies)
+   * Retrieves all nodes that a specific node depends on (upstream dependencies).
+   *
+   * Returns the transitive closure of dependencies - all nodes that must be evaluated
+   * before the specified node can be evaluated. For example, for a condition, this returns
+   * all variables it reads; for a variable, this returns all other variables it depends on.
+   *
+   * **Authorization:** Authenticated user with campaign access required
+   *
+   * @param campaignId - Campaign identifier
+   * @param branchId - Branch identifier (defaults to 'main')
+   * @param nodeId - The node to get dependencies for
+   * @param user - Authenticated user requesting the dependencies
+   * @returns Array of dependency nodes (nodes that the specified node depends on)
+   *
+   * @see {@link DependencyGraphService.getDependenciesOf} for dependency traversal logic
    */
   @Query(() => [DependencyNode], {
     description:
@@ -84,7 +111,22 @@ export class DependencyGraphResolver {
   }
 
   /**
-   * Get all nodes that depend on a specific node (downstream dependents)
+   * Retrieves all nodes that depend on a specific node (downstream dependents).
+   *
+   * Returns the transitive closure of dependents - all nodes that would be affected
+   * if the specified node changes. For example, for a variable, this returns all conditions
+   * and other variables that read it; for an entity, this returns all conditions that
+   * reference it. Useful for impact analysis and cache invalidation.
+   *
+   * **Authorization:** Authenticated user with campaign access required
+   *
+   * @param campaignId - Campaign identifier
+   * @param branchId - Branch identifier (defaults to 'main')
+   * @param nodeId - The node to get dependents for
+   * @param user - Authenticated user requesting the dependents
+   * @returns Array of dependent nodes (nodes that depend on the specified node)
+   *
+   * @see {@link DependencyGraphService.getDependents} for dependent traversal logic
    */
   @Query(() => [DependencyNode], {
     description:
@@ -101,7 +143,21 @@ export class DependencyGraphResolver {
   }
 
   /**
-   * Validate the dependency graph for cycles
+   * Validates the dependency graph for cyclic dependencies.
+   *
+   * Performs cycle detection to ensure the graph is acyclic (a Directed Acyclic Graph).
+   * Cycles prevent proper evaluation order and must be resolved. Returns detailed
+   * information about any detected cycles, including the nodes involved in each cycle
+   * and which edges form the cycle.
+   *
+   * **Authorization:** Authenticated user with campaign access required
+   *
+   * @param campaignId - Campaign identifier
+   * @param branchId - Branch identifier (defaults to 'main')
+   * @param user - Authenticated user requesting validation
+   * @returns Cycle detection result with hasCycles flag and cycle details if found
+   *
+   * @see {@link DependencyGraphService.validateNoCycles} for cycle detection algorithm
    */
   @Query(() => CycleDetectionResult, {
     description:
@@ -120,7 +176,21 @@ export class DependencyGraphResolver {
   }
 
   /**
-   * Get the evaluation order for all nodes (topological sort)
+   * Retrieves the evaluation order for all nodes via topological sort.
+   *
+   * Returns node IDs in topological order where all dependencies of a node appear
+   * before that node in the list. This order ensures that when evaluating conditions
+   * and variables, all dependencies are computed before they are needed. Returns an
+   * empty array if cycles are detected (preventing valid topological ordering).
+   *
+   * **Authorization:** Authenticated user with campaign access required
+   *
+   * @param campaignId - Campaign identifier
+   * @param branchId - Branch identifier (defaults to 'main')
+   * @param user - Authenticated user requesting the evaluation order
+   * @returns Array of node IDs in evaluation order, or empty array if cycles exist
+   *
+   * @see {@link DependencyGraphService.getEvaluationOrder} for topological sort implementation
    */
   @Query(() => [String], {
     description:
@@ -138,9 +208,25 @@ export class DependencyGraphResolver {
   // ============= Mutation Resolvers =============
 
   /**
-   * Invalidate the cached dependency graph for a campaign/branch
-   * This forces the graph to be rebuilt on the next query
-   * Requires owner or gm role
+   * Invalidates the cached dependency graph for a campaign and branch.
+   *
+   * Forces the dependency graph to be rebuilt from scratch on the next query.
+   * This is useful when the graph may be stale due to schema changes, manual database
+   * modifications, or suspected cache inconsistencies. The graph will be automatically
+   * rebuilt when next accessed.
+   *
+   * **Authorization:** OWNER or GM role required
+   *
+   * **Side Effects:**
+   * - Clears cached dependency graph for the specified campaign/branch
+   * - Next graph query will trigger a full rebuild
+   *
+   * @param campaignId - Campaign identifier
+   * @param branchId - Branch identifier (defaults to 'main')
+   * @param user - Authenticated user performing the invalidation
+   * @returns True if cache invalidation succeeded
+   *
+   * @see {@link DependencyGraphService.invalidateGraph} for cache clearing logic
    */
   @Mutation(() => Boolean, {
     description:

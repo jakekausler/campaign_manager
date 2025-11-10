@@ -1,6 +1,9 @@
 /**
  * Spatial Resolver
- * GraphQL resolvers for spatial queries and geometry operations
+ *
+ * GraphQL resolvers for spatial queries and geometry operations using PostGIS.
+ * Provides geospatial functionality including bounding box queries, proximity searches,
+ * containment checks, and geometry updates with GeoJSON support.
  */
 
 import { UseGuards } from '@nestjs/common';
@@ -43,9 +46,25 @@ export class SpatialResolver {
   ) {}
 
   /**
-   * Query: mapLayer
-   * Returns GeoJSON FeatureCollection for a map viewport
-   * Uses in-memory caching to improve performance for repeated requests
+   * Retrieves map layer data as GeoJSON FeatureCollection for a viewport bounding box.
+   *
+   * Performs a spatial query to find all locations within the given bounding box,
+   * optionally filtered by location type. Results include settlement data if locations
+   * have associated settlements. Uses in-memory tile caching for improved performance
+   * on repeated viewport requests.
+   *
+   * **Side Effects:**
+   * - Caches result in TileCacheService for subsequent requests with same parameters
+   * - Cache key based on worldId, bounding box, and filters
+   *
+   * @param worldId - World identifier to query locations from
+   * @param bbox - Bounding box with west, south, east, north coordinates
+   * @param filters - Optional filters (e.g., location types to include)
+   * @param _user - Authenticated user (required for access control)
+   * @returns GeoJSON FeatureCollection with location features and embedded settlement data
+   *
+   * @see {@link SpatialService.locationsInBounds} for PostGIS spatial query
+   * @see {@link TileCacheService} for caching implementation
    */
   @Query(() => GeoJSONFeatureCollection, {
     description: 'Get map layer as GeoJSON FeatureCollection for viewport',
@@ -158,8 +177,27 @@ export class SpatialResolver {
   }
 
   /**
-   * Mutation: updateLocationGeometry
-   * Updates the geometry of a location
+   * Updates the geometry of an existing location using GeoJSON.
+   *
+   * Converts GeoJSON geometry to PostGIS WKB format and updates the location's
+   * spatial data. Supports optimistic locking via expectedVersion and optional
+   * branch-aware updates for the branching system.
+   *
+   * **Authorization:** OWNER or GM role required
+   *
+   * **Side Effects:**
+   * - Updates location geometry in PostGIS
+   * - Creates audit log entry with geometry diff
+   * - Invalidates tile cache for affected viewport regions
+   * - Updates version number for optimistic concurrency control
+   * - Records worldTime if provided (for temporal tracking)
+   *
+   * @param id - Location identifier
+   * @param input - Geometry update data (GeoJSON, version, branch, SRID, worldTime)
+   * @param user - Authenticated user performing the update
+   * @returns Updated location with new geometry
+   *
+   * @see {@link LocationService.updateLocationGeometry} for validation and update logic
    */
   @Mutation(() => Location, { description: 'Update location geometry' })
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -185,8 +223,17 @@ export class SpatialResolver {
   }
 
   /**
-   * Query: locationsNear
-   * Find locations near a point within a radius
+   * Finds all locations near a point within a specified radius.
+   *
+   * Uses PostGIS ST_DWithin for efficient proximity search with spatial indexing.
+   * Returns locations sorted by distance from the query point. Distances are
+   * calculated in the specified SRID's units (defaults to Web Mercator meters).
+   *
+   * @param input - Proximity search parameters (point, radius, SRID, worldId)
+   * @param _user - Authenticated user (required for access control)
+   * @returns Array of locations with calculated distance from query point
+   *
+   * @see {@link SpatialService.locationsNear} for PostGIS proximity query
    */
   @Query(() => [LocationWithDistance], {
     description: 'Find locations near a point within radius',
@@ -233,8 +280,18 @@ export class SpatialResolver {
   }
 
   /**
-   * Query: locationsInRegion
-   * Find all locations within a region polygon
+   * Finds all locations spatially contained within a region's polygon boundary.
+   *
+   * Uses PostGIS ST_Contains to perform spatial containment check between the
+   * region's geometry and location geometries. Optionally filters by worldId
+   * to restrict results to a specific world.
+   *
+   * @param regionId - Region identifier (location with polygon geometry)
+   * @param worldId - Optional world identifier to filter results
+   * @param _user - Authenticated user (required for access control)
+   * @returns Array of locations fully contained within the region polygon
+   *
+   * @see {@link SpatialService.locationsInRegion} for PostGIS containment query
    */
   @Query(() => [Location], {
     description: 'Find all locations within a region',
@@ -273,8 +330,18 @@ export class SpatialResolver {
   }
 
   /**
-   * Query: checkRegionOverlap
-   * Check if two regions overlap
+   * Checks if two region polygons have any spatial overlap.
+   *
+   * Uses PostGIS ST_Overlaps to detect if two region geometries intersect
+   * or share any common area. Useful for validating kingdom boundaries,
+   * detecting territory conflicts, or checking region adjacency.
+   *
+   * @param region1Id - First region identifier (location with polygon geometry)
+   * @param region2Id - Second region identifier (location with polygon geometry)
+   * @param _user - Authenticated user (required for access control)
+   * @returns Result object containing overlap boolean and region identifiers
+   *
+   * @see {@link SpatialService.checkRegionOverlap} for PostGIS overlap query
    */
   @Query(() => RegionOverlapResult, {
     description: 'Check if two regions overlap (utility function)',
@@ -295,8 +362,19 @@ export class SpatialResolver {
   }
 
   /**
-   * Query: settlementsInRegion
-   * Find all settlements within a region polygon
+   * Finds all settlements spatially contained within a region's polygon boundary.
+   *
+   * Performs a spatial join between settlements (via their location geometries)
+   * and the region polygon using PostGIS ST_Contains. Useful for determining
+   * which settlements belong to a kingdom's territory or counting population
+   * within a geographic area.
+   *
+   * @param regionId - Region identifier (location with polygon geometry)
+   * @param worldId - Optional world identifier to filter results
+   * @param user - Authenticated user (required for access control)
+   * @returns Array of settlements whose locations are contained within the region
+   *
+   * @see {@link SpatialService.settlementsInRegion} for PostGIS spatial join query
    */
   @Query(() => [Settlement], {
     description: 'Find all settlements within a region',
@@ -324,8 +402,17 @@ export class SpatialResolver {
   }
 
   /**
-   * Query: settlementAtLocation
-   * Find settlement at a specific location
+   * Finds the settlement associated with a specific location.
+   *
+   * Looks up the settlement directly linked to the given location ID.
+   * A location can have at most one settlement. Returns null if no
+   * settlement exists at the location.
+   *
+   * @param locationId - Location identifier to check for settlement
+   * @param user - Authenticated user (required for access control)
+   * @returns Settlement at the location, or null if none exists
+   *
+   * @see {@link SpatialService.settlementAtLocation} for lookup query
    */
   @Query(() => Settlement, {
     nullable: true,
@@ -352,8 +439,19 @@ export class SpatialResolver {
   }
 
   /**
-   * Query: settlementsNear
-   * Find settlements near a point within a radius
+   * Finds all settlements near a point within a specified radius.
+   *
+   * Performs a spatial proximity search using PostGIS ST_DWithin on settlement
+   * locations. Returns settlements sorted by distance from the query point.
+   * Distances are calculated in the specified SRID's units (defaults to Web
+   * Mercator meters). Useful for "find nearest town" queries or radius-based
+   * encounter generation.
+   *
+   * @param input - Proximity search parameters (point, radius, SRID, worldId)
+   * @param user - Authenticated user (required for access control)
+   * @returns Array of settlements with calculated distance from query point
+   *
+   * @see {@link SpatialService.settlementsNear} for PostGIS proximity query
    */
   @Query(() => [SettlementWithDistance], {
     description: 'Find settlements near a point within radius',

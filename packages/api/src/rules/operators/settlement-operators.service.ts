@@ -1,7 +1,18 @@
 /**
- * Settlement Operators Service
- * Registers custom JSONLogic operators for querying Settlement entities
- * Enables rule expressions to access settlement properties, variables, and structure stats
+ * @fileoverview Settlement Operators Service
+ *
+ * Registers custom JSONLogic operators for querying Settlement entities in rule expressions.
+ * Enables condition expressions to access settlement properties, variables, structure counts,
+ * and relational data (kingdom membership, location).
+ *
+ * Provides operators for:
+ * - Accessing settlement level and typed variables
+ * - Querying structure presence and counts by type
+ * - Checking kingdom membership and location relationships
+ *
+ * All operators support both explicit settlement ID or implicit context from evaluation.
+ *
+ * @module rules/operators
  */
 
 import { Injectable, OnModuleInit } from '@nestjs/common';
@@ -11,6 +22,35 @@ import { SettlementContextBuilderService } from '../../graphql/services/settleme
 import { OperatorRegistry } from '../operator-registry';
 import type { CustomOperator } from '../types/expression.types';
 
+/**
+ * Service for registering and managing custom JSONLogic operators specific to Settlement entities.
+ *
+ * Registers 6 custom operators on module initialization:
+ * - `settlement.level` - Get settlement level
+ * - `settlement.var` - Get typed variable value
+ * - `settlement.hasStructureType` - Check structure type presence
+ * - `settlement.structureCount` - Count structures by type
+ * - `settlement.inKingdom` - Check kingdom membership
+ * - `settlement.atLocation` - Check location relationship
+ *
+ * Each operator accepts an optional settlement ID as the last argument. If not provided,
+ * the operator would use the settlement from the evaluation context (to be implemented).
+ *
+ * @example
+ * // Check if settlement has reached level 3
+ * { ">=": [{ "settlement.level": [] }, 3] }
+ *
+ * @example
+ * // Check if settlement has a temple and population over 1000
+ * { "and": [
+ *   { "settlement.hasStructureType": ["temple"] },
+ *   { ">": [{ "settlement.var": ["population"] }, 1000] }
+ * ]}
+ *
+ * @example
+ * // Count barracks in a specific settlement
+ * { "settlement.structureCount": ["barracks", "settlement-123"] }
+ */
 @Injectable()
 export class SettlementOperatorsService implements OnModuleInit {
   constructor(
@@ -19,14 +59,27 @@ export class SettlementOperatorsService implements OnModuleInit {
   ) {}
 
   /**
-   * Register all settlement operators on module initialization
+   * Lifecycle hook that registers all settlement operators when the module initializes.
+   *
+   * Called automatically by NestJS during application bootstrap.
+   * Ensures all custom operators are available before any rule evaluations occur.
    */
   async onModuleInit(): Promise<void> {
     this.registerOperators();
   }
 
   /**
-   * Register all 6 settlement custom operators
+   * Registers all settlement-specific custom operators with the operator registry.
+   *
+   * Creates and registers 6 operators:
+   * - settlement.level
+   * - settlement.var
+   * - settlement.hasStructureType
+   * - settlement.structureCount
+   * - settlement.inKingdom
+   * - settlement.atLocation
+   *
+   * Each operator is defined with a name, description, and async implementation function.
    */
   registerOperators(): void {
     const operators: CustomOperator[] = [
@@ -44,10 +97,24 @@ export class SettlementOperatorsService implements OnModuleInit {
   }
 
   /**
-   * settlement.level - Get settlement level
-   * Usage: { "settlement.level": [] } or { "settlement.level": ["settlement-id"] }
+   * Creates the `settlement.level` operator for accessing settlement level.
    *
-   * @returns Settlement level (0 if settlement not found)
+   * Returns the current level of the settlement (typically 0-5 representing
+   * village, town, city progression).
+   *
+   * @returns CustomOperator that returns settlement level
+   *
+   * @example
+   * // Get level of settlement from context
+   * { "settlement.level": [] }
+   *
+   * @example
+   * // Get level of specific settlement
+   * { "settlement.level": ["settlement-123"] }
+   *
+   * @example
+   * // Check if settlement is at least level 3 (city)
+   * { ">=": [{ "settlement.level": [] }, 3] }
    */
   private createLevelOperator(): CustomOperator {
     return {
@@ -62,10 +129,29 @@ export class SettlementOperatorsService implements OnModuleInit {
   }
 
   /**
-   * settlement.var - Get settlement typed variable value
-   * Usage: { "settlement.var": ["variableName"] } or { "settlement.var": ["variableName", "settlement-id"] }
+   * Creates the `settlement.var` operator for accessing typed settlement variables.
    *
-   * @returns Variable value (undefined if not found)
+   * Retrieves values from the settlement's custom variables map. Variables are typed
+   * (string, number, boolean) and can represent custom settlement properties like
+   * population, wealth, reputation, etc.
+   *
+   * @returns CustomOperator that returns the variable value (any type) or undefined if not found
+   *
+   * @example
+   * // Get population variable from settlement in context
+   * { "settlement.var": ["population"] }
+   *
+   * @example
+   * // Get wealth variable from specific settlement
+   * { "settlement.var": ["wealth", "settlement-123"] }
+   *
+   * @example
+   * // Check if settlement population exceeds 1000
+   * { ">": [{ "settlement.var": ["population"] }, 1000] }
+   *
+   * @example
+   * // Check if settlement has a specific flag set
+   * { "==": [{ "settlement.var": ["isUnderSiege"] }, true] }
    */
   private createVarOperator(): CustomOperator {
     return {
@@ -86,10 +172,27 @@ export class SettlementOperatorsService implements OnModuleInit {
   }
 
   /**
-   * settlement.hasStructureType - Check if settlement has structure of specific type
-   * Usage: { "settlement.hasStructureType": ["temple"] } or { "settlement.hasStructureType": ["temple", "settlement-id"] }
+   * Creates the `settlement.hasStructureType` operator for checking structure type presence.
    *
-   * @returns True if settlement has at least one structure of the type
+   * Checks whether the settlement contains at least one structure of the specified type.
+   * Uses precomputed structure statistics for efficient lookup.
+   *
+   * @returns CustomOperator that returns true if the structure type exists, false otherwise
+   *
+   * @example
+   * // Check if settlement has a temple
+   * { "settlement.hasStructureType": ["temple"] }
+   *
+   * @example
+   * // Check if specific settlement has barracks
+   * { "settlement.hasStructureType": ["barracks", "settlement-123"] }
+   *
+   * @example
+   * // Check if settlement has both temple and market
+   * { "and": [
+   *   { "settlement.hasStructureType": ["temple"] },
+   *   { "settlement.hasStructureType": ["market"] }
+   * ]}
    */
   private createHasStructureTypeOperator(): CustomOperator {
     return {
@@ -111,12 +214,32 @@ export class SettlementOperatorsService implements OnModuleInit {
   }
 
   /**
-   * settlement.structureCount - Count structures (optionally filtered by type)
-   * Usage: { "settlement.structureCount": [] } - total count
-   *        { "settlement.structureCount": ["barracks"] } - count of specific type
-   *        { "settlement.structureCount": ["barracks", "settlement-id"] } - with explicit ID
+   * Creates the `settlement.structureCount` operator for counting structures.
    *
-   * @returns Number of structures (0 if settlement not found)
+   * Returns the count of structures, either total count or filtered by specific type.
+   * Uses precomputed structure statistics for efficient counting.
+   *
+   * @returns CustomOperator that returns the structure count (0 if settlement not found)
+   *
+   * @example
+   * // Get total structure count from context settlement
+   * { "settlement.structureCount": [] }
+   *
+   * @example
+   * // Get count of barracks in context settlement
+   * { "settlement.structureCount": ["barracks"] }
+   *
+   * @example
+   * // Get count of temples in specific settlement
+   * { "settlement.structureCount": ["temple", "settlement-123"] }
+   *
+   * @example
+   * // Check if settlement has at least 3 barracks
+   * { ">=": [{ "settlement.structureCount": ["barracks"] }, 3] }
+   *
+   * @example
+   * // Check if settlement has more than 10 total structures
+   * { ">": [{ "settlement.structureCount": [] }, 10] }
    */
   private createStructureCountOperator(): CustomOperator {
     return {
@@ -144,10 +267,24 @@ export class SettlementOperatorsService implements OnModuleInit {
   }
 
   /**
-   * settlement.inKingdom - Check if settlement belongs to specific kingdom
-   * Usage: { "settlement.inKingdom": ["kingdom-id"] } or { "settlement.inKingdom": ["kingdom-id", "settlement-id"] }
+   * Creates the `settlement.inKingdom` operator for checking kingdom membership.
    *
-   * @returns True if settlement belongs to the kingdom
+   * Checks whether the settlement belongs to the specified kingdom by comparing
+   * the settlement's kingdomId with the provided kingdom ID.
+   *
+   * @returns CustomOperator that returns true if settlement belongs to the kingdom, false otherwise
+   *
+   * @example
+   * // Check if settlement belongs to specific kingdom
+   * { "settlement.inKingdom": ["kingdom-123"] }
+   *
+   * @example
+   * // Check if a different settlement belongs to the kingdom
+   * { "settlement.inKingdom": ["kingdom-123", "settlement-456"] }
+   *
+   * @example
+   * // Check if settlement is in player's kingdom
+   * { "settlement.inKingdom": [{ "var": "playerKingdomId" }] }
    */
   private createInKingdomOperator(): CustomOperator {
     return {
@@ -168,10 +305,24 @@ export class SettlementOperatorsService implements OnModuleInit {
   }
 
   /**
-   * settlement.atLocation - Check if settlement is at specific location
-   * Usage: { "settlement.atLocation": ["location-id"] } or { "settlement.atLocation": ["location-id", "settlement-id"] }
+   * Creates the `settlement.atLocation` operator for checking location relationship.
    *
-   * @returns True if settlement is at the location
+   * Checks whether the settlement is positioned at the specified location by comparing
+   * the settlement's locationId with the provided location ID.
+   *
+   * @returns CustomOperator that returns true if settlement is at the location, false otherwise
+   *
+   * @example
+   * // Check if settlement is at specific location
+   * { "settlement.atLocation": ["location-123"] }
+   *
+   * @example
+   * // Check if a different settlement is at the location
+   * { "settlement.atLocation": ["location-123", "settlement-456"] }
+   *
+   * @example
+   * // Check if settlement is at player's current location
+   * { "settlement.atLocation": [{ "var": "playerLocationId" }] }
    */
   private createAtLocationOperator(): CustomOperator {
     return {
@@ -192,11 +343,21 @@ export class SettlementOperatorsService implements OnModuleInit {
   }
 
   /**
-   * Get settlement context by ID
-   * If no ID provided, returns undefined (would come from evaluation context in full implementation)
+   * Retrieves settlement context data for rule evaluation.
    *
-   * @param settlementId - Optional settlement ID
-   * @returns Settlement context or undefined
+   * If a settlement ID is provided, fetches the full settlement context including properties,
+   * variables, structure statistics, and relational data. If no ID is provided, returns
+   * undefined (in full implementation, would extract from evaluation context).
+   *
+   * @param settlementId - Optional UUID of the settlement to fetch
+   * @returns Promise resolving to settlement context, or undefined if not found or no ID provided
+   *
+   * @remarks
+   * - Returns undefined if no settlementId provided (context extraction to be implemented)
+   * - Returns undefined if settlement not found or has been deleted
+   * - Silently handles errors to avoid breaking rule evaluation
+   *
+   * @internal
    */
   private async getSettlement(settlementId?: string): Promise<SettlementRulesContext | undefined> {
     if (!settlementId) {

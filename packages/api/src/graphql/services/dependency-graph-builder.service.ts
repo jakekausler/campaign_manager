@@ -1,7 +1,30 @@
 /**
- * Dependency Graph Builder Service
- * Builds in-memory dependency graphs from database state (conditions, variables, effects).
- * Supports incremental updates for individual entities.
+ * @fileoverview Dependency Graph Builder Service
+ *
+ * This service is responsible for constructing and maintaining in-memory dependency graphs
+ * that represent relationships between conditions, state variables, and effects within a campaign.
+ * It queries the database for active entities, extracts their dependencies using the
+ * DependencyExtractor utility, and builds a complete graph structure showing how entities
+ * read from and write to state variables.
+ *
+ * Key Responsibilities:
+ * - Build complete dependency graphs for campaigns from database state
+ * - Support incremental graph updates when individual entities change
+ * - Create nodes for conditions, variables, and effects
+ * - Create edges representing READ and WRITE relationships
+ * - Handle virtual variable nodes for settlement/structure properties
+ * - Filter entities by campaign context and active status
+ *
+ * Graph Structure:
+ * - Nodes: CONDITION (computed fields), VARIABLE (state storage), EFFECT (state mutations)
+ * - Edges: READS (condition/effect → variable), WRITES (effect → variable)
+ *
+ * Usage:
+ * - GraphQL resolvers use this to build graphs for dependency analysis
+ * - Real-time update system uses incremental updates when entities change
+ * - Cache invalidation system uses graph to determine affected entities
+ *
+ * @module DependencyGraphBuilderService
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -18,27 +41,60 @@ import { DependencyExtractor } from '../utils/dependency-extractor';
 import { DependencyGraph } from '../utils/dependency-graph';
 
 /**
- * DependencyGraphBuilderService - Builds dependency graphs from database entities
+ * Service for building and maintaining dependency graphs from database entities.
  *
- * This service queries the database for conditions, variables, and effects (future),
- * extracts their dependencies using DependencyExtractor, and builds a complete
- * in-memory dependency graph.
+ * This service provides both full graph construction for campaigns and incremental
+ * update operations for individual entities. It handles the complexity of polymorphic
+ * relationships, virtual nodes for entity properties, and proper edge creation based
+ * on JSONLogic expressions and JSON Patch operations.
+ *
+ * The dependency graph is used for:
+ * - Visualizing entity relationships in the Flow View
+ * - Cache invalidation when state variables change
+ * - Impact analysis for rule changes
+ * - Debugging condition evaluation dependencies
+ *
+ * @class DependencyGraphBuilderService
  */
 @Injectable()
 export class DependencyGraphBuilderService {
   private readonly logger = new Logger(DependencyGraphBuilderService.name);
   private readonly dependencyExtractor = new DependencyExtractor();
 
+  /**
+   * Constructs a new DependencyGraphBuilderService instance.
+   *
+   * @param {PrismaService} prisma - Prisma database client for querying entities
+   */
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Build a complete dependency graph for a campaign/branch
-   * Queries all active conditions and variables, extracts dependencies,
-   * and constructs the graph
+   * Builds a complete dependency graph for a campaign and branch.
    *
-   * @param campaignId - Campaign ID to build graph for
-   * @param branchId - Branch ID (defaults to 'main')
-   * @returns Populated dependency graph
+   * This method performs a comprehensive query of all active conditions, state variables,
+   * and effects associated with the specified campaign, then constructs a full in-memory
+   * dependency graph showing their relationships.
+   *
+   * The graph construction follows this process:
+   * 1. Query all active FieldConditions (filters by isActive and deletedAt)
+   * 2. Query all active StateVariables (filters by isActive and deletedAt)
+   * 3. Query all active patch-type Effects (filters by isActive, deletedAt, effectType)
+   * 4. Create VARIABLE nodes for all state variables
+   * 5. Create CONDITION nodes and READS edges to referenced variables
+   * 6. Create EFFECT nodes and WRITES edges to modified variables
+   * 7. Create virtual variable nodes for settlement/structure properties as needed
+   *
+   * Virtual nodes are created for entity properties (e.g., "settlement.level") that are
+   * referenced in conditions but don't exist as StateVariable records in the database.
+   *
+   * @param {string} campaignId - The ID of the campaign to build the graph for
+   * @param {string} [branchId='main'] - The ID of the branch (defaults to 'main' for MVP)
+   * @returns {Promise<DependencyGraph>} A fully populated dependency graph with nodes and edges
+   * @throws {Error} If database queries fail or graph construction encounters errors
+   *
+   * @example
+   * const graph = await builder.buildGraphForCampaign('campaign-123');
+   * console.log(`Graph has ${graph.getNodeCount()} nodes and ${graph.getEdgeCount()} edges`);
    */
   async buildGraphForCampaign(
     campaignId: string,
@@ -255,11 +311,27 @@ export class DependencyGraphBuilderService {
   }
 
   /**
-   * Incrementally update the graph when a condition is added/updated
-   * Removes old edges and adds new ones based on updated expression
+   * Incrementally updates the dependency graph when a condition is added or modified.
    *
-   * @param graph - The graph to update
-   * @param conditionId - ID of the condition that changed
+   * This method performs a targeted update of the graph by:
+   * 1. Fetching the latest condition data from the database
+   * 2. Removing the condition node if it no longer exists, is inactive, or deleted
+   * 3. Removing all outgoing edges from the condition node
+   * 4. Re-creating the condition node with updated metadata
+   * 5. Extracting variable dependencies from the updated expression
+   * 6. Creating new READS edges to all referenced variables
+   *
+   * This is more efficient than rebuilding the entire graph and is used by the
+   * real-time update system when condition expressions are modified.
+   *
+   * @param {DependencyGraph} graph - The dependency graph to update in-place
+   * @param {string} conditionId - The ID of the condition that was added or modified
+   * @returns {Promise<void>} Promise that resolves when the graph has been updated
+   * @throws {Error} If database query fails or graph update operations fail
+   *
+   * @example
+   * // After a condition's expression is updated
+   * await builder.updateGraphForCondition(graph, 'condition-456');
    */
   async updateGraphForCondition(graph: DependencyGraph, conditionId: string): Promise<void> {
     this.logger.debug(`Updating graph for condition ${conditionId}`);
@@ -339,11 +411,26 @@ export class DependencyGraphBuilderService {
   }
 
   /**
-   * Incrementally update the graph when a variable is added/updated
-   * Updates the variable node and preserves existing edges
+   * Incrementally updates the dependency graph when a state variable is added or modified.
    *
-   * @param graph - The graph to update
-   * @param variableId - ID of the variable that changed
+   * This method performs a targeted update of the graph by:
+   * 1. Fetching the latest variable data from the database
+   * 2. Removing the variable node if it no longer exists, is inactive, or deleted
+   * 3. Updating the variable node with new metadata (scope, key, type)
+   * 4. Preserving all existing edges to/from the variable node
+   *
+   * Unlike condition and effect updates, variable updates do not rebuild edges because
+   * the variable's identity (scope:key) determines its dependencies, not its value or metadata.
+   * Edges to variables are created by conditions and effects that reference them.
+   *
+   * @param {DependencyGraph} graph - The dependency graph to update in-place
+   * @param {string} variableId - The ID of the state variable that was added or modified
+   * @returns {Promise<void>} Promise that resolves when the graph has been updated
+   * @throws {Error} If database query fails or graph update operations fail
+   *
+   * @example
+   * // After a variable's metadata is updated
+   * await builder.updateGraphForVariable(graph, 'var-789');
    */
   async updateGraphForVariable(graph: DependencyGraph, variableId: string): Promise<void> {
     this.logger.debug(`Updating graph for variable ${variableId}`);
@@ -392,11 +479,28 @@ export class DependencyGraphBuilderService {
   }
 
   /**
-   * Incrementally update the graph when an effect is added/updated
-   * Removes old edges and adds new ones based on updated payload
+   * Incrementally updates the dependency graph when an effect is added or modified.
    *
-   * @param graph - The graph to update
-   * @param effectId - ID of the effect that changed
+   * This method performs a targeted update of the graph by:
+   * 1. Fetching the latest effect data from the database
+   * 2. Removing the effect node if it no longer exists, is inactive, deleted, or not patch-type
+   * 3. Removing all outgoing edges from the effect node
+   * 4. Re-creating the effect node with updated metadata
+   * 5. Extracting variable writes from the updated JSON Patch payload
+   * 6. Creating new WRITES edges to all modified variables
+   *
+   * Only patch-type effects are included in the graph since they are the only effects
+   * that write to state variables. Other effect types (notification, webhook) do not
+   * modify state and are therefore not part of the dependency graph.
+   *
+   * @param {DependencyGraph} graph - The dependency graph to update in-place
+   * @param {string} effectId - The ID of the effect that was added or modified
+   * @returns {Promise<void>} Promise that resolves when the graph has been updated
+   * @throws {Error} If database query fails or graph update operations fail
+   *
+   * @example
+   * // After an effect's JSON Patch payload is updated
+   * await builder.updateGraphForEffect(graph, 'effect-101');
    */
   async updateGraphForEffect(graph: DependencyGraph, effectId: string): Promise<void> {
     this.logger.debug(`Updating graph for effect ${effectId}`);
@@ -479,10 +583,22 @@ export class DependencyGraphBuilderService {
   }
 
   /**
-   * Remove a node and all connected edges from the graph
+   * Removes a node and all its connected edges from the dependency graph.
    *
-   * @param graph - The graph to update
-   * @param nodeId - ID of the node to remove
+   * This method delegates to the DependencyGraph's removeNode method, which automatically
+   * removes all incoming and outgoing edges when the node is removed. This ensures the
+   * graph remains in a consistent state.
+   *
+   * Used internally by update methods when an entity becomes inactive, is deleted, or
+   * no longer exists in the database.
+   *
+   * @param {DependencyGraph} graph - The dependency graph to update in-place
+   * @param {string} nodeId - The ID of the node to remove (format: "TYPE:entityId")
+   * @returns {void}
+   *
+   * @example
+   * // Remove a condition node that was deleted
+   * this.removeFromGraph(graph, 'CONDITION:condition-123');
    */
   removeFromGraph(graph: DependencyGraph, nodeId: string): void {
     this.logger.debug(`Removing node ${nodeId} from graph`);
@@ -490,38 +606,69 @@ export class DependencyGraphBuilderService {
   }
 
   /**
-   * Create a node ID for a variable
-   * Format: VARIABLE:<variableId>
+   * Creates a standardized node ID for a state variable.
+   *
+   * Node IDs follow the format "VARIABLE:<variableId>" to ensure uniqueness and
+   * make the node type easily identifiable from the ID alone.
+   *
+   * @param {string} variableId - The database ID of the state variable
+   * @returns {string} Formatted node ID (e.g., "VARIABLE:var-123")
+   * @private
    */
   private makeVariableNodeId(variableId: string): string {
     return `VARIABLE:${variableId}`;
   }
 
   /**
-   * Create a node ID for a condition
-   * Format: CONDITION:<conditionId>
+   * Creates a standardized node ID for a field condition.
+   *
+   * Node IDs follow the format "CONDITION:<conditionId>" to ensure uniqueness and
+   * make the node type easily identifiable from the ID alone.
+   *
+   * @param {string} conditionId - The database ID of the field condition
+   * @returns {string} Formatted node ID (e.g., "CONDITION:cond-456")
+   * @private
    */
   private makeConditionNodeId(conditionId: string): string {
     return `CONDITION:${conditionId}`;
   }
 
   /**
-   * Create a node ID for an effect
-   * Format: EFFECT:<effectId>
+   * Creates a standardized node ID for an effect.
+   *
+   * Node IDs follow the format "EFFECT:<effectId>" to ensure uniqueness and
+   * make the node type easily identifiable from the ID alone.
+   *
+   * @param {string} effectId - The database ID of the effect
+   * @returns {string} Formatted node ID (e.g., "EFFECT:eff-789")
+   * @private
    */
   private makeEffectNodeId(effectId: string): string {
     return `EFFECT:${effectId}`;
   }
 
   /**
-   * Find a variable node by its key
-   * Note: This is a simplified lookup that matches on key only
-   * In production, would need proper scope resolution
+   * Finds a variable node in the graph by its variable key.
    *
-   * @param graph - The graph to search
-   * @param key - Variable key to find
-   * @returns Variable node or null if not found
+   * This method performs a linear search through all nodes to find a VARIABLE node
+   * with a matching key in its metadata. This is a simplified lookup that matches
+   * on key only, without considering scope resolution.
+   *
+   * NOTE: This is an MVP implementation. In production, this should be enhanced to:
+   * - Use a key-to-node index for O(1) lookup performance
+   * - Implement proper scope resolution (e.g., "campaign.gold" vs "settlement.gold")
+   * - Handle namespace conflicts when the same key exists in different scopes
+   *
+   * @param {DependencyGraph} graph - The dependency graph to search
+   * @param {string} key - The variable key to find (e.g., "campaign.gold", "settlement.level")
+   * @returns {DependencyNode | null} The matching variable node, or null if not found
    * @private
+   *
+   * @example
+   * const node = this.findVariableNodeByKey(graph, 'campaign.gold');
+   * if (node) {
+   *   console.log(`Found variable: ${node.label}`);
+   * }
    */
   private findVariableNodeByKey(graph: DependencyGraph, key: string): DependencyNode | null {
     const allNodes = graph.getAllNodes();
@@ -534,13 +681,27 @@ export class DependencyGraphBuilderService {
   }
 
   /**
-   * Get campaign ID for an entity based on entityType and entityId
-   * Handles polymorphic relationship lookup without FK constraints
+   * Retrieves the campaign ID for a given entity using polymorphic relationship lookup.
    *
-   * @param entityType - Type of entity (e.g., 'encounter', 'event')
-   * @param entityId - ID of the entity
-   * @returns Campaign ID or null if not found
+   * Since the Effect table uses a polymorphic pattern (entityType + entityId) without
+   * foreign key constraints, we must manually query the appropriate table to resolve
+   * the campaign ID. This method handles the different entity types that can have effects.
+   *
+   * Currently supported entity types:
+   * - 'encounter': Looks up Encounter.campaignId
+   * - 'event': Looks up Event.campaignId
+   *
+   * @param {string} entityType - The type of entity (case-insensitive, e.g., 'encounter', 'event')
+   * @param {string} entityId - The database ID of the entity
+   * @returns {Promise<string | null>} The campaign ID if found, or null if entity doesn't exist or type is unsupported
+   * @throws {Error} If database query fails
    * @private
+   *
+   * @example
+   * const campaignId = await this.getCampaignIdForEntity('encounter', 'enc-123');
+   * if (campaignId === 'campaign-456') {
+   *   // Include this effect in the graph
+   * }
    */
   private async getCampaignIdForEntity(
     entityType: string,

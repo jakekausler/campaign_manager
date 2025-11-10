@@ -1,8 +1,35 @@
 /**
- * EffectPatchService
+ * @fileoverview Effect Patch Service - JSON Patch Operations for World State Mutations
  *
- * Handles JSON Patch (RFC 6902) operations for effect system with security validation.
- * Provides immutable patch application with path whitelisting per entity type.
+ * Provides secure JSON Patch (RFC 6902) operations for the effect system with immutable
+ * patch application, path whitelisting, and validation. Enables world state mutations
+ * by applying structured changes to game entities while preventing unauthorized
+ * modifications to protected fields.
+ *
+ * Key responsibilities:
+ * - Validates JSON Patch operations against RFC 6902 format requirements
+ * - Enforces security rules with protected field whitelisting per entity type
+ * - Applies patches immutably using fast-json-patch library
+ * - Generates patch previews showing before/after states and changed fields
+ * - Identifies field-level changes for audit and UI purposes
+ *
+ * Security model:
+ * - Global protected fields (id, timestamps, version) cannot be modified
+ * - Entity-specific protected fields (foreign keys, system fields) are enforced
+ * - All paths validated before patch application
+ * - Immutable operations prevent unintended side effects
+ *
+ * Supports all RFC 6902 operations:
+ * - add: Insert value at path
+ * - remove: Delete value at path
+ * - replace: Update value at path
+ * - copy: Duplicate value from one path to another
+ * - move: Relocate value from one path to another
+ * - test: Verify value at path matches expected value
+ *
+ * @see docs/features/effect-system.md for effect system architecture
+ * @see https://datatracker.ietf.org/doc/html/rfc6902 for JSON Patch specification
+ * @module graphql/services/effect-patch
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -10,40 +37,69 @@ import * as jsonpatch from 'fast-json-patch';
 import type { Operation } from 'fast-json-patch';
 
 /**
- * Entity types that can be modified by effects
+ * Entity types that can be modified by effects.
+ *
+ * These types have validated schemas and protected field configurations.
+ * Each type has specific rules about which fields can be modified via patches.
  */
 export type PatchableEntityType = 'SETTLEMENT' | 'STRUCTURE' | 'KINGDOM' | 'ENCOUNTER' | 'EVENT';
 
 /**
- * Result of patch validation
+ * Result of patch validation.
+ *
+ * Indicates whether a patch array is valid according to RFC 6902 format
+ * and security rules (protected fields, path validation).
  */
 export interface ValidationResult {
+  /** Whether the patch is valid and safe to apply */
   valid: boolean;
+  /** List of validation error messages (empty if valid) */
   errors: string[];
 }
 
 /**
- * Result of patch application
+ * Result of patch application.
+ *
+ * Contains either the successfully patched entity or error information
+ * explaining why the patch could not be applied.
  */
 export interface ApplyPatchResult<T = unknown> {
+  /** Whether the patch was successfully applied */
   success: boolean;
+  /** The modified entity (null if patch failed) */
   patchedEntity: T | null;
+  /** List of error messages (empty if successful) */
   errors: string[];
 }
 
 /**
- * Result of patch preview generation
+ * Result of patch preview generation.
+ *
+ * Provides before/after snapshots and a list of changed fields for
+ * UI display or audit purposes without persisting changes.
  */
 export interface PatchPreviewResult<T = unknown> {
+  /** Whether the preview was successfully generated */
   success: boolean;
+  /** Original entity state before patch */
   before: T;
+  /** Modified entity state after patch (null if preview failed) */
   after: T | null;
+  /** List of top-level field names that were modified */
   changedFields: string[];
+  /** List of error messages (empty if successful) */
   errors: string[];
 }
 
 /**
- * Protected fields that cannot be modified via patches (common across all entities)
+ * Protected fields that cannot be modified via patches (common across all entities).
+ *
+ * These fields are critical to entity integrity and are managed by the system:
+ * - id: Primary key identifier
+ * - createdAt: Timestamp of entity creation
+ * - updatedAt: Timestamp of last modification
+ * - deletedAt: Soft delete timestamp
+ * - version: Optimistic locking version number for concurrency control
  */
 const PROTECTED_FIELDS = [
   'id',
@@ -54,8 +110,16 @@ const PROTECTED_FIELDS = [
 ];
 
 /**
- * Additional protected fields per entity type
- * These are typically foreign keys or critical system fields
+ * Additional protected fields per entity type.
+ *
+ * These are typically foreign keys or critical system fields that define
+ * entity relationships and must not be modified after creation to maintain
+ * referential integrity:
+ * - SETTLEMENT: campaignId (ownership), kingdomId (affiliation), locationId (geography)
+ * - STRUCTURE: settlementId (parent container)
+ * - KINGDOM: campaignId (ownership)
+ * - ENCOUNTER: campaignId (ownership), eventId (parent event link)
+ * - EVENT: campaignId (ownership), encounterId (parent encounter link)
  */
 const ENTITY_PROTECTED_FIELDS: Record<PatchableEntityType, string[]> = {
   SETTLEMENT: ['campaignId', 'kingdomId', 'locationId'],
@@ -66,20 +130,80 @@ const ENTITY_PROTECTED_FIELDS: Record<PatchableEntityType, string[]> = {
 };
 
 /**
- * Valid RFC 6902 operation types
+ * Valid RFC 6902 operation types.
+ *
+ * All six standard JSON Patch operations as defined by RFC 6902:
+ * - add: Insert a value at the specified path
+ * - remove: Delete the value at the specified path
+ * - replace: Replace the value at the specified path
+ * - copy: Copy the value from one path to another
+ * - move: Move the value from one path to another
+ * - test: Verify that the value at the specified path matches the expected value
  */
 const VALID_OPERATIONS = ['add', 'remove', 'replace', 'copy', 'move', 'test'];
 
+/**
+ * Effect Patch Service - JSON Patch Operations for World State Mutations
+ *
+ * Provides secure, validated JSON Patch operations for modifying game entities
+ * as part of the effect system. All operations are immutable and enforce
+ * security rules to prevent unauthorized modifications.
+ *
+ * Core capabilities:
+ * - Validates patches against RFC 6902 specification
+ * - Enforces protected field rules per entity type
+ * - Applies patches immutably without side effects
+ * - Generates previews showing changed fields
+ * - Provides detailed error reporting for validation failures
+ *
+ * Usage example:
+ * ```typescript
+ * const patch = [
+ *   { op: 'replace', path: '/population', value: 1500 },
+ *   { op: 'add', path: '/buildings/tavern', value: { name: 'The Prancing Pony' } }
+ * ];
+ *
+ * const validation = service.validatePatch(patch, 'SETTLEMENT');
+ * if (validation.valid) {
+ *   const result = service.applyPatch(settlement, patch, 'SETTLEMENT');
+ *   if (result.success) {
+ *     // Use result.patchedEntity
+ *   }
+ * }
+ * ```
+ *
+ * @see docs/features/effect-system.md for integration with effect execution
+ */
 @Injectable()
 export class EffectPatchService {
   private readonly logger = new Logger(EffectPatchService.name);
 
   /**
-   * Validates a JSON Patch against security rules and format requirements
+   * Validates a JSON Patch against security rules and format requirements.
    *
-   * @param patch - Array of RFC 6902 patch operations
-   * @param entityType - Type of entity being patched (for path whitelisting)
-   * @returns Validation result with list of errors
+   * Performs comprehensive validation including:
+   * - Array format verification
+   * - Required field presence (op, path)
+   * - Operation type validation (add, remove, replace, copy, move, test)
+   * - Operation-specific requirements (value for add/replace/test, from for copy/move)
+   * - Protected field checks (global and entity-specific)
+   * - JSON Pointer path format validation
+   *
+   * Returns all validation errors to enable comprehensive error reporting.
+   * A patch is valid only if all operations pass all validation checks.
+   *
+   * @param patch - Array of RFC 6902 patch operations to validate
+   * @param entityType - Type of entity being patched (determines protected fields)
+   * @returns Validation result with valid flag and detailed error messages
+   *
+   * @example
+   * ```typescript
+   * const patch = [{ op: 'replace', path: '/name', value: 'New Name' }];
+   * const result = service.validatePatch(patch, 'SETTLEMENT');
+   * if (!result.valid) {
+   *   console.error('Validation errors:', result.errors);
+   * }
+   * ```
    */
   validatePatch(patch: Operation[], entityType: PatchableEntityType): ValidationResult {
     const errors: string[] = [];
@@ -149,11 +273,34 @@ export class EffectPatchService {
   }
 
   /**
-   * Validates a single path against protected field rules
+   * Validates a single JSON Pointer path against protected field rules.
    *
-   * @param path - JSON Pointer path (e.g., "/name" or "/metadata/key")
-   * @param entityType - Type of entity being patched
-   * @returns Error message if path is invalid, null if valid
+   * Extracts the top-level field name from the path and checks it against
+   * both global protected fields (id, timestamps) and entity-specific
+   * protected fields (foreign keys, system fields).
+   *
+   * JSON Pointer paths use forward slashes as delimiters:
+   * - "/name" → validates "name"
+   * - "/metadata/description" → validates "metadata"
+   * - "/buildings/0/name" → validates "buildings"
+   *
+   * Only the top-level field is validated because nested field modifications
+   * are allowed as long as the parent field is not protected.
+   *
+   * @param path - JSON Pointer path from patch operation (e.g., "/name" or "/metadata/key")
+   * @param entityType - Type of entity being patched (determines entity-specific rules)
+   * @returns Error message string if path is invalid, null if path is valid
+   *
+   * @example
+   * ```typescript
+   * // Valid paths
+   * validatePath('/name', 'SETTLEMENT'); // null (name not protected)
+   * validatePath('/population', 'SETTLEMENT'); // null (population not protected)
+   *
+   * // Invalid paths
+   * validatePath('/id', 'SETTLEMENT'); // Error: "id" is a protected field
+   * validatePath('/campaignId', 'SETTLEMENT'); // Error: "campaignId" is protected for SETTLEMENT
+   * ```
    */
   private validatePath(path: string, entityType: PatchableEntityType): string | null {
     // Extract top-level field from path (e.g., "/name" -> "name", "/metadata/key" -> "metadata")
@@ -179,12 +326,40 @@ export class EffectPatchService {
   }
 
   /**
-   * Applies a JSON Patch to an entity immutably
+   * Applies a JSON Patch to an entity immutably.
    *
-   * @param entity - Original entity object
-   * @param patch - Array of RFC 6902 patch operations
-   * @param entityType - Type of entity being patched
-   * @returns Result containing patched entity or errors
+   * Validates the patch first, then applies operations using the fast-json-patch
+   * library. Creates a deep clone before applying operations to ensure the
+   * original entity is never modified.
+   *
+   * Process:
+   * 1. Validates patch format and protected fields
+   * 2. Deep clones entity using structuredClone
+   * 3. Validates patch operations against cloned entity
+   * 4. Applies patch immutably (returns new object)
+   * 5. Returns result with success flag and patched entity or errors
+   *
+   * If any validation or application step fails, returns an error result
+   * with descriptive error messages.
+   *
+   * @param entity - Original entity object to patch
+   * @param patch - Array of RFC 6902 patch operations to apply
+   * @param entityType - Type of entity being patched (for validation rules)
+   * @returns Result containing patched entity on success or error messages on failure
+   *
+   * @example
+   * ```typescript
+   * const settlement = { id: 1, name: 'Waterdeep', population: 1000 };
+   * const patch = [{ op: 'replace', path: '/population', value: 1200 }];
+   *
+   * const result = service.applyPatch(settlement, patch, 'SETTLEMENT');
+   * if (result.success) {
+   *   console.log('New population:', result.patchedEntity.population); // 1200
+   *   console.log('Original unchanged:', settlement.population); // 1000
+   * } else {
+   *   console.error('Patch failed:', result.errors);
+   * }
+   * ```
    */
   applyPatch<T = unknown>(
     entity: T,
@@ -246,12 +421,36 @@ export class EffectPatchService {
   }
 
   /**
-   * Generates a preview of patch application showing before/after and changed fields
+   * Generates a preview of patch application showing before/after and changed fields.
    *
-   * @param entity - Original entity object
-   * @param patch - Array of RFC 6902 patch operations
-   * @param entityType - Type of entity being patched
-   * @returns Preview result with before/after snapshots and changed fields
+   * Useful for displaying patch effects in the UI before committing changes,
+   * or for audit trails showing what changed. Applies the patch without
+   * persisting changes and analyzes differences between states.
+   *
+   * Calls applyPatch internally, so validation and error handling are identical.
+   * Additionally computes a list of changed field names by comparing before
+   * and after states using deep equality checks.
+   *
+   * @param entity - Original entity object to preview changes for
+   * @param patch - Array of RFC 6902 patch operations to preview
+   * @param entityType - Type of entity being patched (for validation rules)
+   * @returns Preview result with before/after snapshots, changed fields, and errors
+   *
+   * @example
+   * ```typescript
+   * const settlement = { id: 1, name: 'Waterdeep', population: 1000, gold: 5000 };
+   * const patch = [
+   *   { op: 'replace', path: '/population', value: 1200 },
+   *   { op: 'replace', path: '/gold', value: 6000 }
+   * ];
+   *
+   * const preview = service.generatePatchPreview(settlement, patch, 'SETTLEMENT');
+   * if (preview.success) {
+   *   console.log('Before:', preview.before);
+   *   console.log('After:', preview.after);
+   *   console.log('Changed fields:', preview.changedFields); // ['population', 'gold']
+   * }
+   * ```
    */
   generatePatchPreview<T = unknown>(
     entity: T,
@@ -284,11 +483,31 @@ export class EffectPatchService {
   }
 
   /**
-   * Identifies which top-level fields changed between two objects
+   * Identifies which top-level fields changed between two objects.
    *
-   * @param before - Original object
-   * @param after - Modified object
-   * @returns Array of changed field names
+   * Compares all properties in both objects using deep equality checks.
+   * Returns a list of field names where values differ between before and after.
+   *
+   * Only top-level field names are returned, not nested paths:
+   * - If /metadata/description changes, returns ["metadata"]
+   * - If /buildings/0/name changes, returns ["buildings"]
+   *
+   * This is useful for:
+   * - UI display of changed fields
+   * - Audit logging of modifications
+   * - Cache invalidation of affected fields
+   *
+   * @param before - Original object state
+   * @param after - Modified object state
+   * @returns Array of top-level field names that have different values
+   *
+   * @example
+   * ```typescript
+   * const before = { name: 'Old', population: 1000, gold: 5000 };
+   * const after = { name: 'New', population: 1000, gold: 6000 };
+   * const changed = identifyChangedFields(before, after);
+   * // Returns: ['name', 'gold']
+   * ```
    */
   private identifyChangedFields<T = unknown>(before: T, after: T): string[] {
     const changedFields: string[] = [];
@@ -312,15 +531,30 @@ export class EffectPatchService {
   }
 
   /**
-   * Deep equality check for two values
-   * Compares by value recursively for objects and arrays
+   * Deep equality check for two values.
    *
-   * Note: This implementation handles basic cases. For complex scenarios involving
-   * Date objects, RegExp, Maps, Sets, etc., consider using a library like lodash.isEqual.
+   * Recursively compares values by content rather than reference. Handles:
+   * - Primitives (string, number, boolean, null, undefined)
+   * - Date objects (compared by timestamp)
+   * - Arrays (compared element-by-element)
+   * - Plain objects (compared property-by-property)
    *
-   * @param a - First value
-   * @param b - Second value
-   * @returns True if values are deeply equal
+   * Does not handle special cases like RegExp, Map, Set, typed arrays, or
+   * circular references. For complex scenarios, consider using lodash.isEqual.
+   *
+   * Used internally to detect field changes in generatePatchPreview.
+   *
+   * @param a - First value to compare
+   * @param b - Second value to compare
+   * @returns True if values are deeply equal, false otherwise
+   *
+   * @example
+   * ```typescript
+   * deepEqual({ a: 1, b: 2 }, { a: 1, b: 2 }); // true
+   * deepEqual([1, 2, 3], [1, 2, 3]); // true
+   * deepEqual(new Date('2024-01-01'), new Date('2024-01-01')); // true
+   * deepEqual({ a: 1 }, { a: 2 }); // false
+   * ```
    */
   private deepEqual(a: unknown, b: unknown): boolean {
     // Handle primitives and null/undefined
@@ -356,15 +590,29 @@ export class EffectPatchService {
   }
 
   /**
-   * Creates a deep clone of an object using the native structuredClone API
+   * Creates a deep clone of an object using the native structuredClone API.
    *
-   * This preserves Date objects, handles circular references, and is more performant
-   * than JSON.parse(JSON.stringify()).
+   * Advantages over JSON.parse(JSON.stringify()):
+   * - Preserves Date objects (JSON stringify converts to strings)
+   * - Handles circular references (JSON stringify throws)
+   * - More performant for large objects
+   * - Preserves undefined values (JSON stringify omits them)
+   *
+   * Used internally to ensure patch operations do not mutate the original entity.
    *
    * Note: structuredClone is available in Node.js 17+ and modern browsers.
+   * This project requires Node.js 18+, so it is safe to use.
    *
    * @param obj - Object to clone
-   * @returns Deep cloned object
+   * @returns Deep cloned object with independent reference
+   *
+   * @example
+   * ```typescript
+   * const original = { name: 'Waterdeep', date: new Date() };
+   * const clone = deepClone(original);
+   * clone.name = 'Baldur\'s Gate';
+   * console.log(original.name); // Still 'Waterdeep'
+   * ```
    */
   private deepClone<T>(obj: T): T {
     return structuredClone(obj);

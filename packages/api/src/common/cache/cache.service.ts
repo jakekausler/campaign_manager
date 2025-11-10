@@ -7,27 +7,73 @@ import { CacheStatsService } from './cache-stats.service';
 import { CacheOptions, CacheStats, CacheDeleteResult } from './cache.types';
 
 /**
- * Core cache service providing unified interface for Redis operations.
+ * @fileoverview Core cache service providing unified interface for Redis operations.
  *
- * Features:
- * - Get/set/delete operations with TTL support
+ * Provides centralized cache management with TTL support, pattern-based invalidation,
+ * metrics tracking, and graceful degradation. All cache operations are resilient to
+ * Redis failures - errors are logged but don't break application functionality.
+ *
+ * **Key Features:**
+ * - Get/set/delete operations with configurable TTL
  * - Pattern-based deletion for cascading invalidation
- * - Metrics tracking (hits, misses, operations)
- * - Graceful degradation (cache failures don't break functionality)
- * - Configurable TTL with environment variable defaults
+ * - Comprehensive metrics tracking (hits, misses, operations)
+ * - Graceful degradation (cache failures logged, not thrown)
+ * - Environment-based configuration (TTL, metrics, logging)
+ * - Type-safe operations with TypeScript generics
+ * - Automatic JSON serialization/deserialization
  *
- * Usage:
+ * **Cache Key Patterns:**
+ * All cache keys follow the pattern: `{prefix}:{entityType}:{entityId}:{branchId}`
+ * - `computed-fields:settlement:123:main` - Settlement computed fields
+ * - `computed-fields:structure:456:main` - Structure computed fields
+ * - `structures:settlement:123:main` - Settlement's structures list
+ * - `spatial:settlements-in-region:bbox:main` - Spatial query results
+ *
+ * **Environment Variables:**
+ * - `CACHE_DEFAULT_TTL` - Default TTL in seconds (default: 300)
+ * - `CACHE_METRICS_ENABLED` - Enable metrics tracking (default: true)
+ * - `CACHE_LOGGING_ENABLED` - Enable debug logging (default: false)
+ *
+ * **Cascading Invalidation:**
+ * Provides specialized cascade methods for complex invalidation scenarios:
+ * - `invalidateSettlementCascade()` - Settlement + structures + spatial
+ * - `invalidateStructureCascade()` - Structure + parent settlement
+ * - `invalidateCampaignComputedFields()` - All computed fields in campaign
+ *
+ * @example Basic Usage
  * ```typescript
  * constructor(private readonly cache: CacheService) {}
  *
  * // Get cached value
- * const value = await this.cache.get<Settlement>('computed-fields:settlement:123:main');
+ * const settlement = await this.cache.get<Settlement>(
+ *   'computed-fields:settlement:123:main'
+ * );
  *
- * // Set with custom TTL
- * await this.cache.set('computed-fields:settlement:123:main', data, { ttl: 300 });
+ * // Set with custom TTL (5 minutes)
+ * await this.cache.set(
+ *   'computed-fields:settlement:123:main',
+ *   settlement,
+ *   { ttl: 300 }
+ * );
  *
- * // Delete by pattern
+ * // Delete by pattern (invalidate all computed fields)
  * await this.cache.delPattern('computed-fields:*');
+ * ```
+ *
+ * @example Cascading Invalidation
+ * ```typescript
+ * // Settlement updated - cascade to all related caches
+ * await this.cache.invalidateSettlementCascade('settlement-123', 'main');
+ *
+ * // FieldCondition updated - invalidate all computed fields
+ * await this.cache.invalidateCampaignComputedFields('campaign-789', 'main');
+ * ```
+ *
+ * @example Health Check Pattern
+ * ```typescript
+ * // Exclude health check operations from metrics
+ * await this.cache.set('health:ping', { status: 'ok' }, { trackMetrics: false });
+ * const health = await this.cache.get('health:ping', { trackMetrics: false });
  * ```
  */
 @Injectable()
@@ -49,6 +95,20 @@ export class CacheService {
     enabled: false,
   };
 
+  /**
+   * Initialize the cache service with Redis client and stats service.
+   *
+   * Loads configuration from environment variables:
+   * - `CACHE_DEFAULT_TTL` (default: 300 seconds)
+   * - `CACHE_METRICS_ENABLED` (default: true)
+   * - `CACHE_LOGGING_ENABLED` (default: false)
+   *
+   * The service is designed for graceful degradation - Redis connection
+   * failures will be logged but won't prevent service initialization.
+   *
+   * @param redis - Redis client instance (injected with REDIS_CACHE token)
+   * @param cacheStatsService - Service for tracking detailed cache metrics by type
+   */
   constructor(
     @Inject(REDIS_CACHE) private readonly redis: Redis,
     private readonly cacheStatsService: CacheStatsService
@@ -576,7 +636,26 @@ export class CacheService {
   /**
    * Reset cache statistics.
    *
-   * Useful for testing or periodic metric collection.
+   * Resets all counters (hits, misses, sets, deletes) and the start time
+   * to the current timestamp. Hit rate is recalculated from zero.
+   *
+   * Useful for testing or periodic metric collection. Does not affect
+   * the CacheStatsService's per-type metrics.
+   *
+   * @example
+   * ```typescript
+   * // Reset stats at the start of a test
+   * beforeEach(() => {
+   *   cache.resetStats();
+   * });
+   *
+   * // Periodic stats collection
+   * setInterval(() => {
+   *   const stats = cache.getStats();
+   *   console.log(stats);
+   *   cache.resetStats();
+   * }, 60000);
+   * ```
    */
   resetStats(): void {
     this.stats = {
@@ -596,10 +675,24 @@ export class CacheService {
   }
 
   /**
-   * Extract cache type from cache key.
-   * Cache keys follow the pattern: {prefix}:{entityType}:{entityId}:{branchId}
-   * The prefix is the cache type (e.g., 'computed-fields', 'settlements', 'spatial')
+   * Extract cache type from cache key for metrics categorization.
+   *
+   * Cache keys follow the pattern: `{prefix}:{entityType}:{entityId}:{branchId}`
+   * The prefix is the cache type (e.g., 'computed-fields', 'settlements', 'spatial').
+   *
+   * This enables per-type metrics tracking in CacheStatsService, allowing
+   * analysis of cache performance by cache category.
+   *
+   * @param key - Cache key to parse
+   * @returns Cache type (prefix before first colon) or 'unknown' if no colon found
    * @private
+   *
+   * @example
+   * ```typescript
+   * extractCacheType('computed-fields:settlement:123:main') // 'computed-fields'
+   * extractCacheType('spatial:settlements-in-region:bbox:main') // 'spatial'
+   * extractCacheType('invalid-key') // 'unknown'
+   * ```
    */
   private extractCacheType(key: string): string {
     const firstColonIndex = key.indexOf(':');
@@ -610,7 +703,12 @@ export class CacheService {
   }
 
   /**
-   * Increment hit counter and update hit rate.
+   * Increment hit counter and record hit in per-type metrics.
+   *
+   * Updates both the service-level stats and the CacheStatsService's
+   * per-type metrics for detailed cache performance analysis.
+   *
+   * @param key - Cache key that was hit (used to extract cache type)
    * @private
    */
   private incrementHits(key: string): void {
@@ -622,7 +720,15 @@ export class CacheService {
   }
 
   /**
-   * Increment miss counter and update hit rate.
+   * Increment miss counter and record miss in per-type metrics.
+   *
+   * Updates both the service-level stats and the CacheStatsService's
+   * per-type metrics for detailed cache performance analysis.
+   *
+   * Also called when cache operations fail (graceful degradation) to
+   * ensure accurate hit rate calculations.
+   *
+   * @param key - Cache key that was missed (used to extract cache type)
    * @private
    */
   private incrementMisses(key: string): void {

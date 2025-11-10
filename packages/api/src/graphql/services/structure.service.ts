@@ -1,7 +1,42 @@
 /**
- * Structure Service
- * Business logic for Structure operations
- * Implements CRUD with soft delete and archive (no cascade delete)
+ * @file Structure Service
+ *
+ * @description
+ * Provides business logic for managing structures (buildings and facilities) within settlements.
+ * Handles CRUD operations, level progression, variable management, and computed field evaluation.
+ * Structures are permanent installations that provide benefits to settlements such as economic bonuses,
+ * military capabilities, cultural advantages, or magical enhancements.
+ *
+ * @module services/structure
+ *
+ * @remarks
+ * Key features:
+ * - CRUD operations with soft delete (no cascade) for audit trail preservation
+ * - Archive/restore functionality for inactive structures
+ * - Level progression system (1-20) with validation
+ * - Custom variable management with JSON schemas for type validation
+ * - Computed fields via JSONLogic conditions with Rules Engine worker integration
+ * - Optimistic locking with version control for concurrent edit detection
+ * - Settlement relationship management with access control
+ * - Cache invalidation cascade for structure, settlement, and computed fields
+ * - Real-time updates via WebSocket events
+ * - Time-travel queries for historical state reconstruction
+ * - Batch operations with DataLoader pattern for N+1 query prevention
+ *
+ * Structure hierarchy:
+ * - Campaign → Kingdom → Settlement → Structure (buildings/facilities)
+ * - Structures inherit campaign membership and access control from their parent settlement
+ * - Settlement provides context for structure evaluation and bonuses
+ *
+ * Authorization:
+ * - All operations verify user has access to the campaign via settlement's kingdom
+ * - Create/update/delete/archive operations require OWNER or GM role
+ * - Read operations require campaign membership (any role)
+ * - DataLoader batch methods include authorization checks to prevent cache bypass
+ *
+ * @see {@link docs/features/condition-system.md} for computed field evaluation
+ * @see {@link docs/features/rules-engine-worker.md} for high-performance condition evaluation
+ * @see {@link docs/features/world-time-system.md} for time-travel query details
  */
 
 import {
@@ -34,6 +69,23 @@ import { DependencyGraphService } from './dependency-graph.service';
 import { LevelValidator } from './level-validator';
 import { VersionService, type CreateVersionInput } from './version.service';
 
+/**
+ * Service for managing structures (buildings and facilities) within settlements.
+ *
+ * @remarks
+ * Handles complete structure lifecycle including:
+ * - Creation and deletion with settlement relationship management
+ * - Level progression (1-20) with validation
+ * - Custom variable storage with JSON schemas
+ * - Computed field evaluation via conditions
+ * - Optimistic locking for concurrent edit detection
+ * - Version history for time-travel queries
+ * - Cache management with invalidation cascades
+ * - Real-time updates via WebSocket events
+ * - Batch operations for efficient data loading
+ *
+ * All operations include authorization checks and audit logging.
+ */
 @Injectable()
 export class StructureService {
   private readonly logger = new Logger(StructureService.name);
@@ -53,8 +105,16 @@ export class StructureService {
   ) {}
 
   /**
-   * Find structure by ID
-   * Ensures user has access to the settlement's campaign
+   * Finds a structure by ID with authorization check.
+   *
+   * @param id - Structure UUID to find
+   * @param user - Authenticated user making the request
+   * @returns Structure if found and accessible, null if not found or no access
+   *
+   * @remarks
+   * Verifies user has access to the campaign via settlement's kingdom.
+   * Only returns non-deleted structures from non-deleted campaigns.
+   * Uses Prisma nested where clauses to enforce authorization in a single query.
    */
   async findById(id: string, user: AuthenticatedUser): Promise<PrismaStructure | null> {
     const structure = await this.prisma.structure.findFirst({
@@ -87,7 +147,19 @@ export class StructureService {
   }
 
   /**
-   * Find structures by settlement
+   * Finds all structures belonging to a settlement with caching.
+   *
+   * @param settlementId - Settlement UUID to find structures for
+   * @param user - Authenticated user making the request
+   * @returns Array of structures in the settlement, ordered by name
+   *
+   * @throws {NotFoundException} If settlement not found or user lacks access
+   *
+   * @remarks
+   * Uses Redis cache with 10-minute TTL to reduce database load.
+   * Cache key includes branch ID (currently hardcoded to 'main').
+   * Verifies user access to settlement's campaign before returning structures.
+   * Gracefully handles cache errors without failing the operation.
    */
   async findBySettlement(
     settlementId: string,
@@ -167,9 +239,25 @@ export class StructureService {
   }
 
   /**
-   * Find structures by settlement IDs (for DataLoader)
-   * IMPORTANT: This method performs authorization checks to prevent
-   * unauthorized access through the DataLoader cache
+   * Batch loads structures for multiple settlements (DataLoader pattern).
+   *
+   * @param settlementIds - Array of settlement UUIDs to fetch structures for
+   * @param user - Authenticated user making the request
+   * @returns Array of structure arrays, one per settlement ID in same order as input
+   *
+   * @remarks
+   * **IMPORTANT:** Performs authorization checks to prevent unauthorized access via DataLoader cache.
+   * Returns empty array for settlements the user doesn't have access to.
+   * Maintains input order for DataLoader cache key mapping.
+   * Used by GraphQL DataLoader to efficiently resolve structures for multiple settlements
+   * in a single database query, preventing N+1 query problems.
+   *
+   * @example
+   * ```ts
+   * // DataLoader batches these calls:
+   * const [structures1, structures2] = await findBySettlementIds(['id1', 'id2'], user);
+   * // Instead of two separate queries
+   * ```
    */
   async findBySettlementIds(
     settlementIds: readonly string[],
@@ -236,11 +324,18 @@ export class StructureService {
   }
 
   /**
-   * Find structures by multiple settlement IDs (batch operation to avoid N+1 queries)
-   * Returns a flat array of all structures across all settlements
-   * @param settlementIds Array of settlement IDs to fetch structures for
-   * @param user Authenticated user (must have access to the campaign)
-   * @returns Flat array of all structures across all specified settlements
+   * Finds structures across multiple settlements in a single query (flat array).
+   *
+   * @param settlementIds - Array of settlement UUIDs to fetch structures for
+   * @param user - Authenticated user making the request
+   * @returns Flat array of all structures across all specified settlements, ordered by name
+   *
+   * @remarks
+   * Unlike `findBySettlementIds`, this returns a flat array instead of grouped arrays.
+   * Filters to only settlements the user has access to before fetching structures.
+   * Efficient batch operation to avoid N+1 queries when structures from multiple settlements
+   * are needed but don't need to be grouped by settlement.
+   * Returns empty array if no settlement IDs provided or user has no access to any.
    */
   async findBySettlements(
     settlementIds: string[],
@@ -294,8 +389,22 @@ export class StructureService {
   }
 
   /**
-   * Create a new structure
-   * Only owner or GM can create structures
+   * Creates a new structure in a settlement.
+   *
+   * @param input - Structure creation data including settlement, type, name, level, and variables
+   * @param user - Authenticated user making the request
+   * @returns Newly created structure
+   *
+   * @throws {ForbiddenException} If user lacks OWNER or GM role in campaign
+   * @throws {NotFoundException} If settlement not found
+   *
+   * @remarks
+   * Authorization: Only campaign OWNER or GM can create structures.
+   * Default level is 1 if not specified.
+   * Creates audit log entry for the creation.
+   * Publishes WebSocket event for real-time updates.
+   * Invalidates structure cache cascade (structure list, computed fields, parent settlement).
+   * Cache invalidation errors are logged but don't fail the operation.
    */
   async create(input: CreateStructureInput, user: AuthenticatedUser): Promise<PrismaStructure> {
     // Verify user has access to create structures in this settlement
@@ -390,8 +499,30 @@ export class StructureService {
   }
 
   /**
-   * Update a structure with optimistic locking and versioning
-   * Only owner or GM can update
+   * Updates an existing structure with optimistic locking and version history.
+   *
+   * @param id - Structure UUID to update
+   * @param input - Partial structure data to update (name, type, level, variables, variableSchemas)
+   * @param user - Authenticated user making the request
+   * @param expectedVersion - Expected version number for optimistic locking
+   * @param branchId - Branch ID for version history (must belong to structure's campaign)
+   * @param worldTime - World timestamp for version snapshot (defaults to current real time)
+   * @returns Updated structure with incremented version
+   *
+   * @throws {NotFoundException} If structure not found
+   * @throws {ForbiddenException} If user lacks OWNER or GM role
+   * @throws {OptimisticLockException} If version mismatch detected (concurrent edit)
+   * @throws {BadRequestException} If branch doesn't belong to campaign
+   *
+   * @remarks
+   * Uses optimistic locking to prevent lost updates from concurrent edits.
+   * Creates version snapshot in transaction for time-travel queries.
+   * Increments version number atomically in transaction.
+   * Creates audit log with full before/after state tracking.
+   * Publishes Redis pubsub event for concurrent edit detection.
+   * Publishes WebSocket event for real-time UI updates.
+   * Invalidates structure cache cascade and dependency graph.
+   * All cache invalidation errors are logged but don't fail the operation.
    */
   async update(
     id: string,
@@ -600,9 +731,23 @@ export class StructureService {
   }
 
   /**
-   * Soft delete a structure
-   * Does NOT cascade - structures are kept for audit trail
-   * Only owner or GM can delete
+   * Soft deletes a structure (sets deletedAt timestamp).
+   *
+   * @param id - Structure UUID to delete
+   * @param user - Authenticated user making the request
+   * @returns Deleted structure with deletedAt timestamp
+   *
+   * @throws {NotFoundException} If structure not found
+   * @throws {ForbiddenException} If user lacks OWNER or GM role
+   *
+   * @remarks
+   * Performs soft delete only - does NOT cascade to related entities.
+   * Structure data is preserved for audit trail and historical queries.
+   * Authorization: Only campaign OWNER or GM can delete structures.
+   * Creates audit log with full before/after state tracking.
+   * Publishes WebSocket event for real-time updates.
+   * Invalidates structure cache cascade.
+   * Cache invalidation errors are logged but don't fail the operation.
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaStructure> {
     // Verify structure exists and user has access
@@ -703,8 +848,22 @@ export class StructureService {
   }
 
   /**
-   * Archive a structure
-   * Only owner or GM can archive
+   * Archives a structure (sets archivedAt timestamp).
+   *
+   * @param id - Structure UUID to archive
+   * @param user - Authenticated user making the request
+   * @returns Archived structure with archivedAt timestamp
+   *
+   * @throws {NotFoundException} If structure not found
+   * @throws {ForbiddenException} If user lacks OWNER or GM role
+   *
+   * @remarks
+   * Archives inactive structures without deleting them.
+   * Archived structures can be restored via `restore()` method.
+   * Authorization: Only campaign OWNER or GM can archive structures.
+   * Creates audit log entry for the archive operation.
+   * Invalidates structure cache cascade.
+   * Cache invalidation errors are logged but don't fail the operation.
    */
   async archive(id: string, user: AuthenticatedUser): Promise<PrismaStructure> {
     // Verify structure exists and user has access
@@ -771,8 +930,20 @@ export class StructureService {
   }
 
   /**
-   * Restore an archived structure
-   * Only owner or GM can restore
+   * Restores an archived structure (clears archivedAt timestamp).
+   *
+   * @param id - Structure UUID to restore
+   * @param user - Authenticated user making the request
+   * @returns Restored structure with archivedAt set to null
+   *
+   * @throws {NotFoundException} If structure not found
+   * @throws {ForbiddenException} If user lacks OWNER or GM role
+   *
+   * @remarks
+   * Restores previously archived structures to active status.
+   * Authorization: Only campaign OWNER or GM can restore structures.
+   * Creates audit log entry for the restore operation.
+   * Does NOT invalidate cache (structure remains queryable).
    */
   async restore(id: string, user: AuthenticatedUser): Promise<PrismaStructure> {
     // Find structure even if archived
@@ -844,8 +1015,25 @@ export class StructureService {
   }
 
   /**
-   * Set structure level
-   * Only owner or GM can set level
+   * Sets the level of a structure with validation and cache invalidation.
+   *
+   * @param id - Structure UUID to update
+   * @param level - New level value (1-20)
+   * @param user - Authenticated user making the request
+   * @returns Updated structure with new level
+   *
+   * @throws {NotFoundException} If structure not found
+   * @throws {ForbiddenException} If user lacks OWNER or GM role
+   * @throws {BadRequestException} If level outside valid range (1-20)
+   *
+   * @remarks
+   * Validates level is within 1-20 range before processing.
+   * Authorization: Only campaign OWNER or GM can set level.
+   * Creates audit log entry for level change.
+   * Publishes Redis pubsub event for concurrent edit detection.
+   * Invalidates structure cache cascade, campaign context, and dependency graph.
+   * Dependency graph invalidation triggers rule re-evaluation for computed fields.
+   * All cache invalidation errors are logged but don't fail the operation.
    */
   async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaStructure> {
     // Validate level range before processing
@@ -959,8 +1147,22 @@ export class StructureService {
   }
 
   /**
-   * Get structure state as it existed at a specific point in world-time
-   * Supports time-travel queries for version history
+   * Retrieves historical structure state at a specific point in world-time.
+   *
+   * @param id - Structure UUID to query
+   * @param branchId - Branch ID for version history
+   * @param worldTime - World timestamp to query state at
+   * @param user - Authenticated user making the request
+   * @returns Structure state as of the specified time, or null if not found
+   *
+   * @remarks
+   * Supports time-travel queries by resolving version history.
+   * Verifies user has access to the structure before querying versions.
+   * Decompresses version payload to reconstruct historical state.
+   * Useful for viewing how structures changed over campaign time.
+   * Returns null if no version exists at the specified time.
+   *
+   * @see {@link docs/features/world-time-system.md} for time-travel query details
    */
   async getStructureAsOf(
     id: string,
@@ -988,19 +1190,45 @@ export class StructureService {
   }
 
   /**
-   * Get computed fields for a structure by evaluating all active conditions
-   * Returns a map of field names to their computed values
+   * Evaluates computed fields for a structure using active conditions.
    *
-   * NOTE: Authorization is assumed to be performed by the caller (GraphQL resolver)
+   * @param structure - Structure to evaluate computed fields for
+   * @param _user - Authenticated user (authorization assumed by caller)
+   * @returns Map of field names to computed values
    *
-   * TODO (Performance): Implement DataLoader pattern to avoid N+1 queries when
-   * resolving computed fields for multiple structures in a batch.
+   * @remarks
+   * **Authorization:** Assumes caller (GraphQL resolver) has already verified access.
    *
-   * TODO (Performance): Evaluate conditions in parallel using Promise.all
-   * instead of sequential await in loop.
+   * **Performance Strategy:**
+   * 1. Checks Redis cache first (5-minute TTL)
+   * 2. Attempts evaluation via Rules Engine worker (high-performance gRPC)
+   * 3. Falls back to local evaluation if worker unavailable
    *
-   * TODO (Feature): Consider supporting type-level conditions (entityId: null)
-   * that apply to all structures of this type.
+   * **Evaluation Process:**
+   * - Fetches all active conditions for the structure
+   * - Builds context with structure data and state variables
+   * - Evaluates conditions in priority order (DESC - highest first)
+   * - For each field, only the highest priority condition is used
+   * - Returns successfully evaluated conditions only
+   *
+   * **Cache Strategy:**
+   * - Cache key: `computed-fields:structure:{id}:{branchId}`
+   * - TTL: 300 seconds (5 minutes)
+   * - Empty results cached to avoid repeated condition queries
+   * - Invalidated on structure updates, level changes, or variable changes
+   *
+   * **Error Handling:**
+   * - Cache errors logged but don't block computation
+   * - Worker errors trigger fallback to local evaluation
+   * - Evaluation errors return empty object gracefully
+   *
+   * **Performance TODOs:**
+   * - Implement DataLoader pattern to batch multiple structure evaluations
+   * - Parallelize condition evaluation with Promise.all
+   * - Consider type-level conditions (entityId: null) for all structures of a type
+   *
+   * @see {@link docs/features/condition-system.md} for condition evaluation details
+   * @see {@link docs/features/rules-engine-worker.md} for worker architecture
    */
   async getComputedFields(
     structure: PrismaStructure,

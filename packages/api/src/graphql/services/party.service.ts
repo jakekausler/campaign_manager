@@ -1,7 +1,33 @@
 /**
- * Party Service
- * Business logic for Party operations
- * Implements CRUD with soft delete and archive (no cascade delete)
+ * @fileoverview Party Service - Business logic for party operations
+ *
+ * This service manages party entities, which represent groups of characters in a campaign.
+ * Parties can have a collective level that is either computed from member character levels
+ * or manually overridden by GMs for balancing purposes. The service handles CRUD operations,
+ * character membership management, level progression tracking, and custom variable storage.
+ *
+ * Key responsibilities:
+ * - Party CRUD operations with soft delete and archive (no cascade)
+ * - Character membership management (add/remove members from parties)
+ * - Level progression (computed average vs manual override)
+ * - Custom variables with schema validation for party-specific data
+ * - Optimistic locking for concurrent edit safety
+ * - Version history with time-travel queries
+ * - Real-time change notifications via Redis pub/sub
+ * - Campaign context cache invalidation on level changes
+ *
+ * Level System:
+ * - averageLevel: Computed as the mean of all member character levels (rounded)
+ * - manualLevelOverride: GM-set level that takes precedence over computed average
+ * - When manualLevelOverride is set, it is used instead of averageLevel for encounter scaling
+ *
+ * Permissions:
+ * - Party creation: Campaign owner or GM role
+ * - Party updates: Campaign owner or GM role
+ * - Party deletion: Campaign owner or GM role
+ * - Party reads: Any campaign member
+ *
+ * @module services/party
  */
 
 import {
@@ -26,6 +52,31 @@ import { CampaignContextService } from './campaign-context.service';
 import { LevelValidator } from './level-validator';
 import { VersionService, type CreateVersionInput } from './version.service';
 
+/**
+ * Service handling party operations.
+ *
+ * Manages party lifecycle including CRUD operations, character membership, level progression,
+ * and custom variables. Parties are groups of characters that can have a collective level
+ * either calculated from member averages or manually overridden. All operations enforce
+ * campaign ownership/GM permissions and maintain audit trails.
+ *
+ * Key features:
+ * - CRUD operations with soft delete and archive
+ * - Character membership management (add/remove members)
+ * - Level progression (manual override vs computed from members)
+ * - Custom variables with schema validation
+ * - Optimistic locking for concurrent edit safety
+ * - Version history with time-travel queries
+ * - Real-time change notifications via Redis pub/sub
+ *
+ * Level Calculation:
+ * - averageLevel: Computed mean of all member character levels
+ * - manualLevelOverride: User-set level that overrides the computed average
+ * - When override is set, it takes precedence over the calculated average
+ *
+ * @see {@link CreatePartyInput} for party creation parameters
+ * @see {@link UpdatePartyData} for party update parameters
+ */
 @Injectable()
 export class PartyService {
   constructor(
@@ -38,8 +89,14 @@ export class PartyService {
   ) {}
 
   /**
-   * Find party by ID
-   * Ensures user has access to the campaign
+   * Find party by ID with campaign access verification.
+   *
+   * Retrieves a non-deleted party if the user has access to its campaign
+   * (either as owner or member). Does not include archived parties.
+   *
+   * @param id - The party ID to search for
+   * @param user - The authenticated user making the request
+   * @returns The party if found and accessible, null otherwise
    */
   async findById(id: string, user: AuthenticatedUser): Promise<PrismaParty | null> {
     const party = await this.prisma.party.findFirst({
@@ -66,7 +123,15 @@ export class PartyService {
   }
 
   /**
-   * Find parties by campaign
+   * Find all non-archived parties in a campaign.
+   *
+   * Retrieves all active parties for a campaign, ordered by name.
+   * Verifies user has access to the campaign before returning results.
+   *
+   * @param campaignId - The campaign ID to search within
+   * @param user - The authenticated user making the request
+   * @returns Array of parties in the campaign, sorted by name
+   * @throws {NotFoundException} If campaign not found or user lacks access
    */
   async findByCampaign(campaignId: string, user: AuthenticatedUser): Promise<PrismaParty[]> {
     // First verify user has access to this campaign
@@ -104,8 +169,16 @@ export class PartyService {
   }
 
   /**
-   * Create a new party
-   * Only owner or GM can create parties
+   * Create a new party.
+   *
+   * Creates a party with optional level settings (averageLevel or manualLevelOverride)
+   * and custom variables. Only campaign owners or GMs can create parties.
+   * Creates an audit log entry for the creation.
+   *
+   * @param input - Party creation data including name, campaign, levels, and variables
+   * @param user - The authenticated user creating the party
+   * @returns The newly created party
+   * @throws {ForbiddenException} If user lacks permission to create parties
    */
   async create(input: CreatePartyInput, user: AuthenticatedUser): Promise<PrismaParty> {
     // Verify campaign exists and user has permission
@@ -138,8 +211,25 @@ export class PartyService {
   }
 
   /**
-   * Update a party with optimistic locking and versioning
-   * Only owner or GM can update
+   * Update a party with optimistic locking and versioning.
+   *
+   * Updates party properties with atomic version increment and snapshot creation.
+   * Uses optimistic locking to prevent concurrent edit conflicts. Creates a version
+   * snapshot in the specified branch at the given world-time. Publishes real-time
+   * change notification for concurrent edit detection. Only campaign owners or GMs
+   * can update parties.
+   *
+   * @param id - The party ID to update
+   * @param input - Partial party data to update (only provided fields are changed)
+   * @param user - The authenticated user making the update
+   * @param expectedVersion - The version number the client expects (for optimistic locking)
+   * @param branchId - The branch ID where the version snapshot will be created
+   * @param worldTime - The world-time timestamp for the version snapshot (defaults to current time)
+   * @returns The updated party with incremented version
+   * @throws {NotFoundException} If party not found or user lacks access
+   * @throws {BadRequestException} If branchId doesn't belong to the party's campaign
+   * @throws {OptimisticLockException} If expectedVersion doesn't match current version
+   * @throws {ForbiddenException} If user lacks permission to update
    */
   async update(
     id: string,
@@ -241,9 +331,17 @@ export class PartyService {
   }
 
   /**
-   * Soft delete a party
-   * Does NOT cascade - parties are kept for audit trail
-   * Only owner or GM can delete
+   * Soft delete a party.
+   *
+   * Marks the party as deleted without cascading to related entities.
+   * Parties are kept for audit trail purposes. Only campaign owners or GMs
+   * can delete parties. Creates an audit log entry for the deletion.
+   *
+   * @param id - The party ID to delete
+   * @param user - The authenticated user performing the deletion
+   * @returns The deleted party with deletedAt timestamp
+   * @throws {NotFoundException} If party not found or user lacks access
+   * @throws {ForbiddenException} If user lacks permission to delete
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaParty> {
     // Verify party exists and user has access
@@ -273,8 +371,17 @@ export class PartyService {
   }
 
   /**
-   * Archive a party
-   * Only owner or GM can archive
+   * Archive a party.
+   *
+   * Marks the party as archived, hiding it from normal queries while preserving
+   * all data. Archived parties can be restored later. Only campaign owners or GMs
+   * can archive parties. Creates an audit log entry for the archival.
+   *
+   * @param id - The party ID to archive
+   * @param user - The authenticated user performing the archival
+   * @returns The archived party with archivedAt timestamp
+   * @throws {NotFoundException} If party not found or user lacks access
+   * @throws {ForbiddenException} If user lacks permission to archive
    */
   async archive(id: string, user: AuthenticatedUser): Promise<PrismaParty> {
     // Verify party exists and user has access
@@ -303,8 +410,17 @@ export class PartyService {
   }
 
   /**
-   * Restore an archived party
-   * Only owner or GM can restore
+   * Restore an archived party.
+   *
+   * Clears the archivedAt timestamp, making the party visible in normal queries again.
+   * Only campaign owners or GMs can restore parties. Creates an audit log entry for
+   * the restoration.
+   *
+   * @param id - The party ID to restore
+   * @param user - The authenticated user performing the restoration
+   * @returns The restored party with archivedAt cleared
+   * @throws {NotFoundException} If party not found or user lacks access
+   * @throws {ForbiddenException} If user lacks permission to restore
    */
   async restore(id: string, user: AuthenticatedUser): Promise<PrismaParty> {
     // Find party even if archived
@@ -348,8 +464,14 @@ export class PartyService {
   }
 
   /**
-   * Check if user has edit permissions for a campaign
-   * Owner or GM role can edit
+   * Check if user has edit permissions for a campaign.
+   *
+   * Verifies that the user is either the campaign owner or has GM role.
+   * Used internally to enforce permission checks before mutations.
+   *
+   * @param campaignId - The campaign ID to check permissions for
+   * @param user - The authenticated user to check permissions for
+   * @returns true if user can edit, false otherwise
    */
   private async hasEditPermission(campaignId: string, user: AuthenticatedUser): Promise<boolean> {
     const campaign = await this.prisma.campaign.findFirst({
@@ -376,8 +498,17 @@ export class PartyService {
   }
 
   /**
-   * Get party state as it existed at a specific point in world-time
-   * Supports time-travel queries for version history
+   * Get party state as it existed at a specific point in world-time.
+   *
+   * Retrieves a historical snapshot of the party from the version history.
+   * Supports time-travel queries for viewing past states. Resolves the version
+   * valid at the specified world-time in the given branch.
+   *
+   * @param id - The party ID to retrieve historical state for
+   * @param branchId - The branch ID to query within
+   * @param worldTime - The world-time point to retrieve state at
+   * @param user - The authenticated user making the request
+   * @returns The party state at the specified time, or null if not found
    */
   async getPartyAsOf(
     id: string,
@@ -405,8 +536,17 @@ export class PartyService {
   }
 
   /**
-   * Calculate average level from party members
-   * Returns the mean of all member character levels
+   * Calculate average level from party members.
+   *
+   * Computes the mean level of all non-deleted character members in the party,
+   * rounded to the nearest integer. Returns null if the party has no members.
+   * This computed value is stored in averageLevel but can be overridden by
+   * manualLevelOverride.
+   *
+   * @param id - The party ID to calculate average level for
+   * @param user - The authenticated user making the request
+   * @returns The average level (rounded), or null if party has no members
+   * @throws {NotFoundException} If party not found or user lacks access
    */
   async calculateAverageLevel(id: string, user: AuthenticatedUser): Promise<number | null> {
     const party = await this.prisma.party.findFirst({
@@ -452,8 +592,21 @@ export class PartyService {
   }
 
   /**
-   * Set party level using manual override
-   * This overrides the calculated average level
+   * Set party level using manual override.
+   *
+   * Sets the manualLevelOverride field, which takes precedence over the calculated
+   * average level from members. This allows GMs to manually adjust party level for
+   * balancing purposes. Validates the level is within acceptable range (1-20).
+   * Publishes real-time change notification and invalidates campaign context cache.
+   * Only campaign owners or GMs can set party level.
+   *
+   * @param id - The party ID to set level for
+   * @param level - The level to set (must be 1-20)
+   * @param user - The authenticated user making the change
+   * @returns The updated party with new manualLevelOverride
+   * @throws {NotFoundException} If party not found or user lacks access
+   * @throws {ForbiddenException} If user lacks permission to set level
+   * @throws {BadRequestException} If level is outside valid range (thrown by LevelValidator)
    */
   async setLevel(id: string, level: number, user: AuthenticatedUser): Promise<PrismaParty> {
     // Validate level range before processing
@@ -508,7 +661,19 @@ export class PartyService {
   }
 
   /**
-   * Add a character to the party
+   * Add a character to the party.
+   *
+   * Associates a character with the party by setting the character's partyId field.
+   * Verifies the character exists, belongs to the same campaign, and is not already
+   * in another party. Only campaign owners or GMs can modify party membership.
+   * Creates an audit log entry for the membership change.
+   *
+   * @param partyId - The party ID to add the character to
+   * @param characterId - The character ID to add
+   * @param user - The authenticated user making the change
+   * @returns The updated party with the new member
+   * @throws {NotFoundException} If party or character not found, or character not in same campaign
+   * @throws {ForbiddenException} If user lacks permission to modify party
    */
   async addMember(
     partyId: string,
@@ -560,7 +725,18 @@ export class PartyService {
   }
 
   /**
-   * Remove a character from the party
+   * Remove a character from the party.
+   *
+   * Disassociates a character from the party by clearing the character's partyId field.
+   * Verifies the character exists and is currently in this party. Only campaign owners
+   * or GMs can modify party membership. Creates an audit log entry for the membership change.
+   *
+   * @param partyId - The party ID to remove the character from
+   * @param characterId - The character ID to remove
+   * @param user - The authenticated user making the change
+   * @returns The updated party without the removed member
+   * @throws {NotFoundException} If party not found, or character not found/not in party
+   * @throws {ForbiddenException} If user lacks permission to modify party
    */
   async removeMember(
     partyId: string,

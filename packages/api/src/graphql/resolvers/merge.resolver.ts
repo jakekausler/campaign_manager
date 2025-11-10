@@ -1,6 +1,14 @@
 /**
  * Merge Resolver
- * GraphQL resolver for branch merge operations
+ *
+ * GraphQL resolvers for branch merge operations including 3-way merge,
+ * conflict detection and resolution, cherry-picking, and merge history tracking.
+ *
+ * Provides operations for:
+ * - Previewing merge conflicts before execution
+ * - Executing 3-way merges with manual conflict resolution
+ * - Cherry-picking specific versions across branches
+ * - Tracking merge history and audit trails
  */
 
 import {
@@ -45,6 +53,27 @@ export class MergeResolver {
   // Note: Entity-specific handlers (SettlementMergeHandler, StructureMergeHandler)
   // will be integrated in Stage 5 for merge execution with custom domain logic
 
+  /**
+   * Previews a merge operation between two branches without executing it.
+   *
+   * Performs a 3-way merge analysis using the common ancestor to detect:
+   * - Merge conflicts requiring manual resolution
+   * - Auto-resolvable changes (non-conflicting modifications)
+   * - Entity-level impact across settlements, structures, etc.
+   *
+   * **Authorization:** Any authenticated campaign member
+   *
+   * @param input - Merge preview parameters (source, target, worldTime)
+   * @param user - Authenticated user requesting the preview
+   * @returns Preview showing conflicts, auto-resolved changes, and totals
+   *
+   * @throws {NotFoundException} If source or target branch not found
+   * @throws {BadRequestException} If branches are from different campaigns or have no common ancestor
+   * @throws {ForbiddenException} If user lacks campaign access
+   *
+   * @see {@link MergeService.findCommonAncestor} for ancestor detection
+   * @see {@link MergeService.compareVersions} for 3-way merge conflict detection
+   */
   @Query(() => MergePreview, {
     description: 'Preview merge operation showing conflicts and auto-resolved changes',
   })
@@ -135,6 +164,32 @@ export class MergeResolver {
     };
   }
 
+  /**
+   * Executes a merge operation, applying changes from source to target branch.
+   *
+   * Performs a 3-way merge using the common ancestor, creating new versions
+   * in the target branch for all modified entities. Conflicts must be resolved
+   * via the resolutions parameter.
+   *
+   * **Authorization:** OWNER or GM role required
+   *
+   * **Side Effects:**
+   * - Creates new versions in target branch for merged entities
+   * - Records merge history entry with metadata
+   * - Generates audit logs for all version creations
+   * - May invalidate caches for affected entities
+   *
+   * @param input - Merge execution parameters (source, target, worldTime, resolutions)
+   * @param user - Authenticated user performing the merge
+   * @returns Merge result with success status, created versions, and any remaining conflicts
+   *
+   * @throws {NotFoundException} If source or target branch not found
+   * @throws {BadRequestException} If branches are from different campaigns, have no common ancestor, or conflicts remain unresolved
+   * @throws {ForbiddenException} If user lacks GM/OWNER role
+   *
+   * @see {@link MergeService.executeMerge} for merge execution logic
+   * @see {@link MergeService.findCommonAncestor} for ancestor detection
+   */
   @Mutation(() => MergeResult, {
     description: 'Execute merge operation, creating new versions in target branch',
   })
@@ -192,6 +247,31 @@ export class MergeResolver {
     return result;
   }
 
+  /**
+   * Cherry-picks a specific version from one branch to another.
+   *
+   * Applies a single entity version change to a different branch, useful for
+   * selectively porting changes without performing a full merge. Uses 2-way
+   * merge between the source version and current target state.
+   *
+   * **Authorization:** OWNER or GM role required
+   *
+   * **Side Effects:**
+   * - Creates new version in target branch if successful
+   * - May create merge history entry for the cherry-pick
+   * - Generates audit log for version creation
+   * - May invalidate caches for the affected entity
+   *
+   * @param input - Cherry-pick parameters (sourceVersionId, targetBranchId, resolutions)
+   * @param user - Authenticated user performing the cherry-pick
+   * @returns Result with success status, created version ID, and any conflicts
+   *
+   * @throws {NotFoundException} If source version or target branch not found
+   * @throws {BadRequestException} If version and branch are from different campaigns
+   * @throws {ForbiddenException} If user lacks GM/OWNER role
+   *
+   * @see {@link MergeService.cherryPickVersion} for cherry-pick execution logic
+   */
   @Mutation(() => CherryPickResult, {
     description: 'Cherry-pick a specific version from one branch to another',
   })
@@ -260,11 +340,22 @@ export class MergeResolver {
   }
 
   /**
-   * Get merge history for a specific branch
-   * Returns all completed merge operations involving the branch
-   * @param branchId - The branch to get merge history for
-   * @param user - The authenticated user
-   * @returns Array of merge history entries
+   * Retrieves merge history for a specific branch.
+   *
+   * Returns all completed merge operations where the branch was either
+   * the source or target, ordered by most recent first. Includes metadata
+   * about conflict resolutions and merge participants.
+   *
+   * **Authorization:** Any authenticated campaign member
+   *
+   * @param branchId - Branch identifier to get history for
+   * @param user - Authenticated user requesting the history
+   * @returns Array of merge history entries with source/target branch details
+   *
+   * @throws {NotFoundException} If branch not found
+   * @throws {ForbiddenException} If user lacks campaign access
+   *
+   * @see {@link MergeHistory} Prisma model for stored merge records
    */
   @Query(() => [MergeHistoryEntry], {
     description: 'Get merge history for a specific branch showing completed merge operations',
@@ -328,7 +419,21 @@ export class MergeResolver {
   }
 
   /**
-   * Get all entity IDs that need to be merged (exist in source or target)
+   * Gets all entity IDs that need to be merged across branches.
+   *
+   * Queries versions in all three branches (source, target, base) to find
+   * the complete set of entities that have been modified in any branch.
+   * This ensures the merge considers all entities, including those added,
+   * modified, or deleted in either branch.
+   *
+   * @param sourceBranchId - Source branch identifier
+   * @param targetBranchId - Target branch identifier
+   * @param baseBranchId - Common ancestor branch identifier
+   * @param entityType - Entity type to query (e.g., 'settlement', 'structure')
+   * @param worldTime - World time for version queries
+   * @returns Array of unique entity IDs across all three branches
+   *
+   * @see {@link VersionService.getVersionsForBranchAndType} for version queries
    */
   private async getEntityIdsForMerge(
     sourceBranchId: string,
@@ -354,7 +459,26 @@ export class MergeResolver {
   }
 
   /**
-   * Generate merge preview for a single entity
+   * Generates a merge preview for a single entity.
+   *
+   * Performs 3-way merge conflict detection for one entity by comparing
+   * versions from source, target, and base branches. Decompresses version
+   * payloads and uses the merge service to identify conflicts and
+   * auto-resolvable changes.
+   *
+   * Returns null if the entity doesn't need merging (no changes in either branch).
+   *
+   * @param entityType - Entity type (e.g., 'settlement', 'structure')
+   * @param entityId - Unique entity identifier
+   * @param sourceBranchId - Source branch identifier
+   * @param targetBranchId - Target branch identifier
+   * @param baseBranchId - Common ancestor branch identifier
+   * @param worldTime - World time for version queries
+   * @returns Entity merge preview with conflicts and auto-resolved changes, or null
+   *
+   * @see {@link MergeService.getEntityVersionsForMerge} for version retrieval
+   * @see {@link MergeService.compareVersions} for conflict detection
+   * @see {@link VersionService.decompressVersion} for payload decompression
    */
   private async getEntityMergePreview(
     entityType: string,
@@ -430,7 +554,15 @@ export class MergeResolver {
   }
 
   /**
-   * Check if user has access to the campaign
+   * Validates user has access to a campaign.
+   *
+   * Checks if user is either a campaign member or the campaign owner.
+   * Used for read-only operations like previewing merges or viewing history.
+   *
+   * @param campaignId - Campaign identifier to check access for
+   * @param user - Authenticated user to validate
+   *
+   * @throws {ForbiddenException} If user is neither member nor owner
    */
   private async checkCampaignAccess(campaignId: string, user: AuthenticatedUser): Promise<void> {
     const membership = await this.prisma.campaignMembership.findFirst({
@@ -454,7 +586,18 @@ export class MergeResolver {
   }
 
   /**
-   * Check if user can perform merge operations (GM or OWNER role required)
+   * Validates user has permission to execute merge operations.
+   *
+   * Checks if user has GM or OWNER role in the campaign. Used for
+   * write operations like executing merges or cherry-picking versions.
+   * First verifies basic campaign access, then checks edit permissions.
+   *
+   * @param campaignId - Campaign identifier to check permissions for
+   * @param user - Authenticated user to validate
+   *
+   * @throws {ForbiddenException} If user lacks campaign access or GM/OWNER role
+   *
+   * @see {@link CampaignMembershipService.canEdit} for role checking logic
    */
   private async checkCanMerge(campaignId: string, user: AuthenticatedUser): Promise<void> {
     await this.checkCampaignAccess(campaignId, user);

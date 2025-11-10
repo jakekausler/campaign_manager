@@ -1,7 +1,35 @@
 /**
  * Version Service
- * Business logic for version management and temporal queries
- * Handles version creation, resolution, and branch inheritance
+ *
+ * Provides business logic for version management and temporal queries in the campaign management system.
+ * This service is responsible for creating, querying, and managing entity versions across branches,
+ * enabling time-travel queries, version history tracking, and branch inheritance resolution.
+ *
+ * Key Features:
+ * - Version creation with automatic compression and version numbering
+ * - Time-travel queries to retrieve entity state at specific points in time
+ * - Branch inheritance resolution (walks up branch ancestry chain)
+ * - Version history tracking with chronological ordering
+ * - Version diff calculation to compare entity states
+ * - Version restoration to revert entities to previous states
+ * - Payload compression/decompression for efficient storage
+ * - Authorization checks for campaign owners and members
+ *
+ * Version Storage:
+ * - Each version stores a complete entity snapshot in compressed format (gzip)
+ * - Versions are ordered by version number and validFrom timestamp
+ * - Version ranges are defined by validFrom (inclusive) and validTo (exclusive)
+ * - Current versions have validTo = null, historical versions have a validTo date
+ *
+ * Branch Inheritance:
+ * - When querying for a version, the service walks up the branch ancestry chain
+ * - If a version is not found in the current branch, parent branches are checked
+ * - This allows branches to inherit entity state from their ancestors
+ * - Optimized to fetch the entire branch hierarchy once to avoid N+1 queries
+ *
+ * @see VersionResolver for GraphQL API
+ * @see BranchService for branch management
+ * @see AuditService for audit logging
  */
 
 import {
@@ -24,30 +52,77 @@ import {
 import { AuditService } from './audit.service';
 
 /**
- * Input for creating a new version
+ * Input data for creating a new version.
+ *
+ * @interface CreateVersionInput
  */
 export interface CreateVersionInput {
+  /** Type of the entity (e.g., 'settlement', 'structure', 'character') */
   entityType: string;
+
+  /** Unique identifier of the entity */
   entityId: string;
+
+  /** ID of the branch where this version exists */
   branchId: string;
+
+  /** Timestamp when this version becomes valid (inclusive) */
   validFrom: Date;
+
+  /** Timestamp when this version becomes invalid (exclusive), or null for current version */
   validTo: Date | null;
+
+  /** Complete entity state snapshot to store in this version */
   payload: Record<string, unknown>;
+
+  /** Optional comment describing the changes in this version */
   comment?: string;
 }
 
+/**
+ * Service for managing entity versions and temporal queries.
+ *
+ * Handles version creation, retrieval, and management with support for branch inheritance,
+ * time-travel queries, and version diffing. All entity state changes are stored as versioned
+ * snapshots with compressed payloads for efficient storage.
+ *
+ * @class VersionService
+ */
 @Injectable()
 export class VersionService {
+  /**
+   * Creates an instance of VersionService.
+   *
+   * @param prisma - Prisma database service for data access
+   * @param audit - Audit service for logging version operations
+   */
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService
   ) {}
 
   /**
-   * Creates a new version with compressed payload
-   * @param input - Version creation data
+   * Creates a new version with compressed payload and automatic version numbering.
+   *
+   * This method performs comprehensive validation of input data, verifies branch existence,
+   * checks user authorization (campaign owner or GM/OWNER role), calculates the next version
+   * number, compresses the payload using gzip, creates the version record, and logs an audit entry.
+   *
+   * Version Numbering:
+   * - Automatically calculates version number by finding the latest version + 1
+   * - Version numbers are sequential within an entity/branch combination
+   * - Each entity can have multiple versions across different branches
+   *
+   * Authorization:
+   * - User must be campaign owner OR have GM/OWNER role in the campaign
+   * - Verifies branch exists and belongs to an accessible campaign
+   *
+   * @param input - Version creation data including entity info, timestamps, and payload
    * @param user - Authenticated user creating the version
-   * @returns The created version
+   * @returns The newly created version with compressed payload
+   * @throws BadRequestException If input validation fails (empty fields, invalid dates, invalid payload)
+   * @throws NotFoundException If the specified branch does not exist
+   * @throws ForbiddenException If user lacks permission to create versions for this entity
    */
   async createVersion(input: CreateVersionInput, user: AuthenticatedUser): Promise<Version> {
     // Validate input parameters
@@ -134,10 +209,18 @@ export class VersionService {
   }
 
   /**
-   * Closes a version by setting its validTo timestamp
+   * Closes a version by setting its validTo timestamp.
+   *
+   * Marks a version as historical by setting the validTo date, which indicates
+   * when this version stops being the current state. This is typically used when
+   * creating a new version that supersedes an existing current version.
+   *
+   * Note: This method does not perform authorization checks. It should only be
+   * called internally by other service methods that have already verified permissions.
+   *
    * @param versionId - ID of the version to close
-   * @param validTo - Timestamp when the version becomes invalid
-   * @returns The updated version
+   * @param validTo - Timestamp when the version becomes invalid (exclusive boundary)
+   * @returns The updated version with validTo set
    */
   async closeVersion(versionId: string, validTo: Date): Promise<Version> {
     return this.prisma.version.update({
@@ -147,12 +230,26 @@ export class VersionService {
   }
 
   /**
-   * Retrieves version history for an entity in chronological order
-   * @param entityType - Type of the entity
+   * Retrieves version history for an entity in chronological order.
+   *
+   * Returns all versions for a specific entity within a single branch, ordered by
+   * validFrom timestamp in ascending order (oldest to newest). This provides a complete
+   * audit trail of entity state changes over time.
+   *
+   * Authorization:
+   * - User must be campaign owner OR a campaign member (any role)
+   * - More permissive than mutation operations (read-only access)
+   *
+   * Note: This method only searches the specified branch, not parent branches.
+   * For inheritance-aware queries, use resolveVersion() instead.
+   *
+   * @param entityType - Type of the entity (e.g., 'settlement', 'structure')
    * @param entityId - ID of the entity
    * @param branchId - ID of the branch
    * @param user - Authenticated user requesting the history
-   * @returns Array of versions ordered by validFrom ascending
+   * @returns Array of versions ordered by validFrom ascending (oldest first)
+   * @throws NotFoundException If the specified branch does not exist
+   * @throws ForbiddenException If user lacks permission to view versions for this entity
    */
   async findVersionHistory(
     entityType: string,
@@ -191,12 +288,25 @@ export class VersionService {
   }
 
   /**
-   * Finds a version in a specific branch at a specific time
-   * @param entityType - Type of the entity
+   * Finds a version in a specific branch at a specific time (point-in-time query).
+   *
+   * Performs a time-travel query to retrieve the version of an entity that was valid
+   * at the specified timestamp within a single branch. The query uses the validFrom
+   * and validTo timestamps to determine which version was active at the given time.
+   *
+   * Query Logic:
+   * - validFrom <= asOf (version was created before or at the query time)
+   * - validTo > asOf OR validTo IS NULL (version was still valid at the query time)
+   * - Returns the most recent version if multiple versions match (ordered by validFrom DESC)
+   *
+   * Note: This method only searches the specified branch. For inheritance-aware queries
+   * that walk up the branch ancestry chain, use resolveVersion() instead.
+   *
+   * @param entityType - Type of the entity (e.g., 'settlement', 'structure')
    * @param entityId - ID of the entity
    * @param branchId - ID of the branch
-   * @param asOf - Point-in-time to query
-   * @returns Version or null if not found
+   * @param asOf - Point-in-time to query (world time)
+   * @returns Version that was valid at the specified time, or null if not found
    */
   async findVersionInBranch(
     entityType: string,
@@ -220,13 +330,27 @@ export class VersionService {
   }
 
   /**
-   * Get all versions for a specific entity type in a branch at a given world time.
-   * Used for merge operations to identify all entities that exist in a branch.
+   * Gets all versions for a specific entity type in a branch at a given world time.
+   *
+   * Retrieves all entity versions of a specific type that were valid at the specified
+   * world time within a single branch. This is primarily used by merge operations to
+   * identify all entities that exist in a branch at a specific point in time.
+   *
+   * Query Logic:
+   * - Filters by branchId and entityType
+   * - validFrom <= worldTime (version was created before or at the query time)
+   * - validTo > worldTime OR validTo IS NULL (version was still valid at the query time)
+   * - Returns all matching versions (one per entityId)
+   *
+   * Use Cases:
+   * - Merge operations: Identify all entities to merge from source branch
+   * - Branch comparison: Compare entity states between branches
+   * - Bulk version queries: Get multiple entity versions in a single query
    *
    * @param branchId - ID of the branch
-   * @param entityType - Type of entity (e.g., "settlement", "structure")
+   * @param entityType - Type of entity (e.g., 'settlement', 'structure', 'character')
    * @param worldTime - World time at which to get versions
-   * @returns Array of versions for the entity type
+   * @returns Array of versions for the entity type, ordered by validFrom descending
    */
   async getVersionsForBranchAndType(
     branchId: string,
@@ -248,14 +372,31 @@ export class VersionService {
   }
 
   /**
-   * Resolves a version for an entity at a specific time with branch inheritance
-   * If not found in the specified branch, walks up the branch ancestry chain
-   * Optimized to avoid N+1 queries by fetching branch hierarchy once
-   * @param entityType - Type of the entity
+   * Resolves a version for an entity at a specific time with branch inheritance.
+   *
+   * This is the primary method for time-travel queries with branch inheritance support.
+   * If a version is not found in the specified branch, the method walks up the branch
+   * ancestry chain (parent, grandparent, etc.) until a version is found or the root
+   * branch is reached.
+   *
+   * Branch Inheritance:
+   * - Searches current branch first
+   * - If not found, walks up to parent branch
+   * - Continues recursively until version is found or root branch is reached
+   * - Allows branches to inherit entity state from ancestor branches
+   *
+   * Performance Optimization:
+   * - Fetches entire branch hierarchy for the campaign in a single query
+   * - Builds an in-memory map for O(1) branch lookups
+   * - Avoids N+1 queries when walking up the branch ancestry chain
+   * - Iterative implementation (not recursive) to avoid stack overflow
+   *
+   * @param entityType - Type of the entity (e.g., 'settlement', 'structure')
    * @param entityId - ID of the entity
    * @param branchId - ID of the branch to start search
-   * @param asOf - Point-in-time to query
-   * @returns Version or null if not found in entire branch hierarchy
+   * @param asOf - Point-in-time to query (world time)
+   * @returns Version found in branch hierarchy, or null if not found anywhere
+   * @throws NotFoundException If the starting branch does not exist
    */
   async resolveVersion(
     entityType: string,
@@ -307,11 +448,30 @@ export class VersionService {
   }
 
   /**
-   * Calculates the diff between two versions
-   * @param versionId1 - ID of the first (older) version
-   * @param versionId2 - ID of the second (newer) version
+   * Calculates the diff between two versions of the same entity.
+   *
+   * Compares the payloads of two versions to identify added, modified, and removed fields.
+   * This is useful for understanding what changed between two points in time or for
+   * reviewing changes before merging branches.
+   *
+   * Process:
+   * 1. Fetches both versions from the database
+   * 2. Validates that both versions exist and belong to the same branch
+   * 3. Checks user authorization to view the versions
+   * 4. Decompresses both version payloads in parallel for better performance
+   * 5. Calculates diff using deep object comparison
+   *
+   * Authorization:
+   * - User must be campaign owner OR a campaign member (any role)
+   * - Same permission level as read-only operations
+   *
+   * @param versionId1 - ID of the first (typically older) version
+   * @param versionId2 - ID of the second (typically newer) version
    * @param user - Authenticated user requesting the diff
-   * @returns VersionDiff showing added, modified, and removed fields
+   * @returns VersionDiff object showing added, modified, and removed fields
+   * @throws NotFoundException If either version does not exist
+   * @throws BadRequestException If versions belong to different branches
+   * @throws ForbiddenException If user lacks permission to view version diffs
    */
   async getVersionDiff(
     versionId1: string,
@@ -370,14 +530,37 @@ export class VersionService {
   }
 
   /**
-   * Restores an entity to a previous version state
-   * Creates a new version with the payload from the historical version
-   * @param versionId - ID of the version to restore
-   * @param branchId - Branch to restore the version in
+   * Restores an entity to a previous version state.
+   *
+   * Creates a new version with the payload from a historical version, effectively
+   * reverting the entity to its previous state. This is a non-destructive operation
+   * that creates a new version record rather than modifying the existing version history.
+   *
+   * Process:
+   * 1. Fetches the historical version to restore
+   * 2. Verifies branch exists and checks user authorization
+   * 3. Calculates the next version number for the new version
+   * 4. Reuses the compressed payload from the historical version (no decompression/recompression)
+   * 5. Creates a new version record with the historical payload
+   * 6. Logs an audit entry for the restoration operation
+   *
+   * Authorization:
+   * - User must be campaign owner OR have GM/OWNER role in the campaign
+   * - Same permission level as version creation
+   *
+   * Performance Optimization:
+   * - Reuses the compressed payload from the historical version
+   * - Avoids unnecessary decompression and recompression operations
+   *
+   * @param versionId - ID of the historical version to restore
+   * @param branchId - Branch where the restored version will be created
    * @param user - Authenticated user performing the restore
-   * @param validFrom - Timestamp for the new restored version (default: now)
-   * @param comment - Optional comment for the restoration (default: "Restored from {versionId}")
-   * @returns The newly created version
+   * @param validFrom - Timestamp for the new restored version (defaults to current time)
+   * @param comment - Optional comment for the restoration (defaults to "Restored from {versionId}")
+   * @returns The newly created version with historical payload
+   * @throws BadRequestException If validFrom is invalid
+   * @throws NotFoundException If the historical version or branch does not exist
+   * @throws ForbiddenException If user lacks permission to restore versions
    */
   async restoreVersion(
     versionId: string,
@@ -467,8 +650,20 @@ export class VersionService {
   }
 
   /**
-   * Get branch by ID
-   * Helper method for branch service and resolution algorithm
+   * Gets a branch by its ID with related data.
+   *
+   * Helper method for branch service and resolution algorithm. Fetches a branch
+   * with its parent branch and campaign information, excluding soft-deleted branches.
+   *
+   * Includes:
+   * - Parent branch (for branch inheritance)
+   * - Campaign (for authorization checks)
+   *
+   * Note: This method does not perform authorization checks. It should only be
+   * called internally by other service methods that have already verified permissions.
+   *
+   * @param branchId - ID of the branch to retrieve
+   * @returns Branch with parent and campaign, or null if not found or deleted
    */
   async getBranchById(branchId: string): Promise<Branch | null> {
     return this.prisma.branch.findFirst({
@@ -484,10 +679,16 @@ export class VersionService {
   }
 
   /**
-   * Decompresses a version's payload
-   * Utility method for accessing version data
-   * @param version - The version to decompress
-   * @returns The decompressed payload
+   * Decompresses a version's payload.
+   *
+   * Utility method for accessing the entity state stored in a version. Converts the
+   * compressed payload (Uint8Array) to a Buffer and decompresses it using gzip.
+   *
+   * Note: This method does not perform authorization checks. It should only be
+   * called internally by other service methods that have already verified permissions.
+   *
+   * @param version - The version containing the compressed payload
+   * @returns The decompressed payload as a plain object
    */
   async decompressVersion(version: Version): Promise<Record<string, unknown>> {
     // Convert Uint8Array to Buffer for decompression

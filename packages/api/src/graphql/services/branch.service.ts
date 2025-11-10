@@ -1,7 +1,32 @@
 /**
  * Branch Service
- * Business logic for Branch operations (alternate timeline management)
- * Implements CRUD with hierarchy traversal and validation
+ *
+ * Business logic for Branch operations and alternate timeline management in the
+ * campaign branching system. Implements CRUD operations, hierarchy traversal,
+ * and fork/merge workflows for creating parallel timelines.
+ *
+ * Key Responsibilities:
+ * - CRUD operations for Branch entities with authorization checks
+ * - Branch hierarchy management and ancestry traversal
+ * - Fork operations to create alternate timelines with version copying
+ * - Orphan prevention through cascading deletion enforcement
+ * - Version copying across entity types at divergence points
+ *
+ * Authorization:
+ * - View branches: All roles (OWNER, GM, PLAYER, VIEWER)
+ * - Create/fork branches: OWNER and GM roles only
+ * - Update branches: OWNER and GM roles only
+ * - Delete branches: OWNER role only
+ *
+ * Design Patterns:
+ * - Tree structure with parent/child relationships
+ * - Cascading deletion (children before parents)
+ * - Transaction-based fork operations for atomicity
+ * - Batch version resolution to avoid N+1 queries
+ *
+ * @see Branch entity in Prisma schema
+ * @see BranchResolver for GraphQL API
+ * @see VersionService for version management
  */
 
 import {
@@ -25,7 +50,13 @@ import { AuditService } from './audit.service';
 import { VersionService } from './version.service';
 
 /**
- * Branch node for hierarchy tree structure
+ * Branch node for hierarchy tree structure.
+ *
+ * Represents a single node in the branch hierarchy tree with references
+ * to its children. Used by getHierarchy() to return nested tree structure.
+ *
+ * @property branch - The Branch entity data
+ * @property children - Array of child BranchNode objects
  */
 export interface BranchNode {
   branch: PrismaBranch;
@@ -33,17 +64,41 @@ export interface BranchNode {
 }
 
 /**
- * Result of fork operation with statistics
+ * Result of fork operation with statistics.
+ *
+ * Contains the newly created branch and count of versions copied during
+ * the fork operation. Used to report fork operation success to clients.
+ *
+ * @property branch - The newly created child branch
+ * @property versionsCopied - Total number of entity versions copied to new branch
  */
 export interface ForkResult {
   branch: PrismaBranch;
   versionsCopied: number;
 }
 
+/**
+ * Branch Service
+ *
+ * Manages branch lifecycle, hierarchy traversal, and fork operations for the
+ * campaign branching system. Provides CRUD operations with authorization checks
+ * and implements the fork workflow for creating alternate timelines.
+ *
+ * @class
+ * @injectable
+ */
 @Injectable()
 export class BranchService {
+  /**
+   * Maximum depth for ancestry chain traversal.
+   * Prevents infinite loops from circular references in branch hierarchy.
+   */
   private static readonly MAX_ANCESTRY_DEPTH = 100;
-  // All entity types that support versioning
+
+  /**
+   * All entity types that support versioning and branching.
+   * Used by fork operation to copy versions across all entity types.
+   */
   private static readonly ENTITY_TYPES = [
     'campaign',
     'world',
@@ -57,6 +112,14 @@ export class BranchService {
     'event',
   ] as const;
 
+  /**
+   * Creates an instance of BranchService.
+   *
+   * @param prisma - Database service for Prisma queries
+   * @param audit - Audit service for logging operations
+   * @param versionService - Version service for entity version management
+   * @param campaignMembershipService - Campaign membership service for authorization
+   */
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -65,8 +128,13 @@ export class BranchService {
   ) {}
 
   /**
-   * Find branch by ID
-   * Includes parent and children relations
+   * Find branch by ID.
+   *
+   * Retrieves a single branch with its parent, children, and campaign relations.
+   * Only returns non-deleted branches and excludes deleted children.
+   *
+   * @param id - The branch ID to find
+   * @returns The branch with relations, or null if not found or deleted
    */
   async findById(id: string): Promise<PrismaBranch | null> {
     const branch = await this.prisma.branch.findFirst({
@@ -87,8 +155,13 @@ export class BranchService {
   }
 
   /**
-   * Find all branches for a campaign
-   * Returns flat list ordered by name
+   * Find all branches for a campaign.
+   *
+   * Retrieves all non-deleted branches for a specific campaign with their
+   * parent and children relations. Returns a flat list ordered alphabetically by name.
+   *
+   * @param campaignId - The campaign ID to find branches for
+   * @returns Array of branches for the campaign, ordered by name
    */
   async findByCampaign(campaignId: string): Promise<PrismaBranch[]> {
     return this.prisma.branch.findMany({
@@ -109,7 +182,13 @@ export class BranchService {
   }
 
   /**
-   * Find branches matching filter criteria
+   * Find branches matching filter criteria.
+   *
+   * Retrieves branches that match the provided filter conditions with parent
+   * and children relations. Only returns non-deleted branches and excludes deleted children.
+   *
+   * @param where - Filter criteria for branch query
+   * @returns Array of matching branches, ordered by name
    */
   async find(where: BranchWhereInput): Promise<PrismaBranch[]> {
     return this.prisma.branch.findMany({
@@ -130,8 +209,20 @@ export class BranchService {
   }
 
   /**
-   * Create a new branch
-   * Validates campaign exists, user has access, and parentId if provided
+   * Create a new branch.
+   *
+   * Creates a new branch entity with validation and authorization checks:
+   * - Verifies campaign exists and user has GM/OWNER access
+   * - Validates branch name uniqueness within campaign
+   * - Validates parent branch exists and belongs to same campaign (if provided)
+   * - Creates audit log entry for branch creation
+   *
+   * @param input - Branch creation data (name, description, parentId, etc.)
+   * @param user - Authenticated user creating the branch
+   * @returns The newly created branch with parent and children relations
+   * @throws NotFoundException - If campaign or parent branch not found
+   * @throws ForbiddenException - If user lacks GM/OWNER role
+   * @throws BadRequestException - If branch name already exists or parent invalid
    */
   async create(input: CreateBranchInput, user: AuthenticatedUser): Promise<PrismaBranch> {
     // Verify campaign exists
@@ -212,8 +303,19 @@ export class BranchService {
   }
 
   /**
-   * Update a branch (name and description only)
-   * Cannot change parent or campaign after creation
+   * Update a branch.
+   *
+   * Updates branch metadata (name, description, isPinned, color, tags).
+   * Parent and campaign cannot be changed after creation.
+   * Validates branch name uniqueness within campaign if name is being changed.
+   *
+   * @param id - The branch ID to update
+   * @param input - Update data (name, description, metadata)
+   * @param user - Authenticated user performing the update
+   * @returns The updated branch with parent and children relations
+   * @throws NotFoundException - If branch not found
+   * @throws ForbiddenException - If user lacks GM/OWNER role
+   * @throws BadRequestException - If new branch name already exists
    */
   async update(
     id: string,
@@ -273,17 +375,25 @@ export class BranchService {
   }
 
   /**
-   * Soft delete a branch
+   * Soft delete a branch.
    *
-   * **Orphaned Branch Prevention:**
-   * This method implements cascading deletion requirements that make orphaned branches
-   * structurally impossible. Children must be deleted before parents, ensuring
-   * all branches always have a valid parent chain to the root.
+   * Performs soft deletion by setting deletedAt timestamp. Implements strict
+   * validation to prevent orphaned branches and maintain data integrity:
+   * - Cannot delete root branches (branches without a parent)
+   * - Cannot delete branches with children (enforces cascading deletion)
+   * - Requires OWNER role (stricter than create/update)
    *
-   * Validates:
-   * - Branch is not a root branch (parentId !== null)
-   * - Branch has no children (childCount === 0)
-   * - User has OWNER permission
+   * Orphaned Branch Prevention:
+   * This method enforces cascading deletion requirements that make orphaned
+   * branches structurally impossible. Children must be deleted before parents,
+   * ensuring all branches always have a valid parent chain to the root.
+   *
+   * @param id - The branch ID to delete
+   * @param user - Authenticated user performing the deletion
+   * @returns The deleted branch with deletedAt timestamp set
+   * @throws NotFoundException - If branch not found
+   * @throws ForbiddenException - If user lacks OWNER role
+   * @throws BadRequestException - If branch is root or has children
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaBranch> {
     // Verify branch exists
@@ -333,8 +443,20 @@ export class BranchService {
   }
 
   /**
-   * Get branch hierarchy for a campaign as a tree structure
-   * Returns array of root branches with nested children
+   * Get branch hierarchy for a campaign as a tree structure.
+   *
+   * Builds and returns a nested tree structure of all branches in a campaign.
+   * Root branches (those without parents) are returned at the top level, with
+   * children nested recursively. Uses a two-pass algorithm to build the tree
+   * efficiently.
+   *
+   * Defensive Handling:
+   * If a branch's parent is not found (soft-deleted or corrupted data), it is
+   * treated as a root node to prevent UI breakage. This should never occur
+   * through normal operations due to cascading deletion enforcement.
+   *
+   * @param campaignId - The campaign ID to get hierarchy for
+   * @returns Array of root BranchNode objects with nested children
    */
   async getHierarchy(campaignId: string): Promise<BranchNode[]> {
     // Get all branches for the campaign
@@ -390,9 +512,18 @@ export class BranchService {
   }
 
   /**
-   * Get ancestry chain for a branch
-   * Returns array of branches from root to the specified branch
-   * [root, parent, grandparent, ..., branch]
+   * Get ancestry chain for a branch.
+   *
+   * Walks up the parent chain from the specified branch to the root, returning
+   * all ancestors in order from root to the specified branch.
+   * Example: [root, grandparent, parent, branch]
+   *
+   * Includes circular reference detection to prevent infinite loops if data
+   * is corrupted. Throws error if ancestry chain exceeds MAX_ANCESTRY_DEPTH.
+   *
+   * @param branchId - The branch ID to get ancestry for
+   * @returns Array of branches from root to specified branch (inclusive)
+   * @throws Error - If ancestry chain exceeds maximum depth (circular reference detected)
    */
   async getAncestry(branchId: string): Promise<PrismaBranch[]> {
     const ancestry: PrismaBranch[] = [];
@@ -429,9 +560,24 @@ export class BranchService {
   }
 
   /**
-   * Fork a branch to create an alternate timeline
-   * Creates child branch and copies all entity versions at the divergence point
-   * Uses transaction to ensure atomic operation
+   * Fork a branch to create an alternate timeline.
+   *
+   * Creates a child branch from a source branch and copies all entity versions
+   * that are valid at the divergence point. This operation creates a complete
+   * snapshot of the world state at the specified time, allowing parallel timeline
+   * development.
+   *
+   * Process:
+   * 1. Validates source branch exists and user has GM/OWNER permission
+   * 2. Creates child branch with divergedAt timestamp
+   * 3. For each entity type, copies all versions valid at fork point
+   * 4. Uses transaction to ensure atomic operation (all-or-nothing)
+   * 5. Creates audit log entry for fork operation
+   *
+   * Version Copying:
+   * Copies versions for all entity types (campaign, world, location, character,
+   * party, kingdom, settlement, structure, encounter, event) that are valid at
+   * the fork point in the source branch's ancestry chain.
    *
    * @param sourceBranchId - Branch to fork from
    * @param name - Name for the new branch
@@ -439,6 +585,8 @@ export class BranchService {
    * @param worldTime - World time when branch diverges (fork point)
    * @param user - User creating the fork
    * @returns ForkResult with new branch and count of copied versions
+   * @throws NotFoundException - If source branch not found
+   * @throws ForbiddenException - If user lacks GM/OWNER role
    */
   async fork(
     sourceBranchId: string,
@@ -503,16 +651,31 @@ export class BranchService {
   }
 
   /**
-   * Copy all versions for a specific entity type at fork point
-   * Queries resolved versions in source branch ancestry and creates new versions in target branch
+   * Copy all versions for a specific entity type at fork point.
+   *
+   * Queries all entity versions that are valid at the fork point within the
+   * source branch's ancestry chain and creates corresponding versions in the
+   * target branch. Uses batch resolution to avoid N+1 query problems.
+   *
+   * Algorithm:
+   * 1. Build source branch ancestry chain (source -> parent -> root)
+   * 2. Find all versions in ancestry valid at fork point (validFrom <= worldTime, validTo > worldTime or null)
+   * 3. Get unique entity IDs from those versions
+   * 4. Batch resolve each entity's version at fork point
+   * 5. Create new versions in target branch with same payload
+   *
+   * Performance Optimization:
+   * Uses batch resolution (Promise.all) to resolve all entity versions in parallel
+   * rather than sequential queries. Reuses compressed payload (payloadGz) directly
+   * without decompressing/recompressing.
    *
    * @param sourceBranchId - Source branch to copy from
    * @param targetBranchId - Target branch to copy to
-   * @param entityType - Type of entity to copy
+   * @param entityType - Type of entity to copy (e.g., 'campaign', 'location')
    * @param worldTime - Fork point timestamp
    * @param user - User performing the operation
-   * @param tx - Prisma transaction client
-   * @returns Count of versions copied
+   * @param tx - Prisma transaction client for atomic operation
+   * @returns Count of versions copied for this entity type
    */
   private async copyVersionsForEntityType(
     sourceBranchId: string,
@@ -612,12 +775,16 @@ export class BranchService {
   }
 
   /**
-   * Check if user has access to a campaign
-   * Used by create, update, and delete operations
-   */
-  /**
-   * Check if user has access to view branches in a campaign
-   * All roles (OWNER, GM, PLAYER, VIEWER) can view branches
+   * Check if user has access to view branches in a campaign.
+   *
+   * Verifies the user is either the campaign owner or has a membership in the
+   * campaign. All roles (OWNER, GM, PLAYER, VIEWER) can view branches.
+   * Used as a base check by other authorization methods.
+   *
+   * @param campaignId - The campaign ID to check access for
+   * @param user - Authenticated user to check
+   * @throws ForbiddenException - If user lacks access to the campaign
+   * @private
    */
   private async checkCampaignAccess(campaignId: string, user: AuthenticatedUser): Promise<void> {
     const campaign = await this.prisma.campaign.findFirst({
@@ -643,8 +810,16 @@ export class BranchService {
   }
 
   /**
-   * Check if user can create/fork branches in a campaign
-   * Only OWNER and GM roles can create branches
+   * Check if user can create/fork branches in a campaign.
+   *
+   * Verifies the user has campaign access and has GM or OWNER role.
+   * Only OWNER and GM roles can create or fork branches.
+   * Used by create() and fork() methods.
+   *
+   * @param campaignId - The campaign ID to check permission for
+   * @param user - Authenticated user to check
+   * @throws ForbiddenException - If user lacks GM/OWNER role
+   * @private
    */
   private async checkCanCreateBranch(campaignId: string, user: AuthenticatedUser): Promise<void> {
     await this.checkCampaignAccess(campaignId, user);
@@ -656,8 +831,16 @@ export class BranchService {
   }
 
   /**
-   * Check if user can update branches in a campaign
-   * Only OWNER and GM roles can update branches
+   * Check if user can update branches in a campaign.
+   *
+   * Verifies the user has campaign access and has GM or OWNER role.
+   * Only OWNER and GM roles can rename or update branch metadata.
+   * Used by update() method.
+   *
+   * @param campaignId - The campaign ID to check permission for
+   * @param user - Authenticated user to check
+   * @throws ForbiddenException - If user lacks GM/OWNER role
+   * @private
    */
   private async checkCanUpdateBranch(campaignId: string, user: AuthenticatedUser): Promise<void> {
     await this.checkCampaignAccess(campaignId, user);
@@ -671,8 +854,16 @@ export class BranchService {
   }
 
   /**
-   * Check if user can delete branches in a campaign
-   * Only OWNER role can delete branches
+   * Check if user can delete branches in a campaign.
+   *
+   * Verifies the user is the campaign owner. Only OWNER role can delete branches,
+   * which is stricter than create/update operations (OWNER + GM).
+   * Used by delete() method.
+   *
+   * @param campaignId - The campaign ID to check permission for
+   * @param user - Authenticated user to check
+   * @throws ForbiddenException - If user is not campaign OWNER
+   * @private
    */
   private async checkCanDeleteBranch(campaignId: string, user: AuthenticatedUser): Promise<void> {
     await this.checkCampaignAccess(campaignId, user);

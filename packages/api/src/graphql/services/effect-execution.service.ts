@@ -1,13 +1,28 @@
 /**
- * EffectExecutionService
+ * @fileoverview Effect Execution Service
  *
- * Orchestrates effect execution with support for:
- * - Single effect execution with patch application
- * - Multi-effect execution sorted by priority
- * - Dependency-ordered execution using topological sort
- * - Circular dependency detection via DependencyGraphService
+ * Orchestrates the execution of effect operations, applying JSON Patch operations
+ * to world entities with comprehensive audit logging, dry-run preview mode, and
+ * support for 3-phase timing execution (PRE/ON_RESOLVE/POST).
+ *
+ * Key Responsibilities:
+ * - Single effect execution with JSON Patch application
+ * - Multi-effect batch execution sorted by priority within timing phases
+ * - Entity state mutation with transactional consistency
  * - Comprehensive audit trail via EffectExecution records
- * - Dry-run mode for preview without side effects
+ * - Dry-run preview mode for simulation without side effects
+ * - Skip-update mode for resolve/complete workflows (audit only)
+ *
+ * Effect Execution Model:
+ * - Effects contain JSON Patch operations targeting world entities
+ * - Execution follows 3-phase timing: PRE → ON_RESOLVE → POST
+ * - Within each phase, effects execute in priority order (ascending)
+ * - Failed effects are logged but don't block other effects
+ * - All executions create audit records with before/after snapshots
+ *
+ * @see {@link EffectPatchService} For JSON Patch application logic
+ * @see {@link docs/features/effect-system.md} For comprehensive effect system documentation
+ * @module services/effect-execution
  */
 
 import {
@@ -35,7 +50,15 @@ import { PrismaService } from '../../database/prisma.service';
 import { EffectPatchService, type PatchableEntityType } from './effect-patch.service';
 
 /**
- * User context for authorization and audit
+ * User context for authorization and audit logging.
+ *
+ * Provides user identity and campaign access information for effect executions.
+ * Stored in EffectExecution records to track who triggered each execution.
+ *
+ * @interface UserContext
+ * @property {string} id - User's unique identifier (stored in executedBy field)
+ * @property {string} email - User's email address (for logging and audit reports)
+ * @property {Array<{campaignId: string; role: string}>} [campaigns] - User's campaign access list (future: for authorization checks)
  */
 export interface UserContext {
   id: string;
@@ -44,7 +67,37 @@ export interface UserContext {
 }
 
 /**
- * Result of single effect execution
+ * Result of a single effect execution operation.
+ *
+ * Contains execution status, audit trail reference, and error details if failed.
+ * Used by both single-effect and batch execution methods.
+ *
+ * @interface EffectExecutionResult
+ * @property {boolean} success - Whether patch application succeeded
+ * @property {string} effectId - ID of the effect that was executed
+ * @property {string | null} executionId - ID of EffectExecution audit record (null in dry-run or failure)
+ * @property {unknown | null} patchApplied - The JSON Patch operations that were applied (null if failed)
+ * @property {string | null} error - Error message if execution failed (null if successful)
+ *
+ * @example
+ * // Successful execution
+ * {
+ *   success: true,
+ *   effectId: "effect-123",
+ *   executionId: "exec-456",
+ *   patchApplied: [{ op: "replace", path: "/status", value: "RESOLVED" }],
+ *   error: null
+ * }
+ *
+ * @example
+ * // Failed execution
+ * {
+ *   success: false,
+ *   effectId: "effect-789",
+ *   executionId: null,
+ *   patchApplied: null,
+ *   error: "Invalid patch path: /nonexistent/field"
+ * }
  */
 export interface EffectExecutionResult {
   success: boolean;
@@ -55,7 +108,31 @@ export interface EffectExecutionResult {
 }
 
 /**
- * Summary of multi-effect execution
+ * Summary of multi-effect batch execution operation.
+ *
+ * Aggregates results from executing multiple effects in priority order.
+ * Used by executeEffectsForEntity() to track batch execution outcomes.
+ *
+ * @interface EffectExecutionSummary
+ * @property {number} total - Total number of effects attempted
+ * @property {number} succeeded - Number of effects that succeeded
+ * @property {number} failed - Number of effects that failed (execution continues despite failures)
+ * @property {EffectExecutionResult[]} results - Individual result for each effect execution
+ * @property {string[]} executionOrder - Array of effect IDs in the order they were executed (priority ascending)
+ *
+ * @example
+ * // Batch execution with mixed results
+ * {
+ *   total: 3,
+ *   succeeded: 2,
+ *   failed: 1,
+ *   results: [
+ *     { success: true, effectId: "effect-1", ... },
+ *     { success: false, effectId: "effect-2", ... },
+ *     { success: true, effectId: "effect-3", ... }
+ *   ],
+ *   executionOrder: ["effect-1", "effect-2", "effect-3"]
+ * }
  */
 export interface EffectExecutionSummary {
   total: number;
@@ -66,39 +143,138 @@ export interface EffectExecutionSummary {
 }
 
 /**
- * Summary of dependency-ordered execution
+ * Summary of dependency-ordered execution (NOT YET IMPLEMENTED).
+ *
+ * Extends EffectExecutionSummary with topological dependency ordering.
+ * This feature requires Stage 7 (Dependency Graph Integration) to be completed.
+ *
+ * @interface DependencyExecutionSummary
+ * @extends {EffectExecutionSummary}
+ * @property {string[]} dependencyOrder - Array of effect IDs in topological dependency order
+ *
+ * @see {@link executeEffectsWithDependencies} Method that will use this interface (not yet implemented)
  */
 export interface DependencyExecutionSummary extends EffectExecutionSummary {
   dependencyOrder: string[]; // Array of effect IDs in topological order
 }
 
 /**
- * Supported entity types that can be targeted by effects
+ * Supported entity types that can be targeted by effects.
+ *
+ * Effects can mutate these world entities by applying JSON Patch operations.
+ * Corresponds to EntityType enum in Prisma schema.
+ *
+ * @typedef {('ENCOUNTER' | 'EVENT' | 'SETTLEMENT' | 'STRUCTURE')} EntityType
  */
 type EntityType = 'ENCOUNTER' | 'EVENT' | 'SETTLEMENT' | 'STRUCTURE';
 
 /**
- * Union type of all patchable entities
+ * Union type of all patchable Prisma entities.
+ *
+ * Represents the entities that can be loaded, patched, and persisted by this service.
+ * Each type corresponds to a Prisma model with JSON Patch support.
+ *
+ * @typedef {(Encounter | Event | Settlement | Structure)} PatchableEntity
  */
 type PatchableEntity = Encounter | Event | Settlement | Structure;
 
+/**
+ * Service for executing effects and applying JSON Patch operations to world entities.
+ *
+ * Core Operations:
+ * - Single effect execution with validation, patch application, and audit logging
+ * - Batch execution of all effects for an entity at a specific timing phase
+ * - Dry-run preview mode for simulation without persistence
+ * - Skip-update mode for audit-only execution during resolve workflows
+ *
+ * Execution Flow:
+ * 1. Load effect and validate (active status, entity existence)
+ * 2. Load target entity from database
+ * 3. Apply JSON Patch operations using EffectPatchService
+ * 4. Persist entity changes (unless dry-run or skip-update)
+ * 5. Create EffectExecution audit record
+ * 6. Return result with success status and execution ID
+ *
+ * 3-Phase Execution Model:
+ * - PRE: Effects that run before resolution (e.g., pre-conditions, setup)
+ * - ON_RESOLVE: Effects that run during resolution (e.g., state changes)
+ * - POST: Effects that run after resolution (e.g., cleanup, notifications)
+ *
+ * Error Handling:
+ * - Validation errors (NotFound, Forbidden, BadRequest) are thrown immediately
+ * - Patch application errors are caught and logged as failed executions
+ * - In batch execution, failed effects don't block other effects
+ * - All errors create audit records (except in dry-run mode)
+ *
+ * Transaction Guarantees:
+ * - Entity update and audit record creation occur in a single transaction
+ * - Ensures consistency between world state and audit trail
+ * - Rollback on any failure maintains data integrity
+ *
+ * @class EffectExecutionService
+ * @see {@link EffectPatchService} For JSON Patch application logic
+ * @see {@link docs/features/effect-system.md} For comprehensive effect system documentation
+ */
 @Injectable()
 export class EffectExecutionService {
   private readonly logger = new Logger(EffectExecutionService.name);
 
+  /**
+   * Creates an instance of EffectExecutionService.
+   *
+   * @param {PrismaService} prisma - Database client for entity and audit operations
+   * @param {EffectPatchService} effectPatchService - Service for applying JSON Patch operations
+   */
   constructor(
     private readonly prisma: PrismaService,
     private readonly effectPatchService: EffectPatchService
   ) {}
 
   /**
-   * Execute a single effect with patch application and audit logging
+   * Execute a single effect with patch application and audit logging.
    *
-   * @param effectId - ID of effect to execute
-   * @param context - Optional entity context (will load if not provided)
-   * @param user - User context for authorization and audit
-   * @param dryRun - If true, preview changes without persisting
-   * @returns Execution result with success status and audit ID
+   * Primary entry point for executing individual effects. Loads the effect,
+   * validates status and entity existence, applies JSON Patch operations,
+   * and persists changes with audit logging.
+   *
+   * Execution Steps:
+   * 1. Load effect from database and validate (exists, active, entity exists)
+   * 2. Load entity context (use provided or fetch from database)
+   * 3. Delegate to executeEffectInternal for patch application
+   * 4. Return result with execution ID for audit trail lookup
+   *
+   * Dry-Run Mode:
+   * - When dryRun=true, applies patch but doesn't persist changes
+   * - Returns preview of patched state without creating audit record
+   * - Useful for "what-if" simulations and validation
+   *
+   * @param {string} effectId - Unique identifier of effect to execute
+   * @param {unknown} [context] - Optional pre-loaded entity context (if not provided, loads from database)
+   * @param {UserContext} user - User context for authorization and audit trail
+   * @param {boolean} dryRun - Whether to preview changes without persisting (default: false)
+   * @returns {Promise<EffectExecutionResult>} Execution result with success status, execution ID, and applied patch
+   * @throws {NotFoundException} If effect or entity not found
+   * @throws {ForbiddenException} If effect is not active
+   *
+   * @example
+   * // Execute effect with dry-run preview
+   * const result = await service.executeEffect(
+   *   'effect-123',
+   *   undefined,
+   *   { id: 'user-1', email: 'user@example.com' },
+   *   true
+   * );
+   * console.log('Dry-run result:', result.patchApplied);
+   *
+   * @example
+   * // Execute effect with actual persistence
+   * const result = await service.executeEffect(
+   *   'effect-123',
+   *   encounterEntity, // Pre-loaded context
+   *   { id: 'user-1', email: 'user@example.com' },
+   *   false
+   * );
+   * console.log('Execution ID:', result.executionId);
    */
   async executeEffect(
     effectId: string,
@@ -139,15 +315,32 @@ export class EffectExecutionService {
   }
 
   /**
-   * Internal method to execute an already-loaded effect
-   * Used by both executeEffect and executeEffectsForEntity
+   * Internal method to execute an already-loaded effect.
    *
-   * @param effect - Already-loaded effect object
-   * @param entity - Entity context
-   * @param user - User context
-   * @param dryRun - Preview mode flag
-   * @param skipEntityUpdate - If true, create execution record but don't update entity (for resolve/complete workflows)
-   * @returns Execution result
+   * Core implementation shared by executeEffect() and executeEffectsForEntity().
+   * Assumes effect and entity are already loaded and validated.
+   *
+   * Operation Modes:
+   * 1. Normal mode (skipEntityUpdate=false, dryRun=false):
+   *    - Apply patch, update entity, create audit record
+   * 2. Dry-run mode (dryRun=true):
+   *    - Apply patch, return preview without persistence
+   * 3. Audit-only mode (skipEntityUpdate=true, dryRun=false):
+   *    - Apply patch, create audit record, but don't update entity
+   *    - Used in resolve/complete workflows where entity is updated separately
+   *
+   * Transaction Behavior:
+   * - Entity update and audit record creation happen atomically
+   * - Rollback on any failure ensures consistency
+   * - Skip-update mode still creates audit record in transaction
+   *
+   * @param {Effect} effect - Already-loaded effect object from database
+   * @param {unknown} entity - Entity context (before patch application)
+   * @param {UserContext} user - User context for audit logging
+   * @param {boolean} dryRun - Whether to preview without persisting
+   * @param {boolean} [skipEntityUpdate=false] - Whether to skip entity update (audit-only mode)
+   * @returns {Promise<EffectExecutionResult>} Execution result
+   * @private
    */
   private async executeEffectInternal(
     effect: Effect,
@@ -242,17 +435,57 @@ export class EffectExecutionService {
   }
 
   /**
-   * Execute all active effects for an entity at a specific timing phase
+   * Execute all active effects for an entity at a specific timing phase.
    *
-   * Effects are executed in priority order (ascending) within the timing phase.
-   * Failed effects are logged but don't prevent other effects from executing.
+   * Primary method for batch effect execution during event/encounter resolution workflows.
+   * Loads all active effects matching the entity and timing phase, then executes them
+   * sequentially in priority order (ascending).
    *
-   * @param entityType - Type of entity (ENCOUNTER or EVENT)
-   * @param entityId - ID of entity
-   * @param timing - Timing phase (PRE, ON_RESOLVE, POST)
-   * @param user - User context for authorization and audit
-   * @param skipEntityUpdate - If true, create execution records but don't update entity (for resolve/complete workflows)
-   * @returns Summary of execution results
+   * 3-Phase Timing Model:
+   * - PRE: Pre-resolution effects (validation, setup, pre-conditions)
+   * - ON_RESOLVE: Resolution effects (state changes, main logic)
+   * - POST: Post-resolution effects (cleanup, notifications, side effects)
+   *
+   * Execution Behavior:
+   * - Effects execute sequentially in priority order (lower priority first)
+   * - Entity is loaded once and reused for all effects (consistency)
+   * - Failed effects are logged but don't block other effects
+   * - Each effect creates an independent audit record
+   * - Returns summary with total/succeeded/failed counts
+   *
+   * Skip-Update Mode:
+   * - When skipEntityUpdate=true, effects create audit records but don't update entity
+   * - Used in resolve/complete workflows where entity is updated once at the end
+   * - Allows effect audit trail without redundant database updates
+   *
+   * @param {EntityType} entityType - Type of entity (ENCOUNTER, EVENT, SETTLEMENT, STRUCTURE)
+   * @param {string} entityId - Unique identifier of entity
+   * @param {string} timing - Timing phase (PRE, ON_RESOLVE, POST)
+   * @param {UserContext} user - User context for authorization and audit trail
+   * @param {boolean} [skipEntityUpdate=false] - Whether to skip entity updates (audit-only mode)
+   * @returns {Promise<EffectExecutionSummary>} Summary with counts, results, and execution order
+   * @throws {NotFoundException} If entity not found
+   *
+   * @example
+   * // Execute PRE effects during encounter resolution
+   * const summary = await service.executeEffectsForEntity(
+   *   'ENCOUNTER',
+   *   'encounter-123',
+   *   'PRE',
+   *   { id: 'user-1', email: 'user@example.com' },
+   *   false
+   * );
+   * console.log(`${summary.succeeded}/${summary.total} effects succeeded`);
+   *
+   * @example
+   * // Execute POST effects in audit-only mode (entity updated separately)
+   * const summary = await service.executeEffectsForEntity(
+   *   'EVENT',
+   *   'event-456',
+   *   'POST',
+   *   { id: 'user-1', email: 'user@example.com' },
+   *   true // Skip entity updates
+   * );
    */
   async executeEffectsForEntity(
     entityType: EntityType,
@@ -350,19 +583,36 @@ export class EffectExecutionService {
   }
 
   /**
-   * Execute multiple effects in dependency order using topological sort
+   * Execute multiple effects in dependency order using topological sort.
    *
-   * **NOT YET IMPLEMENTED**: This method requires GraphQL resolver integration
-   * to be completed in Stage 6 (TICKET-016). It needs:
+   * **NOT YET IMPLEMENTED** - Requires Stage 7 (Dependency Graph Integration)
+   *
+   * Future Functionality:
+   * - Load multiple effects by ID
+   * - Query DependencyGraphService for topological order
+   * - Execute effects in dependency order (dependencies first)
+   * - Detect circular dependencies and fail fast
+   * - Return summary with both execution order and dependency order
+   *
+   * Implementation Requirements:
    * - Campaign ID extraction from effect entities
    * - Branch ID support for world-state time travel
    * - Effect-level dependency tracking (currently only tracks conditions/variables)
+   * - DependencyGraphService integration for topological sort
    *
-   * @param _effectIds - Array of effect IDs to execute (unused)
-   * @param _context - Entity context to use for all effects (unused)
-   * @param _user - User context for authorization and audit (unused)
-   * @returns Never (always throws NotImplementedException)
-   * @throws NotImplementedException - Always thrown until Stage 7 dependency graph integration
+   * Use Case:
+   * - Complex effect chains with dependencies
+   * - Multi-entity operations requiring ordering
+   * - Cascading effects across entity relationships
+   *
+   * @param {string[]} _effectIds - Array of effect IDs to execute (unused until implementation)
+   * @param {unknown} _context - Entity context to use for all effects (unused until implementation)
+   * @param {UserContext} _user - User context for authorization and audit (unused until implementation)
+   * @returns {Promise<DependencyExecutionSummary>} Never returns (throws NotImplementedException)
+   * @throws {NotImplementedException} Always thrown until Stage 7 dependency graph integration completed
+   *
+   * @see {@link DependencyGraphService} Future dependency for topological sort
+   * @see {@link executeEffectsForEntity} Current method for priority-based batch execution
    */
   async executeEffectsWithDependencies(
     _effectIds: string[],
@@ -377,11 +627,16 @@ export class EffectExecutionService {
   }
 
   /**
-   * Load entity from database by type and ID
+   * Load entity from database by type and ID.
    *
-   * @param entityType - Type of entity (ENCOUNTER, EVENT, SETTLEMENT, or STRUCTURE)
-   * @param entityId - ID of entity
-   * @returns Entity object or null if not found
+   * Fetches the specified entity from the appropriate Prisma model table.
+   * Filters out soft-deleted entities (deletedAt != null).
+   *
+   * @param {EntityType} entityType - Type of entity (ENCOUNTER, EVENT, SETTLEMENT, STRUCTURE)
+   * @param {string} entityId - Unique identifier of entity
+   * @returns {Promise<PatchableEntity | null>} Entity object or null if not found or deleted
+   * @throws {BadRequestException} If entityType is not supported
+   * @private
    */
   private async loadEntity(
     entityType: EntityType,
@@ -410,12 +665,18 @@ export class EffectExecutionService {
   }
 
   /**
-   * Update entity in database with patched data
+   * Update entity in database with patched data.
    *
-   * @param entityType - Type of entity (ENCOUNTER, EVENT, SETTLEMENT, or STRUCTURE)
-   * @param entityId - ID of entity
-   * @param patchedEntity - Patched entity data
-   * @param tx - Prisma transaction client
+   * Persists the patched entity to the appropriate Prisma model table.
+   * Must be called within a Prisma transaction to ensure atomicity with audit logging.
+   *
+   * @param {EntityType} entityType - Type of entity (ENCOUNTER, EVENT, SETTLEMENT, STRUCTURE)
+   * @param {string} entityId - Unique identifier of entity
+   * @param {PatchableEntity} patchedEntity - Entity object after JSON Patch application
+   * @param {Prisma.TransactionClient} tx - Prisma transaction client for atomic operations
+   * @returns {Promise<void>}
+   * @throws {BadRequestException} If entityType is not supported
+   * @private
    */
   private async updateEntity(
     entityType: EntityType,
@@ -454,14 +715,29 @@ export class EffectExecutionService {
   }
 
   /**
-   * Create audit record for effect execution
+   * Create audit record for effect execution.
    *
-   * @param effect - Effect that was executed
-   * @param entity - Entity context before execution
-   * @param result - Execution result
-   * @param userId - User who triggered execution
-   * @param error - Optional error message
-   * @returns Created EffectExecution record
+   * Persists an EffectExecution record capturing the execution event with:
+   * - Entity context snapshot (before patch application)
+   * - Execution result (success/failure, applied patch)
+   * - User who triggered execution
+   * - Timestamp and error details
+   *
+   * Audit Trail Usage:
+   * - Historical record of all effect executions
+   * - Debugging and troubleshooting failed effects
+   * - Compliance and accountability tracking
+   * - Rollback and undo operations (future feature)
+   *
+   * @param {Effect} effect - Effect that was executed
+   * @param {unknown} entity - Entity context snapshot before patch application
+   * @param {object} result - Execution result object
+   * @param {boolean} result.success - Whether execution succeeded
+   * @param {unknown | null} result.patchApplied - Applied JSON Patch operations or null if failed
+   * @param {string} userId - ID of user who triggered execution
+   * @param {string | null} [error=null] - Error message if execution failed
+   * @returns {Promise<EffectExecution>} Created audit record
+   * @private
    */
   private async createAuditRecord(
     effect: Effect,
@@ -484,10 +760,29 @@ export class EffectExecutionService {
   }
 
   /**
-   * Extract affected field paths from patch operations
+   * Extract affected field paths from JSON Patch operations.
    *
-   * @param operations - JSON Patch operations array
-   * @returns Array of affected field paths
+   * Parses the patch operations to identify which entity fields were modified.
+   * Includes both target paths (op.path) and source paths (op.from for copy/move).
+   *
+   * Used For:
+   * - Audit record metadata (tracking which fields changed)
+   * - Cache invalidation (knowing which fields to refresh)
+   * - Dependency analysis (identifying affected computed fields)
+   *
+   * @param {Operation[]} operations - Array of JSON Patch operations (RFC 6902 format)
+   * @returns {string[]} Array of unique field paths (JSON Pointer format)
+   *
+   * @example
+   * const ops = [
+   *   { op: "replace", path: "/status", value: "RESOLVED" },
+   *   { op: "add", path: "/tags/-", value: "urgent" },
+   *   { op: "move", from: "/oldField", path: "/newField" }
+   * ];
+   * const affected = extractAffectedFields(ops);
+   * // Returns: ["/status", "/tags/-", "/newField", "/oldField"]
+   *
+   * @private
    */
   private extractAffectedFields(operations: Operation[]): string[] {
     // Extract paths from patch operations
@@ -511,10 +806,14 @@ export class EffectExecutionService {
   }
 
   /**
-   * Map entity type to patchable entity type
+   * Map entity type to patchable entity type.
    *
-   * @param entityType - Entity type from effect
-   * @returns Patchable entity type for EffectPatchService
+   * Converts EntityType enum to PatchableEntityType for EffectPatchService.
+   * Currently a simple pass-through cast, but allows for future type mapping logic.
+   *
+   * @param {EntityType} entityType - Entity type from effect (ENCOUNTER, EVENT, SETTLEMENT, STRUCTURE)
+   * @returns {PatchableEntityType} Mapped type for EffectPatchService
+   * @private
    */
   private mapToPatchableEntityType(entityType: EntityType): PatchableEntityType {
     return entityType as PatchableEntityType;

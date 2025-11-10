@@ -1,7 +1,45 @@
 /**
  * State Variable Service
- * Business logic for StateVariable CRUD operations
- * Handles variable scoping, formula validation, and authorization
+ *
+ * Provides business logic for managing state variables across different scopes within
+ * the campaign management system. State variables are dynamic data points that can be
+ * either static (stored values) or derived (computed via JSONLogic formulas).
+ *
+ * Key Features:
+ * - Hierarchical scope management (WORLD > CAMPAIGN > PARTY/KINGDOM > SETTLEMENT/CHARACTER > STRUCTURE)
+ * - Variable types: STATIC (stored values) and DERIVED (JSONLogic formulas)
+ * - JSONLogic formula validation and evaluation
+ * - Bitemporal versioning for campaign-scoped and nested entities
+ * - Optimistic locking for concurrent updates
+ * - Access control based on campaign membership
+ * - Dependency graph integration for change propagation
+ * - Redis pub/sub for Rules Engine worker notifications
+ * - Cache invalidation for computed fields
+ *
+ * Scope Hierarchy:
+ * - WORLD: Global variables accessible across all campaigns
+ * - CAMPAIGN: Campaign-specific variables
+ * - PARTY: Party-scoped variables (within campaign)
+ * - KINGDOM: Kingdom-scoped variables (within campaign)
+ * - SETTLEMENT: Settlement-scoped variables (within kingdom)
+ * - STRUCTURE: Structure-scoped variables (within settlement)
+ * - CHARACTER: Character-scoped variables (within campaign)
+ * - LOCATION: Location-scoped variables (within world)
+ * - EVENT: Event-scoped variables (within campaign)
+ * - ENCOUNTER: Encounter-scoped variables (within campaign)
+ *
+ * Variable Types:
+ * - STATIC: Stores a value directly (JSON type)
+ * - DERIVED: Computes value from a JSONLogic formula that references other variables
+ *
+ * Versioning:
+ * Campaign-scoped and nested entities support bitemporal versioning with branches for
+ * time-travel queries and alternate timelines. World-scoped variables are not versioned.
+ *
+ * @class
+ * @see VariableEvaluationService for formula evaluation logic
+ * @see DependencyGraphService for variable dependency tracking
+ * @see VersionService for bitemporal version management
  */
 
 import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
@@ -41,8 +79,31 @@ export class StateVariableService {
   ) {}
 
   /**
-   * Create a new state variable
-   * Validates formula for derived variables and verifies user has access to scope entity
+   * Create a new state variable.
+   *
+   * Creates a state variable with the specified scope, type, and optional formula.
+   * Validates that derived variables have formulas and that formulas are syntactically
+   * correct using JSONLogic validation. Verifies user has access to the scope entity
+   * (campaign, settlement, etc.) before allowing creation.
+   *
+   * Workflow:
+   * 1. Validate that DERIVED type variables include a formula
+   * 2. Validate formula syntax using VariableEvaluationService
+   * 3. Verify user has access to the scope entity (skip for WORLD scope)
+   * 4. Create the variable with appropriate value/formula
+   * 5. Create audit log entry
+   * 6. Invalidate dependency graph cache for the variable's campaign
+   * 7. Invalidate computed fields cache if scope is SETTLEMENT or STRUCTURE
+   * 8. Publish Redis event for Rules Engine worker notification
+   *
+   * @param input - Variable creation data (scope, key, value/formula, type, description)
+   * @param user - Authenticated user
+   * @returns The newly created StateVariable
+   * @throws BadRequestException - If DERIVED variable lacks formula or formula is invalid
+   * @throws NotFoundException - If scope entity not found or user lacks access
+   *
+   * @see VariableEvaluationService.validateFormula for formula validation
+   * @see DependencyGraphService.invalidateGraph for cache invalidation
    */
   async create(
     input: CreateStateVariableInput,
@@ -125,8 +186,18 @@ export class StateVariableService {
   }
 
   /**
-   * Find variable by ID
-   * Ensures user has access to the related scope entity
+   * Find a state variable by ID.
+   *
+   * Retrieves a single variable by its unique ID, ensuring the user has access to
+   * the scope entity. Non-deleted variables are returned, or null if not found or
+   * access is denied. Access verification is silently handled (returns null instead
+   * of throwing exceptions).
+   *
+   * @param id - Variable ID
+   * @param user - Authenticated user
+   * @returns The StateVariable or null if not found/deleted/access denied
+   *
+   * @see verifyScopeAccess for access control logic
    */
   async findById(id: string, user: AuthenticatedUser): Promise<PrismaStateVariable | null> {
     const variable = await this.prisma.stateVariable.findUnique({
@@ -150,7 +221,31 @@ export class StateVariableService {
   }
 
   /**
-   * Find many variables with filtering, sorting, and pagination
+   * Find multiple state variables with filtering, sorting, and pagination.
+   *
+   * Queries state variables with optional filters (scope, key, type, active status, creator,
+   * date range), sorting, and pagination. If user is provided, results are filtered to only
+   * include variables the user has access to based on scope entity membership.
+   *
+   * Filtering Options:
+   * - scope: Filter by VariableScope (WORLD, CAMPAIGN, etc.)
+   * - scopeId: Filter by scope entity ID
+   * - key: Filter by exact variable key
+   * - type: Filter by VariableType (STATIC, DERIVED)
+   * - isActive: Filter by active status
+   * - createdBy: Filter by creator user ID
+   * - createdAfter/createdBefore: Filter by creation date range
+   * - includeDeleted: Include soft-deleted variables (default: false)
+   *
+   * @param where - Optional filter criteria
+   * @param orderBy - Optional sort specification (field and order)
+   * @param skip - Optional pagination offset
+   * @param take - Optional pagination limit
+   * @param user - Optional authenticated user for access control
+   * @returns Array of StateVariables matching criteria and accessible to user
+   *
+   * @see buildOrderBy for order-by clause construction
+   * @see verifyScopeAccess for access control logic
    */
   async findMany(
     where?: StateVariableWhereInput,
@@ -219,8 +314,24 @@ export class StateVariableService {
   }
 
   /**
-   * Find variables for a specific scope and optional key
-   * Returns variables in key order (ASC)
+   * Find state variables for a specific scope and optional key.
+   *
+   * Retrieves all active, non-deleted variables for a given scope entity, with optional
+   * key filtering. Results are sorted by key (ASC). User access to the scope entity is
+   * verified before querying (except for WORLD scope).
+   *
+   * Common Use Cases:
+   * - Get all variables for a settlement: findByScope(SETTLEMENT, settlementId, undefined, user)
+   * - Get specific variable by scope+key: findByScope(CAMPAIGN, campaignId, "gold", user)
+   *
+   * @param scope - The VariableScope to query (WORLD, CAMPAIGN, SETTLEMENT, etc.)
+   * @param scopeId - The scope entity ID (null for WORLD scope)
+   * @param key - Optional variable key for exact match filtering
+   * @param user - Authenticated user
+   * @returns Array of StateVariables sorted by key (ASC)
+   * @throws NotFoundException - If scope entity not found or user lacks access
+   *
+   * @see verifyScopeAccess for access control logic
    */
   async findByScope(
     scope: VariableScope,
@@ -254,15 +365,47 @@ export class StateVariableService {
   }
 
   /**
-   * Update an existing state variable
-   * Uses optimistic locking to prevent race conditions
-   * Optionally creates Version snapshot for bitemporal queries
+   * Update an existing state variable.
+   *
+   * Updates variable properties (value, formula, description, isActive) with optimistic
+   * locking to prevent race conditions. Optionally creates a Version snapshot for
+   * bitemporal queries (time-travel and branch support).
+   *
+   * Optimistic Locking:
+   * If expectedVersion is provided in input, it must match the current variable version.
+   * On version mismatch, throws OptimisticLockException to force client refresh.
+   *
+   * Versioning:
+   * If branchId is provided and the variable is campaign-scoped or nested within campaign,
+   * a Version record is created atomically with the update. World-scoped variables are
+   * not versioned. The validFrom timestamp is derived from:
+   * 1. worldTime parameter (if provided)
+   * 2. Campaign.currentWorldTime (if available)
+   * 3. Current system time (fallback)
+   *
+   * Workflow:
+   * 1. Fetch existing variable and verify user access
+   * 2. Validate optimistic lock version (if provided)
+   * 3. Validate formula (if changed)
+   * 4. Build update data with incremented version
+   * 5. If versioning: Create Version snapshot in transaction with update
+   * 6. If no versioning: Perform standalone update
+   * 7. Create audit log entry
+   * 8. Invalidate dependency graph and computed fields caches
+   * 9. Publish Redis event for Rules Engine worker
    *
    * @param id - Variable ID
-   * @param input - Update data
+   * @param input - Update data (value, formula, description, isActive, expectedVersion)
    * @param user - Authenticated user
-   * @param branchId - Optional branch ID for versioning (defaults to finding "main" branch)
-   * @param worldTime - Optional world time for version validFrom (defaults to Campaign.currentWorldTime or now)
+   * @param branchId - Optional branch ID for versioning (enables bitemporal support)
+   * @param worldTime - Optional world time for version validFrom timestamp
+   * @returns The updated StateVariable
+   * @throws NotFoundException - If variable not found or user lacks access
+   * @throws OptimisticLockException - If expectedVersion doesn't match current version
+   * @throws BadRequestException - If formula invalid or branch not found
+   *
+   * @see VersionService.createVersion for version snapshot logic
+   * @see OptimisticLockException for concurrent update handling
    */
   async update(
     id: string,
@@ -419,7 +562,26 @@ export class StateVariableService {
   }
 
   /**
-   * Soft delete a state variable
+   * Soft delete a state variable.
+   *
+   * Marks a variable as deleted by setting deletedAt timestamp. The record remains in
+   * the database but is filtered out from normal queries. User access to the scope
+   * entity is verified before deletion.
+   *
+   * Workflow:
+   * 1. Verify variable exists and user has access
+   * 2. Set deletedAt timestamp to current time
+   * 3. Create audit log entry
+   * 4. Invalidate dependency graph cache
+   * 5. Invalidate computed fields cache (if SETTLEMENT or STRUCTURE scope)
+   * 6. Publish Redis event for Rules Engine worker
+   *
+   * @param id - Variable ID to soft delete
+   * @param user - Authenticated user
+   * @returns The soft-deleted StateVariable with deletedAt timestamp
+   * @throws NotFoundException - If variable not found or user lacks access
+   *
+   * @see DependencyGraphService.invalidateGraph for cache invalidation
    */
   async delete(id: string, user: AuthenticatedUser): Promise<PrismaStateVariable> {
     // Verify variable exists and user has access
@@ -470,7 +632,17 @@ export class StateVariableService {
   }
 
   /**
-   * Toggle active status of a variable
+   * Toggle the active status of a state variable.
+   *
+   * Updates the isActive flag to enable or disable a variable. Inactive variables
+   * remain in the database but can be filtered in queries. No cache invalidation or
+   * Rules Engine notification is performed (lightweight operation).
+   *
+   * @param id - Variable ID
+   * @param isActive - New active status (true = active, false = inactive)
+   * @param user - Authenticated user
+   * @returns The updated StateVariable with new isActive status
+   * @throws NotFoundException - If variable not found or user lacks access
    */
   async toggleActive(
     id: string,
@@ -496,8 +668,25 @@ export class StateVariableService {
   }
 
   /**
-   * Evaluate a variable with provided context
-   * Returns evaluation result with trace for debugging
+   * Evaluate a state variable with provided context.
+   *
+   * Evaluates a variable using the VariableEvaluationService. For STATIC variables,
+   * returns the stored value. For DERIVED variables, evaluates the JSONLogic formula
+   * against the provided context. Returns a detailed result with success status, value,
+   * optional error, and trace information for debugging.
+   *
+   * Evaluation Trace:
+   * The trace includes step-by-step evaluation details useful for debugging complex
+   * formulas and understanding how derived values are computed.
+   *
+   * @param id - Variable ID to evaluate
+   * @param context - Context data for formula evaluation (other variables, entity state)
+   * @param user - Authenticated user
+   * @returns Evaluation result with success, value, optional error, and trace
+   * @throws NotFoundException - If variable not found or user lacks access
+   *
+   * @see VariableEvaluationService.evaluateWithTrace for evaluation logic
+   * @see EvaluationStep for trace structure
    */
   async evaluateVariable(
     id: string,
@@ -536,8 +725,26 @@ export class StateVariableService {
   }
 
   /**
-   * Verify user has access to a scope entity
-   * Checks entity exists and user has campaign access
+   * Verify user has access to a scope entity.
+   *
+   * Validates that the scope entity exists and the user has access based on campaign
+   * membership (owner or member). Access control logic varies by scope:
+   *
+   * - WORLD: Always accessible (returns immediately)
+   * - CAMPAIGN: User must be campaign owner or member
+   * - PARTY/KINGDOM/SETTLEMENT/STRUCTURE/CHARACTER/EVENT/ENCOUNTER: User must be campaign owner or member (via entity's campaign)
+   * - LOCATION: Entity must exist in a valid world (no campaign-level check)
+   *
+   * This method throws exceptions for access denied or entity not found, enabling
+   * consistent error handling across all CRUD operations.
+   *
+   * @param scope - The VariableScope to verify (WORLD, CAMPAIGN, SETTLEMENT, etc.)
+   * @param scopeId - The scope entity ID
+   * @param user - Authenticated user
+   * @throws NotFoundException - If entity not found or user lacks access
+   * @throws BadRequestException - If unsupported scope provided
+   *
+   * @private
    */
   private async verifyScopeAccess(
     scope: VariableScope,
@@ -797,8 +1004,26 @@ export class StateVariableService {
   }
 
   /**
-   * Get campaign ID from scope entity
-   * Required for version tracking which is tied to campaigns
+   * Get campaign ID from a scope entity.
+   *
+   * Resolves the campaign ID for a given scope entity. Required for version tracking
+   * since Version records are tied to campaigns. Traverses the entity hierarchy to
+   * find the associated campaign.
+   *
+   * Resolution Logic:
+   * - CAMPAIGN: scopeId is the campaign ID
+   * - PARTY/KINGDOM/CHARACTER/EVENT/ENCOUNTER: Direct campaignId foreign key
+   * - SETTLEMENT: Via kingdom.campaignId
+   * - STRUCTURE: Via settlement.kingdom.campaignId
+   * - LOCATION: Not supported (throws exception - no direct campaign association)
+   *
+   * @param scope - The VariableScope
+   * @param scopeId - The scope entity ID
+   * @returns The campaign ID
+   * @throws NotFoundException - If entity not found
+   * @throws BadRequestException - If scope doesn't have campaign association (LOCATION) or unsupported scope
+   *
+   * @private
    */
   private async getCampaignIdForScope(scope: VariableScope, scopeId: string): Promise<string> {
     const scopeLower = scope.toLowerCase();
@@ -900,8 +1125,30 @@ export class StateVariableService {
   }
 
   /**
-   * Get variable state as it existed at a specific point in world-time
-   * Supports time-travel queries for version history
+   * Get variable state as it existed at a specific point in world-time.
+   *
+   * Performs a bitemporal query to retrieve the variable's state as it existed at
+   * a given world-time on a specific branch. This supports "time-travel" queries
+   * for viewing historical variable values.
+   *
+   * Only campaign-scoped and nested variables support versioning. World-scoped
+   * variables throw an exception since they have no version history.
+   *
+   * Workflow:
+   * 1. Verify user has access to the variable
+   * 2. Validate variable is versionable (not WORLD scope)
+   * 3. Resolve version at the specified time using VersionService
+   * 4. Decompress and return the historical payload
+   *
+   * @param id - Variable ID
+   * @param branchId - Branch ID to query
+   * @param worldTime - The world-time to query at
+   * @param user - Authenticated user
+   * @returns The StateVariable as it existed at worldTime, or null if no version found
+   * @throws BadRequestException - If variable is WORLD-scoped (not versionable)
+   * @throws NotFoundException - If variable not found or user lacks access
+   *
+   * @see VersionService.resolveVersion for bitemporal version resolution
    */
   async getVariableAsOf(
     id: string,
@@ -939,8 +1186,23 @@ export class StateVariableService {
   }
 
   /**
-   * Get full version history for a variable
-   * Returns all Version records ordered by validFrom DESC
+   * Get full version history for a state variable.
+   *
+   * Retrieves all Version records for a variable on a specific branch, ordered by
+   * validFrom (DESC). Returns version metadata without the full payload for efficient
+   * history browsing.
+   *
+   * Only campaign-scoped and nested variables support versioning. World-scoped
+   * variables throw an exception since they have no version history.
+   *
+   * @param id - Variable ID
+   * @param branchId - Branch ID to query
+   * @param user - Authenticated user
+   * @returns Array of version metadata (version, validFrom, validTo, createdBy, createdAt)
+   * @throws BadRequestException - If variable is WORLD-scoped (not versionable)
+   * @throws NotFoundException - If variable not found or user lacks access
+   *
+   * @see VersionService.findVersionHistory for version retrieval logic
    */
   async getVariableHistory(
     id: string,
@@ -984,7 +1246,23 @@ export class StateVariableService {
   }
 
   /**
-   * Build Prisma order by clause from GraphQL input
+   * Build Prisma order-by clause from GraphQL input.
+   *
+   * Converts GraphQL StateVariableOrderByInput (field + order) to Prisma's
+   * StateVariableOrderByWithRelationInput format. Maps GraphQL field names
+   * to Prisma model field names.
+   *
+   * Supported Sort Fields:
+   * - KEY: Sort by variable key (alphabetical)
+   * - SCOPE: Sort by scope (WORLD, CAMPAIGN, etc.)
+   * - TYPE: Sort by type (STATIC, DERIVED)
+   * - CREATED_AT: Sort by creation timestamp
+   * - UPDATED_AT: Sort by last update timestamp
+   *
+   * @param orderBy - GraphQL order-by input (field and order)
+   * @returns Prisma order-by clause
+   *
+   * @private
    */
   private buildOrderBy(
     orderBy: StateVariableOrderByInput
