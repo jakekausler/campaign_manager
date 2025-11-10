@@ -55,7 +55,7 @@ API documentation should help both frontend developers and third-party integrato
 
 - [x] Run code review (use Code Reviewer subagent - MANDATORY)
 - [x] Address code review feedback (if any exists from previous task)
-- [ ] Commit stage changes with detailed conventional commit message
+- [x] Commit stage changes with detailed conventional commit message
 
 ## Implementation Notes
 
@@ -421,4 +421,4 @@ API documentation should help both frontend developers and third-party integrato
 
 ## Commit Hash
 
-_Added when final commit task is complete_
+`9e2fa09` - docs(api): complete comprehensive API documentation for TICKET-035 Stage 5
