@@ -9,6 +9,8 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
   testTimeout: 30000, // 30 second timeout to prevent tests from hanging indefinitely
   maxWorkers: 1, // Run tests serially to avoid database conflicts in integration tests
+  forceExit: true, // Force Jest to exit after tests complete (prevents hanging on open handles)
+  detectOpenHandles: false, // Disabled to avoid verbose output; forceExit handles cleanup
   moduleNameMapper: {
     '^@campaign/shared$': '<rootDir>/../shared/src',
   },
