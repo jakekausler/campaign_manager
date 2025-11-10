@@ -141,7 +141,7 @@ describe('Cascade Invalidation Integration Tests', () => {
     const world = await prisma.world.create({
       data: {
         name: 'Test World',
-        ownerId: userId,
+        calendars: [],
       },
     });
     worldId = world.id;
@@ -174,11 +174,8 @@ describe('Cascade Invalidation Integration Tests', () => {
     const location = await prisma.location.create({
       data: {
         name: 'Test Location',
-        kingdomId,
-        coordinates: {
-          type: 'Point',
-          coordinates: [0, 0],
-        },
+        worldId,
+        type: 'point',
       },
     });
 
@@ -474,7 +471,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(settlementComputedKey, { wealth: 5000 }, { ttl: 300 });
 
       // Act: Update StateVariable
-      await stateVariableService.update(stateVar.id, { value: 10000 }, mockUser, 1);
+      await stateVariableService.update(stateVar.id, { value: 10000 }, mockUser, '1');
 
       // Assert: Settlement computed fields cache should be invalidated
       expect(await redis.get(settlementComputedKey)).toBeNull();
@@ -516,11 +513,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       const unrelatedLocation = await prisma.location.create({
         data: {
           name: 'Unrelated Location',
-          kingdomId,
-          coordinates: {
-            type: 'Point',
-            coordinates: [1, 1],
-          },
+          worldId,
+          type: 'point',
         },
       });
 
