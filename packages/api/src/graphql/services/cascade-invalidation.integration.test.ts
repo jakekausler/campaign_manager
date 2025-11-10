@@ -171,10 +171,22 @@ describe('Cascade Invalidation Integration Tests', () => {
     });
     kingdomId = kingdom.id;
 
+    const location = await prisma.location.create({
+      data: {
+        name: 'Test Location',
+        kingdomId,
+        coordinates: {
+          type: 'Point',
+          coordinates: [0, 0],
+        },
+      },
+    });
+
     const settlement = await prisma.settlement.create({
       data: {
         name: 'Test Settlement',
         kingdomId,
+        locationId: location.id,
         level: 1,
       },
     });
@@ -271,8 +283,7 @@ describe('Cascade Invalidation Integration Tests', () => {
           expression: { '==': [3, 3] },
           expectedVersion: 1,
         },
-        mockUser,
-        1
+        mockUser
       );
 
       // Assert: Both caches should be invalidated
@@ -289,7 +300,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(structureCacheKey, { testField: 'value2' }, { ttl: 300 });
 
       // Act: Delete FieldCondition
-      await conditionService.delete(fieldConditionId, mockUser, 1);
+      await conditionService.delete(fieldConditionId, mockUser);
 
       // Assert: Both caches should be invalidated
       expect(await redis.get(settlementCacheKey)).toBeNull();
@@ -307,7 +318,7 @@ describe('Cascade Invalidation Integration Tests', () => {
 
       await cacheService.set(settlementComputedKey, { field1: 'value1' }, { ttl: 300 });
       await cacheService.set(structureComputedKey, { field2: 'value2' }, { ttl: 300 });
-      await cacheService.set(structuresListKey, [{ id: structureId }], 600);
+      await cacheService.set(structuresListKey, [{ id: structureId }], { ttl: 600 });
       await cacheService.set(spatialKey, [{ id: settlementId }], { ttl: 300 });
 
       // Verify all caches are populated
@@ -341,7 +352,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(structureComputedKey, { parentLevel: 1 }, { ttl: 300 });
 
       // Act: Change settlement level
-      await settlementService.setLevel(settlementId, 2, mockUser, 1);
+      await settlementService.setLevel(settlementId, 2, mockUser);
 
       // Assert: Related caches should be invalidated
       expect(await redis.get(settlementComputedKey)).toBeNull();
@@ -358,7 +369,7 @@ describe('Cascade Invalidation Integration Tests', () => {
 
       await cacheService.set(structureComputedKey, { field1: 'value1' }, { ttl: 300 });
       await cacheService.set(settlementComputedKey, { structureCount: 1 }, { ttl: 300 });
-      await cacheService.set(structuresListKey, [{ id: structureId }], 600);
+      await cacheService.set(structuresListKey, [{ id: structureId }], { ttl: 600 });
 
       // Verify all caches are populated
       expect(await redis.get(structureComputedKey)).toBeTruthy();
@@ -389,7 +400,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(settlementComputedKey, { maxStructureLevel: 1 }, { ttl: 300 });
 
       // Act: Change structure level
-      await structureService.setLevel(structureId, 3, mockUser, 1);
+      await structureService.setLevel(structureId, 3, mockUser);
 
       // Assert: Both caches should be invalidated
       expect(await redis.get(structureComputedKey)).toBeNull();
@@ -489,7 +500,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(structureComputedKey, { defenders: 50 }, { ttl: 300 });
 
       // Act: Delete StateVariable
-      await stateVariableService.delete(stateVar.id, mockUser, 1);
+      await stateVariableService.delete(stateVar.id, mockUser);
 
       // Assert: Structure computed fields cache should be invalidated
       expect(await redis.get(structureComputedKey)).toBeNull();
@@ -502,10 +513,22 @@ describe('Cascade Invalidation Integration Tests', () => {
 
     beforeEach(async () => {
       // Create unrelated settlement and structure in the same campaign/kingdom
+      const unrelatedLocation = await prisma.location.create({
+        data: {
+          name: 'Unrelated Location',
+          kingdomId,
+          coordinates: {
+            type: 'Point',
+            coordinates: [1, 1],
+          },
+        },
+      });
+
       const unrelatedSettlement = await prisma.settlement.create({
         data: {
           name: 'Unrelated Settlement',
           kingdomId,
+          locationId: unrelatedLocation.id,
           level: 1,
         },
       });
