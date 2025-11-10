@@ -6,8 +6,10 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { CacheStatsService } from '../../common/cache/cache-stats.service';
 import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
+import { REDIS_CACHE } from '../cache/redis-cache.provider';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
 import { SortOrder } from '../inputs/filter.input';
@@ -133,12 +135,30 @@ describe('StateVariableService', () => {
           },
         },
         {
-          provide: CacheService,
+          provide: REDIS_CACHE,
           useValue: {
-            del: jest.fn(),
-            delPattern: jest.fn(),
             get: jest.fn(),
-            set: jest.fn(),
+            setex: jest.fn(),
+            del: jest.fn(),
+            scan: jest.fn(),
+            options: { keyPrefix: 'cache:' },
+          },
+        },
+        CacheService,
+        {
+          provide: CacheStatsService,
+          useValue: {
+            recordHit: jest.fn(),
+            recordMiss: jest.fn(),
+            recordSet: jest.fn(),
+            recordInvalidation: jest.fn(),
+            recordCascadeInvalidation: jest.fn(),
+            getStats: jest.fn(),
+            resetStats: jest.fn(),
+            getHitRateForType: jest.fn(),
+            estimateTimeSaved: jest.fn(),
+            getRedisMemoryInfo: jest.fn(),
+            getKeyCountByType: jest.fn(),
           },
         },
         {
@@ -157,6 +177,12 @@ describe('StateVariableService', () => {
     audit = module.get<AuditService>(AuditService);
     evaluationService = module.get<VariableEvaluationService>(VariableEvaluationService);
     cacheService = module.get<CacheService>(CacheService);
+
+    // Spy on CacheService methods used by tests
+    jest.spyOn(cacheService, 'get').mockResolvedValue(null);
+    jest.spyOn(cacheService, 'set').mockResolvedValue(undefined);
+    jest.spyOn(cacheService, 'del').mockResolvedValue(0);
+    jest.spyOn(cacheService, 'delPattern').mockResolvedValue({ success: true, keysDeleted: 0 });
   });
 
   afterEach(() => {
@@ -1081,7 +1107,7 @@ describe('StateVariableService', () => {
         jest.spyOn(prisma.stateVariable, 'create').mockResolvedValue(mockVariable as never);
 
         // Mock cache deletion
-        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+        jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
         await service.create(createInput, mockUser);
 
@@ -1116,7 +1142,7 @@ describe('StateVariableService', () => {
         jest.spyOn(prisma.stateVariable, 'create').mockResolvedValue(structureVariable as never);
 
         // Mock cache deletion
-        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+        jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
         await service.create(createInput, mockUser);
 
@@ -1149,7 +1175,7 @@ describe('StateVariableService', () => {
         jest.spyOn(prisma.stateVariable, 'create').mockResolvedValue(campaignVariable as never);
 
         // Mock cache deletion
-        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+        jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
         await service.create(createInput, mockUser);
 
@@ -1159,7 +1185,6 @@ describe('StateVariableService', () => {
 
       it('should invalidate settlement computed fields when StateVariable is updated', async () => {
         const updateInput: UpdateStateVariableInput = {
-          id: 'var-123',
           value: 6000,
           version: 1,
         };
@@ -1172,7 +1197,7 @@ describe('StateVariableService', () => {
         jest.spyOn(prisma.stateVariable, 'update').mockResolvedValue(updatedVariable as never);
 
         // Mock cache deletion
-        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+        jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
         await service.update(updateInput, mockUser);
 
@@ -1206,7 +1231,7 @@ describe('StateVariableService', () => {
         jest.spyOn(prisma.stateVariable, 'update').mockResolvedValue(updatedVariable as never);
 
         // Mock cache deletion
-        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+        jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
         await service.update(updateInput, mockUser);
 
@@ -1226,7 +1251,7 @@ describe('StateVariableService', () => {
         jest.spyOn(prisma.stateVariable, 'update').mockResolvedValue(deletedVariable as never);
 
         // Mock cache deletion
-        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+        jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
         await service.delete('var-123', 1, mockUser);
 
@@ -1254,7 +1279,7 @@ describe('StateVariableService', () => {
         jest.spyOn(prisma.stateVariable, 'update').mockResolvedValue(deletedVariable as never);
 
         // Mock cache deletion
-        jest.spyOn(cacheService, 'del').mockResolvedValue(undefined);
+        jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
         await service.delete('var-123', 1, mockUser);
 

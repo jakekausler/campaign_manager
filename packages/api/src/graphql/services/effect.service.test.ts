@@ -8,7 +8,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { Effect as PrismaEffect, Prisma } from '@prisma/client';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
+import { CacheStatsService } from '../../common/cache/cache-stats.service';
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
+import { REDIS_CACHE } from '../cache/redis-cache.provider';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { OptimisticLockException } from '../exceptions';
 import type {
@@ -68,6 +71,7 @@ describe('EffectService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EffectService,
+        CacheService,
         {
           provide: PrismaService,
           useValue: {
@@ -110,6 +114,27 @@ describe('EffectService', () => {
           provide: REDIS_PUBSUB,
           useValue: {
             publish: jest.fn(),
+          },
+        },
+        {
+          provide: REDIS_CACHE,
+          useValue: {
+            get: jest.fn(),
+            setex: jest.fn(),
+            del: jest.fn(),
+            scan: jest.fn(),
+            keyPrefix: 'cache:',
+          },
+        },
+        {
+          provide: CacheStatsService,
+          useValue: {
+            recordHit: jest.fn(),
+            recordMiss: jest.fn(),
+            recordSet: jest.fn(),
+            recordInvalidation: jest.fn(),
+            recordCascadeInvalidation: jest.fn(),
+            getStats: jest.fn(),
           },
         },
       ],
@@ -289,49 +314,10 @@ describe('EffectService', () => {
       const result = await service.findMany(undefined, undefined, undefined, undefined, mockUser);
 
       expect(result).toEqual(mockEffects);
+      // Service now uses simple where clause and filters by campaign access in-memory
       expect(prisma.effect.findMany).toHaveBeenCalledWith({
         where: {
           deletedAt: null,
-          OR: [
-            {
-              entityType: 'encounter',
-              encounter: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-            {
-              entityType: 'event',
-              event: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-          ],
         },
         orderBy: { priority: 'asc' },
         skip: undefined,
@@ -352,53 +338,16 @@ describe('EffectService', () => {
 
       await service.findMany(where, undefined, undefined, undefined, mockUser);
 
+      // Service now uses simple where clause and filters by campaign access in-memory
       expect(prisma.effect.findMany).toHaveBeenCalledWith({
         where: {
+          name: undefined,
+          effectType: undefined,
           entityType: 'encounter',
           entityId: 'encounter-1',
           timing: EffectTiming.ON_RESOLVE,
           isActive: true,
           deletedAt: null,
-          OR: [
-            {
-              entityType: 'encounter',
-              encounter: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-            {
-              entityType: 'event',
-              event: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-          ],
         },
         orderBy: { priority: 'asc' },
         skip: undefined,
@@ -419,53 +368,20 @@ describe('EffectService', () => {
 
       await service.findMany(where, undefined, undefined, undefined, mockUser);
 
+      // Service now uses simple where clause and filters by campaign access in-memory
       expect(prisma.effect.findMany).toHaveBeenCalledWith({
         where: {
+          name: undefined,
+          effectType: undefined,
+          entityType: undefined,
+          entityId: undefined,
+          timing: undefined,
+          isActive: undefined,
           createdAt: {
             gte: createdAfter,
             lte: createdBefore,
           },
           deletedAt: null,
-          OR: [
-            {
-              entityType: 'encounter',
-              encounter: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-            {
-              entityType: 'event',
-              event: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-          ],
         },
         orderBy: { priority: 'asc' },
         skip: undefined,
@@ -484,49 +400,10 @@ describe('EffectService', () => {
 
       await service.findMany(undefined, orderBy, 10, 20, mockUser);
 
+      // Service now uses simple where clause and filters by campaign access in-memory
       expect(prisma.effect.findMany).toHaveBeenCalledWith({
         where: {
           deletedAt: null,
-          OR: [
-            {
-              entityType: 'encounter',
-              encounter: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-            {
-              entityType: 'event',
-              event: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-          ],
         },
         orderBy: { name: 'desc' },
         skip: 10,
@@ -536,59 +413,22 @@ describe('EffectService', () => {
 
     it('should filter by entity access when user provided', async () => {
       (prisma.effect.findMany as jest.Mock).mockResolvedValue([mockEffect]);
+      (prisma.encounter.findFirst as jest.Mock).mockResolvedValue(mockEncounter);
 
       const result = await service.findMany(undefined, undefined, undefined, undefined, mockUser);
 
       expect(result).toEqual([mockEffect]);
-      // Verify campaign access filter was added to the where clause
+      // Service now uses simple where clause and filters by campaign access in-memory
       expect(prisma.effect.findMany).toHaveBeenCalledWith({
         where: {
           deletedAt: null,
-          OR: [
-            {
-              entityType: 'encounter',
-              encounter: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-            {
-              entityType: 'event',
-              event: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-          ],
         },
         orderBy: { priority: 'asc' },
         skip: undefined,
         take: undefined,
       });
+      // Verify entity access was checked
+      expect(prisma.encounter.findFirst).toHaveBeenCalled();
     });
 
     it('should include deleted effects when includeDeleted is true', async () => {
@@ -601,49 +441,16 @@ describe('EffectService', () => {
 
       await service.findMany(where, undefined, undefined, undefined, mockUser);
 
+      // Service now uses simple where clause and filters by campaign access in-memory
       expect(prisma.effect.findMany).toHaveBeenCalledWith({
         where: {
+          name: undefined,
+          effectType: undefined,
+          entityType: undefined,
+          entityId: undefined,
+          timing: undefined,
+          isActive: undefined,
           deletedAt: undefined,
-          OR: [
-            {
-              entityType: 'encounter',
-              encounter: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-            {
-              entityType: 'event',
-              event: {
-                deletedAt: null,
-                campaign: {
-                  deletedAt: null,
-                  OR: [
-                    { ownerId: mockUser.id },
-                    {
-                      memberships: {
-                        some: {
-                          userId: mockUser.id,
-                        },
-                      },
-                    },
-                  ],
-                },
-              },
-            },
-          ],
         },
         orderBy: { priority: 'asc' },
         skip: undefined,

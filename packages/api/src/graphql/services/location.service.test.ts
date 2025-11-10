@@ -5,9 +5,12 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { CacheStatsService } from '../../common/cache/cache-stats.service';
+import { CacheService } from '../../common/cache/cache.service';
 import { SpatialService } from '../../common/services/spatial.service';
 import { TileCacheService } from '../../common/services/tile-cache.service';
 import { PrismaService } from '../../database/prisma.service';
+import { REDIS_CACHE } from '../cache/redis-cache.provider';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
@@ -57,6 +60,7 @@ describe('LocationService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LocationService,
+        CacheService,
         {
           provide: PrismaService,
           useValue: {
@@ -115,6 +119,27 @@ describe('LocationService', () => {
           provide: REDIS_PUBSUB,
           useValue: {
             publish: jest.fn(),
+          },
+        },
+        {
+          provide: REDIS_CACHE,
+          useValue: {
+            get: jest.fn(),
+            setex: jest.fn(),
+            del: jest.fn(),
+            scan: jest.fn(),
+            keyPrefix: 'cache:',
+          },
+        },
+        {
+          provide: CacheStatsService,
+          useValue: {
+            recordHit: jest.fn(),
+            recordMiss: jest.fn(),
+            recordSet: jest.fn(),
+            recordInvalidation: jest.fn(),
+            recordCascadeInvalidation: jest.fn(),
+            getStats: jest.fn(),
           },
         },
       ],

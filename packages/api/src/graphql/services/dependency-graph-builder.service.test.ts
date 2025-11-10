@@ -6,7 +6,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Prisma } from '@prisma/client';
 
+import { CacheStatsService } from '../../common/cache/cache-stats.service';
+import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
+import { REDIS_CACHE } from '../cache/redis-cache.provider';
 import { DependencyNodeType, DependencyEdgeType } from '../types/dependency-graph.type';
 
 import { DependencyGraphBuilderService } from './dependency-graph-builder.service';
@@ -81,6 +84,12 @@ describe('DependencyGraphBuilderService', () => {
       findMany: jest.Mock;
       findUnique: jest.Mock;
     };
+    encounter: {
+      findUnique: jest.Mock;
+    };
+    event: {
+      findUnique: jest.Mock;
+    };
   };
 
   beforeEach(async () => {
@@ -97,14 +106,42 @@ describe('DependencyGraphBuilderService', () => {
         findMany: jest.fn(),
         findUnique: jest.fn(),
       },
+      encounter: {
+        findUnique: jest.fn(),
+      },
+      event: {
+        findUnique: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DependencyGraphBuilderService,
+        CacheService,
         {
           provide: PrismaService,
           useValue: mockPrisma,
+        },
+        {
+          provide: REDIS_CACHE,
+          useValue: {
+            get: jest.fn(),
+            setex: jest.fn(),
+            del: jest.fn(),
+            scan: jest.fn(),
+            keyPrefix: 'cache:',
+          },
+        },
+        {
+          provide: CacheStatsService,
+          useValue: {
+            recordHit: jest.fn(),
+            recordMiss: jest.fn(),
+            recordSet: jest.fn(),
+            recordInvalidation: jest.fn(),
+            recordCascadeInvalidation: jest.fn(),
+            getStats: jest.fn(),
+          },
         },
       ],
     }).compile();
@@ -444,6 +481,8 @@ describe('DependencyGraphBuilderService', () => {
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue(effects);
+      prisma.encounter.findUnique.mockResolvedValue({ campaignId: 'campaign-1' });
+      prisma.event.findUnique.mockResolvedValue({ campaignId: 'campaign-1' });
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -533,6 +572,7 @@ describe('DependencyGraphBuilderService', () => {
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue(variables);
       prisma.effect.findMany.mockResolvedValue(effects);
+      prisma.encounter.findUnique.mockResolvedValue({ campaignId: 'campaign-1' });
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -626,6 +666,18 @@ describe('DependencyGraphBuilderService', () => {
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue(effects);
+      prisma.encounter.findUnique.mockImplementation((args) => {
+        if (args.where.id === 'encounter-1') {
+          return Promise.resolve({ campaignId: 'campaign-2' });
+        }
+        return Promise.resolve(null);
+      });
+      prisma.event.findUnique.mockImplementation((args) => {
+        if (args.where.id === 'event-1') {
+          return Promise.resolve({ campaignId: 'campaign-1' });
+        }
+        return Promise.resolve(null);
+      });
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -661,6 +713,7 @@ describe('DependencyGraphBuilderService', () => {
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]); // No variables
       prisma.effect.findMany.mockResolvedValue(effects);
+      prisma.encounter.findUnique.mockResolvedValue({ campaignId: 'campaign-1' });
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
 
@@ -1064,6 +1117,7 @@ describe('DependencyGraphBuilderService', () => {
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([effect]);
+      prisma.encounter.findUnique.mockResolvedValue({ campaignId: 'campaign-1' });
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
@@ -1146,6 +1200,7 @@ describe('DependencyGraphBuilderService', () => {
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([variable1, variable2]);
       prisma.effect.findMany.mockResolvedValue([effect]);
+      prisma.encounter.findUnique.mockResolvedValue({ campaignId: 'campaign-1' });
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getEdgeCount()).toBe(1); // effect writes treasury
@@ -1193,6 +1248,7 @@ describe('DependencyGraphBuilderService', () => {
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([effect]);
+      prisma.encounter.findUnique.mockResolvedValue({ campaignId: 'campaign-1' });
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
@@ -1230,6 +1286,7 @@ describe('DependencyGraphBuilderService', () => {
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([effect]);
+      prisma.encounter.findUnique.mockResolvedValue({ campaignId: 'campaign-1' });
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);
@@ -1271,6 +1328,7 @@ describe('DependencyGraphBuilderService', () => {
       prisma.fieldCondition.findMany.mockResolvedValue([]);
       prisma.stateVariable.findMany.mockResolvedValue([]);
       prisma.effect.findMany.mockResolvedValue([effect]);
+      prisma.encounter.findUnique.mockResolvedValue({ campaignId: 'campaign-1' });
 
       const graph = await service.buildGraphForCampaign('campaign-1', 'main');
       expect(graph.getNodeCount()).toBe(1);

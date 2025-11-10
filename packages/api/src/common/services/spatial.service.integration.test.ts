@@ -2,10 +2,11 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import Redis from 'ioredis';
 
-import type { GeoJSONPoint, GeoJSONPolygon } from '@campaign/shared';
+import type { GeoJSONPoint } from '@campaign/shared';
 
 import { PrismaService } from '../../database/prisma.service';
-import { REDIS_CACHE } from '../cache/cache.module';
+import { REDIS_CACHE } from '../../graphql/cache/redis-cache.provider';
+import { CacheStatsService } from '../cache/cache-stats.service';
 import { CacheService } from '../cache/cache.service';
 
 import { SpatialService } from './spatial.service';
@@ -42,6 +43,7 @@ describe.skip('SpatialService - Redis Integration', () => {
           useValue: redis,
         },
         CacheService,
+        CacheStatsService,
         PrismaService,
         SpatialService,
       ],
@@ -153,18 +155,6 @@ describe.skip('SpatialService - Redis Integration', () => {
 
   describe('locationsInRegion caching', () => {
     it('should cache region query results and return cached data on second call', async () => {
-      const regionGeometry: GeoJSONPolygon = {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [120.0, 40.0],
-            [121.0, 40.0],
-            [121.0, 41.0],
-            [120.0, 41.0],
-            [120.0, 40.0],
-          ],
-        ],
-      };
       const regionId = 'region-123';
       const worldId = 'world-123';
 
@@ -185,13 +175,13 @@ describe.skip('SpatialService - Redis Integration', () => {
       jest.spyOn(prismaService, '$queryRaw').mockResolvedValue(mockResults);
 
       // First call - cache miss
-      const result1 = await spatialService.locationsInRegion(regionGeometry, regionId, worldId);
+      const result1 = await spatialService.locationsInRegion(regionId, worldId);
       expect(result1).toEqual(mockResults);
       expect(prismaService.$queryRaw).toHaveBeenCalledTimes(1);
 
       // Second call - cache hit
       (prismaService.$queryRaw as jest.Mock).mockClear();
-      const result2 = await spatialService.locationsInRegion(regionGeometry, regionId, worldId);
+      const result2 = await spatialService.locationsInRegion(regionId, worldId);
       expect(result2).toEqual(mockResults);
       expect(prismaService.$queryRaw).not.toHaveBeenCalled();
     });
@@ -199,18 +189,6 @@ describe.skip('SpatialService - Redis Integration', () => {
 
   describe('settlementsInRegion caching', () => {
     it('should cache settlement query results and return cached data on second call', async () => {
-      const regionGeometry: GeoJSONPolygon = {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [100.0, 30.0],
-            [101.0, 30.0],
-            [101.0, 31.0],
-            [100.0, 31.0],
-            [100.0, 30.0],
-          ],
-        ],
-      };
       const regionId = 'region-789';
       const worldId = 'world-789';
 
@@ -228,13 +206,13 @@ describe.skip('SpatialService - Redis Integration', () => {
       jest.spyOn(prismaService, '$queryRaw').mockResolvedValue(mockResults);
 
       // First call - cache miss
-      const result1 = await spatialService.settlementsInRegion(regionGeometry, regionId, worldId);
+      const result1 = await spatialService.settlementsInRegion(regionId, worldId);
       expect(result1).toEqual(mockResults);
       expect(prismaService.$queryRaw).toHaveBeenCalledTimes(1);
 
       // Second call - cache hit
       (prismaService.$queryRaw as jest.Mock).mockClear();
-      const result2 = await spatialService.settlementsInRegion(regionGeometry, regionId, worldId);
+      const result2 = await spatialService.settlementsInRegion(regionId, worldId);
       expect(result2).toEqual(mockResults);
       expect(prismaService.$queryRaw).not.toHaveBeenCalled();
     });

@@ -18,7 +18,7 @@ import { PrismaClient } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import * as jsonLogic from 'json-logic-js';
 
-import { CacheService } from '../../common/cache/cache.service';
+import { CacheModule } from '../../common/cache/cache.module';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import type { EvaluateConditionRequest } from '../../grpc/rules-engine.types';
@@ -194,12 +194,6 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
       onModuleDestroy: jest.fn(),
     };
 
-    const mockRedisCache = {
-      get: jest.fn().mockResolvedValue(null),
-      set: jest.fn().mockResolvedValue(undefined),
-      del: jest.fn().mockResolvedValue(undefined),
-    };
-
     const mockCampaignContext = {
       buildContext: jest.fn().mockResolvedValue({}),
       invalidateContextForEntity: jest.fn().mockResolvedValue(undefined),
@@ -221,11 +215,10 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      imports: [RulesModule],
+      imports: [RulesModule, CacheModule],
       providers: [
         { provide: PrismaService, useValue: prisma },
         { provide: 'REDIS_PUBSUB', useValue: mockPubSub },
-        { provide: 'REDIS_CACHE', useValue: mockRedisCache },
         { provide: RulesEngineClientService, useValue: mockRulesEngineClient },
         { provide: CampaignContextService, useValue: mockCampaignContext },
         { provide: VersionService, useValue: mockVersionService },
@@ -244,25 +237,6 @@ describe('Settlement & Structure Rules - E2E Validation Tests', () => {
         StructureContextBuilderService, // Use real implementation
         SettlementOperatorsService,
         StructureOperatorsService,
-        {
-          provide: CacheService,
-          useValue: {
-            get: jest.fn(),
-            set: jest.fn(),
-            del: jest.fn(),
-            delPattern: jest.fn(),
-            invalidatePattern: jest.fn().mockResolvedValue({ success: true, keysDeleted: 0 }),
-            invalidateCampaignComputedFields: jest
-              .fn()
-              .mockResolvedValue({ success: true, keysDeleted: 0 }),
-            invalidateSettlementCascade: jest
-              .fn()
-              .mockResolvedValue({ success: true, keysDeleted: 0 }),
-            invalidateStructureCascade: jest
-              .fn()
-              .mockResolvedValue({ success: true, keysDeleted: 0 }),
-          },
-        },
       ],
     }).compile();
 

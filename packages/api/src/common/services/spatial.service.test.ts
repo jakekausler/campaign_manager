@@ -4,13 +4,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GeoJSONPoint, GeoJSONPolygon, GeoJSONMultiPolygon, SRID } from '@campaign/shared';
 
 import { PrismaService } from '../../database/prisma.service';
+import { REDIS_CACHE } from '../../graphql/cache/redis-cache.provider';
+import { CacheStatsService } from '../cache/cache-stats.service';
 import { CacheService } from '../cache/cache.service';
 
 import { SpatialService } from './spatial.service';
 
 describe('SpatialService', () => {
   let service: SpatialService;
-  let cache: jest.Mocked<CacheService>;
+  let cache: CacheService;
   let prisma: jest.Mocked<PrismaService>;
 
   beforeEach(async () => {
@@ -24,12 +26,30 @@ describe('SpatialService', () => {
           },
         },
         {
-          provide: CacheService,
+          provide: REDIS_CACHE,
           useValue: {
             get: jest.fn(),
-            set: jest.fn(),
+            setex: jest.fn(),
             del: jest.fn(),
-            delPattern: jest.fn(),
+            scan: jest.fn(),
+            options: { keyPrefix: 'cache:' },
+          },
+        },
+        CacheService,
+        {
+          provide: CacheStatsService,
+          useValue: {
+            recordHit: jest.fn(),
+            recordMiss: jest.fn(),
+            recordSet: jest.fn(),
+            recordInvalidation: jest.fn(),
+            recordCascadeInvalidation: jest.fn(),
+            getStats: jest.fn(),
+            resetStats: jest.fn(),
+            getHitRateForType: jest.fn(),
+            estimateTimeSaved: jest.fn(),
+            getRedisMemoryInfo: jest.fn(),
+            getKeyCountByType: jest.fn(),
           },
         },
       ],
@@ -523,7 +543,7 @@ describe('SpatialService', () => {
         ];
 
         // Mock cache.get to return cached data (cache hit)
-        cache.get.mockResolvedValue(cachedData);
+        jest.spyOn(cache, 'get').mockResolvedValue(cachedData);
 
         // Act
         const result = await service.locationsNear(point, radius, srid, worldId);
@@ -576,7 +596,7 @@ describe('SpatialService', () => {
         ];
 
         // Mock cache.get to return null (cache miss)
-        cache.get.mockResolvedValue(null);
+        jest.spyOn(cache, 'get').mockResolvedValue(null);
 
         // Mock database query to return results
         prisma.$queryRaw.mockResolvedValue(dbResults);
@@ -640,7 +660,7 @@ describe('SpatialService', () => {
         ];
 
         // Mock cache to return data (cache hit)
-        cache.get.mockResolvedValue(cachedData);
+        jest.spyOn(cache, 'get').mockResolvedValue(cachedData);
 
         // Act - Call with both point variations
         const result1 = await service.locationsNear(point1, radius, srid, worldId);
@@ -700,7 +720,7 @@ describe('SpatialService', () => {
         ];
 
         // Mock cache.get to return cached data (cache hit)
-        cache.get.mockResolvedValue(cachedData);
+        jest.spyOn(cache, 'get').mockResolvedValue(cachedData);
 
         // Act - Call the method
         const result = await service.locationsInRegion(regionId, worldId);
@@ -752,7 +772,7 @@ describe('SpatialService', () => {
         ];
 
         // Mock cache.get to return null (cache miss)
-        cache.get.mockResolvedValue(null);
+        jest.spyOn(cache, 'get').mockResolvedValue(null);
 
         // Mock database query to return results
         prisma.$queryRaw.mockResolvedValue(dbResults);
@@ -814,7 +834,7 @@ describe('SpatialService', () => {
         ];
 
         // Mock cache.get to return cached data (cache hit)
-        cache.get.mockResolvedValue(cachedData);
+        jest.spyOn(cache, 'get').mockResolvedValue(cachedData);
 
         // Act - Call the method
         const result = await service.settlementsInRegion(regionId, worldId);

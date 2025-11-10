@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import type { GeoJSONPoint, GeoJSONPolygon, GeoJSONMultiPolygon } from '@campaign/shared';
 
+import { CacheModule } from '../../common/cache/cache.module';
 import { SpatialService } from '../../common/services/spatial.service';
 import { TileCacheService } from '../../common/services/tile-cache.service';
 import { PrismaService } from '../../database/prisma.service';
@@ -29,6 +30,7 @@ describe('LocationService - Geometry Operations (Integration)', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [CacheModule],
       providers: [
         LocationService,
         SpatialService,

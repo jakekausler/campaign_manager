@@ -4,6 +4,7 @@ import { createId } from '@paralleldrive/cuid2';
 import { GeoJSONPoint, SRID } from '@campaign/shared';
 
 import { PrismaService } from '../../database/prisma.service';
+import { CacheModule } from '../cache/cache.module';
 
 import { SpatialService } from './spatial.service';
 
@@ -26,6 +27,7 @@ describe('SpatialService - Settlement Spatial Queries (Integration)', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [CacheModule],
       providers: [SpatialService, PrismaService],
     }).compile();
 
@@ -324,6 +326,9 @@ describe('SpatialService - Settlement Spatial Queries (Integration)', () => {
         where: { id: settlement1Id },
         data: { deletedAt: new Date() },
       });
+
+      // Clear the cache to ensure fresh query after soft delete
+      await service['cache'].del(`spatial:settlements-in-region:${regionLocationId}:main`);
 
       const settlements = await service.settlementsInRegion(regionLocationId);
 

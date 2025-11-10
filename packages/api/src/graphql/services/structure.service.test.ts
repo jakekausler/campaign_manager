@@ -5,10 +5,12 @@
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { CacheStatsService } from '../../common/cache/cache-stats.service';
 import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
+import { REDIS_CACHE } from '../cache/redis-cache.provider';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
@@ -87,6 +89,10 @@ describe('StructureService', () => {
             fieldCondition: {
               findMany: jest.fn(),
             },
+            branch: {
+              findFirst: jest.fn(),
+            },
+            $transaction: jest.fn(),
           },
         },
         {
@@ -154,13 +160,30 @@ describe('StructureService', () => {
           },
         },
         {
-          provide: CacheService,
+          provide: REDIS_CACHE,
           useValue: {
             get: jest.fn(),
-            set: jest.fn(),
+            setex: jest.fn(),
             del: jest.fn(),
-            delPattern: jest.fn(),
-            invalidateStructureCascade: jest.fn(),
+            scan: jest.fn(),
+            options: { keyPrefix: 'cache:' },
+          },
+        },
+        CacheService,
+        {
+          provide: CacheStatsService,
+          useValue: {
+            recordHit: jest.fn(),
+            recordMiss: jest.fn(),
+            recordSet: jest.fn(),
+            recordInvalidation: jest.fn(),
+            recordCascadeInvalidation: jest.fn(),
+            getStats: jest.fn(),
+            resetStats: jest.fn(),
+            getHitRateForType: jest.fn(),
+            estimateTimeSaved: jest.fn(),
+            getRedisMemoryInfo: jest.fn(),
+            getKeyCountByType: jest.fn(),
           },
         },
       ],
@@ -170,6 +193,15 @@ describe('StructureService', () => {
     prisma = module.get<PrismaService>(PrismaService);
     audit = module.get<AuditService>(AuditService);
     cache = module.get<CacheService>(CacheService);
+
+    // Spy on CacheService methods used by tests
+    jest.spyOn(cache, 'get').mockResolvedValue(null);
+    jest.spyOn(cache, 'set').mockResolvedValue(undefined);
+    jest.spyOn(cache, 'del').mockResolvedValue(0);
+    jest.spyOn(cache, 'delPattern').mockResolvedValue({ success: true, keysDeleted: 0 });
+    jest
+      .spyOn(cache, 'invalidateStructureCascade')
+      .mockResolvedValue({ success: true, keysDeleted: 0 });
   });
 
   afterEach(() => {
@@ -343,7 +375,12 @@ describe('StructureService', () => {
 
       await service.create(input, mockUser);
 
-      expect(cache.del).toHaveBeenCalledWith('structures:settlement:settlement-1:main');
+      // Verify invalidateStructureCascade was called (which internally calls del for the structures list)
+      expect(cache.invalidateStructureCascade).toHaveBeenCalledWith(
+        mockStructure.id,
+        'settlement-1',
+        'main'
+      );
     });
   });
 
@@ -480,7 +517,12 @@ describe('StructureService', () => {
 
       await service.delete('structure-1', mockUser);
 
-      expect(cache.del).toHaveBeenCalledWith('structures:settlement:settlement-1:main');
+      // Verify invalidateStructureCascade was called (which internally calls del for the structures list)
+      expect(cache.invalidateStructureCascade).toHaveBeenCalledWith(
+        'structure-1',
+        'settlement-1',
+        'main'
+      );
     });
   });
 
@@ -885,10 +927,12 @@ describe('StructureService', () => {
         // Act: Call update method
         await service.update('structure-1', updateInput, mockUser, 1, branchId);
 
-        // Assert: cache.del should be called with correct cache key
-        const expectedCacheKey = `computed-fields:structure:${mockStructure.id}:${branchId}`;
-        expect(cache.del).toHaveBeenCalledWith(expectedCacheKey);
-        expect(cache.del).toHaveBeenCalledTimes(1);
+        // Assert: invalidateStructureCascade should be called (which invalidates computed fields, settlement, and list)
+        expect(cache.invalidateStructureCascade).toHaveBeenCalledWith(
+          'structure-1',
+          'settlement-1',
+          branchId
+        );
 
         // Assert: Update operation should complete successfully
         expect(prisma.structure.update).toHaveBeenCalled();
@@ -969,7 +1013,7 @@ describe('StructureService', () => {
         });
 
         // Act: Call update method
-        await service.update('structure-1', updateInput, mockUser, 1, branchId);
+        const result = await service.update('structure-1', updateInput, mockUser, 1, branchId);
 
         // Assert: invalidateStructureCascade should be called with correct parameters
         expect(cache.invalidateStructureCascade).toHaveBeenCalledWith(
@@ -979,8 +1023,9 @@ describe('StructureService', () => {
         );
         expect(cache.invalidateStructureCascade).toHaveBeenCalledTimes(1);
 
-        // Assert: Update operation should complete successfully
-        expect(prisma.structure.update).toHaveBeenCalled();
+        // Assert: Update operation should complete successfully (returns updated structure)
+        expect(result).toBeDefined();
+        expect(result.name).toBe('Updated Structure Name');
       });
 
       it('should handle cascade invalidation failures gracefully on update', async () => {
@@ -992,7 +1037,7 @@ describe('StructureService', () => {
         });
 
         // Act: Call update method - should NOT throw despite cache failure
-        await service.update('structure-1', updateInput, mockUser, 1, branchId);
+        const result = await service.update('structure-1', updateInput, mockUser, 1, branchId);
 
         // Assert: invalidateStructureCascade was called
         expect(cache.invalidateStructureCascade).toHaveBeenCalledWith(
@@ -1002,18 +1047,12 @@ describe('StructureService', () => {
         );
 
         // Assert: Update operation should complete successfully despite cache failure
-        expect(prisma.structure.update).toHaveBeenCalled();
+        expect(result).toBeDefined();
+        expect(result.name).toBe('Updated Structure Name');
       });
 
       it('should call invalidateStructureCascade when structure level is changed', async () => {
         const newLevel = 3;
-
-        // Setup Prisma mocks for setLevel operation
-        (prisma.structure.findFirst as jest.Mock)
-          .mockResolvedValueOnce(mockStructure)
-          .mockResolvedValueOnce(mockStructure);
-        (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
-        (prisma.branch.findFirst as jest.Mock).mockResolvedValue({ id: 'main', name: 'main' });
 
         const structureAtNewLevel = {
           ...mockStructure,
@@ -1021,18 +1060,12 @@ describe('StructureService', () => {
           version: 2,
         };
 
-        // Mock transaction
-        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
-          const tx = {
-            structure: {
-              update: jest.fn().mockResolvedValue(structureAtNewLevel),
-            },
-            version: {
-              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
-            },
-          };
-          return callback(tx);
-        });
+        // Setup Prisma mocks for setLevel operation
+        (prisma.structure.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockStructure)
+          .mockResolvedValueOnce(mockStructure);
+        (prisma.structure.update as jest.Mock).mockResolvedValue(structureAtNewLevel);
+        (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
 
         // Mock cascade invalidation success
         (cache.invalidateStructureCascade as jest.Mock).mockResolvedValue({
@@ -1053,18 +1086,14 @@ describe('StructureService', () => {
         expect(cache.invalidateStructureCascade).toHaveBeenCalledTimes(1);
 
         // Assert: SetLevel operation should complete successfully
-        expect(prisma.structure.update).toHaveBeenCalled();
+        expect(prisma.structure.update).toHaveBeenCalledWith({
+          where: { id: 'structure-1' },
+          data: { level: newLevel },
+        });
       });
 
       it('should handle cascade invalidation failures gracefully on setLevel', async () => {
         const newLevel = 3;
-
-        // Setup Prisma mocks for setLevel operation
-        (prisma.structure.findFirst as jest.Mock)
-          .mockResolvedValueOnce(mockStructure)
-          .mockResolvedValueOnce(mockStructure);
-        (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
-        (prisma.branch.findFirst as jest.Mock).mockResolvedValue({ id: 'main', name: 'main' });
 
         const structureAtNewLevel = {
           ...mockStructure,
@@ -1072,18 +1101,12 @@ describe('StructureService', () => {
           version: 2,
         };
 
-        // Mock transaction
-        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
-          const tx = {
-            structure: {
-              update: jest.fn().mockResolvedValue(structureAtNewLevel),
-            },
-            version: {
-              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
-            },
-          };
-          return callback(tx);
-        });
+        // Setup Prisma mocks for setLevel operation
+        (prisma.structure.findFirst as jest.Mock)
+          .mockResolvedValueOnce(mockStructure)
+          .mockResolvedValueOnce(mockStructure);
+        (prisma.structure.update as jest.Mock).mockResolvedValue(structureAtNewLevel);
+        (prisma.structure.findUnique as jest.Mock).mockResolvedValue(mockStructureWithSettlement);
 
         // Mock cascade invalidation failure (Redis connection error)
         (cache.invalidateStructureCascade as jest.Mock).mockResolvedValue({
@@ -1103,7 +1126,10 @@ describe('StructureService', () => {
         );
 
         // Assert: SetLevel operation should complete successfully despite cache failure
-        expect(prisma.structure.update).toHaveBeenCalled();
+        expect(prisma.structure.update).toHaveBeenCalledWith({
+          where: { id: 'structure-1' },
+          data: { level: newLevel },
+        });
       });
     });
   });

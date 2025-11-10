@@ -5,10 +5,12 @@
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { CacheStatsService } from '../../common/cache/cache-stats.service';
 import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
 import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
+import { REDIS_CACHE } from '../cache/redis-cache.provider';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 
@@ -168,13 +170,30 @@ describe('SettlementService', () => {
           },
         },
         {
-          provide: CacheService,
+          provide: REDIS_CACHE,
           useValue: {
             get: jest.fn(),
-            set: jest.fn(),
+            setex: jest.fn(),
             del: jest.fn(),
-            delPattern: jest.fn(),
-            invalidateSettlementCascade: jest.fn(),
+            scan: jest.fn(),
+            options: { keyPrefix: 'cache:' },
+          },
+        },
+        CacheService,
+        {
+          provide: CacheStatsService,
+          useValue: {
+            recordHit: jest.fn(),
+            recordMiss: jest.fn(),
+            recordSet: jest.fn(),
+            recordInvalidation: jest.fn(),
+            recordCascadeInvalidation: jest.fn(),
+            getStats: jest.fn(),
+            resetStats: jest.fn(),
+            getHitRateForType: jest.fn(),
+            estimateTimeSaved: jest.fn(),
+            getRedisMemoryInfo: jest.fn(),
+            getKeyCountByType: jest.fn(),
           },
         },
       ],
@@ -184,6 +203,15 @@ describe('SettlementService', () => {
     prisma = module.get<PrismaService>(PrismaService);
     audit = module.get<AuditService>(AuditService);
     cache = module.get<CacheService>(CacheService);
+
+    // Spy on CacheService methods used by tests
+    jest.spyOn(cache, 'get').mockResolvedValue(null);
+    jest.spyOn(cache, 'set').mockResolvedValue(undefined);
+    jest.spyOn(cache, 'del').mockResolvedValue(0);
+    jest.spyOn(cache, 'delPattern').mockResolvedValue({ success: true, keysDeleted: 0 });
+    jest
+      .spyOn(cache, 'invalidateSettlementCascade')
+      .mockResolvedValue({ success: true, keysDeleted: 0 });
   });
 
   afterEach(() => {
@@ -873,10 +901,9 @@ describe('SettlementService', () => {
         // Act: Call update method
         await service.update('settlement-1', updateInput, mockUser, 1, 'main');
 
-        // Assert: cache.del should be called with correct cache key
-        const expectedCacheKey = `computed-fields:settlement:${mockSettlement.id}:main`;
-        expect(cache.del).toHaveBeenCalledWith(expectedCacheKey);
-        expect(cache.del).toHaveBeenCalledTimes(1);
+        // Assert: cache invalidation should be called with correct parameters
+        expect(cache.invalidateSettlementCascade).toHaveBeenCalledWith('settlement-1', 'main');
+        expect(cache.invalidateSettlementCascade).toHaveBeenCalledTimes(1);
 
         // Assert: Transaction should be called
         expect(prisma.$transaction).toHaveBeenCalled();
@@ -914,6 +941,8 @@ describe('SettlementService', () => {
 
       beforeEach(() => {
         // Setup Prisma mocks for update operation
+        // findById uses findFirst, not findUnique
+        (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(mockSettlement);
         (prisma.settlement.findUnique as jest.Mock).mockResolvedValue(mockSettlementWithKingdom);
         (prisma.branch.findFirst as jest.Mock).mockResolvedValue({ id: 'main', name: 'main' });
 
@@ -971,10 +1000,12 @@ describe('SettlementService', () => {
           ...mockSettlementForLevel,
           level: 2,
           version: 2,
+          updatedAt: new Date(),
         };
 
-        // Mock for setLevel operation
+        // Mock for setLevel operation - setLevel uses direct update, not transaction
         (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(mockSettlementForLevel);
+        (prisma.settlement.update as jest.Mock).mockResolvedValue(updatedSettlementLevel);
         (prisma.settlement.findUnique as jest.Mock).mockResolvedValue({
           ...mockSettlementForLevel,
           kingdom: {
@@ -982,18 +1013,6 @@ describe('SettlementService', () => {
             name: 'Test Kingdom',
             campaignId: 'campaign-1',
           },
-        });
-
-        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
-          const tx = {
-            settlement: {
-              update: jest.fn().mockResolvedValue(updatedSettlementLevel),
-            },
-            version: {
-              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
-            },
-          };
-          return callback(tx);
         });
 
         // Mock cascade invalidation success
@@ -1023,10 +1042,12 @@ describe('SettlementService', () => {
           ...mockSettlementForLevel,
           level: 2,
           version: 2,
+          updatedAt: new Date(),
         };
 
-        // Mock for setLevel operation
+        // Mock for setLevel operation - setLevel uses direct update, not transaction
         (prisma.settlement.findFirst as jest.Mock).mockResolvedValue(mockSettlementForLevel);
+        (prisma.settlement.update as jest.Mock).mockResolvedValue(updatedSettlementLevel);
         (prisma.settlement.findUnique as jest.Mock).mockResolvedValue({
           ...mockSettlementForLevel,
           kingdom: {
@@ -1034,18 +1055,6 @@ describe('SettlementService', () => {
             name: 'Test Kingdom',
             campaignId: 'campaign-1',
           },
-        });
-
-        (prisma.$transaction as jest.Mock).mockImplementation(async (callback) => {
-          const tx = {
-            settlement: {
-              update: jest.fn().mockResolvedValue(updatedSettlementLevel),
-            },
-            version: {
-              create: jest.fn().mockResolvedValue({ id: 'version-2', version: 2 }),
-            },
-          };
-          return callback(tx);
         });
 
         // Mock cascade invalidation failure

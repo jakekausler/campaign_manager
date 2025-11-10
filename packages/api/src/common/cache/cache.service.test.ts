@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { REDIS_CACHE } from '../../graphql/cache/redis-cache.provider';
 
+import { CacheStatsService } from './cache-stats.service';
 import { CacheService } from './cache.service';
 
 describe('CacheService', () => {
@@ -11,6 +12,7 @@ describe('CacheService', () => {
     setex: jest.Mock;
     del: jest.Mock;
     scan: jest.Mock;
+    options: { keyPrefix?: string };
   };
 
   beforeEach(async () => {
@@ -29,6 +31,23 @@ describe('CacheService', () => {
             setex: jest.fn(),
             del: jest.fn(),
             scan: jest.fn(),
+            options: { keyPrefix: 'cache:' },
+          },
+        },
+        {
+          provide: CacheStatsService,
+          useValue: {
+            recordHit: jest.fn(),
+            recordMiss: jest.fn(),
+            recordSet: jest.fn(),
+            recordInvalidation: jest.fn(),
+            recordCascadeInvalidation: jest.fn(),
+            getStats: jest.fn(),
+            resetStats: jest.fn(),
+            getHitRateForType: jest.fn(),
+            estimateTimeSaved: jest.fn(),
+            getRedisMemoryInfo: jest.fn(),
+            getKeyCountByType: jest.fn(),
           },
         },
       ],
@@ -296,7 +315,7 @@ describe('CacheService', () => {
 
   describe('delPattern', () => {
     it('should delete all keys matching pattern', async () => {
-      redis.scan.mockResolvedValue(['0', ['key1', 'key2', 'key3']]);
+      redis.scan.mockResolvedValue(['0', ['cache:key1', 'cache:key2', 'cache:key3']]);
       redis.del.mockResolvedValue(3);
 
       const result = await service.delPattern('computed-fields:*');
@@ -305,15 +324,21 @@ describe('CacheService', () => {
         success: true,
         keysDeleted: 3,
       });
-      expect(redis.scan).toHaveBeenCalledWith('0', 'MATCH', 'computed-fields:*', 'COUNT', 100);
+      expect(redis.scan).toHaveBeenCalledWith(
+        '0',
+        'MATCH',
+        'cache:computed-fields:*',
+        'COUNT',
+        100
+      );
       expect(redis.del).toHaveBeenCalledWith('key1', 'key2', 'key3');
     });
 
     it('should handle paginated SCAN results', async () => {
       redis.scan
-        .mockResolvedValueOnce(['1', ['key1', 'key2']])
-        .mockResolvedValueOnce(['2', ['key3', 'key4']])
-        .mockResolvedValueOnce(['0', ['key5']]);
+        .mockResolvedValueOnce(['1', ['cache:key1', 'cache:key2']])
+        .mockResolvedValueOnce(['2', ['cache:key3', 'cache:key4']])
+        .mockResolvedValueOnce(['0', ['cache:key5']]);
       redis.del.mockResolvedValueOnce(2).mockResolvedValueOnce(2).mockResolvedValueOnce(1);
 
       const result = await service.delPattern('*:main');
@@ -335,12 +360,18 @@ describe('CacheService', () => {
         success: true,
         keysDeleted: 0,
       });
-      expect(redis.scan).toHaveBeenCalledWith('0', 'MATCH', 'non-existent-pattern:*', 'COUNT', 100);
+      expect(redis.scan).toHaveBeenCalledWith(
+        '0',
+        'MATCH',
+        'cache:non-existent-pattern:*',
+        'COUNT',
+        100
+      );
       expect(redis.del).not.toHaveBeenCalled();
     });
 
     it('should increment patternDeletes counter', async () => {
-      redis.scan.mockResolvedValue(['0', ['key1', 'key2']]);
+      redis.scan.mockResolvedValue(['0', ['cache:key1', 'cache:key2']]);
       redis.del.mockResolvedValue(2);
 
       await service.delPattern('pattern1:*');
@@ -365,7 +396,7 @@ describe('CacheService', () => {
     it('should handle entity-specific patterns', async () => {
       redis.scan.mockResolvedValue([
         '0',
-        ['computed-fields:settlement:123:main', 'spatial:settlement:123:main'],
+        ['cache:computed-fields:settlement:123:main', 'cache:spatial:settlement:123:main'],
       ]);
       redis.del.mockResolvedValue(2);
 
@@ -379,9 +410,9 @@ describe('CacheService', () => {
       redis.scan.mockResolvedValue([
         '0',
         [
-          'computed-fields:settlement:123:main',
-          'settlements:kingdom:456:main',
-          'spatial:query:main',
+          'cache:computed-fields:settlement:123:main',
+          'cache:settlements:kingdom:456:main',
+          'cache:spatial:query:main',
         ],
       ]);
       redis.del.mockResolvedValue(3);
@@ -394,9 +425,9 @@ describe('CacheService', () => {
 
     it('should handle SCAN with some empty batches', async () => {
       redis.scan
-        .mockResolvedValueOnce(['1', ['key1', 'key2']])
+        .mockResolvedValueOnce(['1', ['cache:key1', 'cache:key2']])
         .mockResolvedValueOnce(['2', []])
-        .mockResolvedValueOnce(['0', ['key3']]);
+        .mockResolvedValueOnce(['0', ['cache:key3']]);
       redis.del.mockResolvedValueOnce(2).mockResolvedValueOnce(1);
 
       const result = await service.delPattern('test:*');
@@ -619,9 +650,9 @@ describe('CacheService', () => {
       redis.scan.mockResolvedValue([
         '0',
         [
-          'computed-fields:settlement:123:main',
-          'computed-fields:settlement:456:main',
-          'computed-fields:kingdom:789:main',
+          'cache:computed-fields:settlement:123:main',
+          'cache:computed-fields:settlement:456:main',
+          'cache:computed-fields:kingdom:789:main',
         ],
       ]);
       redis.del.mockResolvedValue(3);

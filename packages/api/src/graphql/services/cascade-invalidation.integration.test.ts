@@ -9,6 +9,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import Redis from 'ioredis';
 
+import { CacheModule } from '../../common/cache/cache.module';
 import { CacheService } from '../../common/cache/cache.service';
 import { PrismaService } from '../../database/prisma.service';
 import { RulesEngineClientService } from '../../grpc/rules-engine-client.service';
@@ -64,9 +65,9 @@ describe('Cascade Invalidation Integration Tests', () => {
   beforeAll(async () => {
     // Create test module with real services
     module = await Test.createTestingModule({
+      imports: [CacheModule],
       providers: [
         PrismaService,
-        CacheService,
         ConditionService,
         SettlementService,
         StructureService,
@@ -129,7 +130,7 @@ describe('Cascade Invalidation Integration Tests', () => {
     const user = await prisma.user.create({
       data: {
         email: `test-${Date.now()}@example.com`,
-        passwordHash: 'hash',
+        password: 'hash',
       },
     });
     userId = user.id;
@@ -658,8 +659,10 @@ describe('Cascade Invalidation Integration Tests', () => {
           scope: 'SETTLEMENT',
           scopeId: settlementId,
           key: 'population',
-          value: 1000,
+          value: 1000 as unknown as Prisma.InputJsonValue,
           dataType: 'number',
+          version: 1,
+          creatorId: mockUser.id,
         },
       });
 
@@ -668,8 +671,10 @@ describe('Cascade Invalidation Integration Tests', () => {
           scope: 'SETTLEMENT',
           scopeId: unrelatedSettlementId,
           key: 'population',
-          value: 2000,
+          value: 2000 as unknown as Prisma.InputJsonValue,
           dataType: 'number',
+          version: 1,
+          creatorId: mockUser.id,
         },
       });
 
@@ -681,7 +686,7 @@ describe('Cascade Invalidation Integration Tests', () => {
       await cacheService.set(unrelatedSettlementKey, { population: 2000 }, { ttl: 300 });
 
       // Act: Update target settlement's StateVariable
-      await stateVariableService.update(targetStateVar.id, { value: 1500 }, mockUser, 1);
+      await stateVariableService.update(targetStateVar.id, { value: 1500 }, mockUser, 'main');
 
       // Assert: Target settlement cache should be invalidated
       expect(await redis.get(targetSettlementKey)).toBeNull();
@@ -875,10 +880,10 @@ describe('Cascade Invalidation Integration Tests', () => {
 
       // Act: Trigger concurrent StateVariable updates to different entities
       const updatePromises = [
-        stateVariableService.update(settlementStateVar.id, { value: 1500 }, mockUser, 1),
-        stateVariableService.update(structureStateVar.id, { value: 150 }, mockUser, 1),
-        stateVariableService.update(settlementStateVar.id, { value: 2000 }, mockUser, 2),
-        stateVariableService.update(structureStateVar.id, { value: 200 }, mockUser, 2),
+        stateVariableService.update(settlementStateVar.id, { value: 1500 }, mockUser, 'main'),
+        stateVariableService.update(structureStateVar.id, { value: 150 }, mockUser, 'main'),
+        stateVariableService.update(settlementStateVar.id, { value: 2000 }, mockUser, 'main'),
+        stateVariableService.update(structureStateVar.id, { value: 200 }, mockUser, 'main'),
       ];
 
       // Assert: All updates should complete without errors

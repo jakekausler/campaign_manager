@@ -11,6 +11,7 @@ import type {
   Campaign as PrismaCampaign,
 } from '@prisma/client';
 
+import { CacheModule } from '../../common/cache/cache.module';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import type {
@@ -59,6 +60,7 @@ describe('Dependency Graph Cache Invalidation Integration Tests', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [CacheModule],
       providers: [
         ConditionService,
         StateVariableService,

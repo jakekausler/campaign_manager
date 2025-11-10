@@ -14,6 +14,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import Redis from 'ioredis';
 
+import { CacheStatsService } from '../../common/cache/cache-stats.service';
 import { CacheService } from '../../common/cache/cache.service';
 import { REDIS_CACHE } from '../../graphql/cache/redis-cache.provider';
 
@@ -54,6 +55,7 @@ describe.skip('Entity List Cache Integration (Real Redis)', () => {
           useValue: redisClient,
         },
         CacheService,
+        CacheStatsService,
       ],
     }).compile();
 
@@ -94,7 +96,7 @@ describe.skip('Entity List Cache Integration (Real Redis)', () => {
       expect(missResult).toBeNull();
 
       // Store settlement list
-      await cacheService.set(cacheKey, settlements, 600);
+      await cacheService.set(cacheKey, settlements, { ttl: 600 });
 
       // Verify stored in Redis
       const rawValue = await testRedis.get(`cache:${cacheKey}`);
@@ -114,7 +116,7 @@ describe.skip('Entity List Cache Integration (Real Redis)', () => {
       const settlements = [{ id: 'settlement-1', name: 'Minas Tirith', kingdomId }];
 
       // Store and verify
-      await cacheService.set(cacheKey, settlements, 600);
+      await cacheService.set(cacheKey, settlements, { ttl: 600 });
       const cachedData = await cacheService.get(cacheKey);
       expect(cachedData).toEqual(settlements);
 
@@ -134,7 +136,7 @@ describe.skip('Entity List Cache Integration (Real Redis)', () => {
       const ttl = 2; // 2 seconds
 
       // Store with short TTL
-      await cacheService.set(cacheKey, settlements, ttl);
+      await cacheService.set(cacheKey, settlements, { ttl });
 
       // Immediately should be cached
       const immediate = await cacheService.get(cacheKey);
@@ -164,7 +166,7 @@ describe.skip('Entity List Cache Integration (Real Redis)', () => {
       expect(missResult).toBeNull();
 
       // Store structure list
-      await cacheService.set(cacheKey, structures, 600);
+      await cacheService.set(cacheKey, structures, { ttl: 600 });
 
       // Verify stored in Redis
       const rawValue = await testRedis.get(`cache:${cacheKey}`);

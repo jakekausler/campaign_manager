@@ -15,6 +15,7 @@ import { Test } from '@nestjs/testing';
 import type { Campaign, Kingdom, Location, User, World } from '@prisma/client';
 
 import { CampaignMembershipService } from '../../auth/services/campaign-membership.service';
+import { CacheModule } from '../../common/cache/cache.module';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedUser } from '../../graphql/context/graphql-context';
 import { REDIS_PUBSUB } from '../../graphql/pubsub/redis-pubsub.provider';
@@ -41,6 +42,7 @@ describe('Branching System E2E Tests', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
+      imports: [CacheModule],
       providers: [
         BranchService,
         VersionService,
@@ -187,6 +189,7 @@ describe('Branching System E2E Tests', () => {
     await prisma.kingdom.deleteMany({});
     await prisma.branch.deleteMany({});
     await prisma.campaignMembership.deleteMany({});
+    await prisma.character.deleteMany({});
     await prisma.campaign.deleteMany({});
     await prisma.world.deleteMany({});
     await prisma.user.deleteMany({});

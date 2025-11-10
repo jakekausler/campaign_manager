@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GeoJSONPoint, SRID } from '@campaign/shared';
 
 import { PrismaService } from '../../database/prisma.service';
+import { CacheModule } from '../cache/cache.module';
 
 import { SpatialService, BoundingBox } from './spatial.service';
 
@@ -22,6 +23,7 @@ describe('SpatialService - Spatial Queries (Integration)', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [CacheModule],
       providers: [SpatialService, PrismaService],
     }).compile();
 
