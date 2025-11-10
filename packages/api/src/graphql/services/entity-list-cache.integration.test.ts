@@ -186,7 +186,7 @@ describe.skip('Entity List Cache Integration (Real Redis)', () => {
       const structures = [{ id: 'structure-1', name: 'Temple', settlementId, type: 'temple' }];
 
       // Store and verify
-      await cacheService.set(cacheKey, structures, 600);
+      await cacheService.set(cacheKey, structures, { ttl: 600 });
       const cachedData = await cacheService.get(cacheKey);
       expect(cachedData).toEqual(structures);
 
@@ -206,7 +206,7 @@ describe.skip('Entity List Cache Integration (Real Redis)', () => {
       const ttl = 2; // 2 seconds
 
       // Store with short TTL
-      await cacheService.set(cacheKey, structures, ttl);
+      await cacheService.set(cacheKey, structures, { ttl });
 
       // Immediately should be cached
       const immediate = await cacheService.get(cacheKey);
@@ -236,7 +236,7 @@ describe.skip('Entity List Cache Integration (Real Redis)', () => {
       expect(result).toBeNull();
 
       // 2. "Fetch from database" and cache (simulates service after DB query)
-      await cacheService.set(cacheKey, settlements, 600);
+      await cacheService.set(cacheKey, settlements, { ttl: 600 });
 
       // 3. Cache hit on subsequent request
       result = await cacheService.get(cacheKey);
@@ -264,7 +264,7 @@ describe.skip('Entity List Cache Integration (Real Redis)', () => {
       expect(result).toBeNull();
 
       // 2. Store after "database fetch"
-      await cacheService.set(cacheKey, structures, 600);
+      await cacheService.set(cacheKey, structures, { ttl: 600 });
 
       // 3. Cache hit
       result = await cacheService.get(cacheKey);
@@ -291,10 +291,10 @@ describe.skip('Entity List Cache Integration (Real Redis)', () => {
 
       // Store all
       await Promise.all([
-        cacheService.set(kingdom1Key, settlements1, 600),
-        cacheService.set(kingdom2Key, settlements2, 600),
-        cacheService.set(settlement1Key, structures1, 600),
-        cacheService.set(settlement2Key, structures2, 600),
+        cacheService.set(kingdom1Key, settlements1, { ttl: 600 }),
+        cacheService.set(kingdom2Key, settlements2, { ttl: 600 }),
+        cacheService.set(settlement1Key, structures1, { ttl: 600 }),
+        cacheService.set(settlement2Key, structures2, { ttl: 600 }),
       ]);
 
       // Verify all cached independently

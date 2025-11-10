@@ -20,6 +20,7 @@ import {
   StateVariableOrderByInput,
   StateVariableSortField,
 } from '../inputs/state-variable.input';
+import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
 import { VariableScope, VariableType } from '../types/state-variable.type';
 
 import { AuditService } from './audit.service';
@@ -94,14 +95,14 @@ describe('StateVariableService', () => {
             },
             world: { findFirst: jest.fn() },
             campaign: { findFirst: jest.fn() },
-            party: { findFirst: jest.fn() },
-            kingdom: { findFirst: jest.fn() },
-            settlement: { findFirst: jest.fn() },
-            structure: { findFirst: jest.fn() },
-            character: { findFirst: jest.fn() },
+            party: { findFirst: jest.fn(), findUnique: jest.fn() },
+            kingdom: { findFirst: jest.fn(), findUnique: jest.fn() },
+            settlement: { findFirst: jest.fn(), findUnique: jest.fn() },
+            structure: { findFirst: jest.fn(), findUnique: jest.fn() },
+            character: { findFirst: jest.fn(), findUnique: jest.fn() },
             location: { findFirst: jest.fn() },
-            event: { findFirst: jest.fn() },
-            encounter: { findFirst: jest.fn() },
+            event: { findFirst: jest.fn(), findUnique: jest.fn() },
+            encounter: { findFirst: jest.fn(), findUnique: jest.fn() },
           },
         },
         {
@@ -130,6 +131,7 @@ describe('StateVariableService', () => {
           provide: DependencyGraphService,
           useValue: {
             invalidateCache: jest.fn(),
+            invalidateGraph: jest.fn(),
             buildGraph: jest.fn(),
             getGraph: jest.fn(),
           },
@@ -162,7 +164,7 @@ describe('StateVariableService', () => {
           },
         },
         {
-          provide: 'REDIS_PUBSUB',
+          provide: REDIS_PUBSUB,
           useValue: {
             publish: jest.fn(),
             subscribe: jest.fn(),
@@ -1090,6 +1092,18 @@ describe('StateVariableService', () => {
   describe('Cache Invalidation', () => {
     describe('StateVariable changes invalidate entity computed fields', () => {
       it('should invalidate settlement computed fields when StateVariable is created for Settlement scope', async () => {
+        const mockSettlement = {
+          id: 'settlement-123',
+          deletedAt: null,
+          kingdom: {
+            campaign: {
+              id: 'campaign-123',
+              deletedAt: null,
+              ownerId: 'user-123',
+            },
+          },
+        };
+
         const createInput: CreateStateVariableInput = {
           scope: VariableScope.SETTLEMENT,
           scopeId: 'settlement-123',
@@ -1099,9 +1113,13 @@ describe('StateVariableService', () => {
         };
 
         // Mock scope verification
-        jest
-          .spyOn(prisma.settlement, 'findFirst')
-          .mockResolvedValue({ id: 'settlement-123' } as never);
+        jest.spyOn(prisma.settlement, 'findFirst').mockResolvedValue(mockSettlement as never);
+
+        // Mock campaign ID lookup
+        jest.spyOn(prisma.settlement, 'findUnique').mockResolvedValue({
+          id: 'settlement-123',
+          kingdom: { campaignId: 'campaign-123' },
+        } as never);
 
         // Mock variable creation
         jest.spyOn(prisma.stateVariable, 'create').mockResolvedValue(mockVariable as never);
@@ -1125,6 +1143,20 @@ describe('StateVariableService', () => {
           scopeId: 'structure-123',
         };
 
+        const mockStructure = {
+          id: 'structure-123',
+          deletedAt: null,
+          settlement: {
+            kingdom: {
+              campaign: {
+                id: 'campaign-123',
+                deletedAt: null,
+                ownerId: 'user-123',
+              },
+            },
+          },
+        };
+
         const createInput: CreateStateVariableInput = {
           scope: VariableScope.STRUCTURE,
           scopeId: 'structure-123',
@@ -1134,9 +1166,13 @@ describe('StateVariableService', () => {
         };
 
         // Mock scope verification
-        jest
-          .spyOn(prisma.structure, 'findFirst')
-          .mockResolvedValue({ id: 'structure-123' } as never);
+        jest.spyOn(prisma.structure, 'findFirst').mockResolvedValue(mockStructure as never);
+
+        // Mock campaign ID lookup
+        jest.spyOn(prisma.structure, 'findUnique').mockResolvedValue({
+          id: 'structure-123',
+          settlement: { kingdom: { campaignId: 'campaign-123' } },
+        } as never);
 
         // Mock variable creation
         jest.spyOn(prisma.stateVariable, 'create').mockResolvedValue(structureVariable as never);
@@ -1184,13 +1220,31 @@ describe('StateVariableService', () => {
       });
 
       it('should invalidate settlement computed fields when StateVariable is updated', async () => {
+        const mockSettlement = {
+          id: 'settlement-123',
+          deletedAt: null,
+          kingdom: {
+            campaign: {
+              id: 'campaign-123',
+              deletedAt: null,
+              ownerId: 'user-123',
+            },
+          },
+        };
+
         const updateInput: UpdateStateVariableInput = {
           value: 6000,
-          version: 1,
         };
 
         // Mock variable lookup
         jest.spyOn(prisma.stateVariable, 'findUnique').mockResolvedValue(mockVariable as never);
+        jest.spyOn(prisma.settlement, 'findFirst').mockResolvedValue(mockSettlement as never);
+
+        // Mock campaign ID lookup for cache invalidation
+        jest.spyOn(prisma.settlement, 'findUnique').mockResolvedValue({
+          id: 'settlement-123',
+          kingdom: { campaignId: 'campaign-123' },
+        } as never);
 
         // Mock variable update
         const updatedVariable = { ...mockVariable, value: 6000, version: 2 };
@@ -1199,7 +1253,7 @@ describe('StateVariableService', () => {
         // Mock cache deletion
         jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
-        await service.update(updateInput, mockUser);
+        await service.update(mockVariable.id, updateInput, mockUser);
 
         // Verify cache invalidation was called with correct key
         expect(cacheService.del).toHaveBeenCalledWith(
@@ -1215,16 +1269,35 @@ describe('StateVariableService', () => {
           scopeId: 'structure-123',
         };
 
+        const mockStructure = {
+          id: 'structure-123',
+          deletedAt: null,
+          settlement: {
+            kingdom: {
+              campaign: {
+                id: 'campaign-123',
+                deletedAt: null,
+                ownerId: 'user-123',
+              },
+            },
+          },
+        };
+
         const updateInput: UpdateStateVariableInput = {
-          id: 'var-123',
           value: 10,
-          version: 1,
         };
 
         // Mock variable lookup
         jest
           .spyOn(prisma.stateVariable, 'findUnique')
           .mockResolvedValue(structureVariable as never);
+        jest.spyOn(prisma.structure, 'findFirst').mockResolvedValue(mockStructure as never);
+
+        // Mock campaign ID lookup for cache invalidation
+        jest.spyOn(prisma.structure, 'findUnique').mockResolvedValue({
+          id: 'structure-123',
+          settlement: { kingdom: { campaignId: 'campaign-123' } },
+        } as never);
 
         // Mock variable update
         const updatedVariable = { ...structureVariable, value: 10, version: 2 };
@@ -1233,7 +1306,7 @@ describe('StateVariableService', () => {
         // Mock cache deletion
         jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
-        await service.update(updateInput, mockUser);
+        await service.update(structureVariable.id, updateInput, mockUser);
 
         // Verify cache invalidation was called with correct key
         expect(cacheService.del).toHaveBeenCalledWith(
@@ -1243,8 +1316,27 @@ describe('StateVariableService', () => {
       });
 
       it('should invalidate settlement computed fields when StateVariable is deleted', async () => {
+        const mockSettlement = {
+          id: 'settlement-123',
+          deletedAt: null,
+          kingdom: {
+            campaign: {
+              id: 'campaign-123',
+              deletedAt: null,
+              ownerId: 'user-123',
+            },
+          },
+        };
+
         // Mock variable lookup
         jest.spyOn(prisma.stateVariable, 'findUnique').mockResolvedValue(mockVariable as never);
+        jest.spyOn(prisma.settlement, 'findFirst').mockResolvedValue(mockSettlement as never);
+
+        // Mock campaign ID lookup for cache invalidation
+        jest.spyOn(prisma.settlement, 'findUnique').mockResolvedValue({
+          id: 'settlement-123',
+          kingdom: { campaignId: 'campaign-123' },
+        } as never);
 
         // Mock soft delete
         const deletedVariable = { ...mockVariable, deletedAt: new Date() };
@@ -1253,7 +1345,7 @@ describe('StateVariableService', () => {
         // Mock cache deletion
         jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
-        await service.delete('var-123', 1, mockUser);
+        await service.delete('var-123', mockUser);
 
         // Verify cache invalidation was called with correct key
         expect(cacheService.del).toHaveBeenCalledWith(
@@ -1269,10 +1361,31 @@ describe('StateVariableService', () => {
           scopeId: 'structure-123',
         };
 
+        const mockStructure = {
+          id: 'structure-123',
+          deletedAt: null,
+          settlement: {
+            kingdom: {
+              campaign: {
+                id: 'campaign-123',
+                deletedAt: null,
+                ownerId: 'user-123',
+              },
+            },
+          },
+        };
+
         // Mock variable lookup
         jest
           .spyOn(prisma.stateVariable, 'findUnique')
           .mockResolvedValue(structureVariable as never);
+        jest.spyOn(prisma.structure, 'findFirst').mockResolvedValue(mockStructure as never);
+
+        // Mock campaign ID lookup for cache invalidation
+        jest.spyOn(prisma.structure, 'findUnique').mockResolvedValue({
+          id: 'structure-123',
+          settlement: { kingdom: { campaignId: 'campaign-123' } },
+        } as never);
 
         // Mock soft delete
         const deletedVariable = { ...structureVariable, deletedAt: new Date() };
@@ -1281,7 +1394,7 @@ describe('StateVariableService', () => {
         // Mock cache deletion
         jest.spyOn(cacheService, 'del').mockResolvedValue(1);
 
-        await service.delete('var-123', 1, mockUser);
+        await service.delete('var-123', mockUser);
 
         // Verify cache invalidation was called with correct key
         expect(cacheService.del).toHaveBeenCalledWith(
@@ -1303,6 +1416,12 @@ describe('StateVariableService', () => {
         jest
           .spyOn(prisma.settlement, 'findFirst')
           .mockResolvedValue({ id: 'settlement-123' } as never);
+
+        // Mock campaign ID lookup
+        jest.spyOn(prisma.settlement, 'findUnique').mockResolvedValue({
+          id: 'settlement-123',
+          kingdom: { campaignId: 'campaign-123' },
+        } as never);
 
         // Mock variable creation
         jest.spyOn(prisma.stateVariable, 'create').mockResolvedValue(mockVariable as never);
