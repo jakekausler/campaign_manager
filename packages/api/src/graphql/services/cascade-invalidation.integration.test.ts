@@ -7,6 +7,7 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import Redis from 'ioredis';
 
 import { CacheModule } from '../../common/cache/cache.module';
@@ -16,6 +17,7 @@ import { RulesEngineClientService } from '../../grpc/rules-engine-client.service
 import { WebSocketPublisherService } from '../../websocket/websocket-publisher.service';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { REDIS_PUBSUB } from '../pubsub/redis-pubsub.provider';
+import { VariableScope, VariableType } from '../types/state-variable.type';
 
 import { AuditService } from './audit.service';
 import { CampaignContextService } from './campaign-context.service';
@@ -191,12 +193,12 @@ describe('Cascade Invalidation Integration Tests', () => {
     // Create a FieldCondition for campaign-level tests
     const fieldCondition = await prisma.fieldCondition.create({
       data: {
-        name: 'Test Condition',
-        targetScope: 'SETTLEMENT',
-        targetEntityId: settlementId,
+        entityType: 'Settlement',
+        entityId: settlementId,
+        field: 'testField',
         expression: { '==': [1, 1] },
-        fieldName: 'testField',
-        fieldValue: 'testValue',
+        priority: 0,
+        createdBy: userId,
       },
     });
     fieldConditionId = fieldCondition.id;
@@ -241,12 +243,10 @@ describe('Cascade Invalidation Integration Tests', () => {
       // Act: Create new FieldCondition
       await conditionService.create(
         {
-          name: 'New Condition',
-          targetScope: 'SETTLEMENT',
-          targetEntityId: settlementId,
+          entityType: 'Settlement',
+          entityId: settlementId,
+          field: 'newField',
           expression: { '==': [2, 2] },
-          fieldName: 'newField',
-          fieldValue: 'newValue',
         },
         mockUser
       );
@@ -268,8 +268,8 @@ describe('Cascade Invalidation Integration Tests', () => {
       await conditionService.update(
         fieldConditionId,
         {
-          name: 'Updated Condition',
           expression: { '==': [3, 3] },
+          expectedVersion: 1,
         },
         mockUser,
         1
@@ -409,11 +409,11 @@ describe('Cascade Invalidation Integration Tests', () => {
       // Act: Create StateVariable for settlement
       await stateVariableService.create(
         {
-          scope: 'SETTLEMENT',
+          scope: VariableScope.SETTLEMENT,
           scopeId: settlementId,
           key: 'population',
           value: 2000,
-          dataType: 'number',
+          type: VariableType.INTEGER,
         },
         mockUser
       );
@@ -433,11 +433,11 @@ describe('Cascade Invalidation Integration Tests', () => {
       // Act: Create StateVariable for structure
       await stateVariableService.create(
         {
-          scope: 'STRUCTURE',
+          scope: VariableScope.STRUCTURE,
           scopeId: structureId,
           key: 'capacity',
           value: 200,
-          dataType: 'number',
+          type: VariableType.INTEGER,
         },
         mockUser
       );
@@ -450,11 +450,12 @@ describe('Cascade Invalidation Integration Tests', () => {
       // Arrange: Create a StateVariable and populate cache
       const stateVar = await prisma.stateVariable.create({
         data: {
-          scope: 'SETTLEMENT',
+          scope: 'settlement',
           scopeId: settlementId,
           key: 'wealth',
           value: 5000,
-          dataType: 'number',
+          type: 'integer',
+          createdBy: userId,
         },
       });
 
@@ -475,11 +476,12 @@ describe('Cascade Invalidation Integration Tests', () => {
       // Arrange: Create a StateVariable and populate cache
       const stateVar = await prisma.stateVariable.create({
         data: {
-          scope: 'STRUCTURE',
+          scope: 'structure',
           scopeId: structureId,
           key: 'defenders',
           value: 50,
-          dataType: 'number',
+          type: 'integer',
+          createdBy: userId,
         },
       });
 
@@ -656,25 +658,23 @@ describe('Cascade Invalidation Integration Tests', () => {
       // Arrange: Create StateVariables for both settlements
       const targetStateVar = await prisma.stateVariable.create({
         data: {
-          scope: 'SETTLEMENT',
+          scope: 'settlement',
           scopeId: settlementId,
           key: 'population',
           value: 1000 as unknown as Prisma.InputJsonValue,
-          dataType: 'number',
-          version: 1,
-          creatorId: mockUser.id,
+          type: 'integer',
+          createdBy: mockUser.id,
         },
       });
 
       const unrelatedStateVar = await prisma.stateVariable.create({
         data: {
-          scope: 'SETTLEMENT',
+          scope: 'settlement',
           scopeId: unrelatedSettlementId,
           key: 'population',
           value: 2000 as unknown as Prisma.InputJsonValue,
-          dataType: 'number',
-          version: 1,
-          creatorId: mockUser.id,
+          type: 'integer',
+          createdBy: mockUser.id,
         },
       });
 
@@ -720,12 +720,10 @@ describe('Cascade Invalidation Integration Tests', () => {
       // Act: Create new FieldCondition (campaign-level change)
       await conditionService.create(
         {
-          name: 'New Campaign Condition',
-          targetScope: 'SETTLEMENT',
-          targetEntityId: settlementId,
+          entityType: 'Settlement',
+          entityId: settlementId,
+          field: 'newField',
           expression: { '==': [1, 1] },
-          fieldName: 'newField',
-          fieldValue: 'newValue',
         },
         mockUser
       );
@@ -804,34 +802,28 @@ describe('Cascade Invalidation Integration Tests', () => {
       const createPromises = [
         conditionService.create(
           {
-            name: 'Condition 1',
-            targetScope: 'SETTLEMENT',
-            targetEntityId: settlementId,
+            entityType: 'Settlement',
+            entityId: settlementId,
+            field: 'field1',
             expression: { '==': [1, 1] },
-            fieldName: 'field1',
-            fieldValue: 'value1',
           },
           mockUser
         ),
         conditionService.create(
           {
-            name: 'Condition 2',
-            targetScope: 'SETTLEMENT',
-            targetEntityId: settlementId,
+            entityType: 'Settlement',
+            entityId: settlementId,
+            field: 'field2',
             expression: { '==': [2, 2] },
-            fieldName: 'field2',
-            fieldValue: 'value2',
           },
           mockUser
         ),
         conditionService.create(
           {
-            name: 'Condition 3',
-            targetScope: 'SETTLEMENT',
-            targetEntityId: settlementId,
+            entityType: 'Settlement',
+            entityId: settlementId,
+            field: 'field3',
             expression: { '==': [3, 3] },
-            fieldName: 'field3',
-            fieldValue: 'value3',
           },
           mockUser
         ),
@@ -853,21 +845,23 @@ describe('Cascade Invalidation Integration Tests', () => {
       // Arrange: Create StateVariables for settlement and structure
       const settlementStateVar = await prisma.stateVariable.create({
         data: {
-          scope: 'SETTLEMENT',
+          scope: 'settlement',
           scopeId: settlementId,
           key: 'population',
           value: 1000,
-          dataType: 'number',
+          type: 'integer',
+          createdBy: userId,
         },
       });
 
       const structureStateVar = await prisma.stateVariable.create({
         data: {
-          scope: 'STRUCTURE',
+          scope: 'structure',
           scopeId: structureId,
           key: 'capacity',
           value: 100,
-          dataType: 'number',
+          type: 'integer',
+          createdBy: userId,
         },
       });
 
