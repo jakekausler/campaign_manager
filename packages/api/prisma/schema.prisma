@@ -492,12 +492,12 @@ model StateVariable {
   updater     User?     @relation("StateVariableUpdater", fields: [updatedBy], references: [id])
 
   // Polymorphic relations (scope determines which is used)
-  // Note: These are defined but ignored field feature - app code must respect scope type
-  party      Party?      @relation(fields: [scopeId], references: [id], map: "StateVariable_party_fkey")
-  kingdom    Kingdom?    @relation(fields: [scopeId], references: [id], map: "StateVariable_kingdom_fkey")
-  settlement Settlement? @relation(fields: [scopeId], references: [id], map: "StateVariable_settlement_fkey")
-  structure  Structure?  @relation(fields: [scopeId], references: [id], map: "StateVariable_structure_fkey")
-  character  Character?  @relation(fields: [scopeId], references: [id], map: "StateVariable_character_fkey")
+  // Note: @ignore prevents Prisma from creating FK constraints - app code must respect scope type
+  party      Party?      @relation(fields: [scopeId], references: [id], map: "StateVariable_party_fkey") @ignore
+  kingdom    Kingdom?    @relation(fields: [scopeId], references: [id], map: "StateVariable_kingdom_fkey") @ignore
+  settlement Settlement? @relation(fields: [scopeId], references: [id], map: "StateVariable_settlement_fkey") @ignore
+  structure  Structure?  @relation(fields: [scopeId], references: [id], map: "StateVariable_structure_fkey") @ignore
+  character  Character?  @relation(fields: [scopeId], references: [id], map: "StateVariable_character_fkey") @ignore
 
   // Relations
   dependencies Dependency[]

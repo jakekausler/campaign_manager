@@ -288,8 +288,6 @@ describe('Cascade Invalidation Integration Tests', () => {
     await prisma.settlement.deleteMany({ where: { kingdomId } });
     // Delete kingdoms
     await prisma.kingdom.deleteMany({ where: { id: kingdomId } });
-    // Delete field conditions
-    await prisma.fieldCondition.deleteMany({ where: { id: fieldConditionId } });
     // Delete versions before branches
     await prisma.version.deleteMany({ where: { branchId } });
     // Delete branches
@@ -300,6 +298,8 @@ describe('Cascade Invalidation Integration Tests', () => {
     await prisma.location.deleteMany({ where: { worldId } });
     // Delete worlds
     await prisma.world.deleteMany({ where: { id: worldId } });
+    // Delete field conditions before audit/users (they reference users via createdBy)
+    await prisma.fieldCondition.deleteMany({ where: { createdBy: userId } });
     // Delete audit records before users
     await prisma.audit.deleteMany({ where: { userId } });
     // Delete users last
@@ -420,8 +420,8 @@ describe('Cascade Invalidation Integration Tests', () => {
 
     it('should cascade invalidation when settlement level changes', async () => {
       // Arrange: Populate caches
-      const settlementComputedKey = `computed-fields:settlement:${settlementId}:main`;
-      const structureComputedKey = `computed-fields:structure:${structureId}:main`;
+      const settlementComputedKey = `computed-fields:settlement:${settlementId}:${branchId}`;
+      const structureComputedKey = `computed-fields:structure:${structureId}:${branchId}`;
 
       await cacheService.set(settlementComputedKey, { level: 1 }, { ttl: 300 });
       await cacheService.set(structureComputedKey, { parentLevel: 1 }, { ttl: 300 });
@@ -545,11 +545,11 @@ describe('Cascade Invalidation Integration Tests', () => {
         },
       });
 
-      const settlementComputedKey = `computed-fields:settlement:${settlementId}:main`;
+      const settlementComputedKey = `computed-fields:settlement:${settlementId}:${branchId}`;
       await cacheService.set(settlementComputedKey, { wealth: 5000 }, { ttl: 300 });
 
       // Act: Update StateVariable
-      await stateVariableService.update(stateVar.id, { value: 10000 }, mockUser, '1');
+      await stateVariableService.update(stateVar.id, { value: 10000 }, mockUser, branchId);
 
       // Assert: Settlement computed fields cache should be invalidated
       expect(await redis.get(cacheKey(settlementComputedKey))).toBeNull();
@@ -774,14 +774,14 @@ describe('Cascade Invalidation Integration Tests', () => {
       });
 
       // Populate caches
-      const targetSettlementKey = `computed-fields:settlement:${settlementId}:main`;
-      const unrelatedSettlementKey = `computed-fields:settlement:${unrelatedSettlementId}:main`;
+      const targetSettlementKey = `computed-fields:settlement:${settlementId}:${branchId}`;
+      const unrelatedSettlementKey = `computed-fields:settlement:${unrelatedSettlementId}:${branchId}`;
 
       await cacheService.set(targetSettlementKey, { population: 1000 }, { ttl: 300 });
       await cacheService.set(unrelatedSettlementKey, { population: 2000 }, { ttl: 300 });
 
       // Act: Update target settlement's StateVariable
-      await stateVariableService.update(targetStateVar.id, { value: 1500 }, mockUser, 'main');
+      await stateVariableService.update(targetStateVar.id, { value: 1500 }, mockUser, branchId);
 
       // Assert: Target settlement cache should be invalidated
       expect(await redis.get(cacheKey(targetSettlementKey))).toBeNull();
@@ -961,18 +961,18 @@ describe('Cascade Invalidation Integration Tests', () => {
       });
 
       // Populate caches
-      const settlementComputedKey = `computed-fields:settlement:${settlementId}:main`;
-      const structureComputedKey = `computed-fields:structure:${structureId}:main`;
+      const settlementComputedKey = `computed-fields:settlement:${settlementId}:${branchId}`;
+      const structureComputedKey = `computed-fields:structure:${structureId}:${branchId}`;
 
       await cacheService.set(settlementComputedKey, { population: 1000 }, { ttl: 300 });
       await cacheService.set(structureComputedKey, { capacity: 100 }, { ttl: 300 });
 
       // Act: Trigger concurrent StateVariable updates to different entities
       const updatePromises = [
-        stateVariableService.update(settlementStateVar.id, { value: 1500 }, mockUser, 'main'),
-        stateVariableService.update(structureStateVar.id, { value: 150 }, mockUser, 'main'),
-        stateVariableService.update(settlementStateVar.id, { value: 2000 }, mockUser, 'main'),
-        stateVariableService.update(structureStateVar.id, { value: 200 }, mockUser, 'main'),
+        stateVariableService.update(settlementStateVar.id, { value: 1500 }, mockUser, branchId),
+        stateVariableService.update(structureStateVar.id, { value: 150 }, mockUser, branchId),
+        stateVariableService.update(settlementStateVar.id, { value: 2000 }, mockUser, branchId),
+        stateVariableService.update(structureStateVar.id, { value: 200 }, mockUser, branchId),
       ];
 
       // Assert: All updates should complete without errors
