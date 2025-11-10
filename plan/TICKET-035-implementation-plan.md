@@ -48,7 +48,7 @@ The documentation will provide both user-facing guides (getting started, feature
 | Stage 1: Seed Data Enhancement   | complete    | [TICKET-035-stage-1.md](TICKET-035-stage-1.md) |
 | Stage 2: Package READMEs         | complete    | [TICKET-035-stage-2.md](TICKET-035-stage-2.md) |
 | Stage 3: User Documentation      | complete    | [TICKET-035-stage-3.md](TICKET-035-stage-3.md) |
-| Stage 4: Developer Documentation | not started | [TICKET-035-stage-4.md](TICKET-035-stage-4.md) |
+| Stage 4: Developer Documentation | in progress | [TICKET-035-stage-4.md](TICKET-035-stage-4.md) |
 | Stage 5: API Documentation       | not started | [TICKET-035-stage-5.md](TICKET-035-stage-5.md) |
 
 **Status Values:**
