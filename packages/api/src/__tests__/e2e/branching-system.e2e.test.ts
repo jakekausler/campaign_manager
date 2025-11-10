@@ -110,7 +110,12 @@ describe('Branching System E2E Tests', () => {
     await prisma.location.deleteMany({});
     await prisma.kingdom.deleteMany({});
     await prisma.branch.deleteMany({});
+    await prisma.event.deleteMany({});
+    await prisma.encounter.deleteMany({});
+    await prisma.party.deleteMany({});
     await prisma.campaignMembership.deleteMany({});
+    await prisma.character.deleteMany({});
+    await prisma.apiKey.deleteMany({});
     await prisma.campaign.deleteMany({});
     await prisma.world.deleteMany({});
     await prisma.user.deleteMany({});
@@ -188,8 +193,12 @@ describe('Branching System E2E Tests', () => {
     await prisma.location.deleteMany({});
     await prisma.kingdom.deleteMany({});
     await prisma.branch.deleteMany({});
+    await prisma.event.deleteMany({});
+    await prisma.encounter.deleteMany({});
+    await prisma.party.deleteMany({});
     await prisma.campaignMembership.deleteMany({});
     await prisma.character.deleteMany({});
+    await prisma.apiKey.deleteMany({});
     await prisma.campaign.deleteMany({});
     await prisma.world.deleteMany({});
     await prisma.user.deleteMany({});
