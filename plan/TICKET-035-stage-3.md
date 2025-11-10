@@ -38,7 +38,7 @@ These documents are developer/technical focused. User docs should reference them
 - [x] Write settlement management tutorial covering creation, structures, levels, typed variables
 - [x] Write event resolution tutorial covering encounter execution, applying effects, tracking consequences
 - [x] Write video walkthrough script covering 15-20 minute demo of all major features
-- [ ] Add screenshots/diagrams where helpful (placeholders with descriptions if needed)
+- [x] Add screenshots/diagrams where helpful (placeholders with descriptions if needed)
 
 ### Review and Commit Tasks
 
@@ -151,6 +151,35 @@ These documents are developer/technical focused. User docs should reference them
   - Examples include: navigating views, inspecting entities (Sandpoint, Thistletop, Goblin Raid), examining conditions/effects JSON, resolving encounters with effects, exploring branch timelines
   - Demonstrates cross-view selection synchronization across Map/Timeline/Flow views
   - Includes JSON examples inline (JSONLogic conditions, JSON Patch effects) with explanations
+- **Screenshot and Diagram Placeholders**: Added visual aid placeholders throughout all 7 user guide documents:
+  - Consistent placeholder format using blockquote syntax with 📸 emoji for screenshots and diagrams
+  - Each placeholder includes detailed description of what the screenshot/diagram should show
+  - Strategic placement to enhance understanding of complex concepts and workflows
+  - **Getting Started Guide** (7 placeholders):
+    - Login Page showing authentication interface
+    - Campaign Dashboard with campaign cards
+    - Main Interface Overview with annotated UI elements (tabs, inspector, world time)
+    - Map View with Demo Data (Varisia region, Sandpoint, entity inspector)
+    - Timeline View with Events chronologically displayed
+    - Flow View with Dependency Graph showing event/encounter nodes
+    - Branch Selector Dropdown showing all timelines
+  - **Map Editing Tutorial** (3 placeholders):
+    - Map View Toolbar with all drawing tools annotated
+    - Drawing a Region (In Progress) showing polygon drawing workflow
+    - (Additional screenshots can be added for settlement/structure creation)
+  - **Conditions and Effects Tutorial** (2 placeholders):
+    - JSONLogic Condition in Entity Inspector with annotations explaining operators and variables
+    - JSON Patch Effect in Entity Inspector showing operation structure and execution phases
+  - **Event Resolution Tutorial** (1 placeholder):
+    - Event Resolution Dialog showing confirmation screen with effects summary
+  - **Settlement Management Tutorial** (1 placeholder):
+    - Settlement Creation Form with all required/optional fields
+  - **Branching Tutorial** (1 diagram placeholder):
+    - Branch Hierarchy Tree diagram showing parent-child relationships with divergence timestamps
+  - **Video Walkthrough Script**: Already includes detailed visual cues ([SCREEN], [ACTION]) in presenter notes
+  - Total: 15 screenshot/diagram placeholders across 6 tutorials (video script has inline visual direction)
+  - All placeholders provide enough detail for designers/technical writers to create accurate visuals
+  - Placeholders focus on areas where visual aids significantly enhance comprehension (UI navigation, complex JSON, workflows, hierarchies)
 
 ## Commit Hash
 
