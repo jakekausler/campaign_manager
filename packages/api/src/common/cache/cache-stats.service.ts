@@ -1,14 +1,22 @@
 /**
- * Cache Statistics Service
+ * @fileoverview Cache Statistics Service
  *
- * Tracks cache performance metrics including hits, misses, and invalidations.
- * Provides aggregated statistics and monitoring capabilities for the caching layer.
+ * Provides comprehensive cache performance monitoring and metrics tracking.
+ * Tracks hits, misses, sets, invalidations, and cascade invalidations per cache type.
  *
- * This service extends the basic stats tracking in CacheService by:
- * - Categorizing stats by cache type (computed-fields, settlements, structures, spatial)
- * - Tracking cascade invalidations separately
- * - Providing time-windowed statistics
- * - Supporting stats reset for periodic reporting
+ * **Key Features:**
+ * - Per-type statistics tracking (computed-fields, settlements, structures, spatial)
+ * - Hit rate calculation and performance metrics
+ * - Time-saved estimation based on operation costs
+ * - Redis memory usage monitoring
+ * - Auto-reset capability for periodic reporting
+ * - Thread-safe in-memory counters
+ *
+ * **Environment Configuration:**
+ * - `CACHE_STATS_TRACKING_ENABLED` - Enable/disable tracking (default: true)
+ * - `CACHE_STATS_RESET_PERIOD_MS` - Auto-reset interval in ms (0 = disabled)
+ *
+ * @module common/cache
  */
 
 import { Injectable, Inject, Logger, OnModuleDestroy } from '@nestjs/common';
@@ -93,7 +101,33 @@ export interface RedisMemoryInfo {
  * by cache type (computed-fields, settlements, structures, spatial).
  * Provides thread-safe increment operations and aggregate reporting.
  *
+ * **Statistics Tracked:**
+ * - Hits: Successful cache retrievals
+ * - Misses: Cache lookups that require computation/DB query
+ * - Sets: Cache write operations
+ * - Invalidations: Single-key cache deletions
+ * - Cascade invalidations: Pattern-based bulk deletions
+ *
+ * **Usage Example:**
+ * ```typescript
+ * // Record cache operations
+ * cacheStatsService.recordHit('computed-fields');
+ * cacheStatsService.recordMiss('settlements');
+ * cacheStatsService.recordSet('spatial');
+ *
+ * // Get aggregated statistics
+ * const stats = cacheStatsService.getStats();
+ * console.log(`Hit rate: ${(stats.hitRate * 100).toFixed(2)}%`);
+ * console.log(`Time saved: ${cacheStatsService.estimateTimeSaved()}ms`);
+ *
+ * // Monitor Redis memory
+ * const memInfo = await cacheStatsService.getRedisMemoryInfo();
+ * console.log(`Memory used: ${memInfo.usedMemoryHuman}`);
+ * ```
+ *
  * Stats are reset on service restart or when resetStats() is called.
+ *
+ * @see CacheService for the primary caching implementation
  */
 @Injectable()
 export class CacheStatsService implements OnModuleDestroy {
@@ -113,6 +147,18 @@ export class CacheStatsService implements OnModuleDestroy {
    */
   private startTime: number = Date.now();
 
+  /**
+   * Creates an instance of CacheStatsService
+   *
+   * Initializes statistics tracking with configuration from environment variables:
+   * - `CACHE_STATS_TRACKING_ENABLED`: Enable/disable tracking (default: true)
+   * - `CACHE_STATS_RESET_PERIOD_MS`: Auto-reset interval in milliseconds (0 = disabled)
+   *
+   * If auto-reset is configured, sets up an interval timer to periodically
+   * reset statistics for time-windowed reporting.
+   *
+   * @param redis - Redis client instance for memory monitoring
+   */
   constructor(@Inject(REDIS_CACHE) private readonly redis: Redis) {
     // Check environment variable to enable/disable tracking
     this.trackingEnabled = process.env.CACHE_STATS_TRACKING_ENABLED !== 'false';
@@ -393,7 +439,29 @@ export class CacheStatsService implements OnModuleDestroy {
   /**
    * Get aggregated statistics across all cache types
    *
+   * Returns comprehensive statistics including:
+   * - Per-type stats with calculated hit rates
+   * - Total hits/misses/sets/invalidations across all types
+   * - Overall hit rate
+   * - Tracking start time
+   * - Tracking enabled status
+   *
+   * This method is the primary interface for monitoring cache performance.
+   * Used by the cache-stats GraphQL resolver to expose metrics to clients.
+   *
    * @returns Aggregated stats with calculated hit rates per type
+   *
+   * @example
+   * ```typescript
+   * const stats = cacheStatsService.getStats();
+   * console.log(`Total hits: ${stats.totalHits}`);
+   * console.log(`Total misses: ${stats.totalMisses}`);
+   * console.log(`Overall hit rate: ${(stats.hitRate * 100).toFixed(2)}%`);
+   *
+   * for (const [type, typeStats] of Object.entries(stats.byType)) {
+   *   console.log(`${type}: ${(typeStats.hitRate * 100).toFixed(2)}% hit rate`);
+   * }
+   * ```
    */
   getStats(): AggregatedCacheStats {
     const byType: Record<string, CacheTypeStatsWithRate> = {};
@@ -434,8 +502,22 @@ export class CacheStatsService implements OnModuleDestroy {
   /**
    * Reset all statistics counters
    *
-   * Useful for periodic reporting or testing.
-   * Updates startTime to current timestamp.
+   * Clears all per-type statistics and resets the tracking start time.
+   * This is useful for:
+   * - Periodic reporting (time-windowed statistics)
+   * - Testing scenarios requiring fresh stats
+   * - Clearing stale data after system changes
+   *
+   * If auto-reset is enabled via `CACHE_STATS_RESET_PERIOD_MS`,
+   * this method is called automatically at the configured interval.
+   *
+   * @example
+   * ```typescript
+   * // Manual reset for hourly reporting
+   * const stats = cacheStatsService.getStats();
+   * console.log('Hourly stats:', stats);
+   * cacheStatsService.resetStats();
+   * ```
    */
   resetStats(): void {
     this.stats.clear();
@@ -446,7 +528,12 @@ export class CacheStatsService implements OnModuleDestroy {
   /**
    * Clean up resources when module is destroyed
    *
-   * Clears the auto-reset timer if it was set up.
+   * Lifecycle hook called by NestJS when the module is being destroyed.
+   * Clears the auto-reset interval timer if it was configured to prevent
+   * memory leaks.
+   *
+   * This is automatically called during application shutdown or
+   * hot module replacement in development.
    */
   onModuleDestroy(): void {
     if (this.resetTimer) {
@@ -458,8 +545,14 @@ export class CacheStatsService implements OnModuleDestroy {
   /**
    * Get or create stats object for a cache type
    *
-   * @param cacheType - Cache type prefix
-   * @returns Stats object for the cache type
+   * Thread-safe lazy initialization of stats objects. If a stats object
+   * doesn't exist for the given cache type, creates a new one with zeroed counters.
+   *
+   * This allows stats to be tracked dynamically for any cache type without
+   * pre-registration, supporting extensibility as new cache types are added.
+   *
+   * @param cacheType - Cache type prefix (e.g., 'computed-fields', 'settlements')
+   * @returns Stats object for the cache type (existing or newly created)
    */
   private getOrCreateStats(cacheType: string): CacheTypeStats {
     let stats = this.stats.get(cacheType);
