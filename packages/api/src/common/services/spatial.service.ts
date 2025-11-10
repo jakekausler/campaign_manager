@@ -1,3 +1,42 @@
+/**
+ * @fileoverview Spatial Service for PostGIS Operations
+ *
+ * Provides comprehensive spatial data operations for the Campaign Manager application.
+ * Handles conversion between GeoJSON and PostGIS formats, geometry validation, and
+ * spatial queries for locations, settlements, and geographic regions.
+ *
+ * Key Features:
+ * - GeoJSON ↔ PostGIS WKB/EWKB format conversion using wkx library
+ * - Comprehensive geometry validation for all GeoJSON geometry types
+ * - CRS (Coordinate Reference System) configuration and SRID management
+ * - Spatial query operations: proximity searches, containment checks, bounding box queries
+ * - Settlement-specific spatial queries with caching support
+ * - Distance calculations and region overlap detection
+ *
+ * Supported Geometry Types:
+ * - Point, LineString, Polygon
+ * - MultiPoint, MultiLineString, MultiPolygon
+ * - GeometryCollection
+ *
+ * Default Coordinate Systems:
+ * - SRID 4326 (WGS 84) - Standard geographic coordinates
+ * - SRID 3857 (Web Mercator) - Default for spatial queries
+ *
+ * Database Integration:
+ * - Uses PostGIS spatial extension for PostgreSQL
+ * - Leverages spatial indexes for efficient queries
+ * - Soft-delete aware (filters out deletedAt records)
+ * - Supports Redis caching for frequently accessed spatial queries
+ *
+ * Performance Considerations:
+ * - Spatial queries utilize PostGIS spatial indexes (GIST)
+ * - Proximity queries use ST_DWithin for indexed distance filtering
+ * - Results cached with 300-second TTL for repeated queries
+ * - Cache keys normalized for consistent cache hits
+ *
+ * @module SpatialService
+ */
+
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import * as wkx from 'wkx';
 
@@ -16,19 +55,37 @@ import { buildSpatialQueryKey, normalizeSpatialParams } from '../cache/cache-key
 import { CacheService } from '../cache/cache.service';
 
 /**
- * Bounding box for spatial queries
+ * Bounding box for spatial queries.
+ *
+ * Defines a rectangular geographic area using west/south/east/north coordinates.
+ * Coordinates are in the specified CRS (default: Web Mercator 3857).
  */
 export interface BoundingBox {
+  /** Western longitude boundary */
   west: number;
+  /** Southern latitude boundary */
   south: number;
+  /** Eastern longitude boundary */
   east: number;
+  /** Northern latitude boundary */
   north: number;
+  /** Spatial Reference System Identifier (default: 3857 Web Mercator) */
   srid?: number;
 }
 
 /**
- * Service for spatial data operations
- * Handles GeoJSON ↔ PostGIS WKB conversion, geometry validation, and spatial queries
+ * Service for spatial data operations.
+ *
+ * Provides comprehensive spatial functionality including:
+ * - Format conversion between GeoJSON and PostGIS WKB/EWKB
+ * - Geometry validation for all GeoJSON types
+ * - Spatial query operations (proximity, containment, overlap)
+ * - Settlement-specific spatial queries
+ * - CRS configuration and SRID management
+ * - Redis caching for spatial query results
+ *
+ * Uses PostGIS spatial extension for all database operations.
+ * All spatial queries respect soft-delete (filter by deletedAt IS NULL).
  */
 @Injectable()
 export class SpatialService {
@@ -209,7 +266,13 @@ export class SpatialService {
   }
 
   /**
-   * Validate a Point geometry
+   * Validate a Point geometry.
+   *
+   * Ensures the point has exactly 2 coordinate values (longitude, latitude)
+   * and that both values are valid finite numbers.
+   *
+   * @param point GeoJSON Point geometry to validate
+   * @param errors Array to collect validation error messages
    */
   private validatePoint(point: GeoJSONPoint, errors: string[]): void {
     if (!Array.isArray(point.coordinates)) {
@@ -225,7 +288,13 @@ export class SpatialService {
   }
 
   /**
-   * Validate a LineString geometry
+   * Validate a LineString geometry.
+   *
+   * Ensures the LineString has at least 2 coordinate positions,
+   * and that all coordinates are valid finite numbers.
+   *
+   * @param lineString GeoJSON LineString geometry to validate
+   * @param errors Array to collect validation error messages
    */
   private validateLineString(
     lineString: { coordinates: [number, number][] },
@@ -246,7 +315,15 @@ export class SpatialService {
   }
 
   /**
-   * Validate a Polygon geometry
+   * Validate a Polygon geometry.
+   *
+   * Ensures the polygon has at least one ring (exterior ring required),
+   * each ring has at least 4 positions (minimum 3 distinct points + 1 closing point),
+   * and all rings are properly closed (first and last positions must match).
+   * Also validates that all coordinates are valid finite numbers.
+   *
+   * @param polygon GeoJSON Polygon geometry to validate
+   * @param errors Array to collect validation error messages
    */
   private validatePolygon(polygon: GeoJSONPolygon, errors: string[]): void {
     if (!Array.isArray(polygon.coordinates)) {
@@ -301,7 +378,12 @@ export class SpatialService {
   }
 
   /**
-   * Validate a MultiPoint geometry
+   * Validate a MultiPoint geometry.
+   *
+   * Ensures all point coordinates in the collection are valid finite numbers.
+   *
+   * @param multiPoint GeoJSON MultiPoint geometry to validate
+   * @param errors Array to collect validation error messages
    */
   private validateMultiPoint(
     multiPoint: { coordinates: [number, number][] },
@@ -319,7 +401,13 @@ export class SpatialService {
   }
 
   /**
-   * Validate a MultiLineString geometry
+   * Validate a MultiLineString geometry.
+   *
+   * Validates each LineString in the collection by delegating to validateLineString.
+   * Ensures all LineStrings meet the minimum 2-position requirement and have valid coordinates.
+   *
+   * @param multiLineString GeoJSON MultiLineString geometry to validate
+   * @param errors Array to collect validation error messages
    */
   private validateMultiLineString(
     multiLineString: { coordinates: [number, number][][] },
@@ -335,7 +423,13 @@ export class SpatialService {
   }
 
   /**
-   * Validate a MultiPolygon geometry
+   * Validate a MultiPolygon geometry.
+   *
+   * Validates each Polygon in the collection by delegating to validatePolygon.
+   * Ensures all polygons meet ring requirements and have properly closed rings.
+   *
+   * @param multiPolygon GeoJSON MultiPolygon geometry to validate
+   * @param errors Array to collect validation error messages
    */
   private validateMultiPolygon(multiPolygon: GeoJSONMultiPolygon, errors: string[]): void {
     if (!Array.isArray(multiPolygon.coordinates)) {
@@ -348,7 +442,13 @@ export class SpatialService {
   }
 
   /**
-   * Validate a GeometryCollection
+   * Validate a GeometryCollection.
+   *
+   * Recursively validates each geometry in the collection by delegating to validateGeometry.
+   * Supports nested GeometryCollections.
+   *
+   * @param collection GeoJSON GeometryCollection to validate
+   * @param errors Array to collect validation error messages
    */
   private validateGeometryCollection(
     collection: { geometries: GeoJSONGeometry[] },
@@ -367,7 +467,15 @@ export class SpatialService {
   }
 
   /**
-   * Check if a coordinate is valid
+   * Check if a coordinate is valid.
+   *
+   * A valid coordinate must:
+   * - Be an array with exactly 2 elements [longitude, latitude]
+   * - Both elements must be numbers
+   * - Both elements must be finite (not NaN, not Infinity)
+   *
+   * @param coord Coordinate array to validate
+   * @returns True if coordinate is valid, false otherwise
    */
   private isValidCoordinate(coord: [number, number]): boolean {
     return (
@@ -422,11 +530,17 @@ export class SpatialService {
   // =================================================================
 
   /**
-   * Check if a point location is within a region location
-   * Includes points on the boundary of the region
-   * @param pointId ID of the point location
-   * @param regionId ID of the region location
+   * Check if a point location is within a region location.
+   *
+   * Uses PostGIS ST_Covers function to test spatial containment.
+   * Includes points on the boundary of the region (covers vs. within).
+   *
+   * Performance: Leverages spatial index (GIST) for efficient lookup.
+   *
+   * @param pointId ID of the point location to test
+   * @param regionId ID of the region location (polygon/multipolygon)
    * @returns True if point is within region (including boundary), false otherwise
+   * @throws Error if either location ID does not exist
    */
   async pointWithinRegion(pointId: string, regionId: string): Promise<boolean> {
     const result = await this.prisma.$queryRaw<[{ within: boolean }]>`
@@ -439,10 +553,22 @@ export class SpatialService {
   }
 
   /**
-   * Calculate distance between two locations
+   * Calculate distance between two locations.
+   *
+   * Uses PostGIS ST_Distance function to compute planar distance between geometries.
+   * Distance units depend on the Spatial Reference System (SRS):
+   * - For projected CRS (e.g., Web Mercator 3857): distance in meters
+   * - For geographic CRS (e.g., WGS 84 4326): distance in degrees
+   *
+   * Note: For geographic coordinates, consider using ST_Distance_Sphere or
+   * ST_Distance_Spheroid for accurate distances in meters.
+   *
+   * Performance: Leverages spatial index (GIST) for efficient lookup.
+   *
    * @param location1Id ID of the first location
    * @param location2Id ID of the second location
    * @returns Distance in meters (for projected CRS) or degrees (for geographic CRS)
+   * @throws Error if either location ID does not exist
    */
   async distance(location1Id: string, location2Id: string): Promise<number> {
     const result = await this.prisma.$queryRaw<[{ distance: number }]>`
@@ -455,10 +581,22 @@ export class SpatialService {
   }
 
   /**
-   * Find all locations within a bounding box
+   * Find all locations within a bounding box.
+   *
+   * Uses PostGIS ST_Intersects with ST_MakeEnvelope to efficiently query
+   * locations that intersect with the specified rectangular bounding box.
+   *
+   * The bounding box is specified using west/south/east/north coordinates
+   * in the coordinate system identified by the SRID (default: Web Mercator 3857).
+   *
+   * Only returns non-deleted locations (deletedAt IS NULL).
+   * If worldId is provided, results are filtered to that world.
+   *
+   * Performance: Uses spatial index (GIST) for efficient bounding box queries.
+   *
    * @param bbox Bounding box with west, south, east, north coordinates
-   * @param worldId Optional world ID to filter locations
-   * @returns Array of locations within the bounding box
+   * @param worldId Optional world ID to filter locations to a specific world
+   * @returns Array of locations within the bounding box with geometry as WKB buffer
    */
   async locationsInBounds(
     bbox: BoundingBox,
@@ -503,12 +641,30 @@ export class SpatialService {
   }
 
   /**
-   * Find all locations near a point within a given radius
-   * @param point GeoJSON point coordinates
-   * @param radius Radius in meters
+   * Find all locations near a point within a given radius.
+   *
+   * Uses PostGIS ST_DWithin for efficient proximity queries with spatial index.
+   * Results are ordered by actual distance from the query point.
+   *
+   * The radius and distance units depend on the Spatial Reference System:
+   * - For projected CRS (e.g., Web Mercator 3857): radius in meters
+   * - For geographic CRS (e.g., WGS 84 4326): radius in degrees
+   *
+   * Only returns non-deleted locations (deletedAt IS NULL).
+   * If worldId is provided, results are filtered to that world.
+   *
+   * Caching:
+   * - Results cached with 300-second TTL using Redis
+   * - Cache keys normalized to handle coordinate precision differences
+   * - Graceful degradation if cache fails (logs warning, continues with query)
+   *
+   * Performance: ST_DWithin leverages spatial index (GIST) for indexed distance filtering.
+   *
+   * @param point GeoJSON point coordinates [longitude, latitude]
+   * @param radius Search radius in meters (for projected CRS) or degrees (for geographic CRS)
    * @param srid Spatial reference system ID (default: Web Mercator 3857)
-   * @param worldId Optional world ID to filter locations
-   * @returns Array of locations within radius, ordered by distance
+   * @param worldId Optional world ID to filter locations to a specific world
+   * @returns Array of locations within radius with distances, ordered by distance ascending
    */
   async locationsNear(
     point: GeoJSONPoint,
@@ -614,10 +770,24 @@ export class SpatialService {
   }
 
   /**
-   * Find all locations within a region
-   * @param regionId ID of the region location
-   * @param worldId Optional world ID to filter locations
-   * @returns Array of locations within the region
+   * Find all locations within a region.
+   *
+   * Uses PostGIS ST_Within to find all locations completely contained within
+   * the specified region geometry. The region itself is excluded from results.
+   *
+   * Only returns non-deleted locations (deletedAt IS NULL).
+   * If worldId is provided, results are filtered to that world.
+   *
+   * Caching:
+   * - Results cached with 300-second TTL using Redis
+   * - Cache key based on regionId and optional worldId
+   * - Graceful degradation if cache fails (logs warning, continues with query)
+   *
+   * Performance: Uses spatial index (GIST) for efficient containment queries.
+   *
+   * @param regionId ID of the region location (polygon/multipolygon)
+   * @param worldId Optional world ID to filter locations to a specific world
+   * @returns Array of locations completely within the region with geometry as WKB buffer
    */
   async locationsInRegion(
     regionId: string,
@@ -692,10 +862,18 @@ export class SpatialService {
   }
 
   /**
-   * Check if two regions overlap
-   * @param region1Id ID of the first region
-   * @param region2Id ID of the second region
-   * @returns True if regions overlap, false otherwise
+   * Check if two regions overlap.
+   *
+   * Uses PostGIS ST_Overlaps to test if two regions share space but neither
+   * completely contains the other. Returns false if regions are identical,
+   * adjacent but not overlapping, or one completely contains the other.
+   *
+   * Performance: Leverages spatial index (GIST) for efficient lookup.
+   *
+   * @param region1Id ID of the first region location (polygon/multipolygon)
+   * @param region2Id ID of the second region location (polygon/multipolygon)
+   * @returns True if regions overlap (share space but neither contains the other), false otherwise
+   * @throws Error if either region ID does not exist
    */
   async checkRegionOverlap(region1Id: string, region2Id: string): Promise<boolean> {
     const result = await this.prisma.$queryRaw<[{ overlaps: boolean }]>`
@@ -712,10 +890,25 @@ export class SpatialService {
   // =================================================================
 
   /**
-   * Find all settlements within a region location
-   * @param regionId ID of the region location
-   * @param worldId Optional world ID to filter settlements
-   * @returns Array of settlements within the region
+   * Find all settlements within a region location.
+   *
+   * Uses PostGIS ST_Within to find all settlements whose locations are completely
+   * contained within the specified region geometry. Joins Settlement table with
+   * Location table to perform spatial query.
+   *
+   * Only returns non-deleted settlements and locations (deletedAt IS NULL).
+   * If worldId is provided, results are filtered to that world.
+   *
+   * Caching:
+   * - Results cached with 300-second TTL using Redis
+   * - Cache key based on regionId and optional worldId
+   * - Graceful degradation if cache fails (logs warning, continues with query)
+   *
+   * Performance: Uses spatial index (GIST) for efficient containment queries.
+   *
+   * @param regionId ID of the region location (polygon/multipolygon)
+   * @param worldId Optional world ID to filter settlements to a specific world
+   * @returns Array of settlements within the region with basic settlement data
    */
   async settlementsInRegion(
     regionId: string,
@@ -811,9 +1004,15 @@ export class SpatialService {
   }
 
   /**
-   * Find settlement at a specific location
-   * @param locationId ID of the location
-   * @returns Settlement at the location, or null if none exists
+   * Find settlement at a specific location.
+   *
+   * Direct lookup of a settlement by its associated location ID.
+   * Does not perform spatial queries, uses foreign key relationship.
+   *
+   * Only returns non-deleted settlements (deletedAt IS NULL).
+   *
+   * @param locationId ID of the location to check for a settlement
+   * @returns Settlement at the location with basic settlement data, or null if no settlement exists
    */
   async settlementAtLocation(locationId: string): Promise<{
     id: string;
@@ -840,12 +1039,28 @@ export class SpatialService {
   }
 
   /**
-   * Find all settlements near a point within a given radius
-   * @param point GeoJSON point coordinates
-   * @param radius Radius in meters
+   * Find all settlements near a point within a given radius.
+   *
+   * Uses PostGIS ST_DWithin for efficient proximity queries with spatial index.
+   * Results are ordered by actual distance from the query point.
+   * Joins Settlement table with Location table to perform spatial query.
+   *
+   * The radius and distance units depend on the Spatial Reference System:
+   * - For projected CRS (e.g., Web Mercator 3857): radius in meters
+   * - For geographic CRS (e.g., WGS 84 4326): radius in degrees
+   *
+   * Only returns non-deleted settlements and locations (deletedAt IS NULL).
+   * If worldId is provided, results are filtered to that world.
+   *
+   * Note: This method does not cache results (unlike locationsNear).
+   *
+   * Performance: ST_DWithin leverages spatial index (GIST) for indexed distance filtering.
+   *
+   * @param point GeoJSON point coordinates [longitude, latitude]
+   * @param radius Search radius in meters (for projected CRS) or degrees (for geographic CRS)
    * @param srid Spatial reference system ID (default: Web Mercator 3857)
-   * @param worldId Optional world ID to filter settlements
-   * @returns Array of settlements within radius, ordered by distance
+   * @param worldId Optional world ID to filter settlements to a specific world
+   * @returns Array of settlements within radius with distances, ordered by distance ascending
    */
   async settlementsNear(
     point: GeoJSONPoint,
