@@ -12,6 +12,11 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
+    "dev:logged": "bash scripts/dev-all-with-logging.sh",
+    "dev:api": "bash scripts/dev-with-logging.sh api",
+    "dev:frontend": "bash scripts/dev-with-logging.sh frontend",
+    "dev:rules-engine": "bash scripts/dev-with-logging.sh rules-engine",
+    "dev:scheduler": "bash scripts/dev-with-logging.sh scheduler",
     "lint": "pnpm -r lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
