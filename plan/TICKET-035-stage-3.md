@@ -44,7 +44,7 @@ These documents are developer/technical focused. User docs should reference them
 
 - [x] Run code review (use Code Reviewer subagent - MANDATORY)
 - [x] Address code review feedback (if any exists from previous task)
-- [ ] Commit stage changes with detailed conventional commit message
+- [x] Commit stage changes with detailed conventional commit message
 
 ## Implementation Notes
 
@@ -207,4 +207,4 @@ These documents are developer/technical focused. User docs should reference them
 
 ## Commit Hash
 
-_Added when final commit task is complete_
+`5a2c201` - docs(plan): mark TICKET-035 Stage 3 review tasks complete
