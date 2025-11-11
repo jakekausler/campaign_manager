@@ -119,7 +119,7 @@ REDIS_URL=redis://localhost:6379
 
 # API Configuration
 API_URL=http://localhost:9264/graphql
-API_SERVICE_ACCOUNT_TOKEN=<jwt-token>   # Service account JWT
+API_SERVICE_ACCOUNT_TOKEN=<api-key>     # Service account API key (format: camp_sk_...)
 
 # Cron Schedules (optional overrides)
 CRON_EVENT_EXPIRATION=*/5 * * * *       # Every 5 minutes
@@ -543,12 +543,40 @@ scheduler:
 
 ### Environment Preparation
 
-1. **Generate Service Account Token**:
+1. **Generate Service Account API Key**:
+
+   **Option A: Via Seed Script (Development)**
 
    ```bash
-   # Use main API to generate JWT token for scheduler service
-   # Token should have appropriate permissions for scheduler operations
+   # Seed script creates default API keys including one for the scheduler
+   pnpm --filter @campaign/api prisma:seed
+
+   # Look for output like:
+   # Created API key for scheduler: camp_sk_abc123xyz789def456ghi012jkl
    ```
+
+   **Option B: Via API Endpoint (Production)**
+
+   ```bash
+   # Requires valid JWT token for authentication
+   curl -X POST http://localhost:9264/auth/api-keys \
+     -H "Authorization: Bearer <admin-jwt-token>" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "Scheduler Service",
+       "description": "API key for scheduler service inter-service authentication",
+       "expiresAt": null
+     }'
+
+   # Response includes the API key (shown only once - save it!):
+   # { "id": "...", "key": "camp_sk_...", "name": "Scheduler Service", ... }
+   ```
+
+   **Important:**
+   - API keys use format: `camp_sk_<32_base64url_characters>`
+   - Keys are shown only once when created - save immediately
+   - Service account keys typically have no expiration
+   - Never commit keys to version control
 
 2. **Configure Environment**:
 

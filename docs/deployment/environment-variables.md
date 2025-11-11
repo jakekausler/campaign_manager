@@ -218,12 +218,12 @@ redis://:password@redis:6379/0
 
 ### 6. Authentication & Security
 
-| Variable                    | Required            | Default | Type     | Description                          |
-| --------------------------- | ------------------- | ------- | -------- | ------------------------------------ |
-| `JWT_SECRET`                | **Yes**             | -       | `string` | Secret key for signing JWT tokens    |
-| `JWT_EXPIRATION`            | No                  | `7d`    | `string` | Access token expiration time         |
-| `JWT_REFRESH_EXPIRATION`    | No                  | `30d`   | `string` | Refresh token expiration time        |
-| `API_SERVICE_ACCOUNT_TOKEN` | **Yes** (scheduler) | -       | `string` | JWT for scheduler→API authentication |
+| Variable                    | Required            | Default | Type     | Description                              |
+| --------------------------- | ------------------- | ------- | -------- | ---------------------------------------- |
+| `JWT_SECRET`                | **Yes**             | -       | `string` | Secret key for signing JWT tokens        |
+| `JWT_EXPIRATION`            | No                  | `7d`    | `string` | Access token expiration time             |
+| `JWT_REFRESH_EXPIRATION`    | No                  | `30d`   | `string` | Refresh token expiration time            |
+| `API_SERVICE_ACCOUNT_TOKEN` | **Yes** (scheduler) | -       | `string` | API key for scheduler→API authentication |
 
 **Constraints:**
 
@@ -238,6 +238,45 @@ JWT_SECRET=aB9xK2pL5nM8qR1sT4uV7wX0yZ3cD6eF9gH2jK5mN8pQ1sT4uV7wX0yZ3cD6eF9g
 ```
 
 **Services:** API, Scheduler
+
+#### API Key Format (API_SERVICE_ACCOUNT_TOKEN)
+
+The `API_SERVICE_ACCOUNT_TOKEN` is an API key (not a JWT token) used for inter-service authentication between the scheduler and API services.
+
+**Format:** `camp_sk_<32_base64url_characters>`
+
+**Example:** `camp_sk_abc123xyz789def456ghi012jkl`
+
+**How to Generate:**
+
+1. **Via Seed Script** (Development):
+
+   ```bash
+   pnpm --filter @campaign/api prisma:seed
+   ```
+
+   The seed script creates a default API key for the scheduler service.
+
+2. **Via API Endpoint** (Production):
+   ```bash
+   # Requires valid JWT token for authentication
+   curl -X POST http://localhost:9264/auth/api-keys \
+     -H "Authorization: Bearer <jwt-token>" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "Scheduler Service",
+       "description": "API key for scheduler service authentication",
+       "expiresAt": null
+     }'
+   ```
+
+**Important Notes:**
+
+- **One-time display**: The API key is shown only once when created. Save it immediately.
+- **Secure storage**: Store keys in environment variables or secrets management systems.
+- **Production security**: Never use the example key (`camp_sk_example1234567890abcdefghijk`) in production.
+- **Key rotation**: Regenerate keys periodically and update environment variables.
+- **No expiration**: Service account keys typically have no expiration (set `expiresAt: null`).
 
 ---
 
@@ -716,7 +755,7 @@ stringData:
   JWT_SECRET: <generate-with-openssl>
   POSTGRES_PASSWORD: <strong-password>
   MINIO_ROOT_PASSWORD: <strong-password>
-  API_SERVICE_ACCOUNT_TOKEN: <jwt-token>
+  API_SERVICE_ACCOUNT_TOKEN: <api-key-from-seed-or-endpoint>
   REDIS_PASSWORD: <redis-password>
 
 ---
@@ -743,7 +782,7 @@ env:
   DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/test_db?schema=public
   REDIS_URL: redis://localhost:6379/1
   JWT_SECRET: test-secret-key-minimum-32-characters
-  API_SERVICE_ACCOUNT_TOKEN: test-token
+  API_SERVICE_ACCOUNT_TOKEN: camp_sk_testkey1234567890abcdefgh
   INTEGRATION_TESTS: "true"
   LOG_LEVEL: error
   CI: "true"

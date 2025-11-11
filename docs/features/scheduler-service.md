@@ -336,7 +336,7 @@ REDIS_URL=redis://localhost:6379
 
 # API Configuration
 API_URL=http://localhost:9264/graphql
-API_SERVICE_ACCOUNT_TOKEN=<jwt-token>
+API_SERVICE_ACCOUNT_TOKEN=<api-key>  # Format: camp_sk_...
 
 # Cron Schedules
 CRON_EVENT_EXPIRATION=*/5 * * * *
@@ -448,7 +448,7 @@ scrape_configs:
 
 - **GraphQL Client**: Queries and mutations for entities, events, effects
 - **Circuit Breaker**: Handles API downtime gracefully
-- **Authentication**: JWT service account token
+- **Authentication**: API key authentication (format: `camp_sk_<32_base64url_chars>`)
 
 ### Rules Engine
 
@@ -477,7 +477,8 @@ scrape_configs:
 ### API Client Errors
 
 - Verify `API_URL` points to GraphQL endpoint
-- Check `API_SERVICE_ACCOUNT_TOKEN` is valid
+- Check `API_SERVICE_ACCOUNT_TOKEN` is valid (format: `camp_sk_...`)
+- Ensure API key has not been revoked or expired
 - Review circuit breaker status in logs
 
 ### High Memory Usage

@@ -83,7 +83,7 @@ describe('ApiClientService', () => {
         timeout: 10000,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: 'Bearer test-token',
+          'x-api-key': 'test-token',
         },
         httpAgent: expect.any(Object),
         httpsAgent: expect.any(Object),

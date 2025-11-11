@@ -1,6 +1,7 @@
 /**
  * API Client Service
  * Handles communication with the main API service via GraphQL
+ * Authenticates using API key via x-api-key header
  */
 
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
@@ -349,7 +350,7 @@ export class ApiClientService implements OnModuleDestroy {
       timeout: this.configService.get('API_REQUEST_TIMEOUT_MS') as number,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.configService.get('API_SERVICE_ACCOUNT_TOKEN')}`,
+        'x-api-key': this.configService.get('API_SERVICE_ACCOUNT_TOKEN') as string,
       },
       // Use connection pooling agents
       httpAgent: this.httpAgent,

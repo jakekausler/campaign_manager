@@ -51,7 +51,8 @@ export class ConfigService {
   }
 
   /**
-   * Get the service account token for API authentication
+   * Get the service account API key for API authentication
+   * Used in x-api-key header for authenticating with the main API service
    */
   get apiServiceAccountToken(): string {
     const token = this.nestConfigService.get<string>('API_SERVICE_ACCOUNT_TOKEN');

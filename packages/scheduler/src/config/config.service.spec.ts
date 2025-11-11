@@ -210,7 +210,7 @@ describe('ConfigService', () => {
 
       await expect(async () => {
         const module: TestingModule = await Test.createTestingModule({
-          imports: [NestConfigModule.forRoot()],
+          imports: [NestConfigModule.forRoot({ cache: false, ignoreEnvFile: true })],
           providers: [ConfigService],
         }).compile();
 
@@ -225,7 +225,7 @@ describe('ConfigService', () => {
 
       await expect(async () => {
         const module: TestingModule = await Test.createTestingModule({
-          imports: [NestConfigModule.forRoot()],
+          imports: [NestConfigModule.forRoot({ cache: false, ignoreEnvFile: true })],
           providers: [ConfigService],
         }).compile();
 
@@ -240,7 +240,7 @@ describe('ConfigService', () => {
 
       await expect(async () => {
         const module: TestingModule = await Test.createTestingModule({
-          imports: [NestConfigModule.forRoot()],
+          imports: [NestConfigModule.forRoot({ cache: false, ignoreEnvFile: true })],
           providers: [ConfigService],
         }).compile();
 
@@ -255,7 +255,7 @@ describe('ConfigService', () => {
 
       await expect(async () => {
         const module: TestingModule = await Test.createTestingModule({
-          imports: [NestConfigModule.forRoot()],
+          imports: [NestConfigModule.forRoot({ cache: false, ignoreEnvFile: true })],
           providers: [ConfigService],
         }).compile();
 

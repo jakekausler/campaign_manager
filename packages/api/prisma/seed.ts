@@ -7,6 +7,7 @@
 
 import { PrismaClient } from '@prisma/client';
 
+import { ApiKeyService } from '../src/auth/services/api-key.service';
 import { createLocationWithGeometry } from '../src/database/spatial.helpers';
 
 const prisma = new PrismaClient();
@@ -114,6 +115,57 @@ async function main() {
       },
     },
   });
+
+  // Create scheduler service account user
+  console.log('Creating scheduler service account...');
+  const schedulerUser = await prisma.user.upsert({
+    where: { email: 'scheduler@campaign.local' },
+    update: {},
+    create: {
+      email: 'scheduler@campaign.local',
+      name: 'Scheduler Service',
+      password: '$2b$10$scheduler.service.account.hash.placeholder',
+      roles: {
+        create: {
+          roleId: adminRole.id,
+        },
+      },
+    },
+  });
+
+  // Create API key for scheduler service
+  // Note: ApiKeyService expects PrismaService, but PrismaClient is compatible
+  // since PrismaService extends PrismaClient
+  const apiKeyService = new ApiKeyService(prisma as any);
+  const { key: schedulerApiKey, id: schedulerKeyId } = await apiKeyService.create({
+    userId: schedulerUser.id,
+    name: 'Scheduler Service Account Key',
+    scopes: [
+      'read:campaigns',
+      'read:events',
+      'write:events',
+      'read:settlements',
+      'read:structures',
+    ],
+    // No campaignId restriction - service-wide access
+    // No expiresAt - key does not expire (for dev/local use)
+  });
+
+  console.log('\n🔑 SCHEDULER SERVICE ACCOUNT API KEY');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('⚠️  SAVE THIS KEY - IT WILL NOT BE SHOWN AGAIN!');
+  console.log('');
+  console.log(`API Key: ${schedulerApiKey}`);
+  console.log(`Key ID:  ${schedulerKeyId}`);
+  console.log(`User ID: ${schedulerUser.id}`);
+  console.log('');
+  console.log('📝 To use this key with the scheduler service:');
+  console.log('   1. Copy the API key above');
+  console.log('   2. Add it to packages/scheduler/.env.local:');
+  console.log(`      API_KEY=${schedulerApiKey}`);
+  console.log('   3. The scheduler will use this key to authenticate with the API');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('');
 
   // Create sample world with custom calendar
   console.log('Creating sample world...');
@@ -3523,7 +3575,8 @@ async function main() {
   console.log('\n🔐 Authorization:');
   console.log('  - 2 roles (admin, user)');
   console.log('  - 4 permissions (campaign CRUD)');
-  console.log('  - 2 users (admin@campaign.local, user@campaign.local)');
+  console.log('  - 3 users (admin@campaign.local, user@campaign.local, scheduler@campaign.local)');
+  console.log('  - 1 API key (Scheduler Service Account Key)');
   console.log('\n🌍 Geographic Entities:');
   console.log('  - 1 world (Golarion)');
   console.log('  - 5 regions (Varisia, Cheliax, Worldwound, Osirion, Mwangi Expanse)');

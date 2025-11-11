@@ -198,7 +198,9 @@ services:
       REDIS_URL: redis://redis:6379
       API_URL: http://api:3000/graphql
       # SECURITY: Set SCHEDULER_API_TOKEN in .env.local - default is for development only
-      API_SERVICE_ACCOUNT_TOKEN: ${SCHEDULER_API_TOKEN:-your-jwt-token-here}
+      # API key format: camp_sk_<32_base64url_characters>
+      # Generate via seed script or API endpoint (see docs/deployment/environment-variables.md)
+      API_SERVICE_ACCOUNT_TOKEN: ${SCHEDULER_API_TOKEN:-camp_sk_example1234567890abcdefghijk}
       # Cron schedules
       CRON_EVENT_EXPIRATION: ${CRON_EVENT_EXPIRATION:-*/5 * * * *}
       CRON_SETTLEMENT_GROWTH: ${CRON_SETTLEMENT_GROWTH:-0 * * * *}
