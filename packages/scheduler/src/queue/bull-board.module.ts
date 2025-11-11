@@ -1,11 +1,12 @@
 import { createBullBoard } from '@bull-board/api';
 import { BullAdapter } from '@bull-board/api/bullAdapter';
 import { ExpressAdapter } from '@bull-board/express';
-import { InjectQueue } from '@nestjs/bull';
+import { BullModule, InjectQueue } from '@nestjs/bull';
 import { Module, OnModuleInit } from '@nestjs/common';
 import { Queue } from 'bull';
 import type { Express } from 'express';
 
+import { ConfigModule } from '../config/config.module';
 import { ConfigService } from '../config/config.service';
 
 import { DeadLetterJob } from './dead-letter.service';
@@ -17,7 +18,17 @@ import { DEAD_LETTER_QUEUE, SCHEDULER_QUEUE } from './queue.constants';
  * Provides a web interface for monitoring job queues.
  * Only enabled when NODE_ENV is 'development'.
  */
-@Module({})
+@Module({
+  imports: [
+    ConfigModule,
+    BullModule.registerQueue({
+      name: SCHEDULER_QUEUE,
+    }),
+    BullModule.registerQueue({
+      name: DEAD_LETTER_QUEUE,
+    }),
+  ],
+})
 export class BullBoardModule implements OnModuleInit {
   private serverAdapter: ExpressAdapter | null = null;
 

@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--browser",
+        "chromium",
+        "--executable-path",
+        "/home/jakekausler/.cache/ms-playwright/chromium-1194/chrome-linux/chrome",
+        "--headless"
+      ],
+      "env": {
+        "PLAYWRIGHT_BROWSERS_PATH": "/home/jakekausler/.cache/ms-playwright"
+      }
+    }
+  }
+}

@@ -7,11 +7,13 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
+import { CacheModule } from '../common/cache/cache.module';
 import { SpatialService } from '../common/services/spatial.service';
 import { TileCacheService } from '../common/services/tile-cache.service';
 import { DatabaseModule } from '../database/database.module';
 import { GrpcModule } from '../grpc/grpc.module';
 import { RulesModule } from '../rules/rules.module';
+import { WebSocketModule } from '../websocket/websocket.module';
 
 import { createRedisCache, REDIS_CACHE } from './cache/redis-cache.provider';
 import { GraphQLContextFactory } from './context/graphql-context';
@@ -38,6 +40,7 @@ import { KingdomService } from './services/kingdom.service';
 import { LevelHistoryService } from './services/level-history.service';
 import { LinkService } from './services/link.service';
 import { LocationService } from './services/location.service';
+import { MergeService } from './services/merge.service';
 import { PartyService } from './services/party.service';
 import { SettlementService } from './services/settlement.service';
 import { StateVariableService } from './services/state-variable.service';
@@ -50,7 +53,7 @@ import { WorldService } from './services/world.service';
 import { DependencyExtractor } from './utils/dependency-extractor';
 
 @Module({
-  imports: [DatabaseModule, GrpcModule, RulesModule, AuthModule],
+  imports: [DatabaseModule, GrpcModule, RulesModule, AuthModule, CacheModule, WebSocketModule],
   providers: [
     // Context factory
     GraphQLContextFactory,
@@ -80,6 +83,7 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     EncounterService,
     EventService,
     LinkService,
+    MergeService,
     SpatialService,
     TileCacheService,
     LevelHistoryService,
@@ -102,6 +106,12 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     StructureDataLoader,
   ],
   exports: [
+    // Re-export AuthModule so its providers are available to GraphQLConfigModule
+    AuthModule,
+    // Re-export CacheModule so its providers are available to GraphQLConfigModule
+    CacheModule,
+    // Re-export WebSocketModule so its providers are available to GraphQLConfigModule
+    WebSocketModule,
     // Context factory
     GraphQLContextFactory,
     // Redis providers
@@ -123,6 +133,7 @@ import { DependencyExtractor } from './utils/dependency-extractor';
     EncounterService,
     EventService,
     LinkService,
+    MergeService,
     SpatialService,
     TileCacheService,
     LevelHistoryService,

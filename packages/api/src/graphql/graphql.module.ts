@@ -13,6 +13,9 @@ import type { Response } from 'express';
 import type { DocumentNode, GraphQLSchema } from 'graphql';
 import { fieldExtensionsEstimator, getComplexity, simpleEstimator } from 'graphql-query-complexity';
 
+import { AuthModule } from '../auth/auth.module';
+import { CacheModule } from '../common/cache/cache.module';
+
 import { GraphQLContextFactory, type RequestWithUser } from './context/graphql-context';
 import { GraphQLCoreModule } from './graphql-core.module';
 import { AuditResolver } from './resolvers/audit.resolver';
@@ -44,10 +47,12 @@ import { UploadScalar } from './scalars/upload.scalar';
 
 @Module({
   imports: [
+    AuthModule, // Provides PermissionsService and other auth services
+    CacheModule, // Provides CacheStatsService for cache statistics
     GraphQLCoreModule, // Provides all services, dataloaders, context factory
     NestGraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
-      imports: [GraphQLCoreModule],
+      imports: [GraphQLCoreModule, AuthModule],
       useFactory: (contextFactory: GraphQLContextFactory) => ({
         // Code-first approach - generate schema from TypeScript classes
         autoSchemaFile: join(process.cwd(), 'packages/api/src/schema.gql'),

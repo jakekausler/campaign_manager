@@ -7,11 +7,14 @@ import { Module } from '@nestjs/common';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 
+import { ConfigModule } from '../config/config.module';
 import { ConfigService } from '../config/config.service';
 
 @Module({
   imports: [
+    ConfigModule,
     WinstonModule.forRootAsync({
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const logLevel = String(configService.get('LOG_LEVEL') || 'info');

@@ -5,6 +5,8 @@ import { ConfigModule } from '../config/config.module';
 import { EffectsModule } from '../effects/effects.module';
 import { EventsModule } from '../events/events.module';
 import { HealthModule } from '../health/health.module';
+import { SettlementModule } from '../settlements/settlement.module';
+import { StructureModule } from '../structures/structure.module';
 
 import { BullBoardModule } from './bull-board.module';
 import { DeadLetterService } from './dead-letter.service';
@@ -34,9 +36,11 @@ import { QueueService } from './queue.service';
       name: DEAD_LETTER_QUEUE,
     }),
     BullBoardModule,
-    EffectsModule,
+    forwardRef(() => EffectsModule),
     EventsModule,
     forwardRef(() => HealthModule),
+    forwardRef(() => SettlementModule),
+    forwardRef(() => StructureModule),
   ],
   controllers: [MetricsController],
   providers: [QueueService, JobProcessorService, DeadLetterService],

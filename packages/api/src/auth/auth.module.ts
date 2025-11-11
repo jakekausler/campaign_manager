@@ -53,6 +53,7 @@ import { LocalStrategy } from './strategies/local.strategy';
     JwtAuthGuard,
     RolesGuard,
     ApiKeyAuthGuard,
+    JwtModule,
   ],
 })
 export class AuthModule {}
