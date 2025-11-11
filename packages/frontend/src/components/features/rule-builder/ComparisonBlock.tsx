@@ -1,3 +1,5 @@
+import { generateShortId } from '@/utils';
+
 import { NestedBlockRenderer } from './NestedBlockRenderer';
 import { OperatorBlock } from './OperatorBlock';
 import type { Block } from './types';
@@ -37,7 +39,7 @@ export function ComparisonBlock({ block, onUpdate, onDelete, entityType }: Compa
   const handleChildDelete = (index: number) => {
     const newChildren = [...(block.children || [])];
     newChildren[index] = {
-      id: Math.random().toString(36).substring(2, 11),
+      id: generateShortId(),
       type: 'literal',
       operator: 'literal',
       value: null,

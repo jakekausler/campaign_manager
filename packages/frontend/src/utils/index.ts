@@ -12,6 +12,9 @@
 // export { capitalize, truncate, slugify } from './string';
 // export { clamp, random, roundTo } from './math';
 
+// UUID generation utilities with cross-browser compatibility
+export { generateUUID, generateShortId } from './uuid';
+
 // Graph layout utilities for React Flow dependency visualization
 export {
   transformGraphToFlow,

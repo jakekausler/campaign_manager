@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui';
+import { generateUUID } from '@/utils';
 
 /**
  * Login page component
@@ -28,9 +29,10 @@ export default function LoginPage() {
     // await authService.login(email, password);
 
     // Placeholder: Set mock token after delay
-    // Using crypto.randomUUID() for unpredictable token in development
+    // Using generateUUID() utility which handles crypto.randomUUID() fallback automatically
     setTimeout(() => {
-      localStorage.setItem('auth_token', crypto.randomUUID());
+      const mockToken = `mock-${generateUUID()}`;
+      localStorage.setItem('auth_token', mockToken);
       setIsLoading(false);
       navigate(from, { replace: true });
     }, 1000);
