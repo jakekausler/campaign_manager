@@ -9,6 +9,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -19,6 +20,7 @@ import { CreateEncounterInput, UpdateEncounterInput } from '../inputs/encounter.
 import { EncounterService } from '../services/encounter.service';
 import { Encounter, EncounterResolutionResult } from '../types/encounter.type';
 
+@SkipThrottle()
 @Resolver(() => Encounter)
 export class EncounterResolver {
   constructor(private readonly encounterService: EncounterService) {}

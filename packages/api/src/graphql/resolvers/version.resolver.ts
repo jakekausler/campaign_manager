@@ -5,6 +5,7 @@
 
 import { Inject, UseGuards } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver, Subscription } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -17,6 +18,7 @@ import type { EntityModified as EntityModifiedType } from '../types/version.type
 import { EntityModified, Version, VersionDiff } from '../types/version.type';
 import { decompressPayload } from '../utils/version.utils';
 
+@SkipThrottle()
 @Resolver(() => Version)
 export class VersionResolver {
   constructor(

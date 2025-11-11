@@ -9,6 +9,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -19,6 +20,7 @@ import { CreateEventInput, UpdateEventInput } from '../inputs/event.input';
 import { EventService } from '../services/event.service';
 import { Event, EventCompletionResult } from '../types/event.type';
 
+@SkipThrottle()
 @Resolver(() => Event)
 export class EventResolver {
   constructor(private readonly eventService: EventService) {}

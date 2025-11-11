@@ -5,6 +5,7 @@
 
 import { UnauthorizedException, UseGuards } from '@nestjs/common';
 import { Args, ID, Int, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { Permission, PermissionsService } from '../../auth/services/permissions.service';
@@ -13,6 +14,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { Audit } from '../types/audit.type';
 
+@SkipThrottle()
 @Resolver(() => Audit)
 export class AuditResolver {
   constructor(

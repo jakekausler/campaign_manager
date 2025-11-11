@@ -18,6 +18,7 @@ import {
   ResolveField,
   Resolver,
 } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Settlement as PrismaSettlement } from '@prisma/client';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -38,6 +39,7 @@ import { Settlement } from '../types/settlement.type';
 import { Structure } from '../types/structure.type';
 import { Variable, VariableSchemaType, VariableTypeEnum } from '../types/variable-schema.types';
 
+@SkipThrottle()
 @Resolver(() => Settlement)
 export class SettlementResolver {
   private readonly logger = new Logger(SettlementResolver.name);

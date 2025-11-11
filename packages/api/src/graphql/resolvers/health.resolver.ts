@@ -4,6 +4,9 @@
  */
 
 import { Query, Resolver, ObjectType, Field } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
+
+import { Public } from '../../auth/decorators/public.decorator';
 
 @ObjectType()
 export class HealthCheck {
@@ -17,6 +20,7 @@ export class HealthCheck {
   version?: string;
 }
 
+@SkipThrottle()
 @Resolver()
 export class HealthResolver {
   /**
@@ -39,6 +43,7 @@ export class HealthResolver {
    * }
    * ```
    */
+  @Public()
   @Query(() => HealthCheck, {
     description: 'Health check query to verify GraphQL endpoint is working',
   })

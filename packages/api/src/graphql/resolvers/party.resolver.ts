@@ -9,6 +9,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -27,6 +28,7 @@ import { VariableSchemaService } from '../services/variable-schema.service';
 import { Party } from '../types/party.type';
 import { VariableSchemaType, Variable, VariableTypeEnum } from '../types/variable-schema.types';
 
+@SkipThrottle()
 @Resolver(() => Party)
 export class PartyResolver {
   constructor(

@@ -18,6 +18,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -41,6 +42,7 @@ import {
   AutoResolvedChange,
   MergeHistoryEntry,
 } from '../types/branch.type';
+@SkipThrottle()
 @Resolver()
 export class MergeResolver {
   constructor(

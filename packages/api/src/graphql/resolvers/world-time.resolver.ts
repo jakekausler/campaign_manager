@@ -5,6 +5,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -15,6 +16,7 @@ import { AdvanceWorldTimeInput } from '../inputs/world-time.input';
 import { WorldTimeService } from '../services/world-time.service';
 import { WorldTimeResult } from '../types/world-time.type';
 
+@SkipThrottle()
 @Resolver()
 export class WorldTimeResolver {
   constructor(private readonly worldTimeService: WorldTimeService) {}

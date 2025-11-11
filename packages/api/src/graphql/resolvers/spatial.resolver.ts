@@ -8,6 +8,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import type { GeoJSONGeometry, GeoJSONPoint } from '@campaign/shared';
 
@@ -36,6 +37,7 @@ import {
   SettlementWithDistance,
 } from '../types/spatial.type';
 
+@SkipThrottle()
 @Resolver()
 export class SpatialResolver {
   constructor(

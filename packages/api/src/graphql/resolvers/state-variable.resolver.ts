@@ -19,6 +19,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -39,6 +40,7 @@ import {
   VariableScope,
 } from '../types/state-variable.type';
 
+@SkipThrottle()
 @Resolver(() => StateVariable)
 export class StateVariableResolver {
   constructor(private readonly stateVariableService: StateVariableService) {}

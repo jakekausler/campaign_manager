@@ -5,6 +5,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -15,6 +16,7 @@ import { CreateCharacterInput, UpdateCharacterInput } from '../inputs/character.
 import { CharacterService } from '../services/character.service';
 import { Character } from '../types/character.type';
 
+@SkipThrottle()
 @Resolver(() => Character)
 export class CharacterResolver {
   constructor(private readonly characterService: CharacterService) {}

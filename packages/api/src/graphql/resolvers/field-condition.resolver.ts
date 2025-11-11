@@ -8,6 +8,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -24,6 +25,7 @@ import {
 import { ConditionService } from '../services/condition.service';
 import { EvaluationResult, FieldCondition } from '../types/field-condition.type';
 
+@SkipThrottle()
 @Resolver(() => FieldCondition)
 export class FieldConditionResolver {
   constructor(private readonly conditionService: ConditionService) {}

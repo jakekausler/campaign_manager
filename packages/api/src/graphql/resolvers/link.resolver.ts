@@ -5,6 +5,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -15,6 +16,7 @@ import { CreateLinkInput, UpdateLinkInput } from '../inputs/link.input';
 import { LinkService } from '../services/link.service';
 import { Link } from '../types/link.type';
 
+@SkipThrottle()
 @Resolver(() => Link)
 export class LinkResolver {
   constructor(private readonly linkService: LinkService) {}

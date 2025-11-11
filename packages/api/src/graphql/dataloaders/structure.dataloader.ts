@@ -19,6 +19,7 @@ export class StructureDataLoader {
    * Create a new DataLoader instance for loading structures by settlement ID
    * Must be called per-request to avoid caching across users
    * Includes user parameter for authorization checks
+   * @param user - Authenticated user (required for authorization checks)
    */
   createLoader(user: AuthenticatedUser): DataLoader<string, Structure[]> {
     return new DataLoader<string, Structure[]>(async (settlementIds: readonly string[]) => {

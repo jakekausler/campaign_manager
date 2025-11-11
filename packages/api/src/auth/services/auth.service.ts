@@ -264,9 +264,11 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 15 * 60, // 15 minutes
     };
 
+    // Generate access token (15 minutes)
+    // Note: Do not set `exp` manually in payload when using `expiresIn` option
+    // to avoid "Bad options.expiresIn" errors. The `exp` field is set automatically.
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: '15m',
     });

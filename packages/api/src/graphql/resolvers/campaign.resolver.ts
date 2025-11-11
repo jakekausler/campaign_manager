@@ -5,6 +5,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { ApiKeyAuthGuard } from '../../auth/guards/api-key-auth.guard';
@@ -20,6 +21,7 @@ import {
 import { CampaignService } from '../services/campaign.service';
 import { Campaign } from '../types/campaign.type';
 
+@SkipThrottle()
 @Resolver(() => Campaign)
 export class CampaignResolver {
   constructor(private readonly campaignService: CampaignService) {}

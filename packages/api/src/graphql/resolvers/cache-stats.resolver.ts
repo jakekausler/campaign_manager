@@ -1,5 +1,6 @@
 import { ForbiddenException, UseGuards } from '@nestjs/common';
 import { Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -9,6 +10,7 @@ import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { CacheStats } from '../types/cache-stats.type';
 
+@SkipThrottle()
 @Resolver(() => CacheStats)
 export class CacheStatsResolver {
   constructor(private readonly cacheStatsService: CacheStatsService) {}

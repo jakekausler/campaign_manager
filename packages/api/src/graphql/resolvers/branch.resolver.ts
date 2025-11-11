@@ -5,6 +5,7 @@
 
 import { ForbiddenException, UseGuards } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../../database/prisma.service';
@@ -14,6 +15,7 @@ import { CreateBranchInput, UpdateBranchInput, ForkBranchInput } from '../inputs
 import { BranchService } from '../services/branch.service';
 import { Branch, BranchNode, ForkResult } from '../types/branch.type';
 
+@SkipThrottle()
 @Resolver(() => Branch)
 export class BranchResolver {
   constructor(

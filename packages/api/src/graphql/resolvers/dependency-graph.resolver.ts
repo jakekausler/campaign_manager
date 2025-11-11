@@ -7,6 +7,7 @@
 
 import { UseGuards } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -20,6 +21,7 @@ import {
   DependencyNode,
 } from '../types/dependency-graph.type';
 
+@SkipThrottle()
 @Resolver()
 export class DependencyGraphResolver {
   constructor(private readonly dependencyGraphService: DependencyGraphService) {}

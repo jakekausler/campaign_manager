@@ -1,4 +1,4 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
+import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { AuthGuard } from '@nestjs/passport';
@@ -11,7 +11,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     super();
   }
 
-  canActivate(context: ExecutionContext) {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     // Check if route is marked as public
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
@@ -21,12 +21,33 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       return true;
     }
 
-    return super.canActivate(context);
+    // Activate the JWT authentication guard
+    const result = await super.canActivate(context);
+    return result as boolean;
   }
 
   getRequest(context: ExecutionContext) {
     // Handle both HTTP and GraphQL contexts
     const ctx = GqlExecutionContext.create(context);
     return ctx.getContext().req || context.switchToHttp().getRequest();
+  }
+
+  // Signature must match parent class IAuthGuard from @nestjs/passport
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handleRequest<TUser = any>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    err: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    user: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    _info: any,
+    _context: ExecutionContext,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    _status?: any
+  ): TUser {
+    if (err || !user) {
+      throw err || new UnauthorizedException();
+    }
+    return user;
   }
 }

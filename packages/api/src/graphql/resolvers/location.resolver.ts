@@ -17,6 +17,7 @@ import {
   ResolveField,
   Resolver,
 } from '@nestjs/graphql';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -33,6 +34,7 @@ import { GeoJSONScalar } from '../scalars/geojson.scalar';
 import { LocationService } from '../services/location.service';
 import { Location } from '../types/location.type';
 
+@SkipThrottle()
 @Resolver(() => Location)
 export class LocationResolver {
   private readonly logger = new Logger(LocationResolver.name);

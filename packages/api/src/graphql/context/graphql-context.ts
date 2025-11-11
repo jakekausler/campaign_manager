@@ -6,9 +6,9 @@
  * - DataLoaders for N+1 prevention
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Prisma, Structure } from '@prisma/client';
-import type DataLoader from 'dataloader';
+import DataLoader from 'dataloader';
 import type { Request, Response } from 'express';
 
 import { LocationGeometryDataLoader } from '../dataloaders/location-geometry.dataloader';
@@ -86,18 +86,23 @@ export class GraphQLContextFactory {
   private createDataLoaders(user?: AuthenticatedUser): DataLoaders {
     // Each DataLoader should be scoped to a single request to avoid
     // caching data across different users
-    // User is required for authorization checks in DataLoaders
-    if (!user) {
-      // If no user, create empty DataLoaders that will fail authorization
-      // This ensures unauthenticated requests can't access data
-      throw new Error('User context required for DataLoaders');
-    }
+
+    // StructureLoader requires user for authorization checks
+    // If user is not provided (unauthenticated request like health check),
+    // create a dummy loader that throws an error if used. This allows the
+    // context to be created for public endpoints while protecting data.
+    // Resolvers using structureLoader MUST enforce authentication via guards.
+    const structureLoader = user
+      ? this.structureDataLoader.createLoader(user)
+      : new DataLoader<string, Structure[]>(async () => {
+          throw new UnauthorizedException('Authentication required to load structures');
+        });
 
     return {
       locationLoader: this.locationDataLoader.createLoader(),
       locationGeometryLoader: this.locationGeometryDataLoader.createLoader(),
       settlementLoader: this.settlementDataLoader.createLoader(),
-      structureLoader: this.structureDataLoader.createLoader(user),
+      structureLoader,
     };
   }
 }

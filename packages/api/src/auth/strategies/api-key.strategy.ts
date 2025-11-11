@@ -15,7 +15,7 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
     email: string;
     role: string;
   }> {
-    // Extract API key from header
+    // Extract API key from x-api-key header
     const apiKey = req.headers['x-api-key'];
 
     if (!apiKey) {
