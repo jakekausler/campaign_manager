@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { SelectionInfo } from '@/components';
 import { EntityInspector } from '@/components/features/entity-inspector';
 import { Map, ViewportState } from '@/components/features/map';
-import { useSelectionStore, EntityType } from '@/stores';
+import { useStore, EntityType } from '@/stores';
 
 /**
  * Map page component (protected route)
@@ -31,11 +31,9 @@ export default function MapPage() {
     id: string;
   } | null>(null);
 
-  // Selection store for cross-view synchronization
-  const { selectEntity, toggleSelection, clearSelection } = useSelectionStore();
-
   // Handle entity selection from map
   // This function handles both local inspector state AND cross-view selection state
+  // Use getState() pattern to avoid unstable dependencies (see commit b66ce07 and TICKET-BUGFIX-MAP-INFINITE-LOOP)
   const handleEntitySelect = (
     type: 'settlement' | 'structure',
     id: string,
@@ -54,11 +52,11 @@ export default function MapPage() {
 
     if (isMultiSelect) {
       // Multi-select: toggle entity in selection
-      toggleSelection(entity);
+      useStore.getState().toggleSelection(entity);
       // Don't open inspector for multi-select
     } else {
       // Single-select: update global selection state
-      selectEntity(entity);
+      useStore.getState().selectEntity(entity);
       // Open inspector for single-select
       setSelectedEntity({ type, id });
       setInspectorOpen(true);
@@ -79,17 +77,18 @@ export default function MapPage() {
   const campaignId = 'campaign-placeholder-id';
 
   // Keyboard shortcuts for selection management
+  // Use getState() pattern to avoid unstable dependencies (see commit b66ce07)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Escape: clear selection
       if (event.key === 'Escape') {
-        clearSelection();
+        useStore.getState().clearSelection();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [clearSelection]);
+  }, []); // Empty dependencies - handler uses current state via getState()
 
   return (
     <div className="h-screen flex flex-col">

@@ -2,7 +2,11 @@ import { X, ArrowUpFromLine } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { useSettlementDetails } from '@/services/api/hooks';
-import { useSelectionStore, EntityType } from '@/stores';
+import { useSelectedEntities, useStore, EntityType, type RootStore } from '@/stores';
+
+// Module-level selector to ensure stable reference (prevents infinite re-renders)
+// See: TICKET-BUGFIX-MAP-INFINITE-LOOP.md and commit b66ce07
+const selectClearSelection = (state: RootStore) => state.clearSelection;
 
 /**
  * SelectionInfo - Visual indicator for cross-view entity selection
@@ -23,7 +27,11 @@ import { useSelectionStore, EntityType } from '@/stores';
  * Part of TICKET-024 Stage 6 & 7 implementation (Cross-View Synchronization).
  */
 export function SelectionInfo() {
-  const { selectedEntities, clearSelection } = useSelectionStore();
+  // Use precise selectors to prevent infinite re-render loops
+  // See: TICKET-BUGFIX-MAP-INFINITE-LOOP.md and commit b66ce07
+  const selectedEntities = useSelectedEntities();
+  // Use reference equality for function selector to prevent infinite re-renders
+  const clearSelection = useStore(selectClearSelection, (a, b) => a === b);
 
   // Extract parent settlement IDs from selected structures
   const parentSettlementIds = useMemo(() => {
