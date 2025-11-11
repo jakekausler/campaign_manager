@@ -8,8 +8,8 @@ import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { SkipThrottle } from '@nestjs/throttler';
 
 import { Roles } from '../../auth/decorators/roles.decorator';
-import { ApiKeyAuthGuard } from '../../auth/guards/api-key-auth.guard';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { JwtOrApiKeyAuthGuard } from '../../auth/guards/jwt-or-api-key-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../context/graphql-context';
 import { CurrentUser } from '../decorators/current-user.decorator';
@@ -38,7 +38,7 @@ export class CampaignResolver {
    * @see {@link CampaignService.findById} for access control logic
    */
   @Query(() => Campaign, { nullable: true, description: 'Get campaign by ID' })
-  @UseGuards(JwtAuthGuard, ApiKeyAuthGuard)
+  @UseGuards(JwtOrApiKeyAuthGuard)
   async campaign(
     @Args('id', { type: () => ID }) id: string,
     @CurrentUser() user: AuthenticatedUser
@@ -62,7 +62,7 @@ export class CampaignResolver {
     description:
       'Get all campaigns accessible to the user (campaigns where user is owner or has membership)',
   })
-  @UseGuards(JwtAuthGuard, ApiKeyAuthGuard)
+  @UseGuards(JwtOrApiKeyAuthGuard)
   async campaigns(@CurrentUser() user: AuthenticatedUser): Promise<Campaign[]> {
     return this.campaignService.findAll(user) as Promise<Campaign[]>;
   }
@@ -80,7 +80,7 @@ export class CampaignResolver {
    * @see {@link CampaignService.findByWorldId} for world filtering logic
    */
   @Query(() => [Campaign], { description: 'Get all campaigns for a world' })
-  @UseGuards(JwtAuthGuard, ApiKeyAuthGuard)
+  @UseGuards(JwtOrApiKeyAuthGuard)
   async campaignsByWorld(
     @Args('worldId', { type: () => ID }) worldId: string,
     @CurrentUser() user: AuthenticatedUser

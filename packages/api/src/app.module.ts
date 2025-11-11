@@ -3,7 +3,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import { AuthModule } from './auth/auth.module';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CacheModule } from './common/cache/cache.module';
 import { GraphQLConfigModule } from './graphql/graphql.module';
 import { WebSocketModule } from './websocket/websocket.module';
@@ -24,11 +23,10 @@ import { WebSocketModule } from './websocket/websocket.module';
     WebSocketModule,
   ],
   providers: [
-    // Apply JWT auth guard globally
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
+    // Note: JWT auth guard is NOT applied globally. Instead, each resolver
+    // uses explicit guards (@UseGuards) to support both JWT and API key auth.
+    // This allows the JwtOrApiKeyAuthGuard to handle multiple auth strategies.
+
     // Apply rate limiting globally
     {
       provide: APP_GUARD,

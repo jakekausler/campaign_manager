@@ -7,6 +7,7 @@ import { PrismaService } from '../database/prisma.service';
 import { AuthController } from './auth.controller';
 import { ApiKeyAuthGuard } from './guards/api-key-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { JwtOrApiKeyAuthGuard } from './guards/jwt-or-api-key-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { ApiKeyService } from './services/api-key.service';
 import { AuthService } from './services/auth.service';
@@ -40,8 +41,9 @@ import { LocalStrategy } from './strategies/local.strategy';
     JwtStrategy,
     ApiKeyStrategy,
     JwtAuthGuard,
-    RolesGuard,
     ApiKeyAuthGuard,
+    JwtOrApiKeyAuthGuard,
+    RolesGuard,
     PrismaService,
   ],
   exports: [
@@ -50,9 +52,12 @@ import { LocalStrategy } from './strategies/local.strategy';
     CampaignMembershipService,
     PermissionsService,
     ApiKeyService,
+    JwtStrategy,
+    ApiKeyStrategy,
     JwtAuthGuard,
-    RolesGuard,
     ApiKeyAuthGuard,
+    JwtOrApiKeyAuthGuard,
+    RolesGuard,
     JwtModule,
   ],
 })

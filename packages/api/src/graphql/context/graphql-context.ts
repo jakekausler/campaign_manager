@@ -62,19 +62,30 @@ export class GraphQLContextFactory {
    * Called by Apollo Server for every GraphQL operation
    */
   createContext({ req, res }: { req: RequestWithUser; res: Response }): GraphQLContext {
-    // User will be injected by JwtAuthGuard if authenticated
-    const user = req.user;
+    // IMPORTANT: Do NOT read req.user eagerly!
+    // Guards run AFTER context creation, so req.user will be undefined here.
+    // Instead, we store a reference to req and let decorators read req.user
+    // (which will be set by guards before resolvers run).
 
     // Create fresh DataLoaders for this request
-    // DataLoaders require user context for authorization
-    const dataloaders = this.createDataLoaders(user);
+    // Note: We pass undefined for user here since guards haven't run yet.
+    // DataLoaders that need user context will re-check when actually used.
+    const dataloaders = this.createDataLoaders(undefined);
 
-    return {
+    // CRITICAL: We CANNOT use a getter because guards run AFTER context creation.
+    // The context factory is called by Apollo Server before guards execute,
+    // so req.user will be undefined at this point.
+    //
+    // Solution: Just pass req directly and let decorators read req.user
+    // (which will be set by guards before resolvers run).
+    const context: GraphQLContext = {
       req,
       res,
-      user,
+      user: req.user, // Will be undefined now, but req will be modified by guards
       dataloaders,
     };
+
+    return context;
   }
 
   /**
