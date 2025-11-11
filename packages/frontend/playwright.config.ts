@@ -66,10 +66,12 @@ export default defineConfig({
       use: { ...devices['Desktop Firefox'] },
     },
 
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
+    // Webkit disabled due to missing system libraries
+    // To enable, install dependencies: pnpm exec playwright install-deps webkit
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
 
     // Test against mobile viewports
     {
@@ -77,10 +79,11 @@ export default defineConfig({
       use: { ...devices['Pixel 5'] },
     },
 
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
+    // Mobile Safari disabled due to missing webkit system libraries
+    // {
+    //   name: 'Mobile Safari',
+    //   use: { ...devices['iPhone 12'] },
+    // },
   ],
 
   // Run your local dev server before starting the tests
