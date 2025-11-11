@@ -166,15 +166,16 @@ VITE_API_WS_URL=wss://api.yourdomain.com/graphql
 
 **Testing:**
 
-- Vitest with Vite-native test runner (fast, no transpilation)
-- @testing-library/react for React component testing
-- MSW v2 for GraphQL API mocking at network level
-- happy-dom environment (faster than jsdom)
-- 128 tests covering stores, hooks, and mutations
-- Unit tests for Zustand stores (auth, campaign)
-- Integration tests for GraphQL hooks (queries, mutations)
-- MSW handlers for realistic GraphQL responses
-- Test utilities: `createTestApolloClient`, `renderWithApollo`
+- **Unit/Integration**: Vitest + @testing-library/react + MSW v2
+  - 1,300+ unit and integration tests for components, hooks, stores
+  - MSW v2 for GraphQL API mocking at network level
+  - happy-dom environment (faster than jsdom)
+  - Test utilities: `createTestApolloClient`, `renderWithApollo`
+- **E2E**: Playwright for end-to-end user workflows
+  - 166 E2E tests across 18 test files
+  - Critical user flows: auth, navigation, map, timeline, inspector
+  - Multi-browser support (Chromium, Firefox, WebKit)
+  - Test guide: `packages/frontend/e2e/README.md`
 
 ### Common Tasks
 

@@ -1,5 +1,8 @@
 name: CI
 
+# This workflow runs unit tests, integration tests, linting, type-checking, and builds
+# For E2E tests with Playwright, see .github/workflows/e2e-tests.yml
+
 on:
   push:
     branches: [main, develop]

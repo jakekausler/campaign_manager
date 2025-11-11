@@ -280,8 +280,8 @@ After fix, verify these related features still work:
 
 ### Related Tickets
 
-- Playwright Testing Session: docs/playwright-tests/TEST_SESSION_2025-11-11.md
-- Test checklist: PLAYWRIGHT_TESTING_CHECKLIST.md
+- Playwright Testing Session: packages/frontend/e2e/TEST_SESSION_2025-11-11.md
+- Test checklist: packages/frontend/e2e/PLAYWRIGHT_TESTING_CHECKLIST.md
 
 ### Related Commits
 
@@ -298,8 +298,8 @@ After fix, verify these related features still work:
 
 ### Testing
 
-- Playwright README: docs/playwright-tests/README.md
-- Test Session Report: docs/playwright-tests/TEST_SESSION_2025-11-11.md
+- Playwright README: packages/frontend/e2e/README.md
+- Test Session Report: packages/frontend/e2e/TEST_SESSION_2025-11-11.md
 
 ---
 

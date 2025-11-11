@@ -527,6 +527,86 @@ pnpm --filter @campaign/api test:watch
 # Refactor, save file (tests run automatically)
 ```
 
+### End-to-End (E2E) Testing with Playwright
+
+The project uses **Playwright** for E2E testing of user workflows in the frontend application.
+
+**When to write E2E tests:**
+
+- User-facing features and critical workflows (login, navigation, CRUD operations)
+- Complex multi-step interactions (drag-and-drop, form submission, modal workflows)
+- Cross-view functionality (selection synchronization, real-time updates)
+- Integration points between frontend, API, and database
+
+**When NOT to write E2E tests:**
+
+- Simple component logic (use Vitest unit tests instead)
+- Pure functions or utilities (use Vitest unit tests)
+- Backend-only logic (use Jest integration tests)
+
+**E2E Test Structure:**
+
+```typescript
+import { test, expect, type Page } from '@playwright/test';
+
+// Helper function for common setup
+async function login(page: Page) {
+  await page.goto('/auth/login');
+  await page.fill('input[name="email"]', 'admin@example.com');
+  await page.fill('input[name="password"]', 'admin123');
+  await page.click('button[type="submit"]');
+  await expect(page).toHaveURL(/.*dashboard/);
+}
+
+test.describe('Campaign Management', () => {
+  test('TC-CAMPAIGN-001: Create new campaign', { tag: '@critical' }, async ({ page }) => {
+    // Given: User is logged in
+    await login(page);
+
+    // When: User creates a new campaign
+    await page.goto('/campaigns');
+    await page.click('button:has-text("New Campaign")');
+    await page.fill('[data-testid="campaign-name"]', 'Test Campaign');
+    await page.click('button:has-text("Create")');
+
+    // Then: Campaign appears in the list
+    await expect(page.locator('text="Test Campaign"')).toBeVisible();
+  });
+});
+```
+
+**Running E2E Tests:**
+
+```bash
+# Run all E2E tests
+pnpm --filter @campaign/frontend e2e
+
+# Run with UI mode for debugging
+pnpm --filter @campaign/frontend e2e:ui
+
+# Run specific test file
+pnpm --filter @campaign/frontend exec playwright test e2e/auth.spec.ts
+
+# Run critical tests only
+pnpm --filter @campaign/frontend e2e:critical
+```
+
+**E2E Test Organization:**
+
+- Test files: `packages/frontend/e2e/*.spec.ts`
+- Test data: Use seed data from `packages/api/prisma/seed.ts`
+- Test accounts: `admin@example.com` / `admin123` (OWNER role)
+- Comprehensive guide: See [`packages/frontend/e2e/README.md`](packages/frontend/e2e/README.md)
+
+**E2E Testing Best Practices:**
+
+1. **Use data-testid attributes** for reliable element selection
+2. **Keep tests focused** on user behavior, not implementation details
+3. **Use helper functions** for common setup (login, navigation)
+4. **Tag tests by priority** (`@critical`, `@high`, `@medium`) for selective execution
+5. **Test real user flows** end-to-end, not isolated components
+6. **Wait for network idle** before assertions: `await page.waitForLoadState('networkidle')`
+
 ---
 
 ## Git Workflow

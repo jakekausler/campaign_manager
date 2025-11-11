@@ -727,13 +727,18 @@ Available components: Button, Card, Dialog, etc.
 
 ## Testing
 
-The application uses Vitest with Testing Library and Mock Service Worker (MSW) for comprehensive testing.
+The application has three layers of testing:
+
+1. **Unit Tests** - Vitest for components, hooks, and utilities
+2. **Integration Tests** - Vitest with MSW for GraphQL hooks and workflows
+3. **E2E Tests** - Playwright for end-to-end user workflows
 
 ### Test Stack
 
-- **Test Runner**: Vitest (Vite-native, fast)
+- **Unit/Integration Runner**: Vitest (Vite-native, fast)
 - **React Testing**: @testing-library/react
 - **API Mocking**: MSW v2 (Mock Service Worker)
+- **E2E Testing**: Playwright
 - **Environment**: happy-dom (faster than jsdom)
 - **Matchers**: @testing-library/jest-dom
 
@@ -807,7 +812,54 @@ graphql.query('GetSettlementsByKingdom', ({ variables }) => {
 });
 ```
 
-See `src/__tests__/README.md` for comprehensive testing documentation.
+### E2E Testing with Playwright
+
+**Running E2E Tests:**
+
+```bash
+# Run all E2E tests (166 tests across 18 files)
+pnpm --filter @campaign/frontend e2e
+
+# Run with UI mode for debugging
+pnpm --filter @campaign/frontend e2e:ui
+
+# Run critical tests only
+pnpm --filter @campaign/frontend e2e:critical
+
+# Run specific test file
+pnpm --filter @campaign/frontend exec playwright test e2e/auth.spec.ts
+```
+
+**Test Coverage:**
+
+- 🔴 **Critical** (43 tests): Core functionality, auth, data integrity
+- 🟡 **High Priority** (87 tests): Major features, common workflows
+- 🟢 **Medium Priority** (32 tests): Edge cases, validation, polish
+- 🔵 **Low Priority** (4 tests): Nice-to-have optimizations
+
+**Key Test Areas:**
+
+- Authentication & Authorization (7 tests)
+- Dashboard & Navigation (5 tests)
+- Map View & Interactions (12 tests)
+- Flow View & Dependency Graph (11 tests)
+- Timeline & Drag-to-Reschedule (12 tests)
+- Entity Inspector & Editing (13 tests)
+- Cross-View Selection (9 tests)
+- Event & Encounter Resolution (9 tests)
+- Branching & Merging (23 tests)
+- Real-time Updates (4 tests)
+- Error Handling (8 tests)
+- Accessibility (9 tests)
+- Performance & Mobile (11 tests)
+
+**Comprehensive Documentation:**
+
+- Test Guide: `e2e/README.md` - Setup, commands, test data reference
+- Test Checklist: `e2e/PLAYWRIGHT_TESTING_CHECKLIST.md` - Detailed Gherkin-style scenarios
+- CI Workflow: `.github/workflows/e2e-tests.yml` - GitHub Actions configuration
+
+See `e2e/README.md` for comprehensive E2E testing documentation and `src/__tests__/README.md` for unit/integration testing patterns.
 
 ## Code Quality
 

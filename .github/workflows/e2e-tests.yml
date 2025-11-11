@@ -1,0 +1,151 @@
+name: E2E Tests (Playwright)
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  e2e-tests:
+    name: E2E Tests - Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: campaign_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Database
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/campaign_test?schema=public
+
+      # Redis
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+
+      # Frontend
+      VITE_ENVIRONMENT: test
+      VITE_API_URL: http://localhost:9264/graphql
+      VITE_API_WS_URL: ws://localhost:9264/graphql
+      VITE_APP_NAME: Campaign Manager
+
+      # API
+      JWT_SECRET: test-secret-key-for-ci
+      JWT_REFRESH_SECRET: test-refresh-secret-key-for-ci
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @campaign/api exec prisma generate
+
+      - name: Build shared package
+        run: pnpm --filter @campaign/shared build
+
+      - name: Run database migrations
+        run: pnpm --filter @campaign/api exec prisma migrate deploy
+
+      - name: Seed database with test data
+        run: pnpm --filter @campaign/api exec prisma db seed
+
+      - name: Install Playwright Browsers
+        run: pnpm --filter @campaign/frontend exec playwright install --with-deps chromium
+
+      - name: Start backend services in background
+        run: |
+          pnpm --filter @campaign/api dev &
+          pnpm --filter @campaign/rules-engine dev &
+          pnpm --filter @campaign/scheduler dev &
+        env:
+          PORT: 9264
+
+      - name: Start frontend in background
+        run: pnpm --filter @campaign/frontend dev &
+        env:
+          VITE_PORT: 9263
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for API..."
+          npx wait-on http://localhost:9264/health --timeout 60000
+          echo "Waiting for Frontend..."
+          npx wait-on http://localhost:9263 --timeout 60000
+          echo "All services ready!"
+
+      - name: Run Playwright tests (Chromium only for CI)
+        run: pnpm --filter @campaign/frontend e2e --project=chromium
+        env:
+          BASE_URL: http://localhost:9263
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: packages/frontend/playwright-report/
+          retention-days: 30
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: packages/frontend/test-results/
+          retention-days: 7
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'packages/frontend/test-results/junit.xml';
+
+            if (fs.existsSync(path)) {
+              const content = fs.readFileSync(path, 'utf8');
+              // Parse test results and comment on PR
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '## 🎭 Playwright E2E Test Results\n\nTest results have been uploaded. View the full report in the workflow artifacts.'
+              });
+            }

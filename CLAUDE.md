@@ -159,7 +159,39 @@ pnpm --filter @campaign/api test -- --coverage
 
 - Unit test files: `*.test.ts` or `*.spec.ts`
 - Integration tests: `*.integration.test.ts`
-- E2E tests: `*.e2e.test.ts`
+- E2E tests (Playwright): `*.spec.ts` in `packages/frontend/e2e/`
+
+### E2E Testing with Playwright
+
+The project uses **Playwright** for end-to-end testing of frontend user workflows.
+
+**Test Location**: `packages/frontend/e2e/*.spec.ts`
+
+**Running E2E Tests**:
+
+```bash
+# Run all E2E tests
+pnpm --filter @campaign/frontend e2e
+
+# Run with UI mode for debugging
+pnpm --filter @campaign/frontend e2e:ui
+
+# Run critical tests only
+pnpm --filter @campaign/frontend e2e:critical
+```
+
+**When to write E2E tests:**
+
+- User-facing workflows (login, navigation, CRUD)
+- Complex multi-step interactions
+- Cross-view functionality (selection sync, real-time updates)
+
+**When NOT to write E2E tests:**
+
+- Simple component logic → use Vitest unit tests
+- Backend-only logic → use Jest integration tests
+
+**For comprehensive E2E testing guide**, see [`packages/frontend/e2e/README.md`](packages/frontend/e2e/README.md)
 
 ## Code Quality
 

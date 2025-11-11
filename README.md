@@ -257,17 +257,38 @@ pnpm --filter @campaign/api build
 
 ### Testing
 
-Run all tests:
+The project includes three types of tests:
+
+- **Unit Tests**: Jest (backend) and Vitest (frontend) for component and function testing
+- **Integration Tests**: Testing interactions between modules
+- **E2E Tests**: Playwright for end-to-end user flow testing
+
+Run all unit and integration tests:
 
 ```bash
 pnpm run test
 ```
 
-Run tests in watch mode:
+Run unit tests in watch mode:
 
 ```bash
 pnpm run test:watch
 ```
+
+Run E2E tests with Playwright:
+
+```bash
+# Run all E2E tests
+pnpm --filter @campaign/frontend e2e
+
+# Run with UI mode for debugging
+pnpm --filter @campaign/frontend e2e:ui
+
+# Run critical tests only
+pnpm --filter @campaign/frontend e2e:critical
+```
+
+For comprehensive E2E test documentation, see [`packages/frontend/e2e/README.md`](packages/frontend/e2e/README.md)
 
 ### Code Quality
 

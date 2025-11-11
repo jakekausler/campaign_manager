@@ -2,7 +2,7 @@
 
 **Version**: 1.0
 **Last Updated**: 2025-11-11
-**Status**: In Progress
+**Status**: Test Files Created - Ready for Implementation
 
 ---
 
@@ -11,8 +11,15 @@
 This directory contains end-to-end tests for the Campaign Manager application using Playwright. The tests are organized by feature area and prioritized by criticality.
 
 **Total Test Cases**: 166 tests across 18 test files
-**Implemented**: 0/166 (0%)
-**Remaining**: 166 tests
+**Test Files**: ✅ All 18 spec files created
+**Implementation**: Ready to run and refine based on actual UI
+
+### File Organization
+
+- **`PLAYWRIGHT_TESTING_CHECKLIST.md`** (60KB) - Comprehensive reference documentation with detailed Gherkin-style test scenarios and acceptance criteria
+- **`*.spec.ts` files** (18 files) - Executable Playwright test implementations based on the checklist
+- **`README.md`** (this file) - Setup guide, test data reference, and how to run tests
+- **`TEST_SESSION_*.md`** - Test session notes and findings
 
 ---
 
@@ -21,13 +28,12 @@ This directory contains end-to-end tests for the Campaign Manager application us
 ### Prerequisites
 
 ```bash
-# Ensure application is running
-cd /storage/programs/campaign_manager
+# From project root - ensure application is running
 pnpm run dev  # Starts all services
 
 # Application URLs
 # Frontend: http://localhost:9263
-# API: http://localhost:3000/graphql
+# API: http://localhost:9264/graphql
 # Rules Engine: http://localhost:9265
 # Scheduler: http://localhost:9266
 ```
@@ -134,26 +140,35 @@ The application includes comprehensive seed data for testing:
 
 ### Test Files (18 files, 166 tests total)
 
-| File                    | Tests | Priority    | Status         | Description                                |
-| ----------------------- | ----- | ----------- | -------------- | ------------------------------------------ |
-| `auth.spec.ts`          | 7     | 🔴 Critical | ❌ Not Started | Login, logout, session, permissions        |
-| `dashboard.spec.ts`     | 5     | 🔴 Critical | ❌ Not Started | Dashboard, navigation, campaign selector   |
-| `map-view.spec.ts`      | 12    | 🔴🟡 Mixed  | ❌ Not Started | Map rendering, markers, layers, zoom       |
-| `flow-view.spec.ts`     | 11    | 🟡 High     | ❌ Not Started | Dependency graph, node selection, filters  |
-| `timeline.spec.ts`      | 12    | 🔴🟡 Mixed  | ❌ Not Started | Timeline rendering, drag-to-reschedule     |
-| `inspector.spec.ts`     | 13    | 🔴🟡 Mixed  | ❌ Not Started | Entity Inspector tabs, editing, navigation |
-| `selection.spec.ts`     | 9     | 🔴🟡 Mixed  | ❌ Not Started | Cross-view selection synchronization       |
-| `editing.spec.ts`       | 13    | 🔴🟡 Mixed  | ❌ Not Started | Map geometry editing, undo/redo            |
-| `resolution.spec.ts`    | 9     | 🔴🟡 Mixed  | ❌ Not Started | Event/encounter resolution, effects        |
-| `branching.spec.ts`     | 8     | 🔴🟡 Mixed  | ❌ Not Started | Fork, switch, version resolution           |
-| `merging.spec.ts`       | 15    | 🔴🟡 Mixed  | ❌ Not Started | 3-way merge, conflict resolution           |
-| `settlements.spec.ts`   | 8     | 🔴🟡 Mixed  | ❌ Not Started | Settlement hierarchy, structures           |
-| `audit.spec.ts`         | 12    | 🔴🟡 Mixed  | ❌ Not Started | Audit log, filtering, export               |
-| `realtime.spec.ts`      | 4     | 🟡 High     | ❌ Not Started | WebSocket updates, cache invalidation      |
-| `errors.spec.ts`        | 8     | 🔴🟡 Mixed  | ❌ Not Started | Error handling, validation, 404/500        |
-| `accessibility.spec.ts` | 9     | 🟡🟢 Mixed  | ❌ Not Started | Keyboard nav, ARIA, screen readers         |
-| `performance.spec.ts`   | 6     | 🟡🟢 Mixed  | ❌ Not Started | Rendering speed, large datasets            |
-| `mobile.spec.ts`        | 5     | 🟢 Medium   | ❌ Not Started | Mobile responsiveness, touch targets       |
+**All test specification files have been created.** Each file contains executable Playwright tests based on the comprehensive checklist.
+
+| File                    | Tests | Priority    | Status     | Description                                |
+| ----------------------- | ----- | ----------- | ---------- | ------------------------------------------ |
+| `auth.spec.ts`          | 7     | 🔴 Critical | ✅ Created | Login, logout, session, permissions        |
+| `dashboard.spec.ts`     | 5     | 🔴 Critical | ✅ Created | Dashboard, navigation, campaign selector   |
+| `map-view.spec.ts`      | 12    | 🔴🟡 Mixed  | ✅ Created | Map rendering, markers, layers, zoom       |
+| `flow-view.spec.ts`     | 11    | 🟡 High     | ✅ Created | Dependency graph, node selection, filters  |
+| `timeline.spec.ts`      | 12    | 🔴🟡 Mixed  | ✅ Created | Timeline rendering, drag-to-reschedule     |
+| `inspector.spec.ts`     | 13    | 🔴🟡 Mixed  | ✅ Created | Entity Inspector tabs, editing, navigation |
+| `selection.spec.ts`     | 9     | 🔴🟡 Mixed  | ✅ Created | Cross-view selection synchronization       |
+| `editing.spec.ts`       | 13    | 🔴🟡 Mixed  | ✅ Created | Map geometry editing, undo/redo            |
+| `resolution.spec.ts`    | 9     | 🔴🟡 Mixed  | ✅ Created | Event/encounter resolution, effects        |
+| `branching.spec.ts`     | 8     | 🔴🟡 Mixed  | ✅ Created | Fork, switch, version resolution           |
+| `merging.spec.ts`       | 15    | 🔴🟡 Mixed  | ✅ Created | 3-way merge, conflict resolution           |
+| `settlements.spec.ts`   | 8     | 🔴🟡 Mixed  | ✅ Created | Settlement hierarchy, structures           |
+| `audit.spec.ts`         | 12    | 🔴🟡 Mixed  | ✅ Created | Audit log, filtering, export               |
+| `realtime.spec.ts`      | 4     | 🟡 High     | ✅ Created | WebSocket updates, cache invalidation      |
+| `errors.spec.ts`        | 8     | 🔴🟡 Mixed  | ✅ Created | Error handling, validation, 404/500        |
+| `accessibility.spec.ts` | 9     | 🟡🟢 Mixed  | ✅ Created | Keyboard nav, ARIA, screen readers         |
+| `performance.spec.ts`   | 6     | 🟡🟢 Mixed  | ✅ Created | Rendering speed, large datasets            |
+| `mobile.spec.ts`        | 5     | 🟢 Medium   | ✅ Created | Mobile responsiveness, touch targets       |
+
+**Test File Structure:**
+
+- Each file includes helper functions for common setup (login, navigation)
+- Tests are organized by priority (🔴 Critical, 🟡 High, 🟢 Medium)
+- Tagged for selective execution (@critical, @high, @medium)
+- Reference test case IDs from `PLAYWRIGHT_TESTING_CHECKLIST.md`
 
 **Priority Legend**:
 
@@ -375,39 +390,66 @@ const MAIN_BRANCH = {
 ### Run All Tests
 
 ```bash
-# From project root
-npx playwright test
+# From project root - run all 166 tests across 18 files
+pnpm --filter @campaign/frontend e2e
 
-# With UI
-npx playwright test --ui
+# With UI mode for interactive debugging
+pnpm --filter @campaign/frontend e2e:ui
 
-# With debug
-npx playwright test --debug
+# With debug mode
+pnpm --filter @campaign/frontend e2e:debug
+
+# With headed browser (see the browser window)
+pnpm --filter @campaign/frontend e2e:headed
 ```
 
 ### Run Specific Test File
 
 ```bash
-npx playwright test playwright-tests/auth.spec.ts
-npx playwright test playwright-tests/map-view.spec.ts
+# Authentication tests (7 tests)
+pnpm --filter @campaign/frontend exec playwright test e2e/auth.spec.ts
+
+# Map view tests (12 tests)
+pnpm --filter @campaign/frontend exec playwright test e2e/map-view.spec.ts
+
+# All critical tests across multiple files
+pnpm --filter @campaign/frontend e2e:critical
 ```
 
 ### Run by Tag/Priority
 
 ```bash
-# Critical tests only
-npx playwright test --grep @critical
+# Critical tests only (43 tests across multiple files)
+pnpm --filter @campaign/frontend e2e:critical
 
-# High priority tests
-npx playwright test --grep @high
+# High priority tests (87 tests)
+pnpm --filter @campaign/frontend exec playwright test --grep @high
+
+# Medium priority tests (32 tests)
+pnpm --filter @campaign/frontend exec playwright test --grep @medium
 ```
 
 ### Run in Specific Browser
 
 ```bash
-npx playwright test --project=chromium
-npx playwright test --project=firefox
-npx playwright test --project=webkit
+pnpm --filter @campaign/frontend exec playwright test --project=chromium
+pnpm --filter @campaign/frontend exec playwright test --project=firefox
+pnpm --filter @campaign/frontend exec playwright test --project=webkit
+```
+
+### Run Tests with Playwright MCP
+
+If using the Playwright MCP server, you can run tests interactively:
+
+```bash
+# Navigate to a page
+mcp__playwright__browser_navigate --url http://localhost:9263/auth/login
+
+# Take snapshot to understand the page
+mcp__playwright__browser_snapshot
+
+# Interact with elements based on the test spec files
+mcp__playwright__browser_click --element "email field" --ref "[data-testid='email-input']"
 ```
 
 ---
@@ -437,34 +479,32 @@ npx playwright test --reporter=junit
 
 ## CI/CD Integration
 
-### GitHub Actions Workflow (Example)
+### GitHub Actions Workflow
 
-```yaml
-name: Playwright Tests
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Install dependencies
-        run: pnpm install
-      - name: Install Playwright
-        run: npx playwright install --with-deps
-      - name: Start services
-        run: pnpm run dev &
-      - name: Wait for services
-        run: npx wait-on http://localhost:9263
-      - name: Run tests
-        run: npx playwright test
-      - uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: playwright-report
-          path: playwright-report/
+The E2E tests are configured to run automatically in GitHub Actions via `.github/workflows/e2e-tests.yml`. The workflow:
+
+1. **Starts Services**: PostgreSQL, Redis, API, Rules Engine, Scheduler, and Frontend
+2. **Seeds Database**: Loads test data for comprehensive E2E testing
+3. **Runs Tests**: Executes all Playwright tests (Chromium only for faster CI runs)
+4. **Uploads Artifacts**: Test reports and screenshots/videos on failure
+
+**Key Features:**
+
+- Runs on push/PR to `main` and `develop` branches
+- Uses PostgreSQL with PostGIS extension for spatial data
+- Seeds database with comprehensive test data
+- Configurable timeouts and retries
+- Automatic artifact upload for debugging failures
+
+**To run locally with the same setup as CI:**
+
+```bash
+# From project root
+pnpm install
+pnpm --filter @campaign/api exec prisma migrate deploy
+pnpm --filter @campaign/api exec prisma db seed
+pnpm run dev &  # Start all services
+pnpm --filter @campaign/frontend e2e
 ```
 
 ---
@@ -567,10 +607,18 @@ test('TC-MAP-005: Pan and zoom', { tag: '@high' }, async ({ page }) => {
 
 ## Support & Documentation
 
-- **Main Checklist**: `/storage/programs/campaign_manager/PLAYWRIGHT_TESTING_CHECKLIST.md`
-- **Feature Docs**: `/storage/programs/campaign_manager/docs/features/`
-- **User Guides**: `/storage/programs/campaign_manager/docs/user-guides/`
-- **Frontend Guide**: `/storage/programs/campaign_manager/docs/development/frontend-guide.md`
+### Test Documentation
+
+- **Comprehensive Checklist**: `PLAYWRIGHT_TESTING_CHECKLIST.md` - Detailed test scenarios with Gherkin-style acceptance criteria
+- **Test Files Directory**: `*.spec.ts` - 18 executable test specification files
+- **This README**: Overview, setup guide, and how to run tests
+
+### Application Documentation
+
+- **Feature Docs**: `docs/features/` - Detailed feature documentation for all major systems
+- **User Guides**: `docs/user-guides/` - End-user documentation and walkthroughs
+- **Frontend Guide**: `docs/development/frontend-guide.md` - React/Vite/TypeScript development guide
+- **Testing Guide**: `packages/frontend/docs/testing/mocking-guide.md` - Mocking patterns for heavy dependencies
 
 ---
 
