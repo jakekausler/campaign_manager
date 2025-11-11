@@ -19,7 +19,7 @@ import { useApolloClient } from '@apollo/client/react';
 import { useCallback, useEffect } from 'react';
 
 import { env } from '@/config';
-import { useCampaignStore } from '@/stores';
+import { useCampaignStore, useStore } from '@/stores';
 import type {
   EntityUpdatedEvent,
   SettlementUpdatedEvent,
@@ -54,7 +54,7 @@ import { useCampaignSubscription } from './useWebSocketSubscription';
  */
 export function useWebSocketCacheSync(campaignId: string | null, enabled = true) {
   const client = useApolloClient();
-  const { campaign, setCurrentCampaign } = useCampaignStore();
+  const { setCurrentCampaign } = useCampaignStore();
 
   /**
    * Handle entity_updated events
@@ -165,11 +165,15 @@ export function useWebSocketCacheSync(campaignId: string | null, enabled = true)
       }
 
       // Update campaign's currentWorldTime in Zustand store
-      if (campaign && campaignId) {
-        setCurrentCampaign(campaignId, {
-          ...campaign,
-          currentWorldTime: newTime,
-        });
+      // Get current campaign from store instead of closure to avoid stale reference
+      if (campaignId) {
+        const currentCampaign = useStore.getState().campaign;
+        if (currentCampaign) {
+          setCurrentCampaign(campaignId, {
+            ...currentCampaign,
+            currentWorldTime: newTime,
+          });
+        }
       }
 
       // Evict time-dependent queries
@@ -178,7 +182,7 @@ export function useWebSocketCacheSync(campaignId: string | null, enabled = true)
       client.cache.evict({ fieldName: 'encountersByCampaign' });
       client.cache.gc();
     },
-    [client, campaign, campaignId, setCurrentCampaign]
+    [client, campaignId, setCurrentCampaign]
   );
 
   /**
