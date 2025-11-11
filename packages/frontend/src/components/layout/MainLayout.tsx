@@ -1,11 +1,11 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
 import { ConnectionIndicator } from '@/components';
 import { BranchSelector, type BranchSelectorHandle } from '@/components/features';
 import { Button } from '@/components/ui';
 import { useKeyboardShortcuts } from '@/hooks';
-import { useCampaignStore } from '@/stores';
+import { useCurrentCampaignId } from '@/stores';
 
 /**
  * Main application layout with navigation header
@@ -17,27 +17,34 @@ import { useCampaignStore } from '@/stores';
 export function MainLayout() {
   const location = useLocation();
   const isAuthenticated = !!localStorage.getItem('auth_token');
-  const { currentCampaignId } = useCampaignStore();
+  // Use specific selector to avoid re-rendering on unrelated campaign store changes
+  const currentCampaignId = useCurrentCampaignId();
   const branchSelectorRef = useRef<BranchSelectorHandle>(null);
 
   // Register global keyboard shortcuts for branch operations
-  useKeyboardShortcuts([
-    {
-      key: 'b',
-      ctrl: true,
-      handler: () => branchSelectorRef.current?.openBranchSelector(),
-      description: 'Open branch selector',
-      enabled: isAuthenticated && !!currentCampaignId,
-    },
-    {
-      key: 'f',
-      ctrl: true,
-      shift: true,
-      handler: () => branchSelectorRef.current?.openForkDialog(),
-      description: 'Fork current branch',
-      enabled: isAuthenticated && !!currentCampaignId,
-    },
-  ]);
+  // Memoize shortcuts array to prevent infinite re-render loop
+  const shortcuts = useMemo(
+    () => [
+      {
+        key: 'b',
+        ctrl: true,
+        handler: () => branchSelectorRef.current?.openBranchSelector(),
+        description: 'Open branch selector',
+        enabled: isAuthenticated && !!currentCampaignId,
+      },
+      {
+        key: 'f',
+        ctrl: true,
+        shift: true,
+        handler: () => branchSelectorRef.current?.openForkDialog(),
+        description: 'Fork current branch',
+        enabled: isAuthenticated && !!currentCampaignId,
+      },
+    ],
+    [isAuthenticated, currentCampaignId]
+  );
+
+  useKeyboardShortcuts(shortcuts);
 
   return (
     <div className="flex min-h-screen flex-col">

@@ -6,12 +6,14 @@
  * for real-time updates.
  */
 
+import { ApolloProvider } from '@apollo/client/react';
 import { RouterProvider } from 'react-router-dom';
 
 import { Toaster } from '@/components/ui/toaster';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import { useWebSocketCacheSync } from '@/hooks';
 import { router } from '@/router';
+import { graphqlClient } from '@/services/api/graphql-client';
 import { useCurrentCampaignId } from '@/stores';
 
 /**
@@ -36,9 +38,11 @@ function AppWithCacheSync() {
 
 function App() {
   return (
-    <WebSocketProvider>
-      <AppWithCacheSync />
-    </WebSocketProvider>
+    <ApolloProvider client={graphqlClient}>
+      <WebSocketProvider>
+        <AppWithCacheSync />
+      </WebSocketProvider>
+    </ApolloProvider>
   );
 }
 

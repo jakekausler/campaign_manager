@@ -24,11 +24,18 @@
  */
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 import { env } from '@/config/env';
-import { useStore } from '@/stores';
+import { useStore, type RootStore } from '@/stores';
+
+/**
+ * Stable selectors for WebSocket context
+ * These are defined at module level to prevent re-creation on every render
+ */
+const selectToken = (state: RootStore) => state.token;
+const selectIsAuthenticated = (state: RootStore) => state.isAuthenticated;
 
 /**
  * Connection state enum
@@ -118,9 +125,9 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   // Use ref to track reconnection timeout
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Get auth token from store
-  const token = useStore((state) => state.token);
-  const isAuthenticated = useStore((state) => state.isAuthenticated);
+  // Get auth token from store using stable selectors
+  const token = useStore(selectToken);
+  const isAuthenticated = useStore(selectIsAuthenticated);
 
   /**
    * Creates a new Socket.IO connection with authentication
@@ -326,12 +333,15 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const contextValue: WebSocketContextValue = {
-    socket,
-    connectionState,
-    error,
-    reconnectAttempts,
-  };
+  const contextValue: WebSocketContextValue = useMemo(
+    () => ({
+      socket,
+      connectionState,
+      error,
+      reconnectAttempts,
+    }),
+    [socket, connectionState, error, reconnectAttempts]
+  );
 
   return <WebSocketContext.Provider value={contextValue}>{children}</WebSocketContext.Provider>;
 }

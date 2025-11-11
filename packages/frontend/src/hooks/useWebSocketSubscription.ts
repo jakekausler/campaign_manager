@@ -40,6 +40,13 @@ import type {
 import { ConnectionState, useWebSocket } from '../contexts/WebSocketContext';
 
 /**
+ * Stable no-op handler to use as fallback
+ * Defined at module level to prevent recreation on every render
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const NOOP_HANDLER = () => {};
+
+/**
  * Generic event handler type
  */
 export type WebSocketEventHandler<TEvent extends WebSocketEvent = WebSocketEvent> = (
@@ -273,7 +280,7 @@ export function useCampaignSubscription(
   // Subscribe to entity_updated events
   useWebSocketSubscription(
     'entity_updated',
-    handlers.onEntityUpdated ?? (() => {}),
+    handlers.onEntityUpdated ?? NOOP_HANDLER,
     campaignId ? { type: 'subscribe_campaign', campaignId } : undefined,
     campaignId ? { type: 'unsubscribe_campaign', campaignId } : undefined,
     actuallyEnabled && !!handlers.onEntityUpdated
@@ -282,7 +289,7 @@ export function useCampaignSubscription(
   // Subscribe to state_invalidated events
   useWebSocketSubscription(
     'state_invalidated',
-    handlers.onStateInvalidated ?? (() => {}),
+    handlers.onStateInvalidated ?? NOOP_HANDLER,
     undefined, // state_invalidated doesn't need separate room subscription
     undefined,
     actuallyEnabled && !!handlers.onStateInvalidated
@@ -291,7 +298,7 @@ export function useCampaignSubscription(
   // Subscribe to world_time_changed events
   useWebSocketSubscription(
     'world_time_changed',
-    handlers.onWorldTimeChanged ?? (() => {}),
+    handlers.onWorldTimeChanged ?? NOOP_HANDLER,
     undefined, // world_time_changed is already in campaign room
     undefined,
     actuallyEnabled && !!handlers.onWorldTimeChanged
@@ -300,7 +307,7 @@ export function useCampaignSubscription(
   // Subscribe to settlement_updated events
   useWebSocketSubscription(
     'settlement_updated',
-    handlers.onSettlementUpdated ?? (() => {}),
+    handlers.onSettlementUpdated ?? NOOP_HANDLER,
     undefined, // settlement_updated is broadcast to campaign room
     undefined,
     actuallyEnabled && !!handlers.onSettlementUpdated
@@ -309,7 +316,7 @@ export function useCampaignSubscription(
   // Subscribe to structure_updated events
   useWebSocketSubscription(
     'structure_updated',
-    handlers.onStructureUpdated ?? (() => {}),
+    handlers.onStructureUpdated ?? NOOP_HANDLER,
     undefined, // structure_updated is broadcast to campaign room
     undefined,
     actuallyEnabled && !!handlers.onStructureUpdated
@@ -369,7 +376,7 @@ export function useSettlementSubscription(
   // Subscribe to settlement_updated events
   useWebSocketSubscription(
     'settlement_updated',
-    handlers.onSettlementUpdated ?? (() => {}),
+    handlers.onSettlementUpdated ?? NOOP_HANDLER,
     settlementId ? { type: 'subscribe_settlement', settlementId } : undefined,
     settlementId ? { type: 'unsubscribe_settlement', settlementId } : undefined,
     actuallyEnabled && !!handlers.onSettlementUpdated
@@ -378,7 +385,7 @@ export function useSettlementSubscription(
   // Subscribe to structure_updated events
   useWebSocketSubscription(
     'structure_updated',
-    handlers.onStructureUpdated ?? (() => {}),
+    handlers.onStructureUpdated ?? NOOP_HANDLER,
     undefined, // structure_updated is broadcast to settlement room
     undefined,
     actuallyEnabled && !!handlers.onStructureUpdated
@@ -428,7 +435,7 @@ export function useStructureSubscription(
   // Subscribe to structure_updated events
   useWebSocketSubscription(
     'structure_updated',
-    handlers.onStructureUpdated ?? (() => {}),
+    handlers.onStructureUpdated ?? NOOP_HANDLER,
     structureId ? { type: 'subscribe_structure', structureId } : undefined,
     structureId ? { type: 'unsubscribe_structure', structureId } : undefined,
     actuallyEnabled && !!handlers.onStructureUpdated

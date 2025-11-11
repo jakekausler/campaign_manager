@@ -16,10 +16,10 @@
  */
 
 import { useApolloClient } from '@apollo/client/react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import { env } from '@/config';
-import { useCampaignStore, useStore } from '@/stores';
+import { useStore } from '@/stores';
 import type {
   EntityUpdatedEvent,
   SettlementUpdatedEvent,
@@ -43,7 +43,7 @@ import { useCampaignSubscription } from './useWebSocketSubscription';
  * @example
  * ```tsx
  * function App() {
- *   const { currentCampaignId } = useCampaignStore();
+ *   const currentCampaignId = useCurrentCampaignId();
  *
  *   // Sync cache with WebSocket events for current campaign
  *   useWebSocketCacheSync(currentCampaignId);
@@ -54,7 +54,8 @@ import { useCampaignSubscription } from './useWebSocketSubscription';
  */
 export function useWebSocketCacheSync(campaignId: string | null, enabled = true) {
   const client = useApolloClient();
-  const { setCurrentCampaign } = useCampaignStore();
+  // Don't destructure store actions - they cause re-renders when store changes
+  // Instead, call them directly from getState() inside handlers
 
   /**
    * Handle entity_updated events
@@ -165,15 +166,15 @@ export function useWebSocketCacheSync(campaignId: string | null, enabled = true)
       }
 
       // Update campaign's currentWorldTime in Zustand store
-      // Get current campaign from store instead of closure to avoid stale reference
-      if (campaignId) {
-        const currentCampaign = useStore.getState().campaign;
-        if (currentCampaign) {
-          setCurrentCampaign(campaignId, {
-            ...currentCampaign,
-            currentWorldTime: newTime,
-          });
-        }
+      // CRITICAL: Get state inside the event handler logic, not at callback creation time
+      // This ensures we get the CURRENT state when the event fires, not stale state from closure
+      const state = useStore.getState();
+
+      if (state.campaign && state.currentCampaignId) {
+        state.setCurrentCampaign(state.currentCampaignId, {
+          ...state.campaign,
+          currentWorldTime: newTime,
+        });
       }
 
       // Evict time-dependent queries
@@ -182,7 +183,7 @@ export function useWebSocketCacheSync(campaignId: string | null, enabled = true)
       client.cache.evict({ fieldName: 'encountersByCampaign' });
       client.cache.gc();
     },
-    [client, campaignId, setCurrentCampaign]
+    [client]
   );
 
   /**
@@ -288,14 +289,27 @@ export function useWebSocketCacheSync(campaignId: string | null, enabled = true)
     [client]
   );
 
+  // Memoize handlers object to prevent infinite re-renders
+  const handlers = useMemo(
+    () => ({
+      onEntityUpdated: enabled ? handleEntityUpdated : undefined,
+      onStateInvalidated: enabled ? handleStateInvalidated : undefined,
+      onWorldTimeChanged: enabled ? handleWorldTimeChanged : undefined,
+      onSettlementUpdated: enabled ? handleSettlementUpdated : undefined,
+      onStructureUpdated: enabled ? handleStructureUpdated : undefined,
+    }),
+    [
+      enabled,
+      handleEntityUpdated,
+      handleStateInvalidated,
+      handleWorldTimeChanged,
+      handleSettlementUpdated,
+      handleStructureUpdated,
+    ]
+  );
+
   // Subscribe to campaign events (only if campaignId is not null)
-  useCampaignSubscription(campaignId || undefined, {
-    onEntityUpdated: enabled ? handleEntityUpdated : undefined,
-    onStateInvalidated: enabled ? handleStateInvalidated : undefined,
-    onWorldTimeChanged: enabled ? handleWorldTimeChanged : undefined,
-    onSettlementUpdated: enabled ? handleSettlementUpdated : undefined,
-    onStructureUpdated: enabled ? handleStructureUpdated : undefined,
-  });
+  useCampaignSubscription(campaignId || undefined, handlers);
 
   // Log when cache sync is enabled/disabled
   useEffect(() => {

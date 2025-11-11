@@ -1,5 +1,7 @@
+import * as React from 'react';
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
+import { shallow } from 'zustand/shallow';
 
 import { createAuthSlice, type AuthSlice } from './auth-slice';
 import { createCampaignSlice, type CampaignSlice } from './campaign-slice';
@@ -80,17 +82,17 @@ export const useStore = create<RootStore>()(
  * const { user, isAuthenticated, login, logout } = useAuthStore();
  * ```
  */
-export const useAuthStore = () =>
-  useStore((state) => ({
-    token: state.token,
-    user: state.user,
-    isAuthenticated: state.isAuthenticated,
-    login: state.login,
-    logout: state.logout,
-    updateUser: state.updateUser,
-    refreshToken: state.refreshToken,
-    setToken: state.setToken,
-  }));
+const selectAuthStore = (state: RootStore) => ({
+  token: state.token,
+  user: state.user,
+  isAuthenticated: state.isAuthenticated,
+  login: state.login,
+  logout: state.logout,
+  updateUser: state.updateUser,
+  refreshToken: state.refreshToken,
+  setToken: state.setToken,
+});
+export const useAuthStore = () => useStore(selectAuthStore, shallow);
 
 /**
  * Hook to access campaign context state and actions
@@ -100,18 +102,18 @@ export const useAuthStore = () =>
  * const { currentCampaignId, campaign, setCurrentCampaign } = useCampaignStore();
  * ```
  */
-export const useCampaignStore = () =>
-  useStore((state) => ({
-    currentCampaignId: state.currentCampaignId,
-    currentBranchId: state.currentBranchId,
-    campaignBranchMap: state.campaignBranchMap,
-    asOfTime: state.asOfTime,
-    campaign: state.campaign,
-    setCurrentCampaign: state.setCurrentCampaign,
-    setCurrentBranch: state.setCurrentBranch,
-    setAsOfTime: state.setAsOfTime,
-    clearCampaignContext: state.clearCampaignContext,
-  }));
+const selectCampaignStore = (state: RootStore) => ({
+  currentCampaignId: state.currentCampaignId,
+  currentBranchId: state.currentBranchId,
+  campaignBranchMap: state.campaignBranchMap,
+  asOfTime: state.asOfTime,
+  campaign: state.campaign,
+  setCurrentCampaign: state.setCurrentCampaign,
+  setCurrentBranch: state.setCurrentBranch,
+  setAsOfTime: state.setAsOfTime,
+  clearCampaignContext: state.clearCampaignContext,
+});
+export const useCampaignStore = () => useStore(selectCampaignStore, shallow);
 
 /**
  * Selector hook for accessing current campaign ID only
@@ -122,7 +124,8 @@ export const useCampaignStore = () =>
  * const campaignId = useCurrentCampaignId();
  * ```
  */
-export const useCurrentCampaignId = () => useStore((state) => state.currentCampaignId);
+const selectCurrentCampaignId = (state: RootStore) => state.currentCampaignId;
+export const useCurrentCampaignId = () => useStore(selectCurrentCampaignId);
 
 /**
  * Selector hook for accessing current branch ID only
@@ -132,18 +135,23 @@ export const useCurrentCampaignId = () => useStore((state) => state.currentCampa
  * const branchId = useCurrentBranchId();
  * ```
  */
-export const useCurrentBranchId = () => useStore((state) => state.currentBranchId);
+const selectCurrentBranchId = (state: RootStore) => state.currentBranchId;
+export const useCurrentBranchId = () => useStore(selectCurrentBranchId);
 
 /**
  * Selector hook for accessing asOf time only
  * Used for time-travel queries
+ *
+ * Returns the Date object directly. Date objects are compared by reference,
+ * so this hook will only trigger re-renders when the asOfTime reference changes.
  *
  * @example
  * ```typescript
  * const asOfTime = useAsOfTime();
  * ```
  */
-export const useAsOfTime = () => useStore((state) => state.asOfTime);
+const selectAsOfTime = (state: RootStore) => state.asOfTime;
+export const useAsOfTime = () => useStore(selectAsOfTime);
 
 /**
  * Selector hook for checking authentication status
@@ -157,7 +165,8 @@ export const useAsOfTime = () => useStore((state) => state.asOfTime);
  * }
  * ```
  */
-export const useIsAuthenticated = () => useStore((state) => state.isAuthenticated);
+const selectIsAuthenticated = (state: RootStore) => state.isAuthenticated;
+export const useIsAuthenticated = () => useStore(selectIsAuthenticated);
 
 /**
  * Selector hook for accessing current user
@@ -168,7 +177,8 @@ export const useIsAuthenticated = () => useStore((state) => state.isAuthenticate
  * return <div>Welcome, {user?.name}</div>;
  * ```
  */
-export const useCurrentUser = () => useStore((state) => state.user);
+const selectCurrentUser = (state: RootStore) => state.user;
+export const useCurrentUser = () => useStore(selectCurrentUser);
 
 /**
  * Hook to access selection state and actions
@@ -194,15 +204,15 @@ export const useCurrentUser = () => useStore((state) => state.user);
  * };
  * ```
  */
-export const useSelectionStore = () =>
-  useStore((state) => ({
-    selectedEntities: state.selectedEntities,
-    selectEntity: state.selectEntity,
-    addToSelection: state.addToSelection,
-    removeFromSelection: state.removeFromSelection,
-    clearSelection: state.clearSelection,
-    toggleSelection: state.toggleSelection,
-  }));
+const selectSelectionStore = (state: RootStore) => ({
+  selectedEntities: state.selectedEntities,
+  selectEntity: state.selectEntity,
+  addToSelection: state.addToSelection,
+  removeFromSelection: state.removeFromSelection,
+  clearSelection: state.clearSelection,
+  toggleSelection: state.toggleSelection,
+});
+export const useSelectionStore = () => useStore(selectSelectionStore, shallow);
 
 /**
  * Selector hook for accessing selected entities only
@@ -224,7 +234,8 @@ export const useSelectionStore = () =>
  * }, [selectedEntities]);
  * ```
  */
-export const useSelectedEntities = () => useStore((state) => state.selectedEntities);
+const selectSelectedEntities = (state: RootStore) => state.selectedEntities;
+export const useSelectedEntities = () => useStore(selectSelectedEntities);
 
 /**
  * Selector hook for checking if a specific entity is selected
@@ -232,8 +243,7 @@ export const useSelectedEntities = () => useStore((state) => state.selectedEntit
  * Returns true if the entity with the given ID is in the selection.
  * Useful for conditional rendering or styling of selected entities.
  *
- * Note: This creates a new selector function on each call, so use
- * sparingly or memoize the entityId parameter.
+ * Uses a stable selector with useMemo to prevent infinite re-render loops.
  *
  * @param entityId - The ID of the entity to check
  *
@@ -249,8 +259,14 @@ export const useSelectedEntities = () => useStore((state) => state.selectedEntit
  * }
  * ```
  */
-export const useIsEntitySelected = (entityId: string) =>
-  useStore((state) => state.selectedEntities.some((e) => e.id === entityId));
+export const useIsEntitySelected = (entityId: string) => {
+  // Create a stable selector using React.useMemo to prevent recreation on every render
+  const selector = React.useMemo(
+    () => (state: RootStore) => state.selectedEntities.some((e) => e.id === entityId),
+    [entityId]
+  );
+  return useStore(selector);
+};
 
 /**
  * Selector hook for getting selected entities by type
@@ -259,8 +275,8 @@ export const useIsEntitySelected = (entityId: string) =>
  * Useful for view-specific filtering (e.g., only show selected
  * settlements on the map).
  *
- * Note: This creates a new filtered array on each call, so use
- * sparingly or consider memoization in the consuming component.
+ * Uses a stable selector with useMemo and shallow comparison to prevent
+ * infinite re-render loops when the filtered result hasn't changed.
  *
  * @param entityType - The entity type to filter by
  *
@@ -276,8 +292,15 @@ export const useIsEntitySelected = (entityId: string) =>
  * }
  * ```
  */
-export const useSelectedEntitiesByType = (entityType: string) =>
-  useStore((state) => state.selectedEntities.filter((e) => e.type === entityType));
+export const useSelectedEntitiesByType = (entityType: string) => {
+  // Create a stable selector using React.useMemo to prevent recreation on every render
+  const selector = React.useMemo(
+    () => (state: RootStore) => state.selectedEntities.filter((e) => e.type === entityType),
+    [entityType]
+  );
+  // Use shallow comparison to check array contents, not just reference
+  return useStore(selector, shallow);
+};
 
 // Re-export types for convenience
 export type { AuthSlice, User } from './auth-slice';
